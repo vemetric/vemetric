@@ -1,0 +1,1 @@
+ALTER TABLE user ADD COLUMN IF NOT EXISTS `firstSeenAt` DateTime64(3, 'UTC') DEFAULT `createdAt`;

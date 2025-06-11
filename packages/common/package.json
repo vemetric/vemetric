@@ -1,0 +1,23 @@
+{
+  "name": "@vemetric/common",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "hono": "^4.6.13",
+    "nanoid": "^5.0.4",
+    "siphash": "^1.1.0",
+    "zod": "3.23.6"
+  },
+  "devDependencies": {
+    "@vemetric/eslint-config": "workspace:*",
+    "vitest": "^3.2.3"
+  }
+}

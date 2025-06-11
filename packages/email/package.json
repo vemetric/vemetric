@@ -1,0 +1,26 @@
+{
+  "name": "@vemetric/email",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.tsx"
+  },
+  "scripts": {
+    "dev": "email dev -p 3136",
+    "lint": "eslint . --max-warnings 0"
+  },
+  "dependencies": {
+    "@react-email/components": "0.0.34",
+    "@react-email/render": "1.0.5",
+    "postmark": "^4.0.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vemetric/eslint-config": "workspace:*",
+    "react-email": "4.0.2"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "clickhouse",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "migrate-local": "dotenv -e .env -- clickhouse-migrations migrate --migrations-home=./migrations",
+    "migrate-prod": "clickhouse-migrations migrate --migrations-home=./migrations",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@clickhouse/client": "^1.11.0",
+    "@sentry/bun": "^9.10.1",
+    "@vemetric/common": "workspace:*",
+    "@vemetric/logger": "workspace:*",
+    "nanoid": "^5.0.4",
+    "sqlstring": "^2.3.3",
+    "zod": "3.23.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "@types/sqlstring": "^2.3.2",
+    "@vemetric/eslint-config": "workspace:*",
+    "clickhouse-migrations": "^0.1.13",
+    "vitest": "^3.2.3"
+  }
+}

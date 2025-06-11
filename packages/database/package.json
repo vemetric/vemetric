@@ -1,0 +1,23 @@
+{
+  "name": "database",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev --create-only",
+    "db:deploy": "prisma migrate deploy",
+    "lint": "eslint . --max-warnings 0"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.4.2",
+    "@vemetric/common": "workspace:*",
+    "nanoid": "^5.0.4"
+  },
+  "devDependencies": {
+    "@vemetric/eslint-config": "workspace:*",
+    "prisma": "^5.4.2"
+  }
+}

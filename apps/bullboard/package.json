@@ -1,0 +1,27 @@
+{
+  "name": "@vemetric/bullboard",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --hot src/index.ts",
+    "start": "bun run src/index.ts",
+    "lint": "eslint . --max-warnings 0"
+  },
+  "dependencies": {
+    "@bull-board/api": "^6.9.0",
+    "@bull-board/hono": "^6.9.0",
+    "@vemetric/logger": "workspace:*",
+    "@vemetric/queues": "workspace:*",
+    "hono": "^4.6.13",
+    "hono-pino": "^0.7.2",
+    "pino": "^9.6.0",
+    "pino-pretty": "^13.0.0",
+    "redis": "^4.6.12"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "@vemetric/eslint-config": "workspace:*",
+    "typescript": "^5.2.2"
+  }
+}

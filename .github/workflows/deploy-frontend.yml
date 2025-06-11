@@ -1,0 +1,61 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      VITE_PADDLE_ENV: production
+      VITE_PADDLE_TOKEN: ${{ secrets.PADDLE_TOKEN }}
+      VITE_PADDLE_10K_MONTHLY: ${{ secrets.PADDLE_10K_MONTHLY }}
+      VITE_PADDLE_10K_YEARLY: ${{ secrets.PADDLE_10K_YEARLY }}
+      VITE_PADDLE_100K_MONTHLY: ${{ secrets.PADDLE_100K_MONTHLY }}
+      VITE_PADDLE_100K_YEARLY: ${{ secrets.PADDLE_100K_YEARLY }}
+      VITE_PADDLE_250K_MONTHLY: ${{ secrets.PADDLE_250K_MONTHLY }}
+      VITE_PADDLE_250K_YEARLY: ${{ secrets.PADDLE_250K_YEARLY }}
+      VITE_PADDLE_500K_MONTHLY: ${{ secrets.PADDLE_500K_MONTHLY }}
+      VITE_PADDLE_500K_YEARLY: ${{ secrets.PADDLE_500K_YEARLY }}
+      VITE_PADDLE_1M_MONTHLY: ${{ secrets.PADDLE_1M_MONTHLY }}
+      VITE_PADDLE_1M_YEARLY: ${{ secrets.PADDLE_1M_YEARLY }}
+      VITE_PADDLE_2M_MONTHLY: ${{ secrets.PADDLE_2M_MONTHLY }}
+      VITE_PADDLE_2M_YEARLY: ${{ secrets.PADDLE_2M_YEARLY }}
+      VITE_PADDLE_5M_MONTHLY: ${{ secrets.PADDLE_5M_MONTHLY }}
+      VITE_PADDLE_5M_YEARLY: ${{ secrets.PADDLE_5M_YEARLY }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Expose GitHub Runtime for cache
+        uses: crazy-max/ghaction-github-runtime@v3
+
+      - name: Install PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.1.3
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v1
+
+      - name: Install Dependencies
+        run: pnpm i --filter webapp
+
+      - name: Run Tests
+        run: cd apps/webapp && pnpm test
+
+      - name: Build Frontend
+        run: cd apps/webapp && pnpm build
+
+      - name: Deploy Frontend
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: 426a6d2bb4eac1ab30f207797ced381c
+          projectName: vemetric-app
+          directory: apps/webapp/dist

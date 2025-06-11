@@ -1,0 +1,33 @@
+{
+  "name": "vemetric",
+  "description": "Simple, yet powerful web- and product analytics.",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --filter=!./apps/health-check",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "turbo": "turbo"
+  },
+  "dependencies": {
+    "eslint": "^9.18.0",
+    "prettier": "^3.0.3",
+    "turbo": "1.13.3"
+  },
+  "workspaces": [
+    "apps/backend",
+    "apps/hub",
+    "apps/worker",
+    "apps/bullboard",
+    "apps/health-check",
+    "packages/common",
+    "packages/database",
+    "packages/clickhouse",
+    "packages/eslint-config",
+    "packages/email",
+    "packages/queues",
+    "packages/logger"
+  ],
+  "packageManager": "pnpm@9.1.3"
+}

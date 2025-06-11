@@ -1,0 +1,22 @@
+{
+  "name": "health-check",
+  "version": "1.0.0",
+  "description": "Health check service for Vemetric event pipeline",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --hot src/index.ts",
+    "start": "bun run src/index.ts",
+    "lint": "eslint . --max-warnings 0"
+  },
+  "dependencies": {
+    "@clickhouse/client": "^1.11.0",
+    "@vemetric/node": "0.1.0",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "@vemetric/eslint-config": "workspace:*",
+    "typescript": "^5.2.2"
+  }
+}

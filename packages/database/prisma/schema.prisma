@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @unique
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  name          String?
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now())
+
+  sessions      Session[]
+  accounts      Account[]
+  organizations UserOrganization[]
+  projects      UserProject[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@map("verification")
+}
+
+model Organization {
+  id               String   @id
+  name             String   @db.VarChar
+  featureFlags     String?  @db.VarChar
+  createdAt        DateTime @default(now())
+  pricingOnboarded Boolean  @default(false)
+
+  users       UserOrganization[]
+  project     Project[]
+  billingInfo BillingInfo?
+
+  @@map("organization")
+}
+
+model BillingInfo {
+  organizationId           String       @id
+  createdAt                DateTime     @default(now())
+  transactionId            String       @db.VarChar
+  customerId               String       @db.VarChar
+  addressId                String       @db.VarChar
+  businessId               String?      @db.VarChar
+  productId                String       @db.VarChar // This is how we can identify on which plan the user is subscribed to
+  priceId                  String       @db.VarChar // This is how we can identify if it is a yearly or monthly plan
+  subscriptionId           String       @db.VarChar
+  subscriptionStatus       String       @db.VarChar
+  subscriptionEndDate      DateTime?    @db.Date
+  subscriptionNextBilledAt DateTime?    @db.Date
+  organization             Organization @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("billing_info")
+}
+
+enum OrganizationRole {
+  ADMIN
+  MEMBER
+}
+
+model UserOrganization {
+  userId         String
+  organizationId String
+  role           OrganizationRole
+  createdAt      DateTime         @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([userId, organizationId])
+  @@map("user_organization")
+}
+
+model Project {
+  id              String   @id
+  name            String   @db.VarChar
+  domain          String   @unique @db.VarChar
+  token           String   @unique @db.VarChar
+  organizationId  String
+  createdAt       DateTime @default(now())
+  publicDashboard Boolean  @default(false)
+
+  users        UserProject[]
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("project")
+}
+
+enum ProjectRole {
+  ADMIN
+  MEMBER
+}
+
+model UserProject {
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  projectId String
+  project   Project     @relation(fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  role      ProjectRole
+  createdAt DateTime    @default(now())
+
+  @@id([userId, projectId])
+  @@map("user_project")
+}
+
+model Salt {
+  id        String   @id
+  createdAt DateTime @default(now())
+
+  @@map("salt")
+}
+
+model UserIdentificationMap {
+  projectId  String
+  userId     String
+  identifier String
+
+  @@id([projectId, userId])
+  @@unique([projectId, identifier])
+  @@map("user_identification_map")
+}
+
+model FailedQueueJob {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  queueName String
+  data      Json
+  error     String
+
+  @@map("failed_queue_job")
+}

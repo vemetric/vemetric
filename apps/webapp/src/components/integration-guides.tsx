@@ -5,6 +5,7 @@ import {
   TbBrandNextjs,
   TbBrandNpm,
   TbBrandReact,
+  TbBrandWordpress,
   TbCode,
   TbRegistered,
 } from 'react-icons/tb';
@@ -30,6 +31,12 @@ export const IntegrationGuides = () => {
         title="Google Tag Manager"
         description="Integrate Vemetric using Google Tag Manager."
         href="https://vemetric.com/docs/installation/google-tag-manager"
+      />
+      <DocsCard
+        icon={TbBrandWordpress}
+        title="WordPress"
+        description="Integrate Vemetric into your WordPress website."
+        href="https://vemetric.com/docs/installation/wordpress"
       />
       <DocsCard
         icon={TbBrandAstro}

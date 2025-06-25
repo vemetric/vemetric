@@ -66,6 +66,7 @@ function Page() {
   );
   const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery({
     domain,
+    timespan,
   });
 
   const timeSpanData = TIME_SPAN_DATA[timespan];

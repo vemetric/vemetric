@@ -1,5 +1,5 @@
 import { TRPCError } from '@trpc/server';
-import { TIME_SPAN_DATA, TIME_SPANS } from '@vemetric/common/charts/timespans';
+import { isTimespanAllowed, TIME_SPAN_DATA, TIME_SPANS } from '@vemetric/common/charts/timespans';
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { sourcesSchema } from '@vemetric/common/sources';
 import { clickhouseEvent, clickhouseSession, getFilterQueries } from 'clickhouse';
@@ -15,10 +15,7 @@ const timespanProcedure = projectOrPublicProcedure
       ctx: { subscriptionStatus },
     } = opts;
 
-    if (
-      !subscriptionStatus.isActive &&
-      (input.timespan === '3months' || input.timespan === '6months' || input.timespan === '1year')
-    ) {
+    if (!isTimespanAllowed(input.timespan, subscriptionStatus.isActive)) {
       throw new TRPCError({ code: 'FORBIDDEN', message: 'Upgrade to the Professional plan for longer data retention' });
     }
 

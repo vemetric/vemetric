@@ -65,6 +65,7 @@ function Page() {
   );
   const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery({
     projectId,
+    timespan,
   });
 
   const timeSpanData = TIME_SPAN_DATA[timespan];

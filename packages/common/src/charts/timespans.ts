@@ -19,3 +19,9 @@ export const TIME_SPAN_DATA: Record<TimeSpan, { label: string; interval: ChartIn
   '6months': { label: 'Last 6 months', interval: 'monthly' },
   '1year': { label: 'Last year', interval: 'monthly' },
 };
+
+export const isTimespanAllowed = (timespan: TimeSpan, isSubscriptionActive: boolean) => {
+  if (timespan === '3months' || timespan === '6months' || timespan === '1year') return isSubscriptionActive;
+
+  return true;
+};

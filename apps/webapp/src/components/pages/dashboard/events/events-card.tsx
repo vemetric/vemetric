@@ -1,14 +1,15 @@
 import { Button, Box, Skeleton, Grid, Icon, Flex, Card, Text, Link as ChakraLink } from '@chakra-ui/react';
-import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import type { IFilterConfig } from '@vemetric/common/filters';
 import { formatNumber } from '@vemetric/common/math';
 import { AnimatePresence, motion } from 'motion/react';
 import React, { useState } from 'react';
-import { TbBolt, TbChartBar, TbChartBarOff, TbEye, TbFilter, TbFilterOff } from 'react-icons/tb';
+import { TbBolt, TbChartBar, TbChartBarOff, TbEye, TbFilter, TbFilterOff, TbUsers } from 'react-icons/tb';
 import { isDeepEqual } from 'remeda';
 import { CardIcon } from '@/components/card-icon';
 import { NumberCounter } from '@/components/number-counter';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Tooltip } from '@/components/ui/tooltip';
 import { useFilters } from '@/hooks/use-filters';
 import { trpc } from '@/utils/trpc';
 import { CardBar } from '../card-bar';
@@ -155,6 +156,31 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
                             opacity="0"
                             _groupHover={{ opacity: '1' }}
                           >
+                            {'projectId' in params && (
+                              <Tooltip content="View users that have fired this event">
+                                <Button
+                                  asChild
+                                  size="xs"
+                                  p={0}
+                                  mr={2}
+                                  minW="24px"
+                                  h="24px"
+                                  variant="surface"
+                                  colorScheme="gray"
+                                >
+                                  <Link
+                                    to="/p/$projectId/users"
+                                    params={{ projectId: params.projectId }}
+                                    search={{
+                                      f: { filters: [newFilter], operator: 'and' },
+                                      s: { by: newFilter },
+                                    }}
+                                  >
+                                    <Icon as={TbUsers} />
+                                  </Link>
+                                </Button>
+                              </Tooltip>
+                            )}
                             <Button
                               size="xs"
                               p={0}

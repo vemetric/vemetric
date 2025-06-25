@@ -1,7 +1,7 @@
-import type { ButtonProps } from '@chakra-ui/react';
 import { Flex, Button } from '@chakra-ui/react';
+import { PopoverMenuButton } from '@/components/popover-menu/popover-menu-button';
+import { PopoverMenuHeader } from '@/components/popover-menu/popover-menu-header';
 import { useFilters } from '@/hooks/use-filters';
-import { AddFilterTitle } from './add-filter-title';
 import { BrowserFilterForm, BrowserFilterTitle } from '../filter-forms/browser-filter-form';
 import { DeviceFilterTitle, DeviceFilterForm } from '../filter-forms/device-filter-form';
 import { EventFilterForm, EventFilterTitle } from '../filter-forms/event-filter-form';
@@ -61,21 +61,6 @@ export const ADD_FILTERS = {
   },
 };
 
-const FilterMenuButton = (props: ButtonProps) => (
-  <Button
-    variant="ghost"
-    bg="bg"
-    size="sm"
-    textAlign="left"
-    px={2}
-    rounded="none"
-    justifyContent="flex-start"
-    transition="transform 0.2s ease-out"
-    _hover={{ transform: 'translateX(3px)' }}
-    {...props}
-  />
-);
-
 interface Props {
   from: '/p/$projectId' | '/p/$projectId/users' | '/public/$domain';
   setFilterView: (view: string) => void;
@@ -87,7 +72,7 @@ export const AddFilterOverview = ({ from, setFilterView, onClose }: Props) => {
 
   return (
     <>
-      <AddFilterTitle title="Add Filter">
+      <PopoverMenuHeader title="Add Filter">
         <Button
           variant="surface"
           size="2xs"
@@ -99,7 +84,7 @@ export const AddFilterOverview = ({ from, setFilterView, onClose }: Props) => {
         >
           Reset all
         </Button>
-      </AddFilterTitle>
+      </PopoverMenuHeader>
       <Flex
         flexDir="column"
         bg="purple.muted"
@@ -110,14 +95,14 @@ export const AddFilterOverview = ({ from, setFilterView, onClose }: Props) => {
         }}
       >
         {Object.entries(ADD_FILTERS).map(([key, { title }]) => (
-          <FilterMenuButton
+          <PopoverMenuButton
             key={key}
             onClick={() => {
               setFilterView(key);
             }}
           >
             {title}
-          </FilterMenuButton>
+          </PopoverMenuButton>
         ))}
       </Flex>
     </>

@@ -7,7 +7,7 @@ interface Props {
   onBack?: () => void;
 }
 
-export const AddFilterTitle = ({ title, onBack, children }: PropsWithChildren<Props>) => {
+export const PopoverMenuHeader = ({ title, onBack, children }: PropsWithChildren<Props>) => {
   return (
     <Flex p={2} align="center" justify="space-between" borderBottom="1px solid" borderColor="border.emphasized/80">
       <Flex align="center" gap={2}>

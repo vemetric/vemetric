@@ -1,4 +1,5 @@
 import { filterConfigSchema } from '@vemetric/common/filters';
+import { userSortConfigSchema } from '@vemetric/common/sort';
 import type { ClickhouseEvent } from 'clickhouse';
 import { clickhouseEvent, clickhouseSession, clickhouseUser, getFilterQueries } from 'clickhouse';
 import { addDays, addMonths, startOfDay } from 'date-fns';
@@ -17,11 +18,12 @@ export const usersRouter = router({
       z.object({
         page: z.number().min(1).default(1),
         filterConfig: filterConfigSchema,
+        sortConfig: userSortConfigSchema,
       }),
     )
     .query(async (opts) => {
       const {
-        input: { page, filterConfig },
+        input: { page, filterConfig, sortConfig },
         ctx: { projectId, project, subscriptionStatus },
       } = opts;
 
@@ -39,6 +41,7 @@ export const usersRouter = router({
           },
           filterQueries,
           filterConfig,
+          sortConfig,
           startDate,
         ),
       ]);

@@ -3,9 +3,9 @@ import { type IFilterConfig } from '@vemetric/common/filters';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { TbFilterPlus } from 'react-icons/tb';
+import { PopoverMenuHeader } from '@/components/popover-menu/popover-menu-header';
 import { useFilters } from '@/hooks/use-filters';
 import { ADD_FILTERS, AddFilterOverview } from './add-filter-overview';
-import { AddFilterTitle } from './add-filter-title';
 import { OPERATOR_BUTTON_MENU_CLASS_NAME } from '../operator-button';
 
 const getMotionViewProps = (overview?: boolean) => ({
@@ -96,7 +96,7 @@ export const AddFilterButton = ({ filterConfig, from }: Props) => {
 
                 return (
                   <motion.div key={key} {...getMotionViewProps()}>
-                    <AddFilterTitle title={title} onBack={onBack} />
+                    <PopoverMenuHeader title={title} onBack={onBack} />
                     <FilterForm
                       onSubmit={(filter) => {
                         setFilters((prev) => {

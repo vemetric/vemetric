@@ -2,6 +2,7 @@ import { type TimeSpan } from '@vemetric/common/charts/timespans';
 import { formatClickhouseDate } from '@vemetric/common/date';
 import type { IFilterConfig, stringOperatorsSchema } from '@vemetric/common/filters';
 import { jsonStringify } from '@vemetric/common/json';
+import type { IUserSortConfig } from '@vemetric/common/sort';
 import { escape } from 'sqlstring';
 import type { z } from 'zod';
 import { clickhouseClient, clickhouseInsert } from '../client';
@@ -17,6 +18,7 @@ import { buildEventFilterQueries } from '../utils/filters/event-filter';
 import { buildOsFilterQueries } from '../utils/filters/os-filter';
 import { buildPageFilterQueries } from '../utils/filters/page-filter';
 import { buildUserFilterQueries } from '../utils/filters/user-filter';
+import { buildUserSortQueries } from '../utils/sort/user-sort';
 import { withSpan } from '../utils/with-span';
 
 const TABLE_NAME = 'event';
@@ -235,19 +237,30 @@ export const clickhouseEvent = {
       pagination: PaginationOptions = { offset: 0, limit: USER_LIMIT },
       filterQueries: string,
       filterConfig: IFilterConfig,
+      sortConfig: IUserSortConfig,
       startDate?: Date,
     ) => {
       const userFilterQueries = filterConfig?.operator === 'and' ? buildUserFilterQueries(filterConfig) : '';
+      const { joinClause, orderByClause, sortSelect, isSortByEvent } = buildUserSortQueries(sortConfig, projectId);
 
       const resultSet = await clickhouseClient.query({
-        query: `SELECT userId, argMax(userIdentifier, createdAt), argMax(userDisplayName, createdAt), argMax(countryCode, createdAt), max(createdAt), max(createdAt) >= NOW() - INTERVAL 1 MINUTE as isOnline 
-              from event 
-              WHERE projectId=${escape(projectId)} 
-              ${userFilterQueries ? `AND (${userFilterQueries})` : ''}
-              ${filterQueries || ''}
-              ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
-              GROUP BY userId 
-              ORDER BY max(createdAt) DESC
+        query: `SELECT u.userId, u.userIdentifier, u.userDisplayName, u.countryCode, u.maxCreatedAt, u.isOnline${sortSelect}
+              FROM (
+                SELECT userId,
+                      argMax(userIdentifier, createdAt) as userIdentifier,
+                      argMax(userDisplayName, createdAt) as userDisplayName,
+                      argMax(countryCode, createdAt) as countryCode,
+                      max(createdAt) as maxCreatedAt,
+                      max(createdAt) >= NOW() - INTERVAL 1 MINUTE as isOnline
+                FROM event
+                WHERE projectId=${escape(projectId)}
+                  ${userFilterQueries ? `AND (${userFilterQueries})` : ''}
+                  ${filterQueries || ''}
+                  ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+                GROUP BY userId
+              ) u
+              ${joinClause}
+              ${orderByClause}
               LIMIT ${escape(pagination.limit)} OFFSET ${escape(pagination.offset)}`,
         format: 'JSONEachRow',
       });
@@ -255,11 +268,11 @@ export const clickhouseEvent = {
       return result.map((row) => {
         return {
           id: BigInt(row.userId),
-          identifier: row['argMax(userIdentifier, createdAt)'] as string,
-          displayName: row['argMax(userDisplayName, createdAt)'] as string,
-          countryCode: row['argMax(countryCode, createdAt)'] as string,
-          lastSeenAt: row['max(createdAt)'] as string,
-          isOnline: Boolean(row['isOnline']),
+          identifier: row.userIdentifier as string,
+          displayName: row.userDisplayName as string,
+          countryCode: row.countryCode as string,
+          lastSeenAt: row[isSortByEvent ? 'lastEventFiredAt' : 'maxCreatedAt'] as string,
+          isOnline: Boolean(row.isOnline),
         };
       });
     },

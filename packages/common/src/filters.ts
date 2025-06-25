@@ -66,7 +66,7 @@ const pageFilterSchema = z.object({
 });
 export type IPageFilter = z.infer<typeof pageFilterSchema>;
 
-const eventFilterSchema = z.object({
+export const eventFilterSchema = z.object({
   type: z.literal('event'),
   nameFilter: stringFilterSchema.optional(),
   propertiesFilter: z

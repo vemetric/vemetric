@@ -193,25 +193,6 @@ export const TopSourcesCard = ({ filterConfig, publicDashboard }: Props) => {
                         ) : (
                           <Flex align="center" gap={1.5}>
                             {isDirect ? 'Direct / None' : topSource[sourceValue.referrer]}{' '}
-                            {topSource.referrerUrl && (
-                              <Button
-                                asChild
-                                size="xs"
-                                variant="ghost"
-                                colorScheme="gray"
-                                zIndex={2}
-                                p={0}
-                                minW="24px"
-                                h="24px"
-                                _focus={{ outline: 'none' }}
-                                opacity={0}
-                                _groupHover={{ opacity: 1 }}
-                              >
-                                <Link href={topSource.referrerUrl} target="_blank" rel="noopener noreferrer">
-                                  <TbExternalLink />
-                                </Link>
-                              </Button>
-                            )}
                           </Flex>
                         )}
                       </Flex>
@@ -227,16 +208,31 @@ export const TopSourcesCard = ({ filterConfig, publicDashboard }: Props) => {
                       inset="0"
                       alignItems="center"
                       justify="flex-end"
-                      cursor="pointer"
-                      onClick={() => {
-                        toggleFilter(newFilter);
-                      }}
                       transition="all 0.2s ease-in-out"
                       bg="linear-gradient(to right, rgba(0, 0, 0, 0) 60%, var(--chakra-colors-bg-card) 95%)"
                       opacity="0"
                       _groupHover={{ opacity: '1' }}
+                      gap="2"
                     >
-                      <Button size="xs" p={0} mr="1px" minW="24px" h="24px" variant="surface" colorScheme="gray">
+                      {topSource.referrerUrl && (
+                        <Button asChild size="xs" variant="surface" colorScheme="gray" p={0} minW="24px" h="24px">
+                          <Link href={topSource.referrerUrl} target="_blank" rel="noopener noreferrer" outline="none">
+                            <TbExternalLink />
+                          </Link>
+                        </Button>
+                      )}
+                      <Button
+                        size="xs"
+                        p={0}
+                        mr="1px"
+                        minW="24px"
+                        h="24px"
+                        variant="surface"
+                        colorScheme="gray"
+                        onClick={() => {
+                          toggleFilter(newFilter);
+                        }}
+                      >
                         <Icon color={isFiltered ? 'purple.500' : undefined} as={isFiltered ? TbFilterOff : TbFilter} />
                       </Button>
                     </Flex>

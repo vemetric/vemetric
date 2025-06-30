@@ -154,6 +154,7 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
                             transition="all 0.2s ease-in-out"
                             bg="linear-gradient(to right, rgba(0, 0, 0, 0) 30%, var(--chakra-colors-bg-card) 85%)"
                             opacity="0"
+                            gap="2"
                             _groupHover={{ opacity: '1' }}
                           >
                             {'projectId' in params && (
@@ -162,7 +163,6 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
                                   asChild
                                   size="xs"
                                   p={0}
-                                  mr={2}
                                   minW="24px"
                                   h="24px"
                                   variant="surface"
@@ -184,7 +184,6 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
                             <Button
                               size="xs"
                               p={0}
-                              mr={2}
                               minW="24px"
                               h="24px"
                               variant="surface"

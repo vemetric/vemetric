@@ -1,9 +1,9 @@
-import { Box, Flex, Grid, Icon, Button, Badge, Text, Card, Skeleton } from '@chakra-ui/react';
+import { Box, Flex, Grid, Icon, Button, Badge, Text, Card, Skeleton, Link } from '@chakra-ui/react';
 import { useParams, useSearch } from '@tanstack/react-router';
 import type { IFilterConfig } from '@vemetric/common/filters';
 import { formatNumber } from '@vemetric/common/math';
 import React, { useState } from 'react';
-import { TbEye, TbFilter, TbFilterOff, TbWorldWww, TbHome } from 'react-icons/tb';
+import { TbEye, TbFilter, TbFilterOff, TbWorldWww, TbHome, TbExternalLink } from 'react-icons/tb';
 import { isDeepEqual } from 'remeda';
 import { CardIcon } from '@/components/card-icon';
 import { NumberCounter } from '@/components/number-counter';
@@ -149,16 +149,34 @@ export const MostVisitedPagesCard = ({ filterConfig, projectDomain, publicDashbo
                         inset="0"
                         alignItems="center"
                         justify="flex-end"
-                        cursor="pointer"
-                        onClick={() => {
-                          toggleFilter(newFilter);
-                        }}
                         transition="all 0.2s ease-in-out"
                         bg="linear-gradient(to right, rgba(0, 0, 0, 0) 60%, var(--chakra-colors-bg-card) 95%)"
                         opacity="0"
+                        gap="2"
                         _groupHover={{ opacity: '1' }}
                       >
-                        <Button size="xs" p={0} mr="1px" minW="24px" h="24px" variant="surface" colorScheme="gray">
+                        <Button asChild size="xs" variant="surface" colorScheme="gray" p={0} minW="24px" h="24px">
+                          <Link
+                            href={page.origin + page.pathname}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            outline="none"
+                          >
+                            <TbExternalLink />
+                          </Link>
+                        </Button>
+                        <Button
+                          size="xs"
+                          p={0}
+                          mr="1px"
+                          minW="24px"
+                          h="24px"
+                          variant="surface"
+                          colorScheme="gray"
+                          onClick={() => {
+                            toggleFilter(newFilter);
+                          }}
+                        >
                           <Icon
                             color={isFiltered ? 'purple.500' : undefined}
                             as={isFiltered ? TbFilterOff : TbFilter}

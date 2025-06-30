@@ -9,7 +9,7 @@ interface Props {
   unsubscribeLink: string;
 }
 
-export const NoEventsFirstMail = ({ userName, projectId, projectName, unsubscribeLink }: Props) => {
+export const NoEventsFirstMail = ({ userName, projectName, unsubscribeLink }: Props) => {
   const greeting = userName ? `Hey ${userName}` : 'Hey there';
 
   return (

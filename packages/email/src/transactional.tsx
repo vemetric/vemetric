@@ -14,6 +14,8 @@ import NoProjectSecond from '../emails/sequences/no-project/second';
 export const TRANSACTIONAL_FROM_EMAIL = 'Vemetric <info@vemetric.com>';
 export const TIPS_FROM_EMAIL = 'Vemetric <info@notifications.vemetric.com>';
 
+type MessageStreamId = 'outbound' | 'tips';
+
 export const TRANSACTIONAL_TEMPLATE_MAP = {
   emailVerification: {
     subject: 'Verify your email address',
@@ -50,16 +52,19 @@ export type TemplateData<T extends TemplateName> = {
 export const sendTransactionalMail = async <T extends TemplateName>(
   toAddress: string,
   templateData: TemplateData<T>,
-  fromAddress = TRANSACTIONAL_FROM_EMAIL,
+  messageStreamId: MessageStreamId = 'outbound',
 ) => {
-  const messageStreamId = process.env.POSTMARK_TRANSACTIONAL_MESSAGE_STREAM_ID;
-
   const template = TRANSACTIONAL_TEMPLATE_MAP[templateData.template];
   const templateProps = templateData.props;
   const Email = template.email;
 
   const emailHtml = await render(<Email {...(templateProps as any)} />);
   const emailPlainText = await render(<Email {...(templateProps as any)} />, { plainText: true });
+
+  let fromAddress = TRANSACTIONAL_FROM_EMAIL;
+  if (messageStreamId === 'tips') {
+    fromAddress = TIPS_FROM_EMAIL;
+  }
 
   const message = new Message(fromAddress, template.subject, emailHtml, emailPlainText, toAddress);
   message.MessageStream = messageStreamId;

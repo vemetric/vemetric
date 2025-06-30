@@ -1,4 +1,4 @@
-import { sendTransactionalMail, TIPS_FROM_EMAIL } from '@vemetric/email/transactional';
+import { sendTransactionalMail } from '@vemetric/email/transactional';
 import { dbEmailDripSequence, prismaClient } from 'database';
 import { type SequenceContext, type SequenceResult } from './common';
 
@@ -30,7 +30,7 @@ export async function processNoProjectSequence(sequenceContext: SequenceContext)
             unsubscribeLink,
           },
         },
-        TIPS_FROM_EMAIL,
+        'tips',
       );
       break;
     case 1:
@@ -43,7 +43,7 @@ export async function processNoProjectSequence(sequenceContext: SequenceContext)
             unsubscribeLink,
           },
         },
-        TIPS_FROM_EMAIL,
+        'tips',
       );
       break;
     default:

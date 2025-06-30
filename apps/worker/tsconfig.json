@@ -2,6 +2,7 @@
   "compilerOptions": {
     "esModuleInterop": true,
     "strict": true,
+    "jsx": "react",
     "types": ["bun"],
     "module": "ESNext",
     "moduleResolution": "Bundler"

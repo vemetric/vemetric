@@ -6,8 +6,13 @@ import * as React from 'react';
 import { postmarkClient } from './postmark-client';
 import EmailVerificationMail from '../emails/email-verification';
 import PasswordResetMail from '../emails/password-reset';
+import NoEventsFirst from '../emails/sequences/no-events/first';
+import NoEventsSecond from '../emails/sequences/no-events/second';
+import NoProjectFirst from '../emails/sequences/no-project/first';
+import NoProjectSecond from '../emails/sequences/no-project/second';
 
 export const TRANSACTIONAL_FROM_EMAIL = 'Vemetric <info@vemetric.com>';
+export const TIPS_FROM_EMAIL = 'Vemetric <info@notifications.vemetric.com>';
 
 export const TRANSACTIONAL_TEMPLATE_MAP = {
   emailVerification: {
@@ -18,23 +23,45 @@ export const TRANSACTIONAL_TEMPLATE_MAP = {
     subject: 'Reset your password',
     email: PasswordResetMail,
   },
+  noEventsFirst: {
+    subject: 'Need help getting started?',
+    email: NoEventsFirst,
+  },
+  noEventsSecond: {
+    subject: "Let's setup Vemetric together",
+    email: NoEventsSecond,
+  },
+  noProjectFirst: {
+    subject: 'Ready to start understanding your users?',
+    email: NoProjectFirst,
+  },
+  noProjectSecond: {
+    subject: "Let's setup Vemetric together",
+    email: NoProjectSecond,
+  },
 };
-type TemplateName = keyof typeof TRANSACTIONAL_TEMPLATE_MAP;
+export type TemplateName = keyof typeof TRANSACTIONAL_TEMPLATE_MAP;
+
+export type TemplateData<T extends TemplateName> = {
+  template: T;
+  props: ComponentProps<(typeof TRANSACTIONAL_TEMPLATE_MAP)[T]['email']>;
+};
 
 export const sendTransactionalMail = async <T extends TemplateName>(
   toAddress: string,
-  templateName: T,
-  props: ComponentProps<(typeof TRANSACTIONAL_TEMPLATE_MAP)[T]['email']>,
+  templateData: TemplateData<T>,
+  fromAddress = TRANSACTIONAL_FROM_EMAIL,
 ) => {
   const messageStreamId = process.env.POSTMARK_TRANSACTIONAL_MESSAGE_STREAM_ID;
 
-  const template = TRANSACTIONAL_TEMPLATE_MAP[templateName];
+  const template = TRANSACTIONAL_TEMPLATE_MAP[templateData.template];
+  const templateProps = templateData.props;
   const Email = template.email;
 
-  const emailHtml = await render(<Email {...(props as any)} />);
-  const emailPlainText = await render(<Email {...(props as any)} />, { plainText: true });
+  const emailHtml = await render(<Email {...(templateProps as any)} />);
+  const emailPlainText = await render(<Email {...(templateProps as any)} />, { plainText: true });
 
-  const message = new Message(TRANSACTIONAL_FROM_EMAIL, template.subject, emailHtml, emailPlainText, toAddress);
+  const message = new Message(fromAddress, template.subject, emailHtml, emailPlainText, toAddress);
   message.MessageStream = messageStreamId;
 
   let response: MessageSendingResponse;

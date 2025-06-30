@@ -6,9 +6,10 @@ export const baseUrl = 'https://vemetric.com';
 interface Props {
   children: React.ReactNode;
   previewText: string;
+  unsubscribeLink?: string;
 }
 
-export const BaseTemplate = ({ children, previewText }: Props) => {
+export const BaseTemplate = ({ children, previewText, unsubscribeLink }: Props) => {
   return (
     <Html>
       <Head />
@@ -49,6 +50,15 @@ export const BaseTemplate = ({ children, previewText }: Props) => {
             <br />
             Austria
           </Text>
+          {unsubscribeLink && (
+            <Text style={{ ...footerStyle, marginTop: '20px', fontSize: '12px', lineHeight: '1.5em' }}>
+              Don't want to receive these emails?
+              <br />
+              <Link style={anchorStyle} href={unsubscribeLink}>
+                Unsubscribe here
+              </Link>
+            </Text>
+          )}
         </Section>
       </Body>
     </Html>

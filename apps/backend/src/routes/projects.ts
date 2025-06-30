@@ -1,6 +1,9 @@
 import { TRPCError } from '@trpc/server';
 import { TIME_SPAN_DATA } from '@vemetric/common/charts/timespans';
 import { getNormalizedDomain } from '@vemetric/common/url';
+import { getDripSequence, getStepDelay } from '@vemetric/email/email-drip-sequences';
+import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
+import { addToQueue } from '@vemetric/queues/queue-utils';
 import { clickhouseEvent } from 'clickhouse';
 import { ProjectRole, dbProject } from 'database';
 import { z } from 'zod';
@@ -64,6 +67,32 @@ export const projectsRouter = router({
         });
       } catch (err) {
         logger.error({ err, resolvedDomain, name }, 'Track event error');
+      }
+
+      try {
+        const sequence = getDripSequence('NO_EVENTS');
+        if (sequence) {
+          await addToQueue(
+            emailDripQueue,
+            {
+              projectId: project.id,
+              sequenceType: sequence.type,
+              stepNumber: 0,
+            },
+            {
+              delay: getStepDelay(sequence.type, 0),
+            },
+          );
+        }
+      } catch (err) {
+        logger.error(
+          {
+            err,
+            projectId: project.id,
+            domain: resolvedDomain,
+          },
+          'Failed to queue project for email drip sequence',
+        );
       }
 
       return { id: String(project.id) };

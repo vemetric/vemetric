@@ -474,7 +474,7 @@ function Page() {
                           <Text fontWeight="semibold">First seen</Text>
                         </Flex>
                         <Text textStyle="sm" opacity={0.5} fontWeight="semibold">
-                          {dateTimeFormatter.formatDateTime(user.createdAt)}
+                          {dateTimeFormatter.formatDateTime(user.firstSeenAt)}
                         </Text>
                       </Flex>
                     </Card.Header>

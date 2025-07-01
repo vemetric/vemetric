@@ -3,6 +3,7 @@ import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { HonoAdapter } from '@bull-board/hono';
 import { createDeviceQueue } from '@vemetric/queues/create-device-queue';
 import { createUserQueue } from '@vemetric/queues/create-user-queue';
+import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
 import { eventQueue } from '@vemetric/queues/event-queue';
 import { mergeUserQueue } from '@vemetric/queues/merge-user-queue';
 import { sessionQueue } from '@vemetric/queues/session-queue';
@@ -34,6 +35,7 @@ createBullBoard({
     new BullMQAdapter(createDeviceQueue),
     new BullMQAdapter(eventQueue),
     new BullMQAdapter(sessionQueue),
+    new BullMQAdapter(emailDripQueue),
   ],
   serverAdapter,
 });

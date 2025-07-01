@@ -47,6 +47,9 @@ importers:
       '@vemetric/node':
         specifier: 0.1.0
         version: 0.1.0
+      '@vemetric/queues':
+        specifier: workspace:*
+        version: link:../../packages/queues
       better-auth:
         specifier: ^1.2.4
         version: 1.2.4(typescript@5.2.2)
@@ -373,6 +376,9 @@ importers:
       '@vemetric/common':
         specifier: workspace:*
         version: link:../../packages/common
+      '@vemetric/email':
+        specifier: workspace:*
+        version: link:../../packages/email
       '@vemetric/logger':
         specifier: workspace:*
         version: link:../../packages/logger
@@ -506,6 +512,9 @@ importers:
       '@react-email/render':
         specifier: 1.0.5
         version: 1.0.5(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      database:
+        specifier: workspace:*
+        version: link:../database
       postmark:
         specifier: ^4.0.5
         version: 4.0.5
@@ -516,6 +525,9 @@ importers:
         specifier: ^18.2.0
         version: 18.2.0(react@18.2.0)
     devDependencies:
+      '@types/node':
+        specifier: ^22.13.10
+        version: 22.13.10
       '@types/react':
         specifier: ^18.2.0
         version: 18.2.33
@@ -2417,9 +2429,6 @@ packages:
 
   '@types/node-fetch@2.6.12':
     resolution: {integrity: sha512-8nneRWKCg3rMtF69nLQJnOYUcbafYeFSjqkw3jCRLsqkWFlHaoQrr5mXmofFGOx3DKn7UfmBMyov8ySvLRVldA==}
-
-  '@types/node@20.5.2':
-    resolution: {integrity: sha512-5j/lXt7unfPOUlrKC34HIaedONleyLtwkKggiD/0uuMfT8gg2EOpg0dz4lCD15Ga7muC+1WzJZAjIB9simWd6Q==}
 
   '@types/node@22.13.10':
     resolution: {integrity: sha512-I6LPUvlRH+O6VRUqYOcMudhaIdUVWfsjnZavnsraHvpBwaEyMN29ry+0UVJhImYL16xsscu0aske3yA+uPOWfw==}
@@ -7345,7 +7354,7 @@ snapshots:
 
   '@types/cors@2.8.15':
     dependencies:
-      '@types/node': 20.5.2
+      '@types/node': 22.13.10
 
   '@types/d3-array@3.2.1': {}
 
@@ -7398,8 +7407,6 @@ snapshots:
       '@types/node': 22.13.10
       form-data: 4.0.2
 
-  '@types/node@20.5.2': {}
-
   '@types/node@22.13.10':
     dependencies:
       undici-types: 6.20.0
@@ -7444,7 +7451,7 @@ snapshots:
 
   '@types/ws@8.5.14':
     dependencies:
-      '@types/node': 20.5.2
+      '@types/node': 22.13.10
 
   '@typescript-eslint/eslint-plugin@8.21.0(@typescript-eslint/parser@8.21.0(eslint@9.19.0)(typescript@5.7.3))(eslint@9.19.0)(typescript@5.7.3)':
     dependencies:
@@ -8334,7 +8341,7 @@ snapshots:
 
   bun-types@1.2.0:
     dependencies:
-      '@types/node': 20.5.2
+      '@types/node': 22.13.10
       '@types/ws': 8.5.14
 
   bundle-n-require@1.1.2:

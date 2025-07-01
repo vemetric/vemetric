@@ -8,18 +8,21 @@ datasource db {
 }
 
 model User {
-  id            String   @id @unique
-  email         String   @unique
-  emailVerified Boolean  @default(false)
-  name          String?
-  image         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @default(now())
+  id               String   @id @unique
+  email            String   @unique
+  emailVerified    Boolean  @default(false)
+  receiveEmailTips Boolean  @default(true)
+  name             String?
+  image            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @default(now())
 
-  sessions      Session[]
-  accounts      Account[]
-  organizations UserOrganization[]
-  projects      UserProject[]
+  sessions           Session[]
+  accounts           Account[]
+  organizations      UserOrganization[]
+  projects           UserProject[]
+  emailDripHistory   EmailDripHistory[]
+  emailDripSequences EmailDripSequence[]
 
   @@map("user")
 }
@@ -129,8 +132,10 @@ model Project {
   createdAt       DateTime @default(now())
   publicDashboard Boolean  @default(false)
 
-  users        UserProject[]
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users            UserProject[]
+  organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  dripSequences    EmailDripSequence[]
+  emailDripHistory EmailDripHistory[]
 
   @@map("project")
 }
@@ -177,4 +182,66 @@ model FailedQueueJob {
   error     String
 
   @@map("failed_queue_job")
+}
+
+enum DripSequenceStatus {
+  ACTIVE
+  COMPLETED
+  ERROR
+}
+
+enum DripSequenceType {
+  NO_EVENTS
+  NO_PROJECT
+}
+
+model EmailDripSequence {
+  id              String             @id @default(uuid())
+  projectId       String?
+  userId          String?
+  sequenceType    DripSequenceType
+  currentStep     Int                @default(0)
+  status          DripSequenceStatus @default(ACTIVE)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  lastEmailSentAt DateTime?
+  completedAt     DateTime?
+
+  project          Project?           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user             User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailDripHistory EmailDripHistory[]
+
+  @@unique([projectId, sequenceType])
+  @@unique([userId, sequenceType])
+  @@map("email_drip_sequence")
+}
+
+enum EmailStatus {
+  SENT
+  DELIVERED
+  BOUNCED
+  FAILED
+}
+
+model EmailDripHistory {
+  id           String           @id @default(uuid())
+  sequenceId   String
+  projectId    String?
+  userId       String
+  sequenceType DripSequenceType
+  stepNumber   Int
+  emailAddress String           @db.VarChar
+  sentAt       DateTime         @default(now())
+  messageId    String?          @db.VarChar
+  status       EmailStatus      @default(SENT)
+  deliveredAt  DateTime?
+  openedAt     DateTime?
+  clickedAt    DateTime?
+  errorMessage String?
+
+  sequence EmailDripSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  project  Project?          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("email_drip_history")
 }

@@ -8,6 +8,7 @@ import { HTTPException } from 'hono/http-exception';
 import { pinoLogger as honoPino } from 'hono-pino';
 import { billingRouter } from './routes/billing';
 import { dashboardRouter } from './routes/dashboard';
+import { useEmailRoutes } from './routes/email';
 import { filtersRouter } from './routes/filters';
 import { funnelsRouter } from './routes/funnels';
 import { useLandingPageMetrics } from './routes/landing-page';
@@ -101,6 +102,8 @@ app.use(
 );
 
 app.get('/up', ({ text }) => text('', 200));
+
+useEmailRoutes(app);
 useLandingPageMetrics(app);
 
 app.on(['POST', 'GET'], '/auth/**', (c) => {

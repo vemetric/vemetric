@@ -48,7 +48,7 @@ export async function getGeoData(ipAddress: string): Promise<GeoData> {
       longitude: isNaN(convertedLongitude) ? null : convertedLongitude,
     };
   } catch (err) {
-    logger.error(err, 'Error getting geo data');
+    logger.error({ err }, 'Error getting geo data');
     return EMPTY_GEO_DATA;
   }
 }

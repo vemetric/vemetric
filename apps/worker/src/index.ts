@@ -2,9 +2,10 @@ import type { Worker } from 'bullmq';
 import { logger } from './utils/logger';
 import { initCreateUserWorker } from './workers/create-user-worker';
 import { initDeviceWorker } from './workers/device-worker';
+import { initEmailWorker } from './workers/email-worker';
 import { initEventWorker } from './workers/event-worker';
 import { initMergeUserWorker } from './workers/merge-user-worker';
-import { initSaltRotation } from './workers/salt-rotation';
+import { initSaltRotation } from './workers/salt-rotation-worker';
 import { initSessionWorker } from './workers/session-worker';
 import { initUpdateUserWorker } from './workers/update-user-worker';
 
@@ -18,6 +19,7 @@ async function main() {
     workers.push(await initUpdateUserWorker());
     workers.push(await initMergeUserWorker());
     workers.push(await initDeviceWorker());
+    workers.push(await initEmailWorker());
 
     workers.forEach((worker) => {
       worker.on('failed', (job, err) => {

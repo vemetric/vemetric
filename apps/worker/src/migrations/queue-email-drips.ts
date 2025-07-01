@@ -6,6 +6,7 @@ import { prismaClient } from 'database';
 import { logger } from '../utils/logger';
 
 async function main() {
+  /** TODO: already queued
   const noProjectSequence = getDripSequence('NO_PROJECT');
 
   const users = await prismaClient.user.findMany({
@@ -17,7 +18,6 @@ async function main() {
     },
   });
 
-  let delayHour = 1;
   for (const user of users) {
     if (user.projects.length > 0) {
       continue;
@@ -40,8 +40,9 @@ async function main() {
       },
     );
     delayHour++;
-  }
+  }*/
 
+  let delayHour = 16;
   const noEventsSequence = getDripSequence('NO_EVENTS');
 
   const projects = await prismaClient.project.findMany({});

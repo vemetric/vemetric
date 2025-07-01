@@ -47,19 +47,18 @@ export const auth = betterAuth({
         const userId = ctx.context.newSession.user.id;
         try {
           const sequence = getDripSequence('NO_PROJECT');
-          if (sequence) {
-            await addToQueue(
-              emailDripQueue,
-              {
-                userId,
-                sequenceType: sequence.type,
-                stepNumber: 0,
-              },
-              {
-                delay: getStepDelay(sequence.type, 0),
-              },
-            );
-          }
+          logger.info({ userId, queueName: emailDripQueue.name, sequence }, 'Queuing user for email drip sequence');
+          await addToQueue(
+            emailDripQueue,
+            {
+              userId,
+              sequenceType: sequence.type,
+              stepNumber: 0,
+            },
+            {
+              delay: getStepDelay(sequence.type, 0),
+            },
+          );
         } catch (err) {
           logger.error(
             {

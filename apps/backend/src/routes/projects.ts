@@ -71,19 +71,21 @@ export const projectsRouter = router({
 
       try {
         const sequence = getDripSequence('NO_EVENTS');
-        if (sequence) {
-          await addToQueue(
-            emailDripQueue,
-            {
-              projectId: project.id,
-              sequenceType: sequence.type,
-              stepNumber: 0,
-            },
-            {
-              delay: getStepDelay(sequence.type, 0),
-            },
-          );
-        }
+        logger.info(
+          { projectId: project.id, queueName: emailDripQueue.name, sequence },
+          'Queuing project for email drip sequence',
+        );
+        await addToQueue(
+          emailDripQueue,
+          {
+            projectId: project.id,
+            sequenceType: sequence.type,
+            stepNumber: 0,
+          },
+          {
+            delay: getStepDelay(sequence.type, 0),
+          },
+        );
       } catch (err) {
         logger.error(
           {

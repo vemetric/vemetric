@@ -11,6 +11,7 @@
     "migrate-referrers": "bun ./src/migrations/migrate-referrers.ts",
     "migrate-devices": "bun ./src/migrations/migrate-devices.ts",
     "migrate-user-identifications": "bun ./src/migrations/migrate-user-identifications.ts",
+    "queue-email-drips": "bun ./src/migrations/queue-email-drips.ts",
     "test": "vitest"
   },
   "dependencies": {

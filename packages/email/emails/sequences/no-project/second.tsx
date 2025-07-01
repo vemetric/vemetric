@@ -11,7 +11,7 @@ export const NoProjectSecondMail = ({ userName, unsubscribeLink }: Props) => {
   const greeting = userName ? `Hey ${userName}` : 'Hey there';
 
   return (
-    <BaseTemplate previewText="Let's get your analytics set up together" unsubscribeLink={unsubscribeLink}>
+    <BaseTemplate previewText="Book a call and I'll help you with the integration" unsubscribeLink={unsubscribeLink}>
       <Section>
         <Text style={textStyle}>{greeting},</Text>
         <Text style={textStyle}>

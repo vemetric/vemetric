@@ -11,7 +11,7 @@ export const NoProjectFirstMail = ({ userName, unsubscribeLink }: Props) => {
   const greeting = userName ? `Hey ${userName}` : 'Hey there';
 
   return (
-    <BaseTemplate previewText="Ready to start tracking your analytics?" unsubscribeLink={unsubscribeLink}>
+    <BaseTemplate previewText="Integrate Vemetric and gain valuable insights" unsubscribeLink={unsubscribeLink}>
       <Section>
         <Text style={textStyle}>{greeting}, welcome to Vemetric!</Text>
         <Text style={textStyle}>

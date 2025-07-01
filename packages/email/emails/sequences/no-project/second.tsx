@@ -15,11 +15,8 @@ export const NoProjectSecondMail = ({ userName, unsubscribeLink }: Props) => {
       <Section>
         <Text style={textStyle}>{greeting},</Text>
         <Text style={textStyle}>
-          A few days ago, I reached out about creating your first project in Vemetric. I understand that getting started
-          with a new analytics platform can sometimes feel overwhelming.
-        </Text>
-        <Text style={textStyle}>
-          Are there any specific questions you have about Vemetric? I'd love to help you get everything set up!
+          A few days ago, I reached out about creating your first project in Vemetric. Are there any specific questions
+          you have about Vemetric?
         </Text>
         <Text style={textStyle}>
           We can schedule a call to:

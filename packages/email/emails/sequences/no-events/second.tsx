@@ -18,12 +18,7 @@ export const NoEventsSecondMail = ({ userName, projectName, unsubscribeLink }: P
         <Text style={textStyle}>{greeting},</Text>
         <Text style={textStyle}>
           A few days ago, I sent you an email including installation guides for Vemetric to setup your new project{' '}
-          <strong>{projectName}</strong>. I realize that sometimes it's easier to just do a quick call and get
-          everything working together.
-        </Text>
-        <Text style={textStyle}>
-          If you're still having trouble or would prefer some personal guidance, I'd be happy to schedule call to help
-          you get your tracking set up.
+          <strong>{projectName}</strong>. I'd be happy to schedule a call to help you get everything set up.
         </Text>
         <Text style={textStyle}>
           On the call, we can:

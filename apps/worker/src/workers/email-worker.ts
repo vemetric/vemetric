@@ -135,12 +135,6 @@ async function getUserAndProject(data: EmailDripQueueProps): Promise<{ user: Use
 }
 
 async function processEmailSequenceStep(data: EmailDripQueueProps) {
-  const userAndProject = await getUserAndProject(data);
-  if (!userAndProject) {
-    return;
-  }
-
-  const { user, project } = userAndProject;
   const { sequenceType, stepNumber } = data;
 
   const step = getSequenceStep(sequenceType, stepNumber);
@@ -160,6 +154,12 @@ async function processEmailSequenceStep(data: EmailDripQueueProps) {
       },
     });
   }
+
+  const userAndProject = await getUserAndProject(data);
+  if (!userAndProject) {
+    return;
+  }
+  const { user, project } = userAndProject;
 
   const sequence = await prismaClient.emailDripSequence.findUnique({
     where: {

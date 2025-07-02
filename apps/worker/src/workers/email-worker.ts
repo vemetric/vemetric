@@ -32,9 +32,16 @@ export async function initEmailWorker() {
       try {
         await processEmailSequenceStep(data);
       } catch (error) {
-        await prismaClient.emailDripSequence.update({
+        await prismaClient.emailDripSequence.upsert({
           where: getSequenceWhereClause(data),
-          data: {
+          update: {
+            status: 'ERROR',
+          },
+          create: {
+            userId: 'userId' in data ? data.userId : undefined,
+            projectId: 'projectId' in data ? data.projectId : undefined,
+            sequenceType: data.sequenceType,
+            currentStep: data.stepNumber,
             status: 'ERROR',
           },
         });

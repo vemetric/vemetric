@@ -244,11 +244,11 @@ export const clickhouseEvent = {
       const { joinClause, orderByClause, sortSelect, isSortByEvent } = buildUserSortQueries(sortConfig, projectId);
 
       const resultSet = await clickhouseClient.query({
-        query: `SELECT u.userId, u.userIdentifier, u.userDisplayName, u.countryCode, u.maxCreatedAt, u.isOnline${sortSelect}
+        query: `SELECT u.userId, u.identifier, u.displayName, u.countryCode, u.maxCreatedAt, u.isOnline${sortSelect}
               FROM (
                 SELECT userId,
-                      argMax(userIdentifier, createdAt) as userIdentifier,
-                      argMax(userDisplayName, createdAt) as userDisplayName,
+                      argMax(userIdentifier, createdAt) as identifier,
+                      argMax(userDisplayName, createdAt) as displayName,
                       argMax(countryCode, createdAt) as countryCode,
                       max(createdAt) as maxCreatedAt,
                       max(createdAt) >= NOW() - INTERVAL 1 MINUTE as isOnline
@@ -268,8 +268,8 @@ export const clickhouseEvent = {
       return result.map((row) => {
         return {
           id: BigInt(row.userId),
-          identifier: row.userIdentifier as string,
-          displayName: row.userDisplayName as string,
+          identifier: row.identifier as string,
+          displayName: row.displayName as string,
           countryCode: row.countryCode as string,
           lastSeenAt: row[isSortByEvent ? 'lastEventFiredAt' : 'maxCreatedAt'] as string,
           isOnline: Boolean(row.isOnline),

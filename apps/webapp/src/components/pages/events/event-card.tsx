@@ -63,7 +63,7 @@ export const EventCard = ({ event, previousEventId, nextEventId }: Props) => {
   return (
     <Box
       asChild
-      transition="all 0.4s ease-in-out, transform 0s"
+      transition="all 0.4s ease-in-out, transform 0s, opacity 0s"
       css={
         isOpen
           ? {

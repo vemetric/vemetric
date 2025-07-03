@@ -1,5 +1,6 @@
 import { Stack, Heading, Input, Button, Text, Link, Field } from '@chakra-ui/react';
 import { createFileRoute, Link as RouterLink, useNavigate } from '@tanstack/react-router';
+import { vemetric } from '@vemetric/react';
 import { motion } from 'motion/react';
 import { useState } from 'react';
 import { TbMail, TbLock } from 'react-icons/tb';
@@ -42,6 +43,7 @@ function Page() {
           setIsLoading(true);
         },
         onSuccess: async () => {
+          await vemetric.trackEvent('Signup', { eventData: { provider: 'email' } });
           toaster.create({
             title: 'Signup successful 🎉',
             description: 'Please verify your email before signing in. We just sent you a verification link.',

@@ -1,7 +1,9 @@
-import { Box, Flex, Card, Button, Icon, Link as ChakraLink, Spinner } from '@chakra-ui/react';
+import { Box, Flex, Card, Link as ChakraLink, Spinner, Icon, Button } from '@chakra-ui/react';
 import { createFileRoute } from '@tanstack/react-router';
 import { AnimatePresence } from 'motion/react';
+import React from 'react';
 import { TbActivity, TbArrowDown } from 'react-icons/tb';
+import { groupBy } from 'remeda';
 import { PageDotBackground } from '@/components/page-dot-background';
 import { EventCard, EventCardSkeleton } from '@/components/pages/events/event-card';
 import { DateSeparator } from '@/components/pages/user/date-separator';
@@ -10,6 +12,7 @@ import { Status } from '@/components/ui/status';
 import { Tooltip } from '@/components/ui/tooltip';
 import { EventsPageStoreProvider } from '@/stores/events-page-store';
 import { useSetBreadcrumbs, useSetDocsLink } from '@/stores/header-store';
+import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import { trpc } from '@/utils/trpc';
 
 export const Route = createFileRoute('/_layout/p/$projectId/events/')({
@@ -34,7 +37,15 @@ function RouteComponent() {
     },
   );
 
-  const events = eventsData?.pages.flatMap((page) => page.events ?? []) ?? [];
+  const nextEventDate = dateTimeFormatter.formatDate(
+    eventsData?.pages[eventsData?.pages.length - 1]?.nextCursor ?? new Date(),
+  );
+  const nowDate = dateTimeFormatter.formatDate(new Date());
+  const events = (eventsData?.pages.flatMap((page) => page.events ?? []) ?? []).map((event) => ({
+    ...event,
+    date: dateTimeFormatter.formatDate(event.createdAt),
+  }));
+  const groupedEvents = Object.entries(groupBy(events, (event) => event.date));
 
   useSetBreadcrumbs(['Events']);
   useSetDocsLink('https://vemetric.com/docs/product-analytics/tracking-custom-events');
@@ -124,97 +135,108 @@ function RouteComponent() {
             </Tooltip>
           </Box>
         </Box>
-        <Flex flexDir="column" gap="6" mx="auto" pos="relative" maxW="500px">
-          <Box pos="sticky" top={{ base: '70px', md: '140px', lg: '70px' }} zIndex="4" mb={-5} pb={5}>
-            <Box
-              pos="absolute"
-              left={0}
-              right={0}
-              top={-3}
-              h={3}
-              bg="linear-gradient(to top, var(--chakra-colors-bg-content), rgba(255,255,255,0))"
-            />
-            <DateSeparator>Today</DateSeparator>
-            <Box
-              pos="absolute"
-              left={0}
-              right={0}
-              bottom={0}
-              h={5}
-              bg="linear-gradient(to bottom, var(--chakra-colors-bg-content) 10%, rgba(255,255,255,0) 100%)"
-            />
-          </Box>
-          <Box>
-            <Flex
-              flexDir="column"
-              css={{
-                '& > div:not(:last-of-type) [data-event-card]': {
-                  borderBottomWidth: '0px',
-                  roundedBottom: 'none',
-                },
-                '& > div:first-of-type [data-event-card]': {
-                  roundedTop: 'xl',
-                },
-                '& > div:last-of-type [data-event-card]': {
-                  roundedBottom: hasNextPage ? 'none' : 'xl',
-                  borderBottomWidth: hasNextPage ? '0px' : '1px',
-                },
-              }}
-            >
-              <AnimatePresence mode="sync" initial={false}>
-                {events.map((event, index) => (
-                  <EventCard
-                    key={event.id}
-                    event={event}
-                    previousEventId={events[index - 1]?.id}
-                    nextEventId={events[index + 1]?.id}
-                  />
-                ))}
-              </AnimatePresence>
+        <Box pb={4}>
+          <Flex flexDir="column" gap="6" mx="auto" pos="relative" maxW="500px">
+            {groupedEvents.map(([date, events], index) => {
+              const isLastDate = index === groupedEvents.length - 1;
+              const isCompleteDate = !isLastDate || nextEventDate !== date;
+
+              return (
+                <React.Fragment key={date}>
+                  <Box pos="sticky" top={{ base: '70px', md: '140px', lg: '70px' }} zIndex="4" mb={-5} pb={5}>
+                    <Box
+                      pos="absolute"
+                      left={0}
+                      right={0}
+                      top={-3}
+                      h={3}
+                      bg="linear-gradient(to top, var(--chakra-colors-bg-content), rgba(255,255,255,0))"
+                    />
+                    <DateSeparator>{date === nowDate ? 'Today' : date}</DateSeparator>
+                    <Box
+                      pos="absolute"
+                      left={0}
+                      right={0}
+                      bottom={0}
+                      h={5}
+                      bg="linear-gradient(to bottom, var(--chakra-colors-bg-content) 10%, rgba(255,255,255,0) 100%)"
+                    />
+                  </Box>
+                  <Box>
+                    <Flex
+                      flexDir="column"
+                      css={{
+                        '& > div:not(:last-of-type) [data-event-card]': {
+                          borderBottomWidth: '0px',
+                          roundedBottom: 'none',
+                        },
+                        '& > div:first-of-type [data-event-card]': {
+                          roundedTop: 'xl',
+                        },
+                        '& > div:last-of-type [data-event-card]': {
+                          roundedBottom: isLastDate && !isCompleteDate ? 'none' : 'xl',
+                          borderBottomWidth: isLastDate && !isCompleteDate ? '0px' : '1px',
+                        },
+                      }}
+                    >
+                      <AnimatePresence mode="sync" initial={false}>
+                        {events.map((event, index) => (
+                          <EventCard
+                            key={event.id}
+                            event={event}
+                            previousEventId={events[index - 1]?.id}
+                            nextEventId={events[index + 1]?.id}
+                          />
+                        ))}
+                      </AnimatePresence>
+                    </Flex>
+                    {!isCompleteDate && (
+                      <Box
+                        borderTop="1px solid"
+                        borderColor="gray.emphasized"
+                        w="100%"
+                        h="40px"
+                        bg="linear-gradient(to bottom, var(--chakra-colors-bg-card), rgba(255,255,255,0))"
+                        pos="relative"
+                      >
+                        <Box
+                          pos="absolute"
+                          left="0"
+                          w="1px"
+                          h="100%"
+                          bg="linear-gradient(to bottom, var(--chakra-colors-gray-emphasized), rgba(0,0,0,0))"
+                        />
+                        <Box
+                          pos="absolute"
+                          right="0"
+                          w="1px"
+                          h="100%"
+                          bg="linear-gradient(to bottom, var(--chakra-colors-gray-emphasized), rgba(0,0,0,0))"
+                        />
+                      </Box>
+                    )}
+                  </Box>
+                </React.Fragment>
+              );
+            })}
+          </Flex>
+          {hasNextPage && (
+            <Flex justify="center" mt={4}>
+              <Button
+                onClick={() => fetchNextPage()}
+                loading={isFetchingNextPage}
+                variant="surface"
+                size="md"
+                rounded="xl"
+              >
+                <Icon boxSize={4.5} asChild>
+                  <TbArrowDown />
+                </Icon>
+                Load More
+              </Button>
             </Flex>
-            {hasNextPage && (
-              <>
-                <Box
-                  borderTop="1px solid"
-                  borderColor="gray.emphasized"
-                  w="100%"
-                  h="40px"
-                  bg="linear-gradient(to bottom, var(--chakra-colors-bg-card), rgba(255,255,255,0))"
-                  pos="relative"
-                >
-                  <Box
-                    pos="absolute"
-                    left="0"
-                    w="1px"
-                    h="100%"
-                    bg="linear-gradient(to bottom, var(--chakra-colors-gray-emphasized), rgba(0,0,0,0))"
-                  />
-                  <Box
-                    pos="absolute"
-                    right="0"
-                    w="1px"
-                    h="100%"
-                    bg="linear-gradient(to bottom, var(--chakra-colors-gray-emphasized), rgba(0,0,0,0))"
-                  />
-                </Box>
-                <Flex justify="center" mt={4}>
-                  <Button
-                    onClick={() => fetchNextPage()}
-                    loading={isFetchingNextPage}
-                    variant="surface"
-                    size="md"
-                    rounded="xl"
-                  >
-                    <Icon boxSize={4.5} asChild>
-                      <TbArrowDown />
-                    </Icon>
-                    Load More
-                  </Button>
-                </Flex>
-              </>
-            )}
-          </Box>
-        </Flex>
+          )}
+        </Box>
       </>
     </EventsPageStoreProvider>
   );

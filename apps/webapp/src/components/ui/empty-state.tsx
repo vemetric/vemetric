@@ -3,7 +3,7 @@ import * as React from 'react';
 
 export interface EmptyStateProps extends ChakraEmptyState.RootProps {
   title: string;
-  description?: string;
+  description?: React.ReactNode;
   icon?: React.ReactNode;
 }
 

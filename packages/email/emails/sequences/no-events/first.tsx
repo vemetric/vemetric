@@ -17,7 +17,7 @@ export const NoEventsFirstMail = ({ userName, projectName, unsubscribeLink }: Pr
       <Section>
         <Text style={textStyle}>{greeting},</Text>
         <Text style={textStyle}>
-          I noticed you created a project for <strong>{projectName}</strong> in Vemetric but haven't started tracking
+          I noticed you created a project for <strong>{projectName}</strong> in Vemetric, but haven't started tracking
           events yet.
         </Text>
         <Text style={textStyle}>

@@ -172,10 +172,19 @@ function Page() {
                       >
                         <Box hideBelow="md" p={0}>
                           <Flex justify="center">
-                            {isOnline && (
+                            {isOnline ? (
                               <Tooltip content="The user is currently active">
                                 <Status value="success" color="fg" gap={1.5} pos="relative" zIndex="5" />
                               </Tooltip>
+                            ) : (
+                              <Box
+                                w="10px"
+                                h="10px"
+                                border="1.5px solid"
+                                borderColor="gray.emphasized"
+                                bg="gray.subtle"
+                                rounded="full"
+                              />
                             )}
                           </Flex>
                         </Box>

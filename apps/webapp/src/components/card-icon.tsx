@@ -2,7 +2,7 @@ import type { FlexProps } from '@chakra-ui/react';
 import { Box, Flex } from '@chakra-ui/react';
 
 interface Props extends FlexProps {
-  size?: 'xs' | 'md';
+  size?: 'xs' | 'md' | 'lg';
 }
 
 export const CardIcon = ({ children, size = 'md', ...props }: Props) => {
@@ -11,6 +11,9 @@ export const CardIcon = ({ children, size = 'md', ...props }: Props) => {
     case 'xs':
       padding = 0.5;
       break;
+    case 'lg':
+      padding = 2;
+      break;
   }
 
   let fontSize = 'md';
@@ -18,12 +21,18 @@ export const CardIcon = ({ children, size = 'md', ...props }: Props) => {
     case 'xs':
       fontSize = '15px';
       break;
+    case 'lg':
+      fontSize = '20px';
+      break;
   }
 
   let rounded = 'lg';
   switch (size) {
     case 'xs':
       rounded = 'md';
+      break;
+    case 'lg':
+      rounded = 'xl';
       break;
   }
 

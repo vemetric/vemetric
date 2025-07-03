@@ -9,6 +9,7 @@ import { pinoLogger as honoPino } from 'hono-pino';
 import { billingRouter } from './routes/billing';
 import { dashboardRouter } from './routes/dashboard';
 import { useEmailRoutes } from './routes/email';
+import { eventsRouter } from './routes/events';
 import { filtersRouter } from './routes/filters';
 import { funnelsRouter } from './routes/funnels';
 import { useLandingPageMetrics } from './routes/landing-page';
@@ -31,6 +32,7 @@ if (process.env.SENTRY_URL) {
 
 export const appRouter = router({
   dashboard: dashboardRouter,
+  events: eventsRouter,
   filters: filtersRouter,
   funnels: funnelsRouter,
   projects: projectsRouter,

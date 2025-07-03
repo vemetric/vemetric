@@ -1,13 +1,14 @@
+import type { FlexProps } from '@chakra-ui/react';
 import { Flex, Image } from '@chakra-ui/react';
 import { getUserInitials } from '@/utils/avatar-colors';
 
-interface Props {
+interface Props extends FlexProps {
   displayName?: string;
   identifier?: string;
   id: string;
 }
 
-export const UserAvatar = ({ displayName, identifier, id }: Props) => {
+export const UserAvatar = ({ displayName, identifier, id, ...props }: Props) => {
   return (
     <Flex
       pos="relative"
@@ -21,6 +22,7 @@ export const UserAvatar = ({ displayName, identifier, id }: Props) => {
       overflow="hidden"
       filter={identifier || displayName ? 'none' : 'grayscale(100%)'}
       color="white"
+      {...props}
     >
       <Image
         src={`https://api.dicebear.com/9.x/glass/svg?seed=${encodeURIComponent(id.trim())}`}

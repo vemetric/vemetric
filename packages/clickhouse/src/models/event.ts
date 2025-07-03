@@ -770,4 +770,35 @@ export const clickhouseEvent = {
       return grouped;
     },
   ),
+
+  getLatestEventsByProjectId: withSpan(
+    'getLatestEventsByProjectId',
+    async (props: {
+      projectId: bigint;
+      limit?: number;
+      cursor?: string;
+      startDate?: Date;
+    }): Promise<Array<ClickhouseEvent>> => {
+      const { projectId, limit = EVENT_LIMIT, cursor, startDate } = props;
+
+      const cursorClause = cursor ? ` AND createdAt < ${escape(cursor)}` : '';
+
+      const resultSet = await clickhouseClient.query({
+        query: `
+          SELECT ${EVENT_KEY_SELECTOR}, max(createdAt) as eventTime
+          FROM ${TABLE_NAME} 
+          WHERE projectId = ${escape(projectId)}${cursorClause}
+          ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+          AND isPageView <> 1
+          GROUP BY id 
+          HAVING sum(sign) > 0 
+          ORDER BY eventTime DESC 
+          LIMIT ${escape(limit)}`,
+        format: 'JSONEachRow',
+      });
+
+      const rows = (await resultSet.json()) as Array<any>;
+      return rows.map(mapRowToEvent);
+    },
+  ),
 };

@@ -1,5 +1,4 @@
 import { Box, Text, Flex, Card, SimpleGrid, useBreakpointValue, Span } from '@chakra-ui/react';
-import { getEventName } from '@vemetric/common/event';
 import { motion } from 'motion/react';
 import { Fragment, useState } from 'react';
 import { BrowserIcon } from '@/components/browser-icon';
@@ -40,7 +39,12 @@ export const EventCard = ({ event, lastPageViewDate }: Props) => {
     tooltipContent = 'Outbound Link Click';
   }
 
-  const displayName = getEventName(event.name);
+  let displayName = event.name;
+  if (isPageView) {
+    displayName = event.pathname ? event.pathname + event.urlHash : 'Page View';
+  } else if (event.name === '$$outboundLink') {
+    displayName = (event.customData?.href as string) ?? 'Outbound Link';
+  }
 
   return (
     <Tooltip

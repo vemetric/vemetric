@@ -60,6 +60,10 @@ export function transformChartSeries(
         formatMethod = 'formatDate';
         endDate.setHours(startDate.getHours() + 23);
         break;
+      case 'weekly':
+        formatMethod = 'formatWeek';
+        endDate.setDate(startDate.getDate() + 6);
+        break;
       case 'monthly': {
         if (timespan === '1year') {
           formatMethod = 'formatMonthYear';

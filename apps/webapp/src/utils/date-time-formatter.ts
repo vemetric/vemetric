@@ -1,4 +1,4 @@
-import { formatDistanceStrict } from 'date-fns';
+import { formatDistanceStrict, getWeek } from 'date-fns';
 import { enUS } from 'date-fns/locale/en-US';
 
 const formatDistanceShortLocale: Record<string, string> = {
@@ -41,6 +41,7 @@ class DateTimeFormatter {
     this.formatDateTime = this.formatDateTime.bind(this);
     this.formatDate = this.formatDate.bind(this);
     this.formatTime = this.formatTime.bind(this);
+    this.formatWeek = this.formatWeek.bind(this);
   }
 
   private prepareDate(dateTime: string | Date) {
@@ -129,6 +130,13 @@ class DateTimeFormatter {
     const date = this.prepareDate(value);
 
     return seconds ? this.timeSecondsFormatter.format(date) : this.timeFormatter.format(date);
+  }
+
+  formatWeek(value: string | Date) {
+    const date = this.prepareDate(value);
+    const weekNumber = getWeek(date, { weekStartsOn: 1 }); // Monday as first day of week
+
+    return `Week ${weekNumber}`;
   }
 
   formatDuration(value: number) {

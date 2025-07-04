@@ -19,6 +19,9 @@ export function getDateTransformMethod(timeSpan: TimeSpan) {
     case 'daily':
       dateTransformMethod = 'toStartOfDay';
       break;
+    case 'weekly':
+      dateTransformMethod = 'toStartOfWeek';
+      break;
     case 'monthly':
       dateTransformMethod = 'toStartOfMonth';
       break;

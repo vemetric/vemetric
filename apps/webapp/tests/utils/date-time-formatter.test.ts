@@ -77,6 +77,22 @@ describe('DateTimeFormatter', () => {
     });
   });
 
+  describe('formatWeek', () => {
+    it('should format week correctly', () => {
+      expect(dateTimeFormatter.formatWeek('2024-01-15')).toBe('Week 3');
+      expect(dateTimeFormatter.formatWeek('2024-01-01')).toBe('Week 1');
+    });
+
+    it('should handle Date objects', () => {
+      expect(dateTimeFormatter.formatWeek(new Date('2024-01-15'))).toBe('Week 3');
+    });
+
+    it('should handle different years', () => {
+      expect(dateTimeFormatter.formatWeek('2023-06-15')).toBe('Week 25');
+      expect(dateTimeFormatter.formatWeek('2025-03-10')).toBe('Week 11');
+    });
+  });
+
   describe('formatDuration', () => {
     it('should format duration correctly', () => {
       expect(dateTimeFormatter.formatDuration(45)).toBe('45s');

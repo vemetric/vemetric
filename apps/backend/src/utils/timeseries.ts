@@ -1,6 +1,6 @@
 import { TIME_SPAN_DATA, type TimeSpan } from '@vemetric/common/charts/timespans';
 import { clickhouseDateToISO } from 'clickhouse';
-import { addMinutes, addHours, addDays, addMonths, format } from 'date-fns';
+import { addMinutes, addHours, addDays, addWeeks, addMonths, format } from 'date-fns';
 
 function roundDate(date: Date, interval: string) {
   // Convert to UTC for consistent rounding
@@ -32,6 +32,17 @@ function roundDate(date: Date, interval: string) {
       utcDate.setUTCSeconds(0);
       utcDate.setUTCMilliseconds(0);
       break;
+    case 'weekly': {
+      // Round to start of week (Monday)
+      const dayOfWeek = utcDate.getUTCDay();
+      const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      utcDate.setUTCDate(utcDate.getUTCDate() - daysToSubtract);
+      utcDate.setUTCHours(0);
+      utcDate.setUTCMinutes(0);
+      utcDate.setUTCSeconds(0);
+      utcDate.setUTCMilliseconds(0);
+      break;
+    }
     case 'monthly':
       utcDate.setUTCDate(1);
       utcDate.setUTCHours(0);
@@ -74,7 +85,7 @@ export function getStartDate(timespan: TimeSpan) {
       startDate = addDays(startDate, -29);
       break;
     case '3months':
-      startDate = addMonthsUTC(startDate, -2);
+      startDate = addWeeks(startDate, -11);
       break;
     case '6months':
       startDate = addMonthsUTC(startDate, -5);
@@ -102,6 +113,8 @@ export function fillTimeSeries(
       const existingData = timeSeries.find((pv) => {
         if (interval === 'monthly') {
           return format(pv.date, 'yyyy-MM') === format(currentDate, 'yyyy-MM');
+        } else if (interval === 'weekly') {
+          return format(pv.date, 'yyyy-ww') === format(currentDate, 'yyyy-ww');
         }
 
         const pvDate = new Date(clickhouseDateToISO(pv.date));
@@ -127,6 +140,9 @@ export function fillTimeSeries(
           break;
         case 'daily':
           currentDate = addDays(currentDate, 1);
+          break;
+        case 'weekly':
+          currentDate = addWeeks(currentDate, 1);
           break;
         case 'monthly':
           currentDate = addMonths(currentDate, 1);

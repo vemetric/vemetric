@@ -1,7 +1,7 @@
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { userSortConfigSchema } from '@vemetric/common/sort';
 import type { ClickhouseEvent } from 'clickhouse';
-import { clickhouseEvent, clickhouseSession, clickhouseUser, getFilterQueries } from 'clickhouse';
+import { clickhouseEvent, clickhouseSession, clickhouseUser, getUserFilterQueries } from 'clickhouse';
 import { addDays, addMonths, startOfDay } from 'date-fns';
 import { z } from 'zod';
 import { projectProcedure, router } from '../utils/trpc';
@@ -29,7 +29,7 @@ export const usersRouter = router({
 
       const startDate = getFreePlanStartDate(subscriptionStatus.isActive);
 
-      const { filterQueries } = getFilterQueries({ filterConfig, projectId, startDate });
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
 
       const offset = (page - 1) * USERS_PER_PAGE;
       const [users] = await Promise.all([

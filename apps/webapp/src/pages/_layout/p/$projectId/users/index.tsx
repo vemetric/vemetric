@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { CountryFlag } from '@/components/country-flag';
 import { AddFilterButton } from '@/components/filter/add-filter/add-filter-button';
 import { FilterContainer } from '@/components/filter/filter-container';
-import { FilterContext } from '@/components/filter/filter-context';
+import { FilterContextProvider } from '@/components/filter/filter-context';
 import { UserAvatar } from '@/components/pages/user/user-avatar';
 import { UserSortPopover } from '@/components/pages/user/user-sort-popover';
 import { ProjectInitCard } from '@/components/project-init-card';
@@ -77,7 +77,7 @@ function Page() {
 
   return (
     <ProjectIdProvider projectId={projectId}>
-      <FilterContext.Provider
+      <FilterContextProvider
         value={{
           pagePaths: filterableData?.pagePaths ?? [],
           origins: filterableData?.origins ?? [],
@@ -307,7 +307,7 @@ function Page() {
             </Box>
           )}
         </Card.Root>
-      </FilterContext.Provider>
+      </FilterContextProvider>
 
       {data && !isInitialized && <ProjectInitCard projectToken={data.projectToken} />}
     </ProjectIdProvider>

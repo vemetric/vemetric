@@ -5,7 +5,7 @@ import { FilterGroup } from './filter-group';
 
 interface Props {
   filterConfig: IFilterConfig;
-  from: '/p/$projectId' | '/p/$projectId/users' | '/public/$domain';
+  from: '/p/$projectId' | '/p/$projectId/users' | '/public/$domain' | '/p/$projectId/events';
 }
 
 export const FilterContainer = ({ filterConfig, from }: Props) => {

@@ -5,8 +5,10 @@ import { useState } from 'react';
 import { TbFilterPlus } from 'react-icons/tb';
 import { PopoverMenuHeader } from '@/components/popover-menu/popover-menu-header';
 import { useFilters } from '@/hooks/use-filters';
-import { ADD_FILTERS, AddFilterOverview } from './add-filter-overview';
+import { AddFilterOverview } from './add-filter-overview';
 import { OPERATOR_BUTTON_MENU_CLASS_NAME } from '../operator-button';
+import { ADD_FILTER_ITEMS } from './add-filters-items';
+import { useFilterContext } from '../filter-context';
 
 const getMotionViewProps = (overview?: boolean) => ({
   initial: { x: overview ? '-100%' : '100%' },
@@ -16,11 +18,12 @@ const getMotionViewProps = (overview?: boolean) => ({
 
 interface Props {
   filterConfig: IFilterConfig;
-  from: '/p/$projectId' | '/p/$projectId/users' | '/public/$domain';
+  from: '/p/$projectId' | '/p/$projectId/users' | '/public/$domain' | '/p/$projectId/events';
 }
 
 export const AddFilterButton = ({ filterConfig, from }: Props) => {
   const { setFilters } = useFilters({ from });
+  const { defaultOperator = 'and' } = useFilterContext();
   const [isAnimating, setIsAnimating] = useState(false);
   const [filterView, _setFilterView] = useState<string | null>(null);
   const filterCount = filterConfig?.filters.length ?? 0;
@@ -89,7 +92,7 @@ export const AddFilterButton = ({ filterConfig, from }: Props) => {
                   <AddFilterOverview from={from} setFilterView={setFilterView} onClose={onClose} />
                 </motion.div>
               )}
-              {Object.entries(ADD_FILTERS).map(([key, { title, filterForm: FilterForm }]) => {
+              {Object.entries(ADD_FILTER_ITEMS).map(([key, { title, filterForm: FilterForm }]) => {
                 if (filterView !== key) {
                   return null;
                 }
@@ -107,7 +110,7 @@ export const AddFilterButton = ({ filterConfig, from }: Props) => {
                               }
                             : {
                                 filters: [filter],
-                                operator: 'and',
+                                operator: defaultOperator,
                               };
                         });
                         onClose();

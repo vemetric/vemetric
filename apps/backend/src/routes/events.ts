@@ -1,3 +1,4 @@
+import { filterConfigSchema } from '@vemetric/common/filters';
 import { clickhouseEvent } from 'clickhouse';
 import { z } from 'zod';
 import { projectProcedure, router } from '../utils/trpc';
@@ -9,6 +10,7 @@ export const eventsRouter = router({
     .input(
       z.object({
         cursor: z.string().optional(), // ISO timestamp string
+        filterConfig: filterConfigSchema,
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -21,6 +23,7 @@ export const eventsRouter = router({
         projectId,
         limit,
         cursor: input.cursor, // Used to fetch events before this timestamp
+        filterConfig: input.filterConfig,
       });
 
       const hasMore = events.length > EVENTS_PER_PAGE;

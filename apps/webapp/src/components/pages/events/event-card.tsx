@@ -116,11 +116,11 @@ export const EventCard = ({ event, previousEventId, nextEventId }: Props) => {
                   <EventIcon name={event.name} />
                 </CardIcon>
                 <Flex flexDir="column" gap={1} minW={0} flexGrow={1} align="flex-start">
-                  <Text textStyle="sm" fontWeight="semibold" truncate>
+                  <Text textStyle="sm" fontWeight="semibold" truncate maxW="100%">
                     {displayName}
                   </Text>
-                  <Flex align="center" gap={1.5}>
-                    <Flex align="center" gap={1}>
+                  <Flex align="center" gap={1.5} maxW="100%">
+                    <Flex align="center" gap={1} flexShrink="1" truncate>
                       <UserAvatar
                         id={event.userId}
                         displayName={event.userDisplayName}
@@ -129,10 +129,12 @@ export const EventCard = ({ event, previousEventId, nextEventId }: Props) => {
                         rounded="full"
                         color="transparent"
                       />
-                      <Text textStyle="xs">{getUserName(event.userDisplayName, event.userIdentifier)}</Text>
+                      <Text textStyle="xs" truncate>
+                        {getUserName(event.userDisplayName, event.userIdentifier)}
+                      </Text>
                     </Flex>
-                    <Box boxSize="3px" bg="gray.emphasized" rounded="full" />
-                    <Text textStyle="xs" color="fg.muted">
+                    <Box flexShrink={0} boxSize="3px" bg="gray.emphasized" rounded="full" />
+                    <Text textStyle="xs" color="fg.muted" flexShrink={0}>
                       {dateTimeFormatter.formatTime(event.createdAt, true)}
                     </Text>
                   </Flex>

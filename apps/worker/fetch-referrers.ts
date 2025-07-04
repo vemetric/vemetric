@@ -39,6 +39,7 @@ const customReferrers = {
   'out.reddit.com': { name: 'Reddit', type: 'social' },
   'old.reddit.com': { name: 'Reddit', type: 'social' },
   'com.reddit.frontpage': { name: 'Reddit', type: 'social' },
+  'l.threads.com': { name: 'Threads', type: 'social' },
 };
 
 function transformReferrerData(originalData: OriginalReferrerData): {

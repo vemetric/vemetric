@@ -1,10 +1,11 @@
 import { Box, Text, Flex, Card, SimpleGrid, useBreakpointValue, Span } from '@chakra-ui/react';
+import { getEventName } from '@vemetric/common/event';
 import { motion } from 'motion/react';
 import { Fragment, useState } from 'react';
-import { TbBolt, TbEye, TbExternalLink } from 'react-icons/tb';
 import { BrowserIcon } from '@/components/browser-icon';
 import { CardIcon } from '@/components/card-icon';
 import { DeviceIcon } from '@/components/device-icon';
+import { EventIcon } from '@/components/event-icon';
 import { OsIcon } from '@/components/os-icon';
 import { Tooltip } from '@/components/ui/tooltip';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
@@ -32,13 +33,6 @@ export const EventCard = ({ event, lastPageViewDate }: Props) => {
   const isDesktop = useBreakpointValue({ base: false, lg: true });
   const isPageView = event.name === '$$pageView';
 
-  let icon = <TbBolt />;
-  if (isPageView) {
-    icon = <TbEye />;
-  } else if (event.name === '$$outboundLink') {
-    icon = <TbExternalLink />;
-  }
-
   let tooltipContent = 'Custom Event';
   if (isPageView) {
     tooltipContent = `Pageview: ${event.origin}${event.pathname}${event.urlHash}`;
@@ -46,12 +40,7 @@ export const EventCard = ({ event, lastPageViewDate }: Props) => {
     tooltipContent = 'Outbound Link Click';
   }
 
-  let displayName = event.name;
-  if (isPageView) {
-    displayName = event.pathname ? event.pathname + event.urlHash : 'Page View';
-  } else if (event.name === '$$outboundLink') {
-    displayName = (event.customData?.href as string) ?? 'Outbound Link';
-  }
+  const displayName = getEventName(event.name);
 
   return (
     <Tooltip
@@ -68,11 +57,14 @@ export const EventCard = ({ event, lastPageViewDate }: Props) => {
           cursor="pointer"
           p="3"
           onClick={() => setIsOpen(!isOpen)}
+          bg={isOpen ? 'gray.subtle/20' : 'transparent'}
           _hover={{ bg: 'gray.subtle' }}
         >
           <Flex align="center" justify="space-between" gap={2} w="100%">
             <Flex align="center" gap={2.5} minWidth={0}>
-              <CardIcon>{icon}</CardIcon>
+              <CardIcon>
+                <EventIcon name={event.name} />
+              </CardIcon>
               <Text textStyle="sm" fontWeight="semibold" truncate>
                 {displayName}
               </Text>
@@ -90,7 +82,7 @@ export const EventCard = ({ event, lastPageViewDate }: Props) => {
         </Card.Header>
         <Card.Body asChild p={0} flex="auto" overflow="hidden">
           <motion.div initial={{ height: 0 }} animate={{ height: isOpen ? 'auto' : 0 }}>
-            <Box px={4} pb={3} pt={2}>
+            <Box p={4} pb={3} borderTop="1px dashed" borderColor="gray.emphasized/70">
               <SimpleGrid textStyle="sm" columns={2} gap={2.5} gridTemplateColumns="1fr 3fr">
                 <Box fontWeight="semibold" opacity={0.6}>
                   Date

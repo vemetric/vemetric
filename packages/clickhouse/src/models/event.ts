@@ -11,6 +11,7 @@ import { EXAMPLE_DEVICE_DATA } from './device';
 import type { GeoData, ReferrerData, UrlData } from './session';
 import { EXAMPLE_URL_DATA } from './session';
 import { getDateTransformMethod } from '../utils/date';
+import { getEventFilterQueries } from '../utils/filters';
 import { buildStringFilterQuery } from '../utils/filters/base-filters';
 import { buildBrowserFilterQueries } from '../utils/filters/browser-filter';
 import { buildDeviceFilterQueries } from '../utils/filters/device-filter';
@@ -768,6 +769,46 @@ export const clickhouseEvent = {
         grouped[row.property].push(row.value);
       }
       return grouped;
+    },
+  ),
+
+  getLatestEventsByProjectId: withSpan(
+    'getLatestEventsByProjectId',
+    async (props: {
+      projectId: bigint;
+      limit?: number;
+      cursor?: string;
+      startDate?: Date;
+      filterConfig?: IFilterConfig;
+    }): Promise<Array<ClickhouseEvent>> => {
+      const { projectId, limit = EVENT_LIMIT, cursor, startDate, filterConfig } = props;
+
+      const cursorClause = cursor ? ` AND createdAt < ${escape(cursor)}` : '';
+
+      // Build filter queries using the existing filter system, excluding 'page' filters since events page doesn't show page views
+      const { filterQueries } = filterConfig
+        ? getEventFilterQueries({
+            filterConfig,
+          })
+        : { filterQueries: '' };
+
+      const resultSet = await clickhouseClient.query({
+        query: `
+          SELECT ${EVENT_KEY_SELECTOR}, max(createdAt) as eventTime
+          FROM ${TABLE_NAME} 
+          WHERE projectId = ${escape(projectId)}${cursorClause}
+          ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+          AND isPageView <> 1
+          ${filterQueries || ''}
+          GROUP BY id 
+          HAVING sum(sign) > 0 
+          ORDER BY eventTime DESC 
+          LIMIT ${escape(limit)}`,
+        format: 'JSONEachRow',
+      });
+
+      const rows = (await resultSet.json()) as Array<any>;
+      return rows.map(mapRowToEvent);
     },
   ),
 };

@@ -11,7 +11,7 @@ import { buildReferrerFilterQuery, buildReferrerTypeFilterQuery, buildReferrerUr
 import { buildUserFilterQuery } from './user-filter';
 import { buildUtmTagsFilterQuery } from './utm-tags-filter';
 
-export const getFilterQueries = (props: { filterConfig: IFilterConfig; projectId: bigint; startDate?: Date }) => {
+export const getUserFilterQueries = (props: { filterConfig: IFilterConfig; projectId: bigint; startDate?: Date }) => {
   const { filterConfig, projectId, startDate } = props;
 
   if (!filterConfig) {
@@ -221,5 +221,80 @@ export const getFilterQueries = (props: { filterConfig: IFilterConfig; projectId
 
   return {
     filterQueries: userFilterQueries.trim() ? `AND (${userFilterQueries})` : '',
+  };
+};
+
+export const getEventFilterQueries = (props: { filterConfig: IFilterConfig }) => {
+  const { filterConfig } = props;
+
+  if (!filterConfig) {
+    return {
+      filterQueries: '',
+    };
+  }
+
+  const eventFilterQueries: string[] = [];
+
+  filterConfig.filters.forEach((filter) => {
+    switch (filter.type) {
+      case 'event': {
+        const filterQuery = buildEventFilterQuery(filter);
+        if (!filterQuery) {
+          return;
+        }
+
+        eventFilterQueries.push(filterQuery);
+        break;
+      }
+      case 'user': {
+        const filterQuery = buildUserFilterQuery(filter);
+        if (!filterQuery) {
+          return;
+        }
+
+        eventFilterQueries.push(filterQuery);
+        break;
+      }
+      case 'location': {
+        const filterQuery = buildLocationFilterQuery(filter);
+        if (!filterQuery) {
+          return;
+        }
+
+        eventFilterQueries.push(filterQuery);
+        break;
+      }
+      case 'browser': {
+        const filterQuery = buildBrowserFilterQuery(filter);
+        if (!filterQuery) {
+          return;
+        }
+
+        eventFilterQueries.push(filterQuery);
+        break;
+      }
+      case 'device': {
+        const filterQuery = buildDeviceFilterQuery(filter);
+        if (!filterQuery) {
+          return;
+        }
+
+        eventFilterQueries.push(filterQuery);
+        break;
+      }
+      case 'os': {
+        const filterQuery = buildOsFilterQuery(filter);
+        if (!filterQuery) {
+          return;
+        }
+
+        eventFilterQueries.push(filterQuery);
+        break;
+      }
+    }
+  });
+
+  return {
+    filterQueries: 'AND (' + eventFilterQueries.join(` ${filterConfig.operator === 'and' ? 'AND' : 'OR'} `) + ')',
   };
 };

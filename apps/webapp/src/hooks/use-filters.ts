@@ -1,13 +1,15 @@
 import { useNavigate } from '@tanstack/react-router';
 import type { IFilter, IFilterConfig } from '@vemetric/common/filters';
 import { isDeepEqual } from 'remeda';
+import { useFilterContext } from '@/components/filter/filter-context';
 
 interface Props {
-  from: '/p/$projectId' | '/p/$projectId/users' | '/public/$domain';
+  from: '/p/$projectId' | '/p/$projectId/users' | '/p/$projectId/events' | '/public/$domain' | '/p/$projectId/events';
 }
 
 export const useFilters = ({ from }: Props) => {
   const navigate = useNavigate({ from });
+  const { defaultOperator = 'or' } = useFilterContext();
 
   const setFilters = (filterConfig: IFilterConfig | ((prev: IFilterConfig) => IFilterConfig)) => {
     navigate({
@@ -39,7 +41,7 @@ export const useFilters = ({ from }: Props) => {
   const toggleFilter = (filter: IFilter) => {
     setFilters((prev) => {
       if (!prev) {
-        return { filters: [filter], operator: 'and' };
+        return { filters: [filter], operator: defaultOperator };
       }
 
       const existingFilterIndex = prev.filters.findIndex((f) => {

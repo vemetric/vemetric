@@ -2,7 +2,7 @@ import { TRPCError } from '@trpc/server';
 import { isTimespanAllowed, TIME_SPAN_DATA, TIME_SPANS } from '@vemetric/common/charts/timespans';
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { sourcesSchema } from '@vemetric/common/sources';
-import { clickhouseEvent, clickhouseSession, getFilterQueries } from 'clickhouse';
+import { clickhouseEvent, clickhouseSession, getUserFilterQueries } from 'clickhouse';
 import { z } from 'zod';
 import { fillTimeSeries, getStartDate } from '../utils/timeseries';
 import { projectOrPublicProcedure, router } from '../utils/trpc';
@@ -40,7 +40,7 @@ export const dashboardRouter = router({
       const timeSpanData = TIME_SPAN_DATA[timespan];
       const startDate = getStartDate(timespan);
 
-      const { filterQueries } = getFilterQueries({ filterConfig, projectId, startDate });
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
 
       // Fetch all data in parallel
       const [
@@ -130,7 +130,7 @@ export const dashboardRouter = router({
 
       const startDate = getStartDate(timespan);
 
-      const { filterQueries } = getFilterQueries({ filterConfig, projectId, startDate });
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
 
       const topSourcesData = await clickhouseSession.getTopSources(
         projectId,
@@ -164,7 +164,7 @@ export const dashboardRouter = router({
 
       const startDate = getStartDate(timespan);
 
-      const { filterQueries } = getFilterQueries({ filterConfig, projectId, startDate });
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
 
       const countryCodes = await clickhouseSession.getCountryCodes(projectId, startDate, filterQueries, filterConfig);
 
@@ -186,7 +186,7 @@ export const dashboardRouter = router({
 
       const startDate = getStartDate(timespan);
 
-      const { filterQueries } = getFilterQueries({ filterConfig, projectId, startDate });
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
 
       const browsers = await clickhouseEvent.getBrowsers(projectId, startDate, filterQueries, filterConfig);
 
@@ -208,7 +208,7 @@ export const dashboardRouter = router({
 
       const startDate = getStartDate(timespan);
 
-      const { filterQueries } = getFilterQueries({ filterConfig, projectId, startDate });
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
 
       const devices = await clickhouseEvent.getDevices(projectId, startDate, filterQueries, filterConfig);
 
@@ -230,7 +230,7 @@ export const dashboardRouter = router({
 
       const startDate = getStartDate(timespan);
 
-      const { filterQueries } = getFilterQueries({ filterConfig, projectId, startDate });
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
 
       const operatingSystems = await clickhouseEvent.getOperatingSystems(
         projectId,

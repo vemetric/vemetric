@@ -9,7 +9,7 @@ import { TbClock } from 'react-icons/tb';
 import { z } from 'zod';
 import { AddFilterButton } from '@/components/filter/add-filter/add-filter-button';
 import { FilterContainer } from '@/components/filter/filter-container';
-import { FilterContext } from '@/components/filter/filter-context';
+import { FilterContextProvider } from '@/components/filter/filter-context';
 import { BrowsersCard } from '@/components/pages/dashboard/browsers-card';
 import { CountriesCard } from '@/components/pages/dashboard/countries-card';
 import { DashboardChart } from '@/components/pages/dashboard/dashboard-chart';
@@ -88,32 +88,32 @@ function Page() {
 
   return (
     <ProjectIdProvider projectId={projectId}>
-      {data?.isInitialized ? (
-        <>
-          <Box mt={-3} pos="sticky" top={{ base: '44px', md: '122px', lg: '52px' }} zIndex="dropdown">
-            {isFilterableDataLoading ? (
-              <Box pt={3}>
-                <TopRowSkeletons loading />
-              </Box>
-            ) : (
-              <FilterContext.Provider
-                value={{
-                  pagePaths: filterableData?.pagePaths ?? [],
-                  origins: filterableData?.origins ?? [],
-                  eventNames: filterableData?.eventNames ?? [],
-                  countryCodes: filterableData?.countryCodes ?? [],
-                  referrers: filterableData?.referrers ?? [],
-                  referrerUrls: filterableData?.referrerUrls ?? [],
-                  utmCampaigns: filterableData?.utmCampaigns ?? [],
-                  utmContents: filterableData?.utmContents ?? [],
-                  utmMediums: filterableData?.utmMediums ?? [],
-                  utmSources: filterableData?.utmSources ?? [],
-                  utmTerms: filterableData?.utmTerms ?? [],
-                  browserNames: filterableData?.browserNames ?? [],
-                  deviceTypes: filterableData?.deviceTypes ?? [],
-                  osNames: filterableData?.osNames ?? [],
-                }}
-              >
+      <FilterContextProvider
+        value={{
+          pagePaths: filterableData?.pagePaths ?? [],
+          origins: filterableData?.origins ?? [],
+          eventNames: filterableData?.eventNames ?? [],
+          countryCodes: filterableData?.countryCodes ?? [],
+          referrers: filterableData?.referrers ?? [],
+          referrerUrls: filterableData?.referrerUrls ?? [],
+          utmCampaigns: filterableData?.utmCampaigns ?? [],
+          utmContents: filterableData?.utmContents ?? [],
+          utmMediums: filterableData?.utmMediums ?? [],
+          utmSources: filterableData?.utmSources ?? [],
+          utmTerms: filterableData?.utmTerms ?? [],
+          browserNames: filterableData?.browserNames ?? [],
+          deviceTypes: filterableData?.deviceTypes ?? [],
+          osNames: filterableData?.osNames ?? [],
+        }}
+      >
+        {data?.isInitialized ? (
+          <>
+            <Box mt={-3} pos="sticky" top={{ base: '44px', md: '122px', lg: '52px' }} zIndex="dropdown">
+              {isFilterableDataLoading ? (
+                <Box pt={3}>
+                  <TopRowSkeletons loading />
+                </Box>
+              ) : (
                 <Flex pt={3} bg="bg.content" flexWrap="wrap" w="100%" columnGap={8} rowGap={4} align="center">
                   <FilterContainer filterConfig={filterConfig} from="/p/$projectId" />
                   <Flex flexGrow={1} gap={2.5} justify="flex-end">
@@ -157,54 +157,54 @@ function Page() {
                     </MenuRoot>
                   </Flex>
                 </Flex>
-              </FilterContext.Provider>
-            )}
-            <Box
-              h={3}
-              w="full"
-              bg="linear-gradient(to bottom, var(--chakra-colors-bg-content) 20%, rgba(0, 0, 0, 0) 100%)"
-            />
-          </Box>
-          <Flex flexDir="column" gap={3} pos="relative">
-            <Box pos="relative">
-              <DashboardChart timespan={timespan} data={data} />
-              {isPreviousData && (
-                <Box pos="absolute" inset="0" opacity="0.8" zIndex="docked">
-                  <Skeleton pos="absolute" inset="0" rounded="lg" />
-                </Box>
               )}
+              <Box
+                h={3}
+                w="full"
+                bg="linear-gradient(to bottom, var(--chakra-colors-bg-content) 20%, rgba(0, 0, 0, 0) 100%)"
+              />
             </Box>
+            <Flex flexDir="column" gap={3} pos="relative">
+              <Box pos="relative">
+                <DashboardChart timespan={timespan} data={data} />
+                {isPreviousData && (
+                  <Box pos="absolute" inset="0" opacity="0.8" zIndex="docked">
+                    <Skeleton pos="absolute" inset="0" rounded="lg" />
+                  </Box>
+                )}
+              </Box>
+              <SimpleGrid columns={[1, 1, 2]} gap={3}>
+                <MostVisitedPagesCard filterConfig={filterConfig} projectDomain={data?.projectDomain ?? ''} />
+                <TopSourcesCard filterConfig={filterConfig} />
+                <EventsCard filterConfig={filterConfig} />
+                {userType === 'browsers' ? (
+                  <BrowsersCard filterConfig={filterConfig} />
+                ) : userType === 'devices' ? (
+                  <DevicesCard filterConfig={filterConfig} />
+                ) : userType === 'os' ? (
+                  <OperatingSystemsCard filterConfig={filterConfig} />
+                ) : (
+                  <CountriesCard filterConfig={filterConfig} />
+                )}
+              </SimpleGrid>
+            </Flex>
+          </>
+        ) : (
+          <Flex flexDir="column" gap={3}>
+            <TopRowSkeletons loading={data?.isInitialized !== false} />
+            <AspectRatio ratio={16 / 7}>
+              <Skeleton height="full" width="full" loading={data?.isInitialized !== false} />
+            </AspectRatio>
             <SimpleGrid columns={[1, 1, 2]} gap={3}>
-              <MostVisitedPagesCard filterConfig={filterConfig} projectDomain={data?.projectDomain ?? ''} />
-              <TopSourcesCard filterConfig={filterConfig} />
-              <EventsCard filterConfig={filterConfig} />
-              {userType === 'browsers' ? (
-                <BrowsersCard filterConfig={filterConfig} />
-              ) : userType === 'devices' ? (
-                <DevicesCard filterConfig={filterConfig} />
-              ) : userType === 'os' ? (
-                <OperatingSystemsCard filterConfig={filterConfig} />
-              ) : (
-                <CountriesCard filterConfig={filterConfig} />
-              )}
+              <Skeleton height="300px" w="full" loading={data?.isInitialized !== false} />
+              <Skeleton height="300px" w="full" loading={data?.isInitialized !== false} />
+              <Skeleton height="300px" w="full" loading={data?.isInitialized !== false} />
+              <Skeleton height="300px" w="full" loading={data?.isInitialized !== false} />
             </SimpleGrid>
           </Flex>
-        </>
-      ) : (
-        <Flex flexDir="column" gap={3}>
-          <TopRowSkeletons loading={data?.isInitialized !== false} />
-          <AspectRatio ratio={16 / 7}>
-            <Skeleton height="full" width="full" loading={data?.isInitialized !== false} />
-          </AspectRatio>
-          <SimpleGrid columns={[1, 1, 2]} gap={3}>
-            <Skeleton height="300px" w="full" loading={data?.isInitialized !== false} />
-            <Skeleton height="300px" w="full" loading={data?.isInitialized !== false} />
-            <Skeleton height="300px" w="full" loading={data?.isInitialized !== false} />
-            <Skeleton height="300px" w="full" loading={data?.isInitialized !== false} />
-          </SimpleGrid>
-        </Flex>
-      )}
-      {data && data.isInitialized === false && <ProjectInitCard projectToken={data.projectToken} />}
+        )}
+        {data && data.isInitialized === false && <ProjectInitCard projectToken={data.projectToken} />}
+      </FilterContextProvider>
     </ProjectIdProvider>
   );
 }

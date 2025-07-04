@@ -2,7 +2,7 @@ import type { IconButtonProps } from '@chakra-ui/react';
 import { Flex, SimpleGrid, IconButton, VisuallyHidden } from '@chakra-ui/react';
 import { Link, useMatches, useParams } from '@tanstack/react-router';
 import { useState, forwardRef } from 'react';
-import { TbUserSquareRounded, TbDeviceAnalytics, TbChartFunnel, TbMenu2 } from 'react-icons/tb';
+import { TbUserSquareRounded, TbDeviceAnalytics, TbStack2, TbMenu2 } from 'react-icons/tb';
 import { Drawer } from 'vaul';
 import { Navigation } from './navigation';
 
@@ -50,9 +50,9 @@ export const MobileMenu = () => {
             <TbUserSquareRounded />
           </Link>
         </MenuButton>
-        <MenuButton asChild label="Funnels" isActive={routeId === '/_layout/p/$projectId/funnels/'}>
-          <Link to="/p/$projectId/funnels" params={{ projectId }}>
-            <TbChartFunnel />
+        <MenuButton asChild label="Events" isActive={routeId === '/_layout/p/$projectId/events/'}>
+          <Link to="/p/$projectId/events" params={{ projectId }}>
+            <TbStack2 />
           </Link>
         </MenuButton>
         <Drawer.Root open={open} onOpenChange={setOpen}>

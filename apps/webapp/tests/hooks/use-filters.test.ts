@@ -1,13 +1,45 @@
 import { useNavigate } from '@tanstack/react-router';
 import { renderHook } from '@testing-library/react';
 import type { IFilter, IFilterConfig } from '@vemetric/common/filters';
+import { createElement, type ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { FilterContextProvider } from '../../src/components/filter/filter-context';
 import { useFilters } from '../../src/hooks/use-filters';
 
 // Mock the useNavigate hook
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: vi.fn(),
 }));
+
+// Create a wrapper component that provides the FilterContext
+const createWrapper = () => {
+  const wrapper = ({ children }: { children: ReactNode }) => {
+    return createElement(
+      FilterContextProvider,
+      {
+        value: {
+          pagePaths: [],
+          origins: [],
+          eventNames: ['page_view', 'click'],
+          countryCodes: ['US', 'CA'],
+          referrers: [],
+          referrerUrls: [],
+          utmCampaigns: [],
+          utmContents: [],
+          utmMediums: [],
+          utmSources: [],
+          utmTerms: [],
+          browserNames: ['chrome', 'firefox'],
+          deviceTypes: ['desktop', 'mobile'],
+          osNames: ['windows', 'mac'],
+          defaultOperator: 'and',
+        },
+      },
+      children,
+    );
+  };
+  return wrapper;
+};
 
 describe('useFilters', () => {
   const mockNavigate = vi.fn();
@@ -27,7 +59,9 @@ describe('useFilters', () => {
 
   it('should set filters correctly', () => {
     // Setup: Create hook and test data
-    const { result: hookResult } = renderHook(() => useFilters({ from: '/p/$projectId' }));
+    const { result: hookResult } = renderHook(() => useFilters({ from: '/p/$projectId' }), {
+      wrapper: createWrapper(),
+    });
     const newFilters: IFilterConfig = {
       filters: [
         {
@@ -61,7 +95,9 @@ describe('useFilters', () => {
 
   it('should remove all filters', () => {
     // Setup: Create hook
-    const { result: hookResult } = renderHook(() => useFilters({ from: '/p/$projectId' }));
+    const { result: hookResult } = renderHook(() => useFilters({ from: '/p/$projectId' }), {
+      wrapper: createWrapper(),
+    });
 
     // Action: Call removeAllFilters which internally calls navigate
     hookResult.current.removeAllFilters();
@@ -82,7 +118,9 @@ describe('useFilters', () => {
 
   it('should toggle filter on when it does not exist', () => {
     // Setup: Create hook and test data
-    const { result: hookResult } = renderHook(() => useFilters({ from: '/p/$projectId' }));
+    const { result: hookResult } = renderHook(() => useFilters({ from: '/p/$projectId' }), {
+      wrapper: createWrapper(),
+    });
     const newFilter: IFilter = {
       type: 'event',
       nameFilter: {
@@ -100,11 +138,14 @@ describe('useFilters', () => {
 
     // Assert: Verify the search function correctly added the new filter
     expect(searchResult.f?.filters).toContainEqual(newFilter);
+    expect(searchResult.f?.operator).toBe('and'); // Should use the default operator from context
   });
 
   it('should toggle filter off when it exists', () => {
     // Setup: Create hook and test data
-    const { result: hookResult } = renderHook(() => useFilters({ from: '/p/$projectId' }));
+    const { result: hookResult } = renderHook(() => useFilters({ from: '/p/$projectId' }), {
+      wrapper: createWrapper(),
+    });
     const existingFilter: IFilter = {
       type: 'event',
       nameFilter: {
@@ -130,7 +171,9 @@ describe('useFilters', () => {
 
   it('should remove filter config when last filter is removed', () => {
     // Setup: Create hook and test data
-    const { result: hookResult } = renderHook(() => useFilters({ from: '/p/$projectId' }));
+    const { result: hookResult } = renderHook(() => useFilters({ from: '/p/$projectId' }), {
+      wrapper: createWrapper(),
+    });
     const existingFilter: IFilter = {
       type: 'event',
       nameFilter: {
@@ -156,7 +199,9 @@ describe('useFilters', () => {
 
   it('should preserve existing event flag when adding non-event filter', () => {
     // Setup: Create hook and test data
-    const { result: hookResult } = renderHook(() => useFilters({ from: '/p/$projectId' }));
+    const { result: hookResult } = renderHook(() => useFilters({ from: '/p/$projectId' }), {
+      wrapper: createWrapper(),
+    });
     const newFilter: IFilter = {
       type: 'browser',
       browserFilter: {

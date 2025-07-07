@@ -4,6 +4,7 @@ import { formatNumber } from '@vemetric/common/math';
 import React, { useState } from 'react';
 import { TbDatabaseSearch, TbChevronLeft, TbEye } from 'react-icons/tb';
 import { EmptyState } from '@/components/ui/empty-state';
+import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { trpc } from '@/utils/trpc';
 import { CardBar } from '../card-bar';
 import { LIST_CARD_PAGE_SIZE, ListCard } from '../list-card';
@@ -17,7 +18,8 @@ interface Props {
 
 export const EventPropertiesView = ({ publicDashboard, eventName, onBack, onSelectProperty }: Props) => {
   const params = useParams({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
-  const { t: timespan, f: filterConfig } = useSearch({
+  const { timespan } = useTimespanParam({ publicDashboard });
+  const { f: filterConfig } = useSearch({
     from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
   });
   const [page, setPage] = useState(1);

@@ -12,6 +12,7 @@ import { SegmentedMenu } from '@/components/segmented-menu';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useFilters } from '@/hooks/use-filters';
+import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { trpc } from '@/utils/trpc';
 import { CardBar } from './card-bar';
 import { DashboardCardHeader } from './dashboard-card-header';
@@ -25,7 +26,8 @@ interface Props {
 
 export const TopSourcesCard = ({ filterConfig, publicDashboard }: Props) => {
   const params = useParams({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
-  const { t: timespan, s: sourceType = 'referrer' } = useSearch({
+  const { timespan } = useTimespanParam({ publicDashboard });
+  const { s: sourceType = 'referrer' } = useSearch({
     from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
   });
   const navigate = useNavigate({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });

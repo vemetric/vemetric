@@ -11,6 +11,7 @@ import { NumberCounter } from '@/components/number-counter';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useFilters } from '@/hooks/use-filters';
+import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { trpc } from '@/utils/trpc';
 import { CardBar } from '../card-bar';
 import { DashboardCardHeader } from '../dashboard-card-header';
@@ -31,8 +32,8 @@ interface Props {
 
 export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
   const params = useParams({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
+  const { timespan } = useTimespanParam({ publicDashboard });
   const {
-    t: timespan,
     e: showEvents,
     se: selectedEvent,
     ep: selectedProperty,

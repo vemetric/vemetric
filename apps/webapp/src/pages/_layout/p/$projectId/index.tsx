@@ -1,6 +1,6 @@
 import { AspectRatio, Button, Box, Flex, SimpleGrid } from '@chakra-ui/react';
 import { createFileRoute, Navigate, useNavigate } from '@tanstack/react-router';
-import { fallback, zodValidator } from '@tanstack/zod-adapter';
+import { zodValidator } from '@tanstack/zod-adapter';
 import type { TimeSpan } from '@vemetric/common/charts/timespans';
 import { TIME_SPAN_DATA, TIME_SPANS } from '@vemetric/common/charts/timespans';
 import { filterConfigSchema } from '@vemetric/common/filters';
@@ -23,6 +23,7 @@ import { MenuContent, MenuRadioItem, MenuRadioItemGroup, MenuRoot, MenuTrigger }
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip } from '@/components/ui/tooltip';
 import { ProjectIdProvider } from '@/hooks/use-project-id';
+import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { useSetBreadcrumbs, useSetDocsLink } from '@/stores/header-store';
 import { trpc } from '@/utils/trpc';
 
@@ -40,7 +41,7 @@ const TopRowSkeletons = ({ loading }: { loading: boolean }) => (
 );
 
 const dashboardSearchSchema = z.object({
-  t: fallback(z.enum(TIME_SPANS), '24hrs').default('24hrs'),
+  t: z.enum(TIME_SPANS).optional(),
   f: filterConfigSchema,
   s: sourcesSchema,
   u: z.enum(['countries', 'browsers', 'devices', 'os']).optional(),
@@ -57,7 +58,8 @@ export const Route = createFileRoute('/_layout/p/$projectId/')({
 function Page() {
   const navigate = useNavigate({ from: Route.fullPath });
   const { projectId } = Route.useParams();
-  const { t: timespan, f: filterConfig, u: userType } = Route.useSearch();
+  const { f: filterConfig, u: userType } = Route.useSearch();
+  const { timespan } = useTimespanParam({ publicDashboard: false });
 
   const { data, error, isPreviousData, isLoading } = trpc.dashboard.getData.useQuery(
     { projectId, timespan, filterConfig },

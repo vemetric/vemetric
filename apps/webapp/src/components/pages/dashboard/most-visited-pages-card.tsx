@@ -1,5 +1,5 @@
 import { Box, Flex, Grid, Icon, Button, Badge, Text, Card, Skeleton, Link as ChakraLink } from '@chakra-ui/react';
-import { Link, useParams, useSearch } from '@tanstack/react-router';
+import { Link, useParams } from '@tanstack/react-router';
 import type { IFilterConfig } from '@vemetric/common/filters';
 import { formatNumber } from '@vemetric/common/math';
 import React, { useState } from 'react';
@@ -10,6 +10,7 @@ import { NumberCounter } from '@/components/number-counter';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useFilters } from '@/hooks/use-filters';
+import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { trpc } from '@/utils/trpc';
 import { CardBar } from './card-bar';
 import { DashboardCardHeader } from './dashboard-card-header';
@@ -40,7 +41,7 @@ interface Props {
 
 export const MostVisitedPagesCard = ({ filterConfig, projectDomain, publicDashboard }: Props) => {
   const params = useParams({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
-  const { t: timespan } = useSearch({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
+  const { timespan } = useTimespanParam({ publicDashboard });
   const [page, setPage] = useState(1);
   const { toggleFilter } = useFilters({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
 

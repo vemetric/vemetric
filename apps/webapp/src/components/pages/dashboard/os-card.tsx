@@ -1,5 +1,5 @@
 import { Text, Card, Flex, Box, Button, Grid, Icon, Skeleton } from '@chakra-ui/react';
-import { useSearch, useParams, Link } from '@tanstack/react-router';
+import { useParams, Link } from '@tanstack/react-router';
 import type { IFilterConfig, IOsFilter } from '@vemetric/common/filters';
 import { formatNumber } from '@vemetric/common/math';
 import React, { useState } from 'react';
@@ -11,6 +11,7 @@ import { OsIcon } from '@/components/os-icon';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useFilters } from '@/hooks/use-filters';
+import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { trpc } from '@/utils/trpc';
 import { CardBar } from './card-bar';
 import { DashboardCardHeader } from './dashboard-card-header';
@@ -24,7 +25,7 @@ interface Props {
 
 export const OperatingSystemsCard = ({ filterConfig, publicDashboard }: Props) => {
   const params = useParams({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
-  const { t: timespan } = useSearch({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
+  const { timespan } = useTimespanParam({ publicDashboard });
   const { toggleFilter } = useFilters({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
 
   const activeFilters = filterConfig?.filters.filter((f) => f.type === 'os') ?? [];

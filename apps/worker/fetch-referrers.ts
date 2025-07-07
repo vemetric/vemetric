@@ -36,6 +36,7 @@ const customReferrers = {
   'yandex.com.tr': { name: 'Yandex', type: 'search' },
   'api.x.com': { name: 'X', type: 'social' },
   'x.com': { name: 'X', type: 'social' },
+  'np.reddit.com': { name: 'Reddit', type: 'social' },
   'out.reddit.com': { name: 'Reddit', type: 'social' },
   'old.reddit.com': { name: 'Reddit', type: 'social' },
   'com.reddit.frontpage': { name: 'Reddit', type: 'social' },

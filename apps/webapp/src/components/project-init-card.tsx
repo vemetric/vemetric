@@ -50,12 +50,9 @@ export function ProjectInitCard(props: Props) {
         </Flex>
 
         <Flex direction="column" mt="8" mb="5">
-          <Flex align="center" gap={2}>
-            <Text fontWeight="semibold" fontSize="md" mb="1.5">
-              <TbKey />
-            </Text>
-            <CodeBox size="sm">{props.projectToken}</CodeBox>
-          </Flex>
+          <CodeBox size="sm" startElement={<TbKey />} w="fit-content">
+            {props.projectToken}
+          </CodeBox>
           <Text fontSize="sm" mt="1" opacity={0.7}>
             This is the public token for your project.
           </Text>

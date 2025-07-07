@@ -17,15 +17,16 @@ import { Link as RouterLink, Navigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import {
   TbDashboard,
-  TbKey,
   TbNetwork,
   TbSettings,
   TbBrowserShare,
   TbLockX,
   TbAlertCircle,
   TbFlagCode,
+  TbKey,
 } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
+import { CodeBox } from '@/components/code-box';
 import { IntegrationGuides } from '@/components/integration-guides';
 import { EmptyState } from '@/components/ui/empty-state';
 import { InputGroup } from '@/components/ui/input-group';
@@ -167,9 +168,9 @@ export const GeneralTab = (props: Props) => {
             </Field.Root>
             <Field.Root>
               <Field.Label>Public Token</Field.Label>
-              <InputGroup startElement={<TbKey />} width="full">
-                <Input placeholder="example.com" value={projectSettings.token} disabled />
-              </InputGroup>
+              <CodeBox size="sm" startElement={<TbKey />}>
+                {projectSettings.token}
+              </CodeBox>
             </Field.Root>
             <Flex justifyContent="flex-end">
               <Button type="submit" size="sm">

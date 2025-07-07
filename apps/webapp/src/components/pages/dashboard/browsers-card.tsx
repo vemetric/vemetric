@@ -1,14 +1,15 @@
 import { Text, Card, Flex, Box, Button, Grid, Icon, Skeleton } from '@chakra-ui/react';
-import { useSearch, useParams } from '@tanstack/react-router';
+import { useSearch, useParams, Link } from '@tanstack/react-router';
 import type { IBrowserFilter, IFilterConfig } from '@vemetric/common/filters';
 import { formatNumber } from '@vemetric/common/math';
 import React, { useState } from 'react';
-import { TbUserSquareRounded, TbFilter, TbFilterOff, TbMap2 } from 'react-icons/tb';
+import { TbUserSquareRounded, TbFilter, TbFilterOff, TbMap2, TbUsers } from 'react-icons/tb';
 import { isDeepEqual } from 'remeda';
 import { BrowserIcon } from '@/components/browser-icon';
 import { CardIcon } from '@/components/card-icon';
 import { NumberCounter } from '@/components/number-counter';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Tooltip } from '@/components/ui/tooltip';
 import { useFilters } from '@/hooks/use-filters';
 import { trpc } from '@/utils/trpc';
 import { CardBar } from './card-bar';
@@ -96,14 +97,38 @@ export const BrowsersCard = ({ filterConfig, publicDashboard }: Props) => {
                         inset="0"
                         alignItems="center"
                         justify="flex-end"
-                        cursor="pointer"
-                        onClick={() => toggleFilter(newFilter)}
                         transition="all 0.2s ease-in-out"
                         bg="linear-gradient(to right, rgba(0, 0, 0, 0) 60%, var(--chakra-colors-bg-card) 95%)"
                         opacity="0"
+                        gap="2"
                         _groupHover={{ opacity: '1' }}
                       >
-                        <Button size="xs" p={0} mr="1px" minW="24px" h="24px" variant="surface" colorScheme="gray">
+                        {'projectId' in params && (
+                          <Tooltip content="View users that use this browser">
+                            <Button asChild size="xs" p={0} minW="24px" h="24px" variant="surface" colorScheme="gray">
+                              <Link
+                                to="/p/$projectId/users"
+                                params={{ projectId: params.projectId }}
+                                search={{
+                                  f: { filters: [newFilter], operator: 'and' },
+                                  s: { by: newFilter },
+                                }}
+                              >
+                                <Icon as={TbUsers} />
+                              </Link>
+                            </Button>
+                          </Tooltip>
+                        )}
+                        <Button
+                          size="xs"
+                          p={0}
+                          mr="1px"
+                          minW="24px"
+                          h="24px"
+                          variant="surface"
+                          colorScheme="gray"
+                          onClick={() => toggleFilter(newFilter)}
+                        >
                           <Icon
                             color={isFiltered ? 'purple.500' : undefined}
                             as={isFiltered ? TbFilterOff : TbFilter}

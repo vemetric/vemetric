@@ -1,15 +1,16 @@
-import { Box, Text, Card, Flex, Grid, Icon, Button, Skeleton, Link } from '@chakra-ui/react';
-import { useSearch, useParams, useNavigate } from '@tanstack/react-router';
+import { Box, Text, Card, Flex, Grid, Icon, Button, Skeleton, Link as ChakraLink } from '@chakra-ui/react';
+import { useSearch, useParams, useNavigate, Link } from '@tanstack/react-router';
 import type { IFilter, IFilterConfig } from '@vemetric/common/filters';
 import { formatNumber } from '@vemetric/common/math';
 import { getSourceValue, SOURCE_VALUES } from '@vemetric/common/sources';
 import React, { useMemo, useState } from 'react';
-import { TbDirectionSign, TbExternalLink, TbFilter, TbFilterOff } from 'react-icons/tb';
+import { TbDirectionSign, TbExternalLink, TbFilter, TbFilterOff, TbUsers } from 'react-icons/tb';
 import { isDeepEqual } from 'remeda';
 import { CardIcon } from '@/components/card-icon';
 import { NumberCounter } from '@/components/number-counter';
 import { SegmentedMenu } from '@/components/segmented-menu';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Tooltip } from '@/components/ui/tooltip';
 import { useFilters } from '@/hooks/use-filters';
 import { trpc } from '@/utils/trpc';
 import { CardBar } from './card-bar';
@@ -214,11 +215,32 @@ export const TopSourcesCard = ({ filterConfig, publicDashboard }: Props) => {
                       _groupHover={{ opacity: '1' }}
                       gap="2"
                     >
+                      {'projectId' in params && (
+                        <Tooltip content="View users that have come from this source">
+                          <Button asChild size="xs" p={0} minW="24px" h="24px" variant="surface" colorScheme="gray">
+                            <Link
+                              to="/p/$projectId/users"
+                              params={{ projectId: params.projectId }}
+                              search={{
+                                f: { filters: [newFilter], operator: 'and' },
+                                s: { by: newFilter },
+                              }}
+                            >
+                              <Icon as={TbUsers} />
+                            </Link>
+                          </Button>
+                        </Tooltip>
+                      )}
                       {topSource.referrerUrl && (
                         <Button asChild size="xs" variant="surface" colorScheme="gray" p={0} minW="24px" h="24px">
-                          <Link href={topSource.referrerUrl} target="_blank" rel="noopener noreferrer" outline="none">
+                          <ChakraLink
+                            href={topSource.referrerUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            outline="none"
+                          >
                             <TbExternalLink />
-                          </Link>
+                          </ChakraLink>
                         </Button>
                       )}
                       <Button

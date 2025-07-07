@@ -1,9 +1,9 @@
-import { Box, Flex, Grid, Icon, Button, Badge, Text, Card, Skeleton, Link } from '@chakra-ui/react';
-import { useParams, useSearch } from '@tanstack/react-router';
+import { Box, Flex, Grid, Icon, Button, Badge, Text, Card, Skeleton, Link as ChakraLink } from '@chakra-ui/react';
+import { Link, useParams, useSearch } from '@tanstack/react-router';
 import type { IFilterConfig } from '@vemetric/common/filters';
 import { formatNumber } from '@vemetric/common/math';
 import React, { useState } from 'react';
-import { TbEye, TbFilter, TbFilterOff, TbWorldWww, TbHome, TbExternalLink } from 'react-icons/tb';
+import { TbEye, TbFilter, TbFilterOff, TbWorldWww, TbHome, TbExternalLink, TbUsers } from 'react-icons/tb';
 import { isDeepEqual } from 'remeda';
 import { CardIcon } from '@/components/card-icon';
 import { NumberCounter } from '@/components/number-counter';
@@ -155,15 +155,31 @@ export const MostVisitedPagesCard = ({ filterConfig, projectDomain, publicDashbo
                         gap="2"
                         _groupHover={{ opacity: '1' }}
                       >
+                        {'projectId' in params && (
+                          <Tooltip content="View users that have viewed this page">
+                            <Button asChild size="xs" p={0} minW="24px" h="24px" variant="surface" colorScheme="gray">
+                              <Link
+                                to="/p/$projectId/users"
+                                params={{ projectId: params.projectId }}
+                                search={{
+                                  f: { filters: [newFilter], operator: 'and' },
+                                  s: { by: newFilter },
+                                }}
+                              >
+                                <Icon as={TbUsers} />
+                              </Link>
+                            </Button>
+                          </Tooltip>
+                        )}
                         <Button asChild size="xs" variant="surface" colorScheme="gray" p={0} minW="24px" h="24px">
-                          <Link
+                          <ChakraLink
                             href={page.origin + page.pathname}
                             target="_blank"
                             rel="noopener noreferrer"
                             outline="none"
                           >
                             <TbExternalLink />
-                          </Link>
+                          </ChakraLink>
                         </Button>
                         <Button
                           size="xs"

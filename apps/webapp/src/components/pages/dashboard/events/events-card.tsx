@@ -4,12 +4,22 @@ import type { IFilterConfig } from '@vemetric/common/filters';
 import { formatNumber } from '@vemetric/common/math';
 import { AnimatePresence, motion } from 'motion/react';
 import React, { useState } from 'react';
-import { TbBolt, TbChartBar, TbChartBarOff, TbEye, TbFilter, TbFilterOff, TbUsers } from 'react-icons/tb';
+import {
+  TbBolt,
+  TbChartBar,
+  TbChartBarOff,
+  TbExternalLink,
+  TbEye,
+  TbFilter,
+  TbFilterOff,
+  TbUsers,
+} from 'react-icons/tb';
 import { isDeepEqual } from 'remeda';
 import { CardIcon } from '@/components/card-icon';
 import { NumberCounter } from '@/components/number-counter';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Tooltip } from '@/components/ui/tooltip';
+import { useProjectContext } from '@/contexts/project-context';
 import { useFilters } from '@/hooks/use-filters';
 import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { trpc } from '@/utils/trpc';
@@ -41,6 +51,7 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
   const [page, setPage] = useState(1);
   const { toggleFilter } = useFilters({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
   const navigate = useNavigate({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
+  const { eventIcons } = useProjectContext();
 
   const [isAnimating, setIsAnimating] = useState(false);
 
@@ -139,13 +150,37 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
                     } as const;
                     const isFiltered = activeFilters.some((f) => isDeepEqual(f, newFilter));
 
+                    let icon = <TbBolt />;
+                    if (event.name === '$$outboundLink') {
+                      icon = <TbExternalLink />;
+                    } else if (eventIcons[event.name]) {
+                      icon = (
+                        <Box transform="scale(0.8)" filter="grayscale(25%)" opacity={0.9}>
+                          {eventIcons[event.name]}
+                        </Box>
+                      );
+                    }
+
                     return (
                       <React.Fragment key={event.name}>
                         <Box className="group" pos="relative" truncate>
                           <CardBar value={event.users} maxValue={mostFiredEvent?.users} />
-                          <Box px={2} py={0.5} pos="relative">
-                            {event.name === '$$outboundLink' ? 'Outbound Link' : event.name}
-                          </Box>
+                          <Flex align="center" px={2} py={0.5} pos="relative" gap={1.5}>
+                            <Flex
+                              align="center"
+                              justify="center"
+                              flexShrink={0}
+                              boxSize="18px"
+                              bg="gray.subtle"
+                              rounded="4px"
+                              color="gray.fg"
+                              overflow="hidden"
+                              fontSize="sm"
+                            >
+                              {icon}
+                            </Flex>
+                            <Box>{event.name === '$$outboundLink' ? 'Outbound Link' : event.name}</Box>
+                          </Flex>
                           <Flex
                             zIndex="1"
                             pos="absolute"

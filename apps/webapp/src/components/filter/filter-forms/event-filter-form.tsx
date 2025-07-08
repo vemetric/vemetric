@@ -3,7 +3,7 @@ import type { IEventFilter, IStringFilter } from '@vemetric/common/filters';
 import { produce } from 'immer';
 import React, { useState } from 'react';
 import { TbBolt, TbPlus, TbTrash } from 'react-icons/tb';
-import { useProjectId } from '@/hooks/use-project-id';
+import { useProjectContext } from '@/contexts/project-context';
 import { trpc } from '@/utils/trpc';
 import { useFilterContext } from '../filter-context';
 import { StringFilterRow } from '../filter-rows/string/string-filter-row';
@@ -23,7 +23,7 @@ interface Props {
 }
 
 export const EventFilterForm = ({ filter: _filter, onSubmit, buttonText }: Props) => {
-  const projectIdOrDomain = useProjectId();
+  const { projectId, domain } = useProjectContext();
   const { eventNames } = useFilterContext();
   const [filter, setFilter] = useState<IEventFilter>(
     _filter ?? {
@@ -36,7 +36,8 @@ export const EventFilterForm = ({ filter: _filter, onSubmit, buttonText }: Props
 
   const { data: propertyValues, isLoading } = trpc.filters.getEventPropertiesWithValues.useQuery(
     {
-      ...projectIdOrDomain,
+      projectId,
+      domain,
       eventName: nameFilter.value,
       operator: nameFilter.operator,
     },

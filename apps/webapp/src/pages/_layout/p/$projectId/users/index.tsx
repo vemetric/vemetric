@@ -15,7 +15,6 @@ import { UserSortPopover } from '@/components/pages/user/user-sort-popover';
 import { ProjectInitCard } from '@/components/project-init-card';
 import { Status } from '@/components/ui/status';
 import { Tooltip } from '@/components/ui/tooltip';
-import { ProjectIdProvider } from '@/hooks/use-project-id';
 import { useSetBreadcrumbs, useSetDocsLink } from '@/stores/header-store';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import { trpc } from '@/utils/trpc';
@@ -76,8 +75,7 @@ function Page() {
   const gridTemplateColumns = { base: '50vw 1fr 2fr', md: '30px 3fr 1fr 1fr 40px' };
 
   return (
-    <ProjectIdProvider projectId={projectId}>
-      <FilterContextProvider
+    <FilterContextProvider
         value={{
           pagePaths: filterableData?.pagePaths ?? [],
           origins: filterableData?.origins ?? [],
@@ -307,9 +305,8 @@ function Page() {
             </Box>
           )}
         </Card.Root>
-      </FilterContextProvider>
 
-      {data && !isInitialized && <ProjectInitCard projectToken={data.projectToken} />}
-    </ProjectIdProvider>
+        {data && !isInitialized && <ProjectInitCard projectToken={data.projectToken} />}
+      </FilterContextProvider>
   );
 }

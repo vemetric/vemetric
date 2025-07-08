@@ -23,7 +23,7 @@ import { TopSourcesCard } from '@/components/pages/dashboard/top-sources-card';
 import { ThemeSwitch } from '@/components/theme-switch';
 import { MenuContent, MenuRadioItem, MenuRadioItemGroup, MenuRoot, MenuTrigger } from '@/components/ui/menu';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ProjectIdProvider } from '@/hooks/use-project-id';
+import { ProjectProvider } from '@/contexts/project-context';
 import { getFaviconUrl } from '@/utils/favicon';
 import { trpc } from '@/utils/trpc';
 
@@ -82,7 +82,7 @@ function Page() {
   }
 
   return (
-    <ProjectIdProvider domain={domain}>
+    <ProjectProvider>
       <FilterContextProvider
         value={{
           pagePaths: filterableData?.pagePaths ?? [],
@@ -267,6 +267,6 @@ function Page() {
           </Flex>
         </PageWrapper>
       </FilterContextProvider>
-    </ProjectIdProvider>
+    </ProjectProvider>
   );
 }

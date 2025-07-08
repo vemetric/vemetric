@@ -36,7 +36,7 @@ export const dbProject = {
     prismaClient.project.findMany({
       where: { organizationId },
     }),
-  update: (id: string, data: Partial<{ name: string; publicDashboard: boolean }>) =>
+  update: (id: string, data: Partial<{ name: string; publicDashboard: boolean; eventIcons: Record<string, string> }>) =>
     prismaClient.project.update({
       where: { id },
       data,

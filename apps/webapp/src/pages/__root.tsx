@@ -1,3 +1,4 @@
+import { useBreakpointValue } from '@chakra-ui/react';
 import { initializePaddle } from '@paddle/paddle-js';
 import { createRootRoute, Outlet, useRouterState } from '@tanstack/react-router';
 import { useEffect } from 'react';
@@ -28,13 +29,18 @@ export const Route = createRootRoute({
 function RootLayout() {
   const { location } = useRouterState();
   const { colorMode } = useColorMode();
+  const isMobile = useBreakpointValue({ base: true, md: false });
 
   useEffect(() => {
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) {
-      meta.setAttribute('content', colorMode === 'dark' ? '#27272a' : '#ffffff');
+      if (isMobile) {
+        meta.setAttribute('content', colorMode === 'dark' ? '#27272a' : '#ffffff');
+      } else {
+        meta.setAttribute('content', colorMode === 'dark' ? '#18181b' : '#f4f4f5');
+      }
     }
-  }, [colorMode]);
+  }, [colorMode, isMobile]);
 
   return (
     <Redirects>

@@ -15,8 +15,17 @@ export const BaseLayout = (props: Props) => {
   const [isLogoutLoading, setIsLogoutLoading] = useState(false);
 
   return (
-    <PageWrapper flexDir="column" px={{ base: 2, md: 5 }} pt={{ base: 2, md: 4 }}>
-      <Flex align="center" justify="space-between">
+    <>
+      <Flex
+        align="center"
+        justify="space-between"
+        bg={{ base: 'bg.card', md: 'none' }}
+        px={{ base: 2, md: 5 }}
+        pt={{ base: 2, md: 4 }}
+        pb={{ base: 2, md: 0 }}
+        borderBottom={{ base: '1px solid', md: 'none' }}
+        borderColor="border.emphasized"
+      >
         <Flex justify="center" w={{ base: 'auto', lg: '190px' }}>
           <Logo h={{ base: '32px', md: '44px' }} />
         </Flex>
@@ -47,7 +56,7 @@ export const BaseLayout = (props: Props) => {
           </Link>
         </Flex>
       </Flex>
-      {children}
-    </PageWrapper>
+      <PageWrapper flexDir="column">{children}</PageWrapper>
+    </>
   );
 };

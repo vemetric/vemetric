@@ -9,7 +9,7 @@ import { useSnapshot } from 'valtio';
 import { BrowserIcon } from '@/components/browser-icon';
 import { CardIcon } from '@/components/card-icon';
 import { DeviceIcon } from '@/components/device-icon';
-import { EventIcon } from '@/components/event-icon';
+import { EventIconButton } from '@/components/event-icon-button';
 import { OsIcon } from '@/components/os-icon';
 import { useEventsPageStore } from '@/stores/events-page-store';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
@@ -112,9 +112,7 @@ export const EventCard = ({ event, previousEventId, nextEventId }: Props) => {
           >
             <Flex align="center" justify="space-between" gap={2} w="100%">
               <Flex align="center" gap={2.5} minWidth={0}>
-                <CardIcon size="lg">
-                  <EventIcon name={event.name} />
-                </CardIcon>
+                <EventIconButton size="lg" name={event.name} />
                 <Flex flexDir="column" gap={1} minW={0} flexGrow={1} align="flex-start">
                   <Text textStyle="sm" fontWeight="semibold" truncate maxW="100%">
                     {displayName}

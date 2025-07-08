@@ -9,7 +9,13 @@ import { ProjectRole, dbProject } from 'database';
 import { z } from 'zod';
 import { logger } from '../utils/logger';
 import { fillTimeSeries, getStartDate } from '../utils/timeseries';
-import { loggedInProcedure, organizationProcedure, projectProcedure, router } from '../utils/trpc';
+import {
+  loggedInProcedure,
+  organizationProcedure,
+  projectOrPublicProcedure,
+  projectProcedure,
+  router,
+} from '../utils/trpc';
 import { vemetric } from '../utils/vemetric-client';
 
 const projectNameInput = z.string().min(2);
@@ -183,5 +189,44 @@ export const projectsRouter = router({
         }),
       )
     ).sort((a, b) => b.activeUsers - a.activeUsers);
+  }),
+
+  getEventIcons: projectOrPublicProcedure.query(async (opts) => {
+    const {
+      ctx: { project },
+    } = opts;
+
+    return project.eventIcons as Record<string, string>;
+  }),
+
+  setEventIcon: projectProcedure
+    .input(z.object({ eventName: z.string(), emoji: z.string() }))
+    .mutation(async (opts) => {
+      const {
+        input: { eventName, emoji },
+        ctx: { project },
+      } = opts;
+
+      const currentIcons = (project.eventIcons as Record<string, string>) || {};
+      const updatedIcons = { ...currentIcons, [eventName]: emoji };
+
+      await dbProject.update(project.id, { eventIcons: updatedIcons });
+
+      return updatedIcons;
+    }),
+
+  removeEventIcon: projectProcedure.input(z.object({ eventName: z.string() })).mutation(async (opts) => {
+    const {
+      input: { eventName },
+      ctx: { project },
+    } = opts;
+
+    const currentIcons = (project.eventIcons as Record<string, string>) || {};
+    const updatedIcons = { ...currentIcons };
+    delete updatedIcons[eventName];
+
+    await dbProject.update(project.id, { eventIcons: updatedIcons });
+
+    return updatedIcons;
   }),
 });

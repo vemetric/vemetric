@@ -13,7 +13,7 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@chakra-ui/react": "^3.20.0",
+    "@chakra-ui/react": "^3.22.0",
     "@emotion/react": "^11.14.0",
     "@paddle/paddle-js": "^1.4.0",
     "@tanstack/react-query": "^4",
@@ -28,6 +28,7 @@
     "better-auth": "^1.2.4",
     "date-fns": "^4.1.0",
     "downshift": "^8.5.0",
+    "emoji-picker-react": "^4.12.3",
     "immer": "^10.1.1",
     "jsurl2": "^2.2.0",
     "motion": "^12.4.7",

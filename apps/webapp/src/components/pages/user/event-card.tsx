@@ -2,9 +2,8 @@ import { Box, Text, Flex, Card, SimpleGrid, useBreakpointValue, Span } from '@ch
 import { motion } from 'motion/react';
 import { Fragment, useState } from 'react';
 import { BrowserIcon } from '@/components/browser-icon';
-import { CardIcon } from '@/components/card-icon';
 import { DeviceIcon } from '@/components/device-icon';
-import { EventIcon } from '@/components/event-icon';
+import { EventIconButton } from '@/components/event-icon-button';
 import { OsIcon } from '@/components/os-icon';
 import { Tooltip } from '@/components/ui/tooltip';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
@@ -66,9 +65,7 @@ export const EventCard = ({ event, lastPageViewDate }: Props) => {
         >
           <Flex align="center" justify="space-between" gap={2} w="100%">
             <Flex align="center" gap={2.5} minWidth={0}>
-              <CardIcon>
-                <EventIcon name={event.name} />
-              </CardIcon>
+              <EventIconButton name={event.name} />
               <Text textStyle="sm" fontWeight="semibold" truncate>
                 {displayName}
               </Text>

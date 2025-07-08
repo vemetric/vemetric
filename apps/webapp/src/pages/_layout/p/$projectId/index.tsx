@@ -22,7 +22,6 @@ import { ProjectInitCard } from '@/components/project-init-card';
 import { MenuContent, MenuRadioItem, MenuRadioItemGroup, MenuRoot, MenuTrigger } from '@/components/ui/menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip } from '@/components/ui/tooltip';
-import { ProjectIdProvider } from '@/hooks/use-project-id';
 import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { useSetBreadcrumbs, useSetDocsLink } from '@/stores/header-store';
 import { trpc } from '@/utils/trpc';
@@ -89,8 +88,7 @@ function Page() {
   }
 
   return (
-    <ProjectIdProvider projectId={projectId}>
-      <FilterContextProvider
+    <FilterContextProvider
         value={{
           pagePaths: filterableData?.pagePaths ?? [],
           origins: filterableData?.origins ?? [],
@@ -207,6 +205,5 @@ function Page() {
         )}
         {data && data.isInitialized === false && <ProjectInitCard projectToken={data.projectToken} />}
       </FilterContextProvider>
-    </ProjectIdProvider>
   );
 }

@@ -131,6 +131,7 @@ model Project {
   organizationId  String
   createdAt       DateTime @default(now())
   publicDashboard Boolean  @default(false)
+  eventIcons      Json     @default("{}")
 
   users            UserProject[]
   organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)

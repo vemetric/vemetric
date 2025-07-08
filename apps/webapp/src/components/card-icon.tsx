@@ -1,11 +1,11 @@
 import type { FlexProps } from '@chakra-ui/react';
 import { Box, Flex } from '@chakra-ui/react';
 
-interface Props extends FlexProps {
+export interface CardIconProps extends FlexProps {
   size?: 'xs' | 'md' | 'lg';
 }
 
-export const CardIcon = ({ children, size = 'md', ...props }: Props) => {
+export const CardIcon = ({ children, size = 'md', ...props }: CardIconProps) => {
   let padding = 1.5;
   switch (size) {
     case 'xs':

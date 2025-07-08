@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "postinstall": "pnpm run chakra:build",
     "chakra:build": "chakra typegen src/style/theme.ts --strict",
-    "test": "vitest"
+    "test": "vitest",
+    "generate-pwa-assets": "pwa-assets-generator --preset minimal-2023 public/logo.svg"
   },
   "dependencies": {
     "@chakra-ui/react": "^3.22.0",
@@ -57,10 +58,12 @@
     "@types/react-dom": "^18.2.0",
     "@types/react-helmet": "^6.1.11",
     "@vemetric/eslint-config": "workspace:*",
+    "@vite-pwa/assets-generator": "^1.0.0",
     "@vitejs/plugin-react": "^4.4.0",
     "concurrently": "^8.2.2",
     "jsdom": "^26.1.0",
     "vite": "^6.3.0",
+    "vite-plugin-pwa": "^1.0.1",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.3"
   }

@@ -1,8 +1,10 @@
 import { initializePaddle } from '@paddle/paddle-js';
 import { createRootRoute, Outlet, useRouterState } from '@tanstack/react-router';
+import { useEffect } from 'react';
 import { CrispChat } from '@/components/crisp-chat';
 import { CrispScript } from '@/components/crisp-script';
 import { Redirects } from '@/components/redirects';
+import { useColorMode } from '@/components/ui/color-mode';
 
 let isCheckoutCompleted = false;
 initializePaddle({
@@ -25,6 +27,14 @@ export const Route = createRootRoute({
 
 function RootLayout() {
   const { location } = useRouterState();
+  const { colorMode } = useColorMode();
+
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) {
+      meta.setAttribute('content', colorMode === 'dark' ? '#27272a' : '#ffffff');
+    }
+  }, [colorMode]);
 
   return (
     <Redirects>

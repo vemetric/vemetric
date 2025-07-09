@@ -48,6 +48,8 @@ export type ClickhouseEvent = DeviceData &
 
     requestHeaders: Record<string, string>;
     customData: Record<string, any>;
+
+    importSource?: string;
   };
 
 export const EXAMPLE_EVENT: Required<ClickhouseEvent> = {
@@ -74,6 +76,7 @@ export const EXAMPLE_EVENT: Required<ClickhouseEvent> = {
   userDisplayName: '',
   requestHeaders: {},
   customData: {},
+  importSource: '',
 };
 
 const transformKeySelector = (key: keyof ClickhouseEvent) => (key === 'id' ? key : `any(${key})`);

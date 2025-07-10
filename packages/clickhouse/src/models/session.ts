@@ -63,6 +63,8 @@ export type ClickhouseSession = UrlData &
     duration: number;
 
     userAgent?: string;
+
+    importSource?: string;
   };
 
 const EXAMPLE_SESSION: Required<ClickhouseSession> = {
@@ -83,6 +85,7 @@ const EXAMPLE_SESSION: Required<ClickhouseSession> = {
   referrer: '',
   referrerUrl: '',
   referrerType: '',
+  importSource: '',
 };
 
 const transformKeySelector = (key: keyof ClickhouseSession) => (key === 'id' ? key : `argMax(${key}, endedAt)`);

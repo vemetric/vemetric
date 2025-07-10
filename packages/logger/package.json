@@ -9,7 +9,8 @@
     "lint": "eslint . --max-warnings 0"
   },
   "dependencies": {
-    "pino": "^9.6.0"
+    "pino": "^9.6.0",
+    "pino-pretty": "^13.0.0"
   },
   "devDependencies": {
     "@vemetric/eslint-config": "workspace:*"

@@ -22,11 +22,12 @@ export const EXAMPLE_DEVICE_DATA: Required<DeviceData> = {
   deviceType: 'desktop',
 };
 
-type ClickhouseDevice = DeviceData & {
+export type ClickhouseDevice = DeviceData & {
   projectId: bigint;
   userId: bigint;
   id: bigint;
   createdAt: string;
+  importSource?: string;
 };
 
 const EXAMPLE_DEVICE: Required<ClickhouseDevice> = {
@@ -35,6 +36,7 @@ const EXAMPLE_DEVICE: Required<ClickhouseDevice> = {
   userId: BigInt(1),
   id: BigInt(1),
   createdAt: '',
+  importSource: '',
 };
 
 const transformKeySelector = (key: keyof ClickhouseDevice) => (key === 'id' ? key : `any(${key})`);

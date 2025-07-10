@@ -1,0 +1,3 @@
+ALTER TABLE event ADD COLUMN IF NOT EXISTS `importSource` String DEFAULT '';
+ALTER TABLE session ADD COLUMN IF NOT EXISTS `importSource` String DEFAULT '';
+ALTER TABLE device ADD COLUMN IF NOT EXISTS `importSource` String DEFAULT '';

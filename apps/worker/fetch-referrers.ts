@@ -30,6 +30,8 @@ const customReferrers = {
   'vemetric.com': { name: 'Vemetric', type: 'unknown' },
   'chat.deepseek.com': { name: 'DeepSeek', type: 'llm' },
   'chat.mistral.ai': { name: 'Mistral', type: 'llm' },
+  'gemini.google.com': { name: 'Google Gemini', type: 'llm' },
+  'claude.ai': { name: 'Claude', type: 'llm' },
   'search.brave.com': { name: 'Brave', type: 'search' },
   'ya.ru': { name: 'Yandex', type: 'search' },
   'yandex.kz': { name: 'Yandex', type: 'search' },

@@ -39,6 +39,12 @@ export const vemetricTheme = createSystem(defaultConfig, {
         bg: 'gray.300/50',
       },
     },
+    '.simplebar-content-wrapper': {
+      outline: 'none!important',
+    },
+    '.simplebar-scrollbar::before': {
+      bg: 'gray.600!important',
+    },
     '#crisp-chatbox > div > a': {
       display: 'none!important',
     },

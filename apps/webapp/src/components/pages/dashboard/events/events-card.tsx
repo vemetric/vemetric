@@ -42,7 +42,7 @@ interface Props {
 
 export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
   const params = useParams({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
-  const { timespan } = useTimespanParam({ publicDashboard });
+  const { timespan } = useTimespanParam({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
   const {
     e: showEvents,
     se: selectedEvent,

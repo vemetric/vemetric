@@ -8,9 +8,6 @@ export const Route = createFileRoute('/_layout/p/$projectId/funnels/')({
 function RouteComponent() {
   const { projectId } = Route.useParams();
 
-  /* TODO: 
-  const { data: funnelResults } = trpc.funnels.getFunnelResults.useQuery({ projectId }); */
-
   useSetBreadcrumbs(['Funnels']);
 
   return (

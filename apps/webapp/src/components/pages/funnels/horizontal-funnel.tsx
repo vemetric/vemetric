@@ -1,10 +1,10 @@
 import type { FlexProps } from '@chakra-ui/react';
-import { Flex, Box, Text, Grid, Icon, Span, Button, Portal } from '@chakra-ui/react';
+import { Flex, Box, Text, Grid, Icon, Span, Portal } from '@chakra-ui/react';
 import { formatNumber, formatPercentage } from '@vemetric/common/math';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TbArrowNarrowRight, TbUserSquareRounded } from 'react-icons/tb';
 import SimpleBar from 'simplebar-react';
-import { Tooltip } from '@/components/ui/tooltip';
+import { ActiveUsersButton } from './active-users-button';
 
 const FunnelCard = (props: FlexProps) => (
   <Flex
@@ -32,29 +32,40 @@ function getBarHeight(users: number, activeUsers: number) {
   return (users / activeUsers) * MAX_BAR_HEIGHT;
 }
 
-type FunnelStep = {
-  users: number;
-};
-
-const funnelSteps: FunnelStep[] = [{ users: 1001 }, { users: 750 }, { users: 400 }, { users: 250 }, { users: 240 }];
-
 interface Props {
   activeUsersButtonRef: React.RefObject<HTMLDivElement>;
+  funnelSteps: Array<{ users: number }>;
+  activeUsersVisible: boolean;
+  setActiveUsersVisible: (value: boolean) => void;
 }
 
-export const HorizontalFunnel = ({ activeUsersButtonRef }: Props) => {
+export const HorizontalFunnel = (props: Props) => {
+  const {
+    activeUsersButtonRef,
+    funnelSteps,
+    activeUsersVisible,
+    setActiveUsersVisible: _setActiveUsersVisible,
+  } = props;
+
   const scrollRef = useRef<any>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
   const [isAnimating, setIsAnimating] = useState(false);
-  const [activeUsersVisible, _setActiveUsersVisible] = useState(false);
-  const [hideActiveUsers, setHideActiveUsers] = useState(true);
+  const [hideActiveUsers, setHideActiveUsers] = useState(!activeUsersVisible);
   const [leftOverlayOpacity, setLeftOverlayOpacity] = useState(0);
   const [rightOverlayOpacity, setRightOverlayOpacity] = useState(1);
 
   const activeUsers = funnelSteps[0].users;
   const firstStepHeight = getBarHeight(funnelSteps[1].users, activeUsers);
   const firstHeightDiff = MAX_BAR_HEIGHT - Math.max(firstStepHeight, MIN_BAR_HEIGHT - 25);
+
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
+
+    grid.style.transition = hideActiveUsers ? 'none' : TRANSITION;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const setActiveUsersVisible = (value: boolean) => {
     const grid = gridRef.current;
@@ -88,27 +99,11 @@ export const HorizontalFunnel = ({ activeUsersButtonRef }: Props) => {
   return (
     <Box pos="relative">
       <Portal container={activeUsersButtonRef}>
-        <Tooltip
-          content={
-            <Flex flexDir="column" gap={1}>
-              <Text>{formatNumber(activeUsers)} Active Users in the selected timeframe</Text>
-              <Text>Click to toggle visibility in the funnel</Text>
-            </Flex>
-          }
-          positioning={{ placement: 'right' }}
-          closeOnClick={false}
-          closeOnPointerDown={false}
-        >
-          <Button
-            colorPalette={activeUsersVisible ? 'purple' : 'gray'}
-            variant="surface"
-            size="xs"
-            rounded="full"
-            onClick={() => setActiveUsersVisible(!activeUsersVisible)}
-          >
-            <TbUserSquareRounded /> Users ({formatNumber(activeUsers, true)})
-          </Button>
-        </Tooltip>
+        <ActiveUsersButton
+          activeUsers={activeUsers}
+          activeUsersVisible={activeUsersVisible}
+          setActiveUsersVisible={setActiveUsersVisible}
+        />
       </Portal>
       <SimpleBar
         ref={scrollRef}

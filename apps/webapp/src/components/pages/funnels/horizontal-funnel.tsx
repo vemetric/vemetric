@@ -253,7 +253,7 @@ export const HorizontalFunnel = (props: Props) => {
                 <Box
                   pos="absolute"
                   left="-15.5px"
-                  top="50px"
+                  top="60px"
                   w="30px"
                   h="30px"
                   roundedTopRight="3px"
@@ -278,16 +278,36 @@ export const HorizontalFunnel = (props: Props) => {
                 <Text fontWeight="semibold" textAlign="center">
                   {isUserStep ? 'Active Users' : `Step ${index}`}
                 </Text>
-                <Flex align="center" gap={1.5}>
+                <Grid templateColumns="20px 1fr" alignItems="center" gap={1} my={3}>
                   <Icon as={TbArrowNarrowRight} color="green.600" />
-                  {formatNumber(step.users)} Users
-                  {!isUserStep && <Span> ({formatPercentage(convertedUsersPercentage)})</Span>}
-                </Flex>
+                  <Text>
+                    {formatNumber(step.users)} Users
+                    {!isUserStep && <Span> ({formatPercentage(convertedUsersPercentage)})</Span>}
+                  </Text>
+                  <Box />
+                  {isUserStep ? (
+                    <Box />
+                  ) : (
+                    <Text fontSize="sm" opacity={0.5}>
+                      Completed this Step
+                    </Text>
+                  )}
+                </Grid>
                 {!isUserStep && (
-                  <Flex align="center" gap={1.5} opacity={0.7}>
-                    <Icon as={TbArrowNarrowRight} color="red.600" transform="rotate(45deg)" /> {formatNumber(lostUsers)}{' '}
-                    Users ({formatPercentage(lostUsersPercentage)})
-                  </Flex>
+                  <Grid templateColumns="20px 1fr" alignItems="center" gap={1} mb={3}>
+                    <Icon as={TbArrowNarrowRight} color="red.600" transform="rotate(45deg)" />
+                    <Text>
+                      {formatNumber(lostUsers)} Users ({formatPercentage(lostUsersPercentage)})
+                    </Text>
+                    <Box />
+                    {isUserStep ? (
+                      <Box />
+                    ) : (
+                      <Text fontSize="sm" opacity={0.5}>
+                        Dropped out
+                      </Text>
+                    )}
+                  </Grid>
                 )}
               </Flex>
             );

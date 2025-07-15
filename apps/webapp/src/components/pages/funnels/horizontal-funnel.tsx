@@ -282,22 +282,19 @@ export const HorizontalFunnel = (props: Props) => {
                   <Icon as={TbArrowNarrowRight} color="green.600" />
                   <Text>
                     {formatNumber(step.users)} Users
-                    {!isUserStep && <Span> ({formatPercentage(convertedUsersPercentage)})</Span>}
+                    {!isUserStep && <Span color="green.600"> ({formatPercentage(convertedUsersPercentage)})</Span>}
                   </Text>
                   <Box />
-                  {isUserStep ? (
-                    <Box />
-                  ) : (
-                    <Text fontSize="sm" opacity={0.5}>
-                      Completed this Step
-                    </Text>
-                  )}
+                  <Text fontSize="sm" opacity={0.5}>
+                    {isUserStep ? 'Total Active Users' : 'Completed this Step'}
+                  </Text>
                 </Grid>
                 {!isUserStep && (
                   <Grid templateColumns="20px 1fr" alignItems="center" gap={1} mb={3}>
                     <Icon as={TbArrowNarrowRight} color="red.600" transform="rotate(45deg)" />
                     <Text>
-                      {formatNumber(lostUsers)} Users ({formatPercentage(lostUsersPercentage)})
+                      {formatNumber(lostUsers)} Users{' '}
+                      <Span color="red.600">({formatPercentage(lostUsersPercentage)})</Span>
                     </Text>
                     <Box />
                     {isUserStep ? (

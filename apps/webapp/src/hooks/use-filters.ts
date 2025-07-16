@@ -14,11 +14,13 @@ export const useFilters = ({ from }: Props) => {
   const setFilters = (filterConfig: IFilterConfig | ((prev: IFilterConfig) => IFilterConfig)) => {
     navigate({
       search: (prev) => {
-        const newFilters = typeof filterConfig === 'function' ? filterConfig(prev.f) : filterConfig;
+        const previousFilters = 'f' in prev ? prev.f : undefined;
+        const newFilters = typeof filterConfig === 'function' ? filterConfig(previousFilters) : filterConfig;
 
         // when the user adds an event filter, we want to show the events in the chart
         const addedEventFilter =
-          !prev.f?.filters.some((f) => f.type === 'event') && newFilters?.filters.some((f) => f.type === 'event');
+          !previousFilters?.filters.some((f) => f.type === 'event') &&
+          newFilters?.filters.some((f) => f.type === 'event');
 
         return { ...prev, p: undefined, f: newFilters, e: addedEventFilter ? true : 'e' in prev ? prev.e : undefined };
       },

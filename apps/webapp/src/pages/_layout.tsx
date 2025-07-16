@@ -1,4 +1,4 @@
-import { Box, Card, Flex } from '@chakra-ui/react';
+import { Box, Card, Flex, Grid } from '@chakra-ui/react';
 import { Outlet, createFileRoute, useNavigate, useParams } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { TbHome } from 'react-icons/tb';
@@ -127,59 +127,63 @@ function LayoutComponent() {
           <BackgroundSvg />
         </Box>
       </Box>
-      <PageWrapper gap={4} px={{ base: 0, md: 3 }} pt={{ base: 0, lg: 1 }} pb={{ base: 0, md: 8 }} pos="relative">
-        <Flex
-          display={{ base: 'none', lg: 'flex' }}
-          pos="sticky"
-          top={4}
-          flexDir="column"
-          gap={4}
-          align="center"
-          height="max-content"
-        >
-          <MenuRoot positioning={{ sameWidth: true }}>
-            <MenuTrigger textAlign="left">
-              <Logo />
-            </MenuTrigger>
-            <MenuContent>
-              <MenuItem asChild value="home">
-                <a href={'https://' + hostname}>
-                  <TbHome size="18px" /> Home Page
-                </a>
-              </MenuItem>
-            </MenuContent>
-          </MenuRoot>
-          <Navigation />
-        </Flex>
-        <Flex w="100%" flexDir="column">
-          <Flex w="100%" flexDir="column">
-            <TabletHeader />
-            <Box flexGrow={1} position="relative">
-              <Header />
-              <Card.Root
-                borderWidth={{ base: '0px', md: '1px' }}
-                rounded={{ base: 'none', md: 'lg' }}
-                borderTop="none"
-                roundedTop="none!important"
-                position="relative"
-              >
-                <Box
-                  as="main"
-                  flexGrow={1}
-                  px={{ base: 2, md: 3 }}
-                  pt={3}
-                  pb={{ base: 6, md: 3 }}
-                  bg="bg.content"
-                  roundedBottom="xl"
-                  minH={{ base: '90dvh', md: '80dvh', lg: '88dvh' }}
-                >
-                  <Outlet key={projectId ?? 'noproject'} />
-                </Box>
-              </Card.Root>
-            </Box>
+      <PageWrapper px={{ base: 0, md: 3 }} pt={{ base: 0, lg: 1 }} pb={{ base: 0, md: 8 }} pos="relative">
+        <Grid gap={4} templateColumns={{ base: '1fr', lg: '190px 1fr' }} w="100%">
+          <Flex
+            display={{ base: 'none', lg: 'flex' }}
+            pos="sticky"
+            top={4}
+            flexDir="column"
+            gap={4}
+            align="center"
+            height="max-content"
+          >
+            <MenuRoot positioning={{ sameWidth: true }}>
+              <MenuTrigger textAlign="left">
+                <Logo />
+              </MenuTrigger>
+              <MenuContent>
+                <MenuItem asChild value="home">
+                  <a href={'https://' + hostname}>
+                    <TbHome size="18px" /> Home Page
+                  </a>
+                </MenuItem>
+              </MenuContent>
+            </MenuRoot>
+            <Navigation />
           </Flex>
-          <MobileMenu />
-        </Flex>
+          <Box minW="0">
+            <Flex w="100%" flexDir="column">
+              <Flex w="100%" flexDir="column">
+                <TabletHeader />
+                <Box flexGrow={1} position="relative">
+                  <Header />
+                  <Card.Root
+                    borderWidth={{ base: '0px', md: '1px' }}
+                    rounded={{ base: 'none', md: 'lg' }}
+                    borderTop="none"
+                    roundedTop="none!important"
+                    position="relative"
+                  >
+                    <Box
+                      as="main"
+                      flexGrow={1}
+                      px={{ base: 2, md: 3 }}
+                      pt={3}
+                      pb={{ base: 6, md: 3 }}
+                      bg="bg.content"
+                      roundedBottom="xl"
+                      minH={{ base: '90dvh', md: '80dvh', lg: '88dvh' }}
+                    >
+                      <Outlet key={projectId ?? 'noproject'} />
+                    </Box>
+                  </Card.Root>
+                </Box>
+              </Flex>
+              <MobileMenu />
+            </Flex>
+          </Box>
+        </Grid>
         <EventLimitDialog
           projectId={projectId ?? ''}
           usageStats={billingStatus?.usageStats}

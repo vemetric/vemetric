@@ -22,7 +22,7 @@ interface Props {
 
 export const PropertyView = ({ publicDashboard, eventName, property, onBack }: Props) => {
   const params = useParams({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
-  const { timespan } = useTimespanParam({ publicDashboard });
+  const { timespan } = useTimespanParam({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
   const { f: filterConfig } = useSearch({
     from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
   });

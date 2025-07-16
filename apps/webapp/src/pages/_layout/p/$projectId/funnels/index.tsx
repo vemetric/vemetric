@@ -47,7 +47,7 @@ function RouteComponent() {
           </Button>
           <TimespanSelect from="/_layout/p/$projectId/funnels/" />
         </Flex>
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={7}>
+        <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={5}>
           {funnels.map((funnelSteps, index) => {
             const firstStepUsers = funnelSteps[1].users;
             const completedPercentage = (funnelSteps[funnelSteps.length - 1].users / funnelSteps[0].users) * 100;

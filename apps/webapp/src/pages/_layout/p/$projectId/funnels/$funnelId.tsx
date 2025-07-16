@@ -57,7 +57,7 @@ function RouteComponent() {
           )}
           <TimespanSelect from="/_layout/p/$projectId/funnels/$funnelId" />
         </Flex>
-        <AnimatePresence mode="popLayout">
+        <AnimatePresence mode="popLayout" initial={false}>
           {horizontalFunnel && !isMobile ? (
             <motion.div
               key="horizontal-funnel"

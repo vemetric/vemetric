@@ -28,7 +28,7 @@ export const VerticalFunnel = (props: Props) => {
         />
       </Portal>
 
-      <Card.Root py={4.5} px={4}>
+      <Card.Root py={4.5} px={4} rounded="2xl">
         <Grid templateColumns="30px 1fr" columnGap={6}>
           {funnelSteps.map((step, index) => {
             const isUserStep = index === 0;
@@ -84,8 +84,8 @@ export const VerticalFunnel = (props: Props) => {
                   animate={{ height: isVisible ? 'auto' : 0 }}
                   style={{ overflow: 'hidden' }}
                 >
-                  <Flex flexDir="column" gap={3} px="1px" pt={0.5} pb={isLastStep ? '20px' : '50px'}>
-                    <Flex justify="space-between" align="center">
+                  <Flex flexDir="column" gap={3} px="1px" pt="1.5px" pb={isLastStep ? '20px' : '50px'}>
+                    <Flex justify="space-between" align="flex-end">
                       <Text fontWeight="semibold" fontSize="lg">
                         {isUserStep ? 'Active Users' : `Step ${index}`}
                       </Text>
@@ -101,7 +101,7 @@ export const VerticalFunnel = (props: Props) => {
 
                     <Box
                       pos="relative"
-                      h="35px"
+                      h={{ base: '25px', md: '35px' }}
                       borderRadius="lg"
                       bg="bg.content"
                       outline="1px solid"
@@ -120,7 +120,7 @@ export const VerticalFunnel = (props: Props) => {
                       />
                     </Box>
 
-                    <Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={4} px={2}>
+                    <Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={5} px={2}>
                       <Flex gap={2} flexDir="column">
                         <Flex gap={2} align="center">
                           <Icon as={TbArrowNarrowRight} color="green.600" />

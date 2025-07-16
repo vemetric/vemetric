@@ -168,7 +168,7 @@ export const HorizontalFunnel = (props: Props) => {
                 minH={`${MIN_BAR_HEIGHT}px`}
               >
                 {!isLastStep && (
-                  <Box pos="absolute" right="-100px" opacity="0.15">
+                  <Box pos="absolute" right="-100px" opacity={{ base: 0.15, _dark: 0.2 }}>
                     <svg
                       width="200px"
                       height={MAX_BAR_HEIGHT}

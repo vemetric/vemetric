@@ -2,7 +2,11 @@ import { getRouteApi } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { getStoredTimespan, setStoredTimespan } from '@/utils/session-storage';
 
-export type TimespanRoute = '/public/$domain' | '/_layout/p/$projectId/' | '/_layout/p/$projectId/funnels/$funnelId';
+export type TimespanRoute =
+  | '/public/$domain'
+  | '/_layout/p/$projectId/'
+  | '/_layout/p/$projectId/funnels/'
+  | '/_layout/p/$projectId/funnels/$funnelId';
 
 interface Props {
   from: TimespanRoute;

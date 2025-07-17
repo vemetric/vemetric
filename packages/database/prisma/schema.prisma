@@ -124,14 +124,15 @@ model UserOrganization {
 }
 
 model Project {
-  id              String   @id
-  name            String   @db.VarChar
-  domain          String   @unique @db.VarChar
-  token           String   @unique @db.VarChar
+  id              String    @id
+  name            String    @db.VarChar
+  domain          String    @unique @db.VarChar
+  token           String    @unique @db.VarChar
   organizationId  String
-  createdAt       DateTime @default(now())
-  publicDashboard Boolean  @default(false)
-  eventIcons      Json     @default("{}")
+  createdAt       DateTime  @default(now())
+  publicDashboard Boolean   @default(false)
+  eventIcons      Json      @default("{}")
+  firstEventAt    DateTime?
 
   users            UserProject[]
   organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -194,6 +195,7 @@ enum DripSequenceStatus {
 enum DripSequenceType {
   NO_EVENTS
   NO_PROJECT
+  FIRST_EVENT_FEEDBACK
 }
 
 model EmailDripSequence {

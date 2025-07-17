@@ -185,6 +185,19 @@ export const clickhouseEvent = {
     const row = result[0];
     return mapRowToEvent(row);
   },
+  getFirstEvent: async (projectId: bigint): Promise<ClickhouseEvent | null> => {
+    const resultSet = await clickhouseClient.query({
+      query: `SELECT ${EVENT_KEY_SELECTOR} FROM ${TABLE_NAME} WHERE projectId=${escape(projectId)} GROUP BY id HAVING sum(sign) > 0 ORDER BY ${transformKeySelector('createdAt')} ASC LIMIT 1`,
+      format: 'JSONEachRow',
+    });
+    const result = (await resultSet.json()) as Array<any>;
+    if (result.length === 0) {
+      return null;
+    }
+
+    const row = result[0];
+    return mapRowToEvent(row);
+  },
   findByUserId: async (projectId: bigint, userId: bigint): Promise<Array<ClickhouseEvent>> => {
     const resultSet = await clickhouseClient.query({
       query: `SELECT ${EVENT_KEY_SELECTOR} FROM ${TABLE_NAME} WHERE projectId=${escape(projectId)} AND userId=${escape(

@@ -52,3 +52,29 @@ export async function processNoProjectSequence(sequenceContext: SequenceContext)
 
   return result;
 }
+
+export async function processFirstEventFeedbackSequence(sequenceContext: SequenceContext): Promise<SequenceResult> {
+  const { user, unsubscribeLink, stepNumber } = sequenceContext;
+
+  let result: SequenceResult | undefined;
+
+  switch (stepNumber) {
+    case 0:
+      result = await sendTransactionalMail(
+        user.email,
+        {
+          template: 'firstEventFeedback',
+          props: {
+            userName: user.name,
+            unsubscribeLink,
+          },
+        },
+        'tips',
+      );
+      break;
+    default:
+      throw new Error(`Unknown step number: ${stepNumber}`);
+  }
+
+  return result;
+}

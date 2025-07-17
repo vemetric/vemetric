@@ -391,6 +391,9 @@ importers:
       '@vemetric/logger':
         specifier: workspace:*
         version: link:../../packages/logger
+      '@vemetric/node':
+        specifier: 0.1.0
+        version: 0.1.0
       '@vemetric/queues':
         specifier: workspace:*
         version: link:../../packages/queues

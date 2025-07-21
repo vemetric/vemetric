@@ -4,7 +4,7 @@ import { getGeoData } from './geo';
 
 export async function increaseClickhouseSessionDuration(session: ClickhouseSession, now: string) {
   const duration = Math.round((new Date(now).getTime() - new Date(session.startedAt).getTime()) / 1000);
-  if (duration !== session.duration) {
+  if (duration > session.duration) {
     await clickhouseSession.insert([
       {
         ...session,

@@ -11,7 +11,7 @@ let lastMetricsTimestamp: number | null = null;
 
 async function updateMetrics() {
   lastMetrics = {
-    activeProjects: await dbProject.count(),
+    activeProjects: await dbProject.countActive(),
     eventsLast24h: await clickhouseEvent.getEventsCountAcrossAllProjects(),
   };
   lastMetricsTimestamp = Date.now();

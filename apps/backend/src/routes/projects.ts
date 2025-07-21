@@ -38,11 +38,6 @@ export const projectsRouter = router({
       }
     }
 
-    const splittedDomain = domain.split('.');
-    if (splittedDomain.length < 2 || splittedDomain[0].length < 3 || splittedDomain[1].length < 2) {
-      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid domain' });
-    }
-
     let resolvedDomain: string;
     try {
       let url = domain;
@@ -53,6 +48,11 @@ export const projectsRouter = router({
       resolvedDomain = getNormalizedDomain(url);
     } catch (err) {
       logger.error({ err, domain }, 'Domain resolution error');
+      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid domain' });
+    }
+
+    const splittedDomain = resolvedDomain.split('.');
+    if (splittedDomain.length < 2 || splittedDomain[0].length < 3 || splittedDomain[1].length < 2) {
       throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid domain' });
     }
 

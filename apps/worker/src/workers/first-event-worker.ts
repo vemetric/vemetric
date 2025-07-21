@@ -58,15 +58,18 @@ export async function initFirstEventWorker() {
           if (firstEvent) {
             // Track the first event for analytics
             const adminUser = project.users[0];
-            if (adminUser) {
-              await vemetric.trackEvent('ProjectFirstEvent', {
-                userIdentifier: adminUser.userId,
-                eventData: {
-                  projectId: project.id,
-                  projectDomain: project.domain,
-                },
-              });
+            if (!adminUser) {
+              logger.error({ projectId: project.id }, 'No admin user found for project');
+              continue;
             }
+
+            await vemetric.trackEvent('ProjectFirstEvent', {
+              userIdentifier: adminUser.userId,
+              eventData: {
+                projectId: project.id,
+                projectDomain: project.domain,
+              },
+            });
 
             // Schedule the first event feedback email for 7 days after the first event
             const delay = getStepDelay('FIRST_EVENT_FEEDBACK', 0);

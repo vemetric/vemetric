@@ -19,6 +19,7 @@ export async function initEmailWorker() {
       });
       if (emailDripSequence) {
         if (emailDripSequence.status !== 'ACTIVE') {
+          // the sequence wasn't already initiated (e.g. if it was executed for the user already), so we skip it
           return;
         }
 

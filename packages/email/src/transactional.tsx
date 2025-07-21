@@ -6,6 +6,7 @@ import * as React from 'react';
 import { postmarkClient } from './postmark-client';
 import EmailVerificationMail from '../emails/email-verification';
 import PasswordResetMail from '../emails/password-reset';
+import FirstEventFeedback from '../emails/sequences/first-event-feedback/feedback';
 import NoEventsFirst from '../emails/sequences/no-events/first';
 import NoEventsSecond from '../emails/sequences/no-events/second';
 import NoProjectFirst from '../emails/sequences/no-project/first';
@@ -40,6 +41,10 @@ export const TRANSACTIONAL_TEMPLATE_MAP = {
   noProjectSecond: {
     subject: "Let's setup Vemetric together",
     email: NoProjectSecond,
+  },
+  firstEventFeedback: {
+    subject: "How's your experience with Vemetric so far?",
+    email: FirstEventFeedback,
   },
 };
 export type TemplateName = keyof typeof TRANSACTIONAL_TEMPLATE_MAP;

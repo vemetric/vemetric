@@ -4,6 +4,7 @@ import { initCreateUserWorker } from './workers/create-user-worker';
 import { initDeviceWorker } from './workers/device-worker';
 import { initEmailWorker } from './workers/email-worker';
 import { initEventWorker } from './workers/event-worker';
+import { initFirstEventWorker } from './workers/first-event-worker';
 import { initMergeUserWorker } from './workers/merge-user-worker';
 import { initSaltRotation } from './workers/salt-rotation-worker';
 import { initSessionWorker } from './workers/session-worker';
@@ -13,6 +14,7 @@ const workers: Worker[] = [];
 async function main() {
   try {
     workers.push(await initSaltRotation());
+    workers.push(await initFirstEventWorker());
     workers.push(await initEventWorker());
     workers.push(await initSessionWorker());
     workers.push(await initCreateUserWorker());

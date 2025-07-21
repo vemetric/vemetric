@@ -2,7 +2,11 @@ import type { TimeSpan } from '@vemetric/common/charts/timespans';
 import { TIME_SPAN_DATA } from '@vemetric/common/charts/timespans';
 
 export function clickhouseDateToISO(date: string) {
-  return `${date.replace(' ', 'T')}.000Z`;
+  let isoDate = `${date.replace(' ', 'T')}`;
+  if (!isoDate.includes('.')) {
+    isoDate = `${isoDate}.000`;
+  }
+  return `${isoDate}Z`;
 }
 
 export function getDateTransformMethod(timeSpan: TimeSpan) {

@@ -6,7 +6,7 @@ import type { Project, User } from 'database';
 import { dbEmailDripSequence, prismaClient } from 'database';
 import { type SequenceContext, type SequenceResult } from '../email-sequences/common';
 import { processNoEventsSequence } from '../email-sequences/project-sequences';
-import { processNoProjectSequence } from '../email-sequences/user-sequences';
+import { processNoProjectSequence, processFirstEventFeedbackSequence } from '../email-sequences/user-sequences';
 
 export async function initEmailWorker() {
   return new Worker(
@@ -19,7 +19,8 @@ export async function initEmailWorker() {
       });
       if (emailDripSequence) {
         if (emailDripSequence.status !== 'ACTIVE') {
-          throw new Error(`Email drip sequence is not active: ${emailDripSequence.id}`);
+          // the sequence wasn't already initiated (e.g. if it was executed for the user already), so we skip it
+          return;
         }
 
         if (emailDripSequence.currentStep !== data.stepNumber) {
@@ -187,6 +188,9 @@ async function processEmailSequenceStep(data: EmailDripQueueProps) {
       break;
     case 'NO_PROJECT':
       result = await processNoProjectSequence(context);
+      break;
+    case 'FIRST_EVENT_FEEDBACK':
+      result = await processFirstEventFeedbackSequence(context);
       break;
     default:
       throw new Error(`Unknown sequence type: ${sequenceType}`);

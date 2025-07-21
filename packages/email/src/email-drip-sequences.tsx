@@ -33,6 +33,14 @@ const DRIP_SEQUENCES: Record<DripSequenceType, DripSequenceDefinition> = {
       },
     ],
   },
+  FIRST_EVENT_FEEDBACK: {
+    type: 'FIRST_EVENT_FEEDBACK',
+    steps: [
+      {
+        delayHours: 168, // 7 days (168 hours) after first event
+      },
+    ],
+  },
 } as const;
 
 // Helper functions for working with drip sequences

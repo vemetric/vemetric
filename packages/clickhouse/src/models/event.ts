@@ -187,7 +187,9 @@ export const clickhouseEvent = {
   },
   getFirstEvent: async (projectId: bigint): Promise<ClickhouseEvent | null> => {
     const resultSet = await clickhouseClient.query({
-      query: `SELECT ${EVENT_KEY_SELECTOR} FROM ${TABLE_NAME} WHERE projectId=${escape(projectId)} GROUP BY id HAVING sum(sign) > 0 ORDER BY ${transformKeySelector('createdAt')} ASC LIMIT 1`,
+      query: `SELECT ${EVENT_KEY_SELECTOR} FROM ${TABLE_NAME} WHERE projectId=${escape(
+        projectId,
+      )} GROUP BY id HAVING sum(sign) > 0 ORDER BY ${transformKeySelector('createdAt')} ASC LIMIT 1`,
       format: 'JSONEachRow',
     });
     const result = (await resultSet.json()) as Array<any>;
@@ -694,7 +696,13 @@ export const clickhouseEvent = {
   },
   getEventProperties: withSpan(
     'getEventProperties',
-    async (projectId: bigint, eventName: string, startDate: Date, filterConfig: IFilterConfig) => {
+    async (
+      projectId: bigint,
+      eventName: string,
+      startDate: Date,
+      filterQueries: string,
+      filterConfig: IFilterConfig,
+    ) => {
       const eventFilterQueries = buildEventFilterQueries(filterConfig);
 
       const resultSet = await clickhouseClient.query({
@@ -709,6 +717,7 @@ export const clickhouseEvent = {
             AND createdAt >= '${formatClickhouseDate(startDate)}'
             AND isPageView <> 1
             ${eventFilterQueries ? `AND (${eventFilterQueries})` : ''}
+            ${filterQueries || ''}
           GROUP BY property
           ORDER BY count DESC
         `,
@@ -725,7 +734,14 @@ export const clickhouseEvent = {
   ),
   getPropertyValues: withSpan(
     'getPropertyValues',
-    async (projectId: bigint, eventName: string, property: string, startDate: Date, filterConfig: IFilterConfig) => {
+    async (
+      projectId: bigint,
+      eventName: string,
+      property: string,
+      startDate: Date,
+      filterQueries: string,
+      filterConfig: IFilterConfig,
+    ) => {
       const eventFilterQueries = buildEventFilterQueries(filterConfig);
 
       const resultSet = await clickhouseClient.query({
@@ -741,6 +757,7 @@ export const clickhouseEvent = {
             AND isPageView <> 1
             AND JSONHas(customData, ${escape(property)})
             ${eventFilterQueries ? `AND (${eventFilterQueries})` : ''}
+            ${filterQueries || ''}
           GROUP BY value
           ORDER BY count DESC
         `,

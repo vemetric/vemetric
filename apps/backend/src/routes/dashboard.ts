@@ -258,7 +258,15 @@ export const dashboardRouter = router({
 
       const startDate = getStartDate(timespan);
 
-      const properties = await clickhouseEvent.getEventProperties(projectId, eventName, startDate, filterConfig);
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
+
+      const properties = await clickhouseEvent.getEventProperties(
+        projectId,
+        eventName,
+        startDate,
+        filterQueries,
+        filterConfig,
+      );
 
       return {
         properties,
@@ -280,7 +288,16 @@ export const dashboardRouter = router({
 
       const startDate = getStartDate(timespan);
 
-      const values = await clickhouseEvent.getPropertyValues(projectId, eventName, property, startDate, filterConfig);
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
+
+      const values = await clickhouseEvent.getPropertyValues(
+        projectId,
+        eventName,
+        property,
+        startDate,
+        filterQueries,
+        filterConfig,
+      );
 
       return {
         values,

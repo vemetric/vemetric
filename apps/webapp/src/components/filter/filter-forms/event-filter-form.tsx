@@ -18,11 +18,12 @@ export const EventFilterTitle = () => (
 
 interface Props {
   filter?: IEventFilter;
-  onSubmit: (filter: IEventFilter) => void;
-  buttonText: string;
+  onChange?: (filter: IEventFilter) => void;
+  onSubmit?: (filter: IEventFilter) => void;
+  buttonText?: string;
 }
 
-export const EventFilterForm = ({ filter: _filter, onSubmit, buttonText }: Props) => {
+export const EventFilterForm = ({ filter: _filter, onChange, onSubmit, buttonText = 'Save' }: Props) => {
   const { projectId, domain } = useProjectContext();
   const { eventNames } = useFilterContext();
   const [filter, setFilter] = useState<IEventFilter>(
@@ -47,58 +48,66 @@ export const EventFilterForm = ({ filter: _filter, onSubmit, buttonText }: Props
   );
 
   const addPropertyFilter = () => {
-    setFilter(
-      produce(filter, (draft) => {
-        if (!draft.propertiesFilter) draft.propertiesFilter = [];
-        draft.propertiesFilter.push({
-          property: '',
-          valueFilter: { operator: 'is', value: '' },
-        });
-      }),
-    );
+    const newFilter = produce(filter, (draft) => {
+      if (!draft.propertiesFilter) draft.propertiesFilter = [];
+      draft.propertiesFilter.push({
+        property: '',
+        valueFilter: { operator: 'is', value: '' },
+      });
+    });
+
+    setFilter(newFilter);
+    onChange?.(newFilter);
   };
 
   const removePropertyFilter = (index: number) => {
-    setFilter(
-      produce(filter, (draft) => {
-        draft.propertiesFilter?.splice(index, 1);
-      }),
-    );
+    const newFilter = produce(filter, (draft) => {
+      draft.propertiesFilter?.splice(index, 1);
+    });
+
+    setFilter(newFilter);
+    onChange?.(newFilter);
   };
 
   const updatePropertyFilter = (index: number, property: string, valueFilter: IStringFilter) => {
-    setFilter(
-      produce(filter, (draft) => {
-        if (!draft.propertiesFilter) draft.propertiesFilter = [];
-        draft.propertiesFilter[index] = {
-          property,
-          valueFilter,
-        };
-      }),
-    );
+    const newFilter = produce(filter, (draft) => {
+      if (!draft.propertiesFilter) draft.propertiesFilter = [];
+      draft.propertiesFilter[index] = {
+        property,
+        valueFilter,
+      };
+    });
+
+    setFilter(newFilter);
+    onChange?.(newFilter);
   };
 
   return (
     <Flex
-      as="form"
+      as={onSubmit ? 'form' : 'div'}
       flexDir="column"
       gap={2}
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSubmit(filter);
-      }}
+      onSubmit={
+        onSubmit
+          ? (e) => {
+              e.preventDefault();
+              onSubmit(filter);
+            }
+          : undefined
+      }
     >
       <Grid gridTemplateColumns="1fr 1fr 4fr" gap={2} p={2} pb="0" alignItems="center">
         <StringFilterRow
           label="Name"
           filter={nameFilter}
           values={eventNames}
-          onChange={(newFilter) => {
-            setFilter(
-              produce(filter, (draft) => {
-                draft.nameFilter = newFilter;
-              }),
-            );
+          onChange={(nameFilter) => {
+            const newFilter = produce(filter, (draft) => {
+              draft.nameFilter = nameFilter;
+            });
+
+            setFilter(newFilter);
+            onChange?.(newFilter);
           }}
         />
       </Grid>
@@ -171,9 +180,11 @@ export const EventFilterForm = ({ filter: _filter, onSubmit, buttonText }: Props
           <TbPlus />
           Add Property Filter
         </Button>
-        <Button type="submit" size="2xs" rounded="sm">
-          {buttonText}
-        </Button>
+        {onSubmit && (
+          <Button type="submit" size="2xs" rounded="sm">
+            {buttonText}
+          </Button>
+        )}
       </Flex>
     </Flex>
   );

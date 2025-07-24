@@ -1,6 +1,7 @@
 import { type TimeSpan } from '@vemetric/common/charts/timespans';
 import { formatClickhouseDate } from '@vemetric/common/date';
 import type { IFilterConfig, stringOperatorsSchema } from '@vemetric/common/filters';
+import type { FunnelStep } from '@vemetric/common/funnel';
 import { jsonStringify } from '@vemetric/common/json';
 import type { IUserSortConfig } from '@vemetric/common/sort';
 import { escape } from 'sqlstring';
@@ -15,9 +16,9 @@ import { getEventFilterQueries } from '../utils/filters';
 import { buildStringFilterQuery } from '../utils/filters/base-filters';
 import { buildBrowserFilterQueries } from '../utils/filters/browser-filter';
 import { buildDeviceFilterQueries } from '../utils/filters/device-filter';
-import { buildEventFilterQueries } from '../utils/filters/event-filter';
+import { buildEventFilterQueries, buildEventFilterQuery } from '../utils/filters/event-filter';
 import { buildOsFilterQueries } from '../utils/filters/os-filter';
-import { buildPageFilterQueries } from '../utils/filters/page-filter';
+import { buildPageFilterQueries, buildPageFilterQuery } from '../utils/filters/page-filter';
 import { buildUserFilterQueries } from '../utils/filters/user-filter';
 import { buildUserSortQueries } from '../utils/sort/user-sort';
 import { withSpan } from '../utils/with-span';
@@ -187,7 +188,9 @@ export const clickhouseEvent = {
   },
   getFirstEvent: async (projectId: bigint): Promise<ClickhouseEvent | null> => {
     const resultSet = await clickhouseClient.query({
-      query: `SELECT ${EVENT_KEY_SELECTOR} FROM ${TABLE_NAME} WHERE projectId=${escape(projectId)} GROUP BY id HAVING sum(sign) > 0 ORDER BY ${transformKeySelector('createdAt')} ASC LIMIT 1`,
+      query: `SELECT ${EVENT_KEY_SELECTOR} FROM ${TABLE_NAME} WHERE projectId=${escape(
+        projectId,
+      )} GROUP BY id HAVING sum(sign) > 0 ORDER BY ${transformKeySelector('createdAt')} ASC LIMIT 1`,
       format: 'JSONEachRow',
     });
     const result = (await resultSet.json()) as Array<any>;
@@ -567,37 +570,23 @@ export const clickhouseEvent = {
    * @param startDate - Start date for funnel analysis
    * @param windowHours - Maximum time window between first and last step (default 24 hours)
    */
-  getFunnelResults: async (
-    projectId: bigint,
-    steps: Array<{
-      type: 'pageview' | 'event';
-      name?: string; // Event name if type is 'event'
-      pathname?: string; // Page path if type is 'pageview'
-      customData?: Record<string, any>; // Optional custom data filters
-    }>,
-    startDate: Date,
-    windowHours: number = 24,
-  ) => {
+  getFunnelResults: async (projectId: bigint, steps: Array<FunnelStep>, startDate: Date, windowHours: number = 24) => {
     // Build the conditions for each step
     const stepConditions = steps.map((step) => {
       const conditions = [`projectId = ${escape(projectId)}`];
 
-      if (step.type === 'pageview') {
+      if (step.filter.type === 'page') {
         conditions.push('isPageView = 1');
-        if (step.pathname) {
-          conditions.push(`pathname = ${escape(step.pathname)}`);
+        const pageFilterQuery = buildPageFilterQuery(step.filter);
+        if (pageFilterQuery) {
+          conditions.push(pageFilterQuery);
         }
       } else {
         conditions.push('isPageView = 0');
-        if (step.name) {
-          conditions.push(`name = ${escape(step.name)}`);
+        const eventFilterQuery = buildEventFilterQuery(step.filter);
+        if (eventFilterQuery) {
+          conditions.push(eventFilterQuery);
         }
-      }
-
-      if (step.customData) {
-        Object.entries(step.customData).forEach(([key, value]) => {
-          conditions.push(`JSONExtractString(customData, ${escape(key)}) = ${escape(value)}`);
-        });
       }
 
       return conditions.join(' AND ');

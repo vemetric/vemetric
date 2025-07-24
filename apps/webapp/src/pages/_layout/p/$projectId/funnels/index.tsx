@@ -5,11 +5,14 @@ import { TIME_SPANS } from '@vemetric/common/charts/timespans';
 import { formatPercentage } from '@vemetric/common/math';
 import { TbChartFunnel, TbPlus } from 'react-icons/tb';
 import { z } from 'zod';
+import { FilterContextProvider } from '@/components/filter/filter-context';
 import { PageDotBackground } from '@/components/page-dot-background';
+import { AddFunnelDialog } from '@/components/pages/funnels/add-funnel-dialog';
 import { TimespanSelect } from '@/components/timespan-select';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useSetBreadcrumbs } from '@/stores/header-store';
+import { trpc } from '@/utils/trpc';
 
 const searchSchema = z.object({
   t: z.enum(TIME_SPANS).optional(),
@@ -34,17 +37,41 @@ const funnels: Array<FunnelStep[]> = [
 function RouteComponent() {
   const { projectId } = Route.useParams();
 
+  const { data: filterableData } = trpc.filters.getFilterableData.useQuery({
+    projectId,
+    timespan: '3months',
+  });
+
   useSetBreadcrumbs(['Funnels']);
 
   return (
-    <>
+    <FilterContextProvider
+      value={{
+        pagePaths: filterableData?.pagePaths ?? [],
+        origins: filterableData?.origins ?? [],
+        eventNames: filterableData?.eventNames ?? [],
+        countryCodes: filterableData?.countryCodes ?? [],
+        referrers: filterableData?.referrers ?? [],
+        referrerUrls: filterableData?.referrerUrls ?? [],
+        utmCampaigns: filterableData?.utmCampaigns ?? [],
+        utmContents: filterableData?.utmContents ?? [],
+        utmMediums: filterableData?.utmMediums ?? [],
+        utmSources: filterableData?.utmSources ?? [],
+        utmTerms: filterableData?.utmTerms ?? [],
+        browserNames: filterableData?.browserNames ?? [],
+        deviceTypes: filterableData?.deviceTypes ?? [],
+        osNames: filterableData?.osNames ?? [],
+      }}
+    >
       <PageDotBackground />
       <Box pos="relative" maxW="100%">
-        <Flex pos="relative" mb={6} align="center" gap={2} justify="space-between" zIndex="1">
-          <Button variant="surface" size="sm">
-            <Icon as={TbPlus} />
-            New funnel
-          </Button>
+        <Flex pos="relative" mb={6} align="center" gap={2} justify="space-between">
+          <AddFunnelDialog>
+            <Button variant="surface" size={{ base: 'xs', md: 'sm' }}>
+              <Icon as={TbPlus} />
+              New funnel
+            </Button>
+          </AddFunnelDialog>
           <TimespanSelect from="/_layout/p/$projectId/funnels/" />
         </Flex>
         <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={5}>
@@ -160,47 +187,49 @@ function RouteComponent() {
               </Link>
             );
           })}
-          <Card.Root
-            as="button"
-            overflow="hidden"
-            rounded="xl"
-            borderStyle="dashed"
-            borderWidth="2px"
-            transition="all 0.2s ease-in-out"
-            _hover={{ bg: 'gray.subtle/50', borderColor: 'purple.500/50' }}
-          >
-            <Card.Body>
-              <Flex justify="center" align="center" h="100%">
-                <EmptyState icon={<TbChartFunnel />} title="Create a new funnel" />
-              </Flex>
-            </Card.Body>
-            <Box
-              pos="absolute"
-              right="-125px"
-              bottom="-125px"
-              w="220px"
-              h="220px"
-              border="12px solid"
-              borderColor="gray.emphasized"
-              bg="gray.emphasized/50"
-              rounded="full"
-              opacity="0.2"
-            />
-            <Box
-              pos="absolute"
-              left="-125px"
-              top="-125px"
-              w="220px"
-              h="220px"
-              border="12px solid"
-              borderColor="gray.emphasized"
-              bg="gray.emphasized/50"
-              rounded="full"
-              opacity="0.2"
-            />
-          </Card.Root>
+          <AddFunnelDialog>
+            <Card.Root
+              as="button"
+              overflow="hidden"
+              rounded="xl"
+              borderStyle="dashed"
+              borderWidth="2px"
+              transition="all 0.2s ease-in-out"
+              _hover={{ bg: 'gray.subtle/50', borderColor: 'purple.500/50' }}
+            >
+              <Card.Body>
+                <Flex justify="center" align="center" h="100%">
+                  <EmptyState icon={<TbChartFunnel />} title="Create a new funnel" />
+                </Flex>
+              </Card.Body>
+              <Box
+                pos="absolute"
+                right="-125px"
+                bottom="-125px"
+                w="220px"
+                h="220px"
+                border="12px solid"
+                borderColor="gray.emphasized"
+                bg="gray.emphasized/50"
+                rounded="full"
+                opacity="0.2"
+              />
+              <Box
+                pos="absolute"
+                left="-125px"
+                top="-125px"
+                w="220px"
+                h="220px"
+                border="12px solid"
+                borderColor="gray.emphasized"
+                bg="gray.emphasized/50"
+                rounded="full"
+                opacity="0.2"
+              />
+            </Card.Root>
+          </AddFunnelDialog>
         </SimpleGrid>
       </Box>
-    </>
+    </FilterContextProvider>
   );
 }

@@ -17,7 +17,7 @@ export const StringFilterRow = ({ filter, onChange, label, values }: Props) => {
 
   return (
     <>
-      <Text asChild fontWeight="semibold">
+      <Text asChild fontWeight="medium">
         <label htmlFor={id}>{label}</label>
       </Text>
       <Flex justify="center">

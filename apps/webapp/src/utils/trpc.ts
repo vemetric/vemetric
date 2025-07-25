@@ -26,3 +26,4 @@ export const trpc = createTRPCReact<AppRouter>({
 type RouterOutput = inferRouterOutputs<AppRouter>;
 
 export type DashboardData = RouterOutput['dashboard']['getData'];
+export type FunnelData = RouterOutput['funnels']['list']['funnels'][0];

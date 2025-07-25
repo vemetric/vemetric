@@ -43,6 +43,8 @@ export const VerticalFunnel = (props: Props) => {
             const lostUsersPercentage = (lostUsers / previousUsers) * 100 || 0;
             const barWidthPercentage = (step.users / maxUsers) * 100;
 
+            const completedUsersPercentage = (step.users / activeUsers) * 100 || 0;
+
             return (
               <React.Fragment key={index}>
                 <motion.div
@@ -95,7 +97,7 @@ export const VerticalFunnel = (props: Props) => {
                           <Text fontWeight="semibold">{formatNumber(step.users, true)}</Text>
                         </Flex>
                       ) : (
-                        <Box />
+                        <Text fontWeight="medium">{formatPercentage(completedUsersPercentage)}</Text>
                       )}
                     </Flex>
 

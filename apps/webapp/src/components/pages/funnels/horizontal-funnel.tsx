@@ -153,9 +153,7 @@ export const HorizontalFunnel = (props: Props) => {
             const endY = MAX_BAR_HEIGHT - nextHeight;
             const sameHeight = Math.abs(height - nextHeight) < 5;
 
-            const previousUsers = isUserStep ? 0 : funnelSteps[index - 1].users;
-            const lostUsers = isUserStep ? 0 : previousUsers - step.users;
-            const lostUsersPercentage = (lostUsers / previousUsers) * 100 || 0;
+            const completedUsersPercentage = (step.users / activeUsers) * 100 || 0;
 
             return (
               <Flex
@@ -190,20 +188,13 @@ export const HorizontalFunnel = (props: Props) => {
                   </Box>
                 )}
                 <Flex flexDir="column" gap="1">
-                  <Flex
-                    gap="1"
-                    align="center"
-                    justify="center"
-                    fontSize="sm"
-                    fontWeight="semibold"
-                    color={isFirstStep || lostUsersPercentage <= 0 ? undefined : 'red.500'}
-                  >
+                  <Flex gap="1" align="center" justify="center" fontSize="sm" fontWeight="semibold">
                     {isFirstStep ? (
                       <>
                         <TbUserSquareRounded /> {formatNumber(step.users, true)}
                       </>
                     ) : (
-                      formatPercentage(-lostUsersPercentage)
+                      formatPercentage(completedUsersPercentage)
                     )}
                   </Flex>
                   <FunnelCard h={`${height}px`} />

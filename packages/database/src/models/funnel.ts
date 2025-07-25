@@ -7,7 +7,7 @@ export const dbFunnel = {
   findByProjectId: (projectId: string) =>
     prismaClient.funnel.findMany({
       where: { projectId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: 'asc' },
     }),
 
   findById: (id: string) =>

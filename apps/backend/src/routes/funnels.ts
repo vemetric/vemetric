@@ -39,7 +39,17 @@ export const funnelsRouter = router({
     } = opts;
 
     const funnels = await dbFunnel.findByProjectId(project.id);
-    return { funnels };
+
+    return {
+      funnels: funnels.map((funnel) => {
+        const steps = funnel.steps as FunnelStep[];
+
+        return {
+          ...funnel,
+          stepResults: [{ users: 100 }, ...steps.map(() => ({ users: 75 }))] as Array<{ users: number }>,
+        };
+      }),
+    };
   }),
 
   get: projectProcedure.input(z.object({ id: z.string() })).query(async (opts) => {

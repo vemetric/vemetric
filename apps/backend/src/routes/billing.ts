@@ -1,6 +1,5 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import { getSubscriptionStatus } from '../utils/billing';
 import { logger } from '../utils/logger';
 import { paddleApi } from '../utils/paddle';
 import { organizationProcedure, organizationAdminProcedure, router } from '../utils/trpc';
@@ -26,7 +25,7 @@ export const billingRouter = router({
   }),
   billingInfo: organizationAdminProcedure.query(async (opts) => {
     const {
-      ctx: { organizationId, billingInfo, organization },
+      ctx: { organizationId, billingInfo, organization, subscriptionStatus },
     } = opts;
 
     const currentUsageCycle = await getCurrentUsageCycle(organization, billingInfo);
@@ -35,8 +34,6 @@ export const billingRouter = router({
       currentUsageCycle.startDate,
       currentUsageCycle.endDate,
     );
-
-    const subscriptionStatus = await getSubscriptionStatus(billingInfo);
 
     return {
       ...subscriptionStatus,

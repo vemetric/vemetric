@@ -253,8 +253,15 @@ export const dashboardRouter = router({
     .query(async (opts) => {
       const {
         input: { eventName, timespan, filterConfig },
-        ctx: { projectId },
+        ctx: { projectId, isPublicDashboard },
       } = opts;
+
+      if (isPublicDashboard) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Public dashboards do not support showing event properties',
+        });
+      }
 
       const startDate = getStartDate(timespan);
 
@@ -283,8 +290,15 @@ export const dashboardRouter = router({
     .query(async (opts) => {
       const {
         input: { eventName, property, timespan, filterConfig },
-        ctx: { projectId },
+        ctx: { projectId, isPublicDashboard },
       } = opts;
+
+      if (isPublicDashboard) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Public dashboards do not support showing event property values',
+        });
+      }
 
       const startDate = getStartDate(timespan);
 

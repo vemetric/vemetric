@@ -85,7 +85,7 @@ export const organizationProcedure = loggedInProcedure
       throw new TRPCError({ code: 'NOT_FOUND', message: 'Organization not found' });
     }
 
-    const subscriptionStatus = await getSubscriptionStatus(organization.billingInfo);
+    const subscriptionStatus = await getSubscriptionStatus(organization);
 
     return opts.next({
       ctx: {
@@ -116,7 +116,7 @@ export const organizationAdminProcedure = loggedInProcedure
       throw new TRPCError({ code: 'NOT_FOUND', message: 'Organization not found' });
     }
 
-    const subscriptionStatus = await getSubscriptionStatus(organization.billingInfo);
+    const subscriptionStatus = await getSubscriptionStatus(organization);
 
     return opts.next({
       ctx: {
@@ -150,7 +150,7 @@ export const projectProcedure = loggedInProcedure.input(z.object({ projectId: z.
     throw new TRPCError({ code: 'NOT_FOUND', message: 'Organization not found' });
   }
 
-  const subscriptionStatus = await getSubscriptionStatus(organization.billingInfo);
+  const subscriptionStatus = await getSubscriptionStatus(organization);
 
   return opts.next({
     ctx: {
@@ -204,7 +204,7 @@ export const projectOrPublicProcedure = publicProcedure
       throw new TRPCError({ code: 'NOT_FOUND', message: 'Organization not found' });
     }
 
-    const subscriptionStatus = await getSubscriptionStatus(organization.billingInfo);
+    const subscriptionStatus = await getSubscriptionStatus(organization);
     const isPublicDashboard = Boolean(input.domain);
 
     return opts.next({

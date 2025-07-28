@@ -1,3 +1,4 @@
+import { TRPCError } from '@trpc/server';
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { sourcesSchema } from '@vemetric/common/sources';
 import { clickhouseEvent, clickhouseSession, getUserFilterQueries } from 'clickhouse';
@@ -221,10 +222,25 @@ export const dashboardRouter = router({
     .query(async (opts) => {
       const {
         input: { eventName, filterConfig },
-        ctx: { projectId, startDate },
+        ctx: { projectId, startDate, isPublicDashboard },
       } = opts;
 
-      const properties = await clickhouseEvent.getEventProperties(projectId, eventName, startDate, filterConfig);
+      if (isPublicDashboard) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Public dashboards do not support showing event properties',
+        });
+      }
+
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
+
+      const properties = await clickhouseEvent.getEventProperties(
+        projectId,
+        eventName,
+        startDate,
+        filterQueries,
+        filterConfig,
+      );
 
       return {
         properties,
@@ -241,10 +257,26 @@ export const dashboardRouter = router({
     .query(async (opts) => {
       const {
         input: { eventName, property, filterConfig },
-        ctx: { projectId, startDate },
+        ctx: { projectId, startDate, isPublicDashboard },
       } = opts;
 
-      const values = await clickhouseEvent.getPropertyValues(projectId, eventName, property, startDate, filterConfig);
+      if (isPublicDashboard) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Public dashboards do not support showing event property values',
+        });
+      }
+
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
+
+      const values = await clickhouseEvent.getPropertyValues(
+        projectId,
+        eventName,
+        property,
+        startDate,
+        filterQueries,
+        filterConfig,
+      );
 
       return {
         values,

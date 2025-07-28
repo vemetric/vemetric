@@ -4,6 +4,7 @@ interface SubscriptionStatus {
   isActive: boolean;
   isPastDue: boolean;
   priceId?: string;
+  customPlanEvents?: number | null;
 }
 
 export const getPricingPlan = (subscriptionStatus?: SubscriptionStatus) => {
@@ -27,6 +28,16 @@ export const getPricingPlan = (subscriptionStatus?: SubscriptionStatus) => {
         return null;
       })
     : null;
+
+  // If there's a custom plan override from the database, use it
+  if (subscriptionStatus?.customPlanEvents) {
+    return {
+      isYearly,
+      pricingPlanIndex,
+      eventsIncluded: subscriptionStatus.customPlanEvents,
+      price: pricingPlan?.price ?? 0,
+    };
+  }
 
   return {
     isYearly,

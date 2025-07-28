@@ -17,7 +17,7 @@ export async function initFirstEventWorker() {
   await firstEventQueue.upsertJobScheduler(
     firstEventQueue.name,
     {
-      pattern: '0 * * * *', // every hour
+      pattern: '*/15 * * * *', // every 15 minutes
     },
     {
       name: 'firstEvent',

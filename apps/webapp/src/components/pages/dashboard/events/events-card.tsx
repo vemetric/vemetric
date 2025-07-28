@@ -217,19 +217,21 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
                                 </Button>
                               </Tooltip>
                             )}
-                            <Button
-                              size="xs"
-                              p={0}
-                              minW="24px"
-                              h="24px"
-                              variant="surface"
-                              colorScheme="gray"
-                              onClick={() => {
-                                selectEvent(event.name);
-                              }}
-                            >
-                              <Icon as={TbEye} />
-                            </Button>
+                            {'projectId' in params && (
+                              <Button
+                                size="xs"
+                                p={0}
+                                minW="24px"
+                                h="24px"
+                                variant="surface"
+                                colorScheme="gray"
+                                onClick={() => {
+                                  selectEvent(event.name);
+                                }}
+                              >
+                                <Icon as={TbEye} />
+                              </Button>
+                            )}
                             <Button
                               size="xs"
                               p={0}

@@ -6,33 +6,13 @@ import { dbFunnel } from 'database';
 import { z } from 'zod';
 import { projectProcedure, router, timespanProcedure } from '../utils/trpc';
 
-const createFunnelSchema = z.object({
+const upsertFunnelSchema = z.object({
+  id: z.string().optional(),
   name: z.string().min(1, 'Funnel name is required'),
   steps: z.array(funnelStepSchema).min(1, 'At least one step is required'),
 });
 
-const updateFunnelSchema = z
-  .object({
-    id: z.string(),
-  })
-  .extend(createFunnelSchema.shape);
-
 export const funnelsRouter = router({
-  create: projectProcedure.input(createFunnelSchema).mutation(async (opts) => {
-    const {
-      input: { name, steps },
-      ctx: { project },
-    } = opts;
-
-    const funnel = await dbFunnel.create({
-      name,
-      projectId: project.id,
-      steps,
-    });
-
-    return { id: funnel.id };
-  }),
-
   list: projectProcedure.query(async (opts) => {
     const {
       ctx: { project },
@@ -46,6 +26,7 @@ export const funnelsRouter = router({
 
         return {
           ...funnel,
+          steps,
           stepResults: [{ users: 100 }, ...steps.map(() => ({ users: 75 }))] as Array<{ users: number }>,
         };
       }),
@@ -67,13 +48,25 @@ export const funnelsRouter = router({
     return { funnel };
   }),
 
-  update: projectProcedure.input(updateFunnelSchema).mutation(async (opts) => {
+  upsert: projectProcedure.input(upsertFunnelSchema).mutation(async (opts) => {
     const {
-      input: { id, ...updateData },
+      input: { id, name, steps },
+      ctx: { project },
     } = opts;
 
-    const funnel = await dbFunnel.update(id, updateData);
-    return { id: funnel.id };
+    if (id) {
+      // Update existing funnel
+      const funnel = await dbFunnel.update(id, { name, steps });
+      return { id: funnel.id };
+    } else {
+      // Create new funnel
+      const funnel = await dbFunnel.create({
+        name,
+        projectId: project.id,
+        steps,
+      });
+      return { id: funnel.id };
+    }
   }),
 
   delete: projectProcedure.input(z.object({ id: z.string() })).mutation(async (opts) => {

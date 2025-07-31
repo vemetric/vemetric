@@ -7,7 +7,9 @@ import { useRef, useState } from 'react';
 import { TbChartBarPopular, TbEdit, TbTrash } from 'react-icons/tb';
 import { z } from 'zod';
 import { DeletePopover } from '@/components/delete-popover';
+import { FilterContextProvider } from '@/components/filter/filter-context';
 import { PageDotBackground } from '@/components/page-dot-background';
+import { FunnelDialog } from '@/components/pages/funnels/funnel-dialog';
 import { HorizontalFunnel } from '@/components/pages/funnels/horizontal-funnel';
 import { VerticalFunnel } from '@/components/pages/funnels/vertical-funnel';
 import { TimespanSelect } from '@/components/timespan-select';
@@ -45,6 +47,12 @@ function RouteComponent() {
   const isMobile = useBreakpointValue({ base: true, md: false });
 
   const utils = trpc.useUtils();
+
+  const { data: filterableData } = trpc.filters.getFilterableData.useQuery({
+    projectId,
+    timespan: '3months',
+  });
+
   const { mutate: deleteFunnel, isLoading: isFunnelDeleting } = trpc.funnels.delete.useMutation({
     onSuccess: async () => {
       await utils.funnels.list.refetch();
@@ -62,7 +70,24 @@ function RouteComponent() {
   ]);
 
   return (
-    <>
+    <FilterContextProvider
+      value={{
+        pagePaths: filterableData?.pagePaths ?? [],
+        origins: filterableData?.origins ?? [],
+        eventNames: filterableData?.eventNames ?? [],
+        countryCodes: filterableData?.countryCodes ?? [],
+        referrers: filterableData?.referrers ?? [],
+        referrerUrls: filterableData?.referrerUrls ?? [],
+        utmCampaigns: filterableData?.utmCampaigns ?? [],
+        utmContents: filterableData?.utmContents ?? [],
+        utmMediums: filterableData?.utmMediums ?? [],
+        utmSources: filterableData?.utmSources ?? [],
+        utmTerms: filterableData?.utmTerms ?? [],
+        browserNames: filterableData?.browserNames ?? [],
+        deviceTypes: filterableData?.deviceTypes ?? [],
+        osNames: filterableData?.osNames ?? [],
+      }}
+    >
       <PageDotBackground />
       <Box pos="relative" maxW="100%">
         <Flex pos="relative" mb={6} align="center" gap={2} zIndex="1">
@@ -77,9 +102,11 @@ function RouteComponent() {
           </Flex>
           <Flex align="center" gap={3}>
             <Flex align="center" gap={2.5}>
-              <IconButton variant="surface" size="xs">
-                <Icon as={TbEdit} />
-              </IconButton>
+              <FunnelDialog funnelId={funnelId}>
+                <IconButton variant="surface" size="xs">
+                  <Icon as={TbEdit} />
+                </IconButton>
+              </FunnelDialog>
               <DeletePopover onDelete={() => deleteFunnel({ projectId, id: funnelId })} isLoading={isFunnelDeleting}>
                 <IconButton variant="surface" size="xs" color="red.fg">
                   <Icon as={TbTrash} />
@@ -124,6 +151,6 @@ function RouteComponent() {
           )}
         </AnimatePresence>
       </Box>
-    </>
+    </FilterContextProvider>
   );
 }

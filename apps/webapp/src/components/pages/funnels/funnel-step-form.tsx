@@ -15,7 +15,7 @@ interface FunnelStepFormProps {
 }
 
 export const FunnelStepForm = ({ index, step, updateStep, removeStep, disabled }: FunnelStepFormProps) => {
-  const [editFunnelName, setEditFunnelName] = useState(false);
+  const [editStepName, setEditStepName] = useState(false);
 
   return (
     <Card.Root size="sm" variant="outline">
@@ -23,8 +23,9 @@ export const FunnelStepForm = ({ index, step, updateStep, removeStep, disabled }
         <Flex justify="space-between" align="center">
           <Flex align="center" gap={2} w="100%" maxW="100%">
             <Icon as={TbGripVertical} color="fg.muted" />
-            {editFunnelName ? (
+            {editStepName ? (
               <Input
+                className="funnel-step-name"
                 autoFocus
                 w="auto"
                 flexGrow={1}
@@ -32,10 +33,11 @@ export const FunnelStepForm = ({ index, step, updateStep, removeStep, disabled }
                 placeholder={`Step ${index + 1}`}
                 value={step.name}
                 onChange={(e) => updateStep({ name: e.target.value })}
-                onBlur={() => setEditFunnelName(false)}
+                onBlur={() => setEditStepName(false)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === 'Escape') {
-                    setEditFunnelName(false);
+                    e.preventDefault();
+                    setEditStepName(false);
                   }
                 }}
               />
@@ -44,7 +46,7 @@ export const FunnelStepForm = ({ index, step, updateStep, removeStep, disabled }
                 <Text fontSize="sm" fontWeight="medium" my={1} truncate>
                   {step.name || `Step ${index + 1}`}
                 </Text>
-                <IconButton size="2xs" variant="ghost" colorPalette="gray" onClick={() => setEditFunnelName(true)}>
+                <IconButton size="2xs" variant="ghost" colorPalette="gray" onClick={() => setEditStepName(true)}>
                   <Icon as={TbPencil} />
                 </IconButton>
               </>

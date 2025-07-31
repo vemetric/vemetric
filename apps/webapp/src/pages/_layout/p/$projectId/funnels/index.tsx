@@ -7,8 +7,8 @@ import { z } from 'zod';
 import { CrispLink } from '@/components/crisp-link';
 import { FilterContextProvider } from '@/components/filter/filter-context';
 import { PageDotBackground } from '@/components/page-dot-background';
-import { AddFunnelDialog } from '@/components/pages/funnels/add-funnel-dialog';
 import { FunnelCard } from '@/components/pages/funnels/funnel-card';
+import { FunnelDialog } from '@/components/pages/funnels/funnel-dialog';
 import { TimespanSelect } from '@/components/timespan-select';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useSetBreadcrumbs } from '@/stores/header-store';
@@ -63,12 +63,12 @@ function RouteComponent() {
       <PageDotBackground />
       <Box pos="relative" maxW="100%">
         <Flex pos="relative" mb={6} align="center" gap={2} justify="space-between">
-          <AddFunnelDialog>
+          <FunnelDialog>
             <Button variant="surface" size={{ base: 'xs', md: 'sm' }}>
               <Icon as={TbPlus} />
               New funnel
             </Button>
-          </AddFunnelDialog>
+          </FunnelDialog>
           <TimespanSelect from="/_layout/p/$projectId/funnels/" />
         </Flex>
         {isError ? (
@@ -102,7 +102,7 @@ function RouteComponent() {
                 {funnelsData?.funnels.map((funnel) => {
                   return <FunnelCard key={funnel.id} projectId={projectId} funnel={funnel} />;
                 })}
-                <AddFunnelDialog>
+                <FunnelDialog>
                   <Card.Root
                     as="button"
                     overflow="hidden"
@@ -145,7 +145,7 @@ function RouteComponent() {
                       opacity="0.2"
                     />
                   </Card.Root>
-                </AddFunnelDialog>
+                </FunnelDialog>
               </>
             )}
           </SimpleGrid>

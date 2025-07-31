@@ -1,10 +1,11 @@
 import { AspectRatio, Box, Card, Flex, Icon, Grid, Text, IconButton } from '@chakra-ui/react';
 import { Link } from '@tanstack/react-router';
 import { formatPercentage } from '@vemetric/common/math';
-import { TbEdit, TbTrash } from 'react-icons/tb';
+import { TbEdit, TbEye, TbTrash } from 'react-icons/tb';
 import { DeletePopover } from '@/components/delete-popover';
 import { Tooltip } from '@/components/ui/tooltip';
 import { trpc, type FunnelData } from '@/utils/trpc';
+import { FunnelDialog } from './funnel-dialog';
 
 interface Props {
   projectId: string;
@@ -130,10 +131,17 @@ export const FunnelCard = ({ projectId, funnel }: Props) => {
         transition="all 0.2s ease-in-out"
         _groupHover={{ opacity: 1, transform: 'translateY(0)' }}
       >
-        <Flex align="center" gap={4}>
-          <IconButton variant="surface" size="sm" boxShadow="xs">
-            <Icon as={TbEdit} />
+        <Flex align="center" gap={2.5}>
+          <IconButton asChild variant="surface" size="sm" boxShadow="xs">
+            <Link to="/p/$projectId/funnels/$funnelId" params={{ projectId, funnelId: funnel.id }}>
+              <Icon as={TbEye} />
+            </Link>
           </IconButton>
+          <FunnelDialog funnelId={funnel.id}>
+            <IconButton variant="surface" size="sm" boxShadow="xs">
+              <Icon as={TbEdit} />
+            </IconButton>
+          </FunnelDialog>
           <DeletePopover onDelete={() => deleteFunnel({ projectId, id: funnel.id })} isLoading={isLoading}>
             <IconButton variant="surface" size="sm" boxShadow="xs" color="red.fg">
               <Icon as={TbTrash} />

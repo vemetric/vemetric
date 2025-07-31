@@ -25,7 +25,7 @@ interface Props {
 
 export const OperatingSystemsCard = ({ filterConfig, publicDashboard }: Props) => {
   const params = useParams({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
-  const { timespan } = useTimespanParam({ publicDashboard });
+  const { timespan } = useTimespanParam({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
   const { toggleFilter } = useFilters({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
 
   const activeFilters = filterConfig?.filters.filter((f) => f.type === 'os') ?? [];

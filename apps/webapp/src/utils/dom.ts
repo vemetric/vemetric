@@ -13,3 +13,15 @@ export const observeResize = ({ element, callback, options }: ResizeObserveProps
   observer.observe(element, options);
   return observer;
 };
+
+export const isActiveElementAnInput = () => {
+  if (!document.activeElement) {
+    return false;
+  }
+
+  if (['input', 'textarea', 'select'].includes(document.activeElement.tagName.toLowerCase())) {
+    return true;
+  }
+
+  return (document.activeElement as HTMLElement)?.isContentEditable;
+};

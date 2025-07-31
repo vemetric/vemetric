@@ -7,6 +7,7 @@ import { notFoundRoute } from './components/not-found-route';
 import { Provider } from './components/ui/provider';
 import { Toaster } from './components/ui/toaster';
 import { routeTree } from './routeTree.gen';
+import 'simplebar-react/dist/simplebar.min.css';
 
 const router = createRouter({
   routeTree,

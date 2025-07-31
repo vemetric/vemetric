@@ -8,9 +8,16 @@ interface Props<T extends string> extends Omit<ButtonProps, 'onChange'> {
   operator: T;
   operators: Array<T>;
   onChange: (operator: T) => void;
+  portalled?: boolean;
 }
 
-export const OperatorButton = <T extends string>({ operator, operators, onChange, ...props }: Props<T>) => {
+export const OperatorButton = <T extends string>({
+  operator,
+  operators,
+  onChange,
+  portalled = false,
+  ...props
+}: Props<T>) => {
   return (
     <MenuRoot positioning={{ placement: 'bottom' }}>
       <MenuTrigger asChild>
@@ -27,7 +34,7 @@ export const OperatorButton = <T extends string>({ operator, operators, onChange
           {props.children || operator}
         </Button>
       </MenuTrigger>
-      <MenuContent minW="0" zIndex="1502!important" className={OPERATOR_BUTTON_MENU_CLASS_NAME}>
+      <MenuContent portalled={portalled} minW="0" zIndex="1502!important" className={OPERATOR_BUTTON_MENU_CLASS_NAME}>
         <MenuRadioItemGroup value={operator} onValueChange={({ value }) => onChange(value as T)}>
           {operators.map((operator) => (
             <MenuRadioItem key={operator} value={operator}>

@@ -15,7 +15,7 @@ export const NumberFilterRow = ({ filter, onChange, label }: Props) => {
 
   return (
     <>
-      <Text asChild fontWeight="semibold">
+      <Text asChild fontWeight="medium">
         <label htmlFor={id}>{label}</label>
       </Text>
       <Flex justify="center">

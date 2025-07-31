@@ -139,6 +139,7 @@ model Project {
   organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   dripSequences    EmailDripSequence[]
   emailDripHistory EmailDripHistory[]
+  funnels          Funnel[]
 
   @@map("project")
 }
@@ -185,6 +186,19 @@ model FailedQueueJob {
   error     String
 
   @@map("failed_queue_job")
+}
+
+model Funnel {
+  id        String   @id @default(uuid())
+  name      String   @db.VarChar
+  projectId String
+  steps     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("funnel")
 }
 
 enum DripSequenceStatus {

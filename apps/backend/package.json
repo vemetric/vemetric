@@ -21,7 +21,7 @@
     "@vemetric/logger": "workspace:*",
     "@vemetric/node": "0.1.0",
     "@vemetric/queues": "workspace:*",
-    "better-auth": "^1.2.4",
+    "better-auth": "^1.2.12",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
     "hono": "^4.6.13",

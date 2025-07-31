@@ -1,11 +1,9 @@
 import { Text, AspectRatio, Button, Box, Flex, SimpleGrid, Link, HStack, LinkOverlay, Image } from '@chakra-ui/react';
-import { createFileRoute, Navigate, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Navigate } from '@tanstack/react-router';
 import { fallback, zodValidator } from '@tanstack/zod-adapter';
-import type { TimeSpan } from '@vemetric/common/charts/timespans';
-import { TIME_SPAN_DATA, TIME_SPANS } from '@vemetric/common/charts/timespans';
+import { TIME_SPANS } from '@vemetric/common/charts/timespans';
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { sourcesSchema } from '@vemetric/common/sources';
-import { TbClock } from 'react-icons/tb';
 import { z } from 'zod';
 import { AddFilterButton } from '@/components/filter/add-filter/add-filter-button';
 import { FilterContainer } from '@/components/filter/filter-container';
@@ -21,7 +19,7 @@ import { MostVisitedPagesCard } from '@/components/pages/dashboard/most-visited-
 import { OperatingSystemsCard } from '@/components/pages/dashboard/os-card';
 import { TopSourcesCard } from '@/components/pages/dashboard/top-sources-card';
 import { ThemeSwitch } from '@/components/theme-switch';
-import { MenuContent, MenuRadioItem, MenuRadioItemGroup, MenuRoot, MenuTrigger } from '@/components/ui/menu';
+import { TimespanSelect } from '@/components/timespan-select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProjectProvider } from '@/contexts/project-context';
 import { getFaviconUrl } from '@/utils/favicon';
@@ -56,11 +54,10 @@ export const Route = createFileRoute('/public/$domain')({
 });
 
 function Page() {
-  const navigate = useNavigate({ from: Route.fullPath });
   const { domain } = Route.useParams();
   const { t: timespan, f: filterConfig, u: userType } = Route.useSearch();
 
-  const { data, error, isPreviousData, isLoading } = trpc.dashboard.getData.useQuery(
+  const { data, error, isPreviousData } = trpc.dashboard.getData.useQuery(
     { domain, timespan, filterConfig },
     { keepPreviousData: true, onError: () => {} },
   );
@@ -68,14 +65,6 @@ function Page() {
     domain,
     timespan,
   });
-
-  const timeSpanData = TIME_SPAN_DATA[timespan];
-
-  if (!isLoading && !data?.isSubscriptionActive) {
-    if (timespan === '3months' || timespan === '6months' || timespan === '1year') {
-      return <Navigate from={Route.fullPath} search={{ t: '30days' }} replace />;
-    }
-  }
 
   if (error?.data?.httpStatus === 403) {
     return <Navigate to="/" />;
@@ -163,40 +152,7 @@ function Page() {
                       <FilterContainer filterConfig={filterConfig} from="/public/$domain" />
                       <Flex flexGrow={1} gap={2.5} justify="flex-end">
                         <AddFilterButton from="/public/$domain" filterConfig={filterConfig} />
-                        <MenuRoot positioning={{ placement: 'bottom-end' }}>
-                          <MenuTrigger asChild>
-                            <Button variant="surface" size={{ base: 'xs', md: 'sm' }}>
-                              <TbClock /> {timeSpanData.label}
-                            </Button>
-                          </MenuTrigger>
-                          <MenuContent minW="10rem">
-                            <MenuRadioItemGroup
-                              value={timespan}
-                              onValueChange={({ value }) => {
-                                navigate({
-                                  resetScroll: false,
-                                  search: (prev) => ({ ...prev, t: String(value) as TimeSpan }),
-                                });
-                              }}
-                            >
-                              {Object.entries(TIME_SPAN_DATA).map(([key, value]) => {
-                                const isDisabled =
-                                  !data?.isSubscriptionActive &&
-                                  (key === '3months' || key === '6months' || key === '1year');
-
-                                if (isDisabled) {
-                                  return null;
-                                }
-
-                                return (
-                                  <MenuRadioItem key={key} value={key} disabled={isDisabled}>
-                                    {value.label}
-                                  </MenuRadioItem>
-                                );
-                              })}
-                            </MenuRadioItemGroup>
-                          </MenuContent>
-                        </MenuRoot>
+                        <TimespanSelect from="/public/$domain" />
                       </Flex>
                     </Flex>
                   </Flex>

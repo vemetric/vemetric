@@ -1,10 +1,12 @@
 import * as Sentry from '@sentry/bun';
 import { TRPCError, initTRPC } from '@trpc/server';
+import { isTimespanAllowed, TIME_SPAN_DATA, TIME_SPANS } from '@vemetric/common/charts/timespans';
 import { dbOrganization, dbProject, OrganizationRole } from 'database';
 import superjson from 'superjson';
 import { z } from 'zod';
 import type { HonoContext } from '../types';
 import { getSubscriptionStatus } from './billing';
+import { getStartDate } from './timeseries';
 
 const t = initTRPC.context<HonoContext>().create({
   transformer: superjson,
@@ -215,6 +217,30 @@ export const projectOrPublicProcedure = publicProcedure
         organization,
         subscriptionStatus,
         isPublicDashboard,
+      },
+    });
+  });
+
+export const timespanProcedure = projectOrPublicProcedure
+  .input(z.object({ timespan: z.enum(TIME_SPANS) }))
+  .use(async (opts) => {
+    const {
+      input,
+      ctx: { subscriptionStatus },
+    } = opts;
+
+    if (!isTimespanAllowed(input.timespan, subscriptionStatus.isActive)) {
+      throw new TRPCError({ code: 'FORBIDDEN', message: 'Upgrade to the Professional plan for longer data retention' });
+    }
+
+    const timeSpanData = TIME_SPAN_DATA[input.timespan];
+    const startDate = getStartDate(input.timespan);
+
+    return opts.next({
+      ctx: {
+        ...opts.ctx,
+        timeSpanData,
+        startDate,
       },
     });
   });

@@ -59,7 +59,7 @@ const listFilterSchema = z.object({
 });
 export type IListFilter = z.infer<typeof listFilterSchema>;
 
-const pageFilterSchema = z.object({
+export const pageFilterSchema = z.object({
   type: z.literal('page'),
   originFilter: stringFilterSchema.optional(),
   pathFilter: stringFilterSchema.optional(),

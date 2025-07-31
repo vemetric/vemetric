@@ -14,11 +14,12 @@ export const PageFilterTitle = () => (
 
 interface Props {
   filter?: IPageFilter;
-  onSubmit: (filter: IPageFilter) => void;
-  buttonText: string;
+  onChange?: (filter: IPageFilter) => void;
+  onSubmit?: (filter: IPageFilter) => void;
+  buttonText?: string;
 }
 
-export const PageFilterForm = ({ filter: _filter, onSubmit, buttonText }: Props) => {
+export const PageFilterForm = ({ filter: _filter, onChange, onSubmit, buttonText = 'Save' }: Props) => {
   const { pagePaths, origins } = useFilterContext();
   const [filter, setFilter] = useState<IPageFilter>(
     _filter ?? {
@@ -31,46 +32,54 @@ export const PageFilterForm = ({ filter: _filter, onSubmit, buttonText }: Props)
 
   return (
     <Flex
-      as="form"
+      as={onSubmit ? 'form' : 'div'}
       p={2}
       flexDir="column"
       gap={2}
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSubmit(filter);
-      }}
+      onSubmit={
+        onSubmit
+          ? (e) => {
+              e.preventDefault();
+              onSubmit(filter);
+            }
+          : undefined
+      }
     >
       <Grid gridTemplateColumns="1fr 1fr 4fr" gap={2} alignItems="center">
         <StringFilterRow
           label="Path"
           values={pagePaths}
           filter={pathFilter}
-          onChange={(newFilter) => {
-            setFilter(
-              produce(filter, (draft) => {
-                draft.pathFilter = newFilter;
-              }),
-            );
+          onChange={(pathFilter) => {
+            const newFilter = produce(filter, (draft) => {
+              draft.pathFilter = pathFilter;
+            });
+
+            setFilter(newFilter);
+            onChange?.(newFilter);
           }}
         />
         <StringFilterRow
           label="Origin"
           values={origins}
           filter={originFilter}
-          onChange={(newFilter) => {
-            setFilter(
-              produce(filter, (draft) => {
-                draft.originFilter = newFilter;
-              }),
-            );
+          onChange={(originFilter) => {
+            const newFilter = produce(filter, (draft) => {
+              draft.originFilter = originFilter;
+            });
+
+            setFilter(newFilter);
+            onChange?.(newFilter);
           }}
         />
       </Grid>
-      <Flex justify="flex-end">
-        <Button type="submit" size="2xs" rounded="sm">
-          {buttonText}
-        </Button>
-      </Flex>
+      {onSubmit && (
+        <Flex justify="flex-end">
+          <Button type="submit" size="2xs" rounded="sm">
+            {buttonText}
+          </Button>
+        </Flex>
+      )}
     </Flex>
   );
 };

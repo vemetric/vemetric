@@ -13,10 +13,10 @@ import {
 } from '@chakra-ui/react';
 import { format } from 'date-fns';
 import { useState } from 'react';
-import { TbArrowRight, TbCreditCard, TbBolt, TbLockX, TbAlertCircle } from 'react-icons/tb';
+import { TbArrowRight, TbCreditCard, TbBolt, TbLockX } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import { InfoTip } from '@/components/info-tip';
-import { EmptyState } from '@/components/ui/empty-state';
+import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import { toaster } from '@/components/ui/toaster';
 import { UsageStatsProgress } from '@/components/usage-stats-progress';
 import { useOrganizationId } from '@/hooks/use-organization-id';
@@ -73,7 +73,7 @@ export const BillingTab = ({ projectId }: Props) => {
       );
     }
 
-    return <EmptyState icon={<TbAlertCircle />} title="Error loading billing info" />;
+    return <ErrorState title="Error loading billing info" />;
   }
 
   const nextPaymentDate = billingInfo?.subscriptionNextBilledAt;

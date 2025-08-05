@@ -63,7 +63,8 @@ export function useFunnel({ funnelId, onSuccess }: UseFunnelProps) {
     onSuccess: ({ id }) => {
       utils.funnels.list.invalidate();
       if (id) {
-        utils.funnels.get.invalidate({ projectId, id });
+        utils.funnels.get.invalidate({ projectId: projectId!, id });
+        utils.funnels.getFunnelResults.invalidate({ projectId: projectId!, id });
       }
       toaster.create({
         title: 'Success',

@@ -326,7 +326,7 @@ export const clickhouseEvent = {
       const dateTransformMethod = getDateTransformMethod(timeSpan);
 
       const resultSet = await clickhouseClient.query({
-        query: `SELECT count(), ${dateTransformMethod}(createdAt) as date from event WHERE projectId=${escape(
+        query: `SELECT count(), ${dateTransformMethod}(createdAt) as date from ${TABLE_NAME} WHERE projectId=${escape(
           projectId,
         )} AND isPageView = 1 AND createdAt >= '${formatClickhouseDate(startDate)}' 
       ${pageFilterQueries ? `AND (${pageFilterQueries})` : ''}
@@ -349,7 +349,7 @@ export const clickhouseEvent = {
     async (projectId: bigint, timeSpan: TimeSpan, startDate: Date, filterQueries?: string) => {
       const dateTransformMethod = getDateTransformMethod(timeSpan);
       const resultSet = await clickhouseClient.query({
-        query: `SELECT count(distinct userId) as users, ${dateTransformMethod}(createdAt) as date from event WHERE projectId=${escape(
+        query: `SELECT count(distinct userId) as users, ${dateTransformMethod}(createdAt) as date from ${TABLE_NAME} WHERE projectId=${escape(
           projectId,
         )} AND createdAt >= '${formatClickhouseDate(startDate)}' ${filterQueries || ''} GROUP BY date;`,
         format: 'JSONEachRow',
@@ -367,7 +367,7 @@ export const clickhouseEvent = {
   ),
   getCurrentActiveUsers: withSpan('getCurrentActiveUsers', async (projectId: bigint, filterQueries?: string) => {
     const resultSet = await clickhouseClient.query({
-      query: `SELECT count(distinct userId) as users from event WHERE projectId=${escape(
+      query: `SELECT count(distinct userId) as users from ${TABLE_NAME} WHERE projectId=${escape(
         projectId,
       )} AND createdAt >= NOW() - INTERVAL 1 MINUTE ${filterQueries || ''};`,
       format: 'JSONEachRow',
@@ -377,7 +377,7 @@ export const clickhouseEvent = {
   }),
   getActiveUsers: withSpan('getActiveUsers', async (projectId: bigint, startDate: Date, filterQueries?: string) => {
     const resultSet = await clickhouseClient.query({
-      query: `SELECT count(distinct userId) as users from event WHERE projectId=${escape(
+      query: `SELECT count(distinct userId) as users from ${TABLE_NAME} WHERE projectId=${escape(
         projectId,
       )} AND createdAt >= '${formatClickhouseDate(startDate)}' ${filterQueries || ''};`,
       format: 'JSONEachRow',
@@ -594,22 +594,31 @@ export const clickhouseEvent = {
 
     const resultSet = await clickhouseClient.query({
       query: `
-        SELECT
-          funnelStage,
-          COUNT(*) AS userCount
-        FROM
-          (
-            SELECT windowFunnel(${escape(windowHours * 60 * 60)})(
+        WITH funnel_data AS (
+          SELECT 
+            userId,
+            windowFunnel(${escape(windowHours * 60 * 60)})(
               toDateTime(createdAt),
               ${stepConditions.map((condition) => `(${condition})`).join(',')}
-            ) as funnelStage
-            FROM ${TABLE_NAME}
-            WHERE projectId = ${escape(projectId)}
-              AND createdAt >= '${formatClickhouseDate(startDate)}'
-            GROUP BY userId
-          ) as funnelResults
-        GROUP BY funnelStage
-        ORDER BY funnelStage`,
+            ) as maxStage
+          FROM ${TABLE_NAME}
+          WHERE projectId = ${escape(projectId)}
+            AND createdAt >= '${formatClickhouseDate(startDate)}'
+          GROUP BY userId
+        )
+        SELECT 
+          stage as funnelStage,
+          COUNT(*) as userCount
+        FROM (
+          SELECT 
+            userId,
+            maxStage,
+            arrayJoin(range(1, maxStage + 1)) as stage
+          FROM funnel_data
+          WHERE maxStage > 0
+        )
+        GROUP BY stage
+        ORDER BY stage`,
       format: 'JSONEachRow',
     });
 

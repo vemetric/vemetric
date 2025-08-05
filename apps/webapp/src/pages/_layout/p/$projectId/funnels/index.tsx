@@ -4,18 +4,20 @@ import { zodValidator } from '@tanstack/zod-adapter';
 import { TIME_SPANS } from '@vemetric/common/charts/timespans';
 import { TbChartFunnel, TbPlus } from 'react-icons/tb';
 import { z } from 'zod';
-import { CrispLink } from '@/components/crisp-link';
 import { FilterContextProvider } from '@/components/filter/filter-context';
 import { PageDotBackground } from '@/components/page-dot-background';
+import { ActiveUsersButton } from '@/components/pages/funnels/active-users-button';
 import { FunnelCard } from '@/components/pages/funnels/funnel-card';
 import { FunnelDialog } from '@/components/pages/funnels/funnel-dialog';
 import { TimespanSelect } from '@/components/timespan-select';
-import { EmptyState } from '@/components/ui/empty-state';
+import { EmptyState, ErrorState } from '@/components/ui/empty-state';
+import { useActiveUsersParam } from '@/hooks/use-activeusers-param';
 import { useSetBreadcrumbs } from '@/stores/header-store';
 import { trpc } from '@/utils/trpc';
 
 const searchSchema = z.object({
   t: z.enum(TIME_SPANS).optional(),
+  u: z.boolean().optional(),
 });
 
 export const Route = createFileRoute('/_layout/p/$projectId/funnels/')({
@@ -25,6 +27,8 @@ export const Route = createFileRoute('/_layout/p/$projectId/funnels/')({
 
 function RouteComponent() {
   const { projectId } = Route.useParams();
+  const { t: timespan = '3months' } = Route.useSearch();
+  const { activeUsersVisible, setActiveUsersVisible } = useActiveUsersParam({ from: '/_layout/p/$projectId/funnels/' });
 
   const { data: filterableData } = trpc.filters.getFilterableData.useQuery({
     projectId,
@@ -37,6 +41,7 @@ function RouteComponent() {
     isError,
   } = trpc.funnels.list.useQuery({
     projectId,
+    timespan,
   });
 
   useSetBreadcrumbs(['Funnels']);
@@ -63,25 +68,27 @@ function RouteComponent() {
       <PageDotBackground />
       <Box pos="relative" maxW="100%">
         <Flex pos="relative" mb={6} align="center" gap={2} justify="space-between">
-          <FunnelDialog>
-            <Button variant="surface" size={{ base: 'xs', md: 'sm' }}>
-              <Icon as={TbPlus} />
-              New funnel
-            </Button>
-          </FunnelDialog>
-          <TimespanSelect from="/_layout/p/$projectId/funnels/" />
+          <Flex pos="relative" align="center" h="32px">
+            <ActiveUsersButton
+              activeUsers={funnelsData?.activeUsers ?? 0}
+              activeUsersVisible={activeUsersVisible}
+              setActiveUsersVisible={setActiveUsersVisible}
+            />
+          </Flex>
+          <Flex align="center" gap={3}>
+            <FunnelDialog>
+              <Button variant="surface" size={{ base: 'xs', md: 'sm' }}>
+                <Icon as={TbPlus} />
+                New funnel
+              </Button>
+            </FunnelDialog>
+            <Box w="1px" h="26px" bg="gray.muted" />
+            <TimespanSelect from="/_layout/p/$projectId/funnels/" />
+          </Flex>
         </Flex>
         {isError ? (
           <Card.Root py={6}>
-            <EmptyState
-              icon={<TbChartFunnel />}
-              title="Error loading funnels"
-              description={
-                <>
-                  Please <CrispLink>reach out</CrispLink> if this problem persists.
-                </>
-              }
-            />
+            <ErrorState title="Error loading funnels" />
           </Card.Root>
         ) : (
           <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={5}>
@@ -100,7 +107,14 @@ function RouteComponent() {
             ) : (
               <>
                 {funnelsData?.funnels.map((funnel) => {
-                  return <FunnelCard key={funnel.id} projectId={projectId} funnel={funnel} />;
+                  return (
+                    <FunnelCard
+                      key={funnel.id}
+                      projectId={projectId}
+                      funnel={funnel}
+                      activeUsersVisible={activeUsersVisible}
+                    />
+                  );
                 })}
                 <FunnelDialog>
                   <Card.Root

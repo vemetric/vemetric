@@ -1,23 +1,27 @@
-import { Box, Button, Flex, Icon, IconButton, LinkOverlay, useBreakpointValue } from '@chakra-ui/react';
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { Box, Button, Card, Flex, Icon, IconButton, LinkOverlay, Skeleton, useBreakpointValue } from '@chakra-ui/react';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { TIME_SPANS } from '@vemetric/common/charts/timespans';
 import { AnimatePresence, motion } from 'motion/react';
-import { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { TbChartBarPopular, TbEdit, TbTrash } from 'react-icons/tb';
 import { z } from 'zod';
 import { DeletePopover } from '@/components/delete-popover';
 import { FilterContextProvider } from '@/components/filter/filter-context';
 import { PageDotBackground } from '@/components/page-dot-background';
+import { ActiveUsersButton } from '@/components/pages/funnels/active-users-button';
 import { FunnelDialog } from '@/components/pages/funnels/funnel-dialog';
 import { HorizontalFunnel } from '@/components/pages/funnels/horizontal-funnel';
 import { VerticalFunnel } from '@/components/pages/funnels/vertical-funnel';
 import { TimespanSelect } from '@/components/timespan-select';
+import { ErrorState } from '@/components/ui/empty-state';
+import { useActiveUsersParam } from '@/hooks/use-activeusers-param';
 import { useSetBreadcrumbs } from '@/stores/header-store';
 import { trpc } from '@/utils/trpc';
 
 const searchSchema = z.object({
   t: z.enum(TIME_SPANS).optional(),
+  u: z.boolean().optional(),
 });
 
 export const Route = createFileRoute('/_layout/p/$projectId/funnels/$funnelId')({
@@ -25,25 +29,14 @@ export const Route = createFileRoute('/_layout/p/$projectId/funnels/$funnelId')(
   component: RouteComponent,
 });
 
-type FunnelStep = {
-  users: number;
-};
-
-const funnelSteps: FunnelStep[] = [
-  { users: 1001 },
-  { users: 750 },
-  { users: 400 },
-  { users: 250 },
-  { users: 240 },
-  { users: 240 },
-];
-
 function RouteComponent() {
-  const navigate = useNavigate();
+  const navigate = Route.useNavigate();
   const { projectId, funnelId } = Route.useParams();
-  const activeUsersButtonRef = useRef<HTMLDivElement>(null);
+  const { t: timespan = '3months' } = Route.useSearch();
+  const { activeUsersVisible, setActiveUsersVisible } = useActiveUsersParam({
+    from: '/_layout/p/$projectId/funnels/$funnelId',
+  });
   const [horizontalFunnel, setHorizontalFunnel] = useState(true);
-  const [activeUsersVisible, setActiveUsersVisible] = useState(false);
   const isMobile = useBreakpointValue({ base: true, md: false });
 
   const utils = trpc.useUtils();
@@ -52,6 +45,57 @@ function RouteComponent() {
     projectId,
     timespan: '3months',
   });
+
+  const {
+    data: funnelData,
+    isError: isFunnelError,
+    isLoading: _isFunnelLoading,
+  } = trpc.funnels.get.useQuery({
+    projectId,
+    id: funnelId,
+  });
+  const isFunnelLoading = _isFunnelLoading || !funnelData;
+
+  const {
+    data: funnelResults,
+    isError: isResultsError,
+    isLoading: _isResultsLoading,
+  } = trpc.funnels.getFunnelResults.useQuery({
+    projectId,
+    timespan,
+    id: funnelId,
+  });
+  const isResultsLoading = _isResultsLoading || !funnelResults;
+
+  // Transform funnel results from ClickHouse format to component format
+  const funnelSteps = React.useMemo(() => {
+    if (isFunnelLoading || isResultsLoading) {
+      return null;
+    }
+
+    const results = funnelResults.funnelResults;
+    const funnelStepsData = funnelData.funnel.steps as Array<{ name: string; [key: string]: any }>;
+    const activeUsers = funnelResults.activeUsers || 0;
+
+    // Create array with users count for each stage
+    const stepResults = [];
+
+    // First entry: total active users (from separate query)
+    stepResults.push({ name: 'Active Users', users: activeUsers });
+
+    // Add users for each completed step with custom names
+    for (let i = 1; i <= funnelStepsData.length; i++) {
+      const stageResult = results.find((r) => r.funnelStage === i);
+      const stepData = funnelStepsData[i - 1];
+      const stepName = stepData?.name || `Step ${i}`;
+      stepResults.push({
+        name: stepName,
+        users: stageResult?.userCount || 0,
+      });
+    }
+
+    return stepResults;
+  }, [isFunnelLoading, isResultsLoading, funnelResults, funnelData]);
 
   const { mutate: deleteFunnel, isLoading: isFunnelDeleting } = trpc.funnels.delete.useMutation({
     onSuccess: async () => {
@@ -66,8 +110,66 @@ function RouteComponent() {
         Funnels
       </Link>
     </LinkOverlay>,
-    funnelId,
+    isFunnelLoading ? (
+      <Skeleton key="funnel-name" w="100px" h="20px" rounded="md" />
+    ) : (
+      funnelData?.funnel?.name || funnelId
+    ),
   ]);
+
+  if (isFunnelError || isResultsError) {
+    return (
+      <>
+        <PageDotBackground />
+        <Flex justify="center">
+          <Card.Root minW="400px">
+            <ErrorState title="Error loading funnel data" />
+          </Card.Root>
+        </Flex>
+      </>
+    );
+  }
+
+  if (isFunnelLoading || isResultsLoading || !funnelSteps) {
+    return (
+      <>
+        <PageDotBackground />
+        <Flex pos="relative" justify="center" pt={16} animation="pulse 2s infinite">
+          <Flex align="flex-end" borderBottom="2px solid" borderColor="gray.emphasized" px="4">
+            <Box zIndex="1" h="200px" w="100px" borderTopRadius="xl" bg="gray.emphasized" />
+            <Box opacity={0.5}>
+              <Icon
+                as="svg"
+                width="50px"
+                height="195px"
+                viewBox="0 0 50 200"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                mx="-0.5"
+              >
+                <path d={`M0 0 L50 60 L50 200 L0 200 Z`} fill="var(--chakra-colors-gray-emphasized)" />
+              </Icon>
+            </Box>
+            <Box zIndex="1" h="140px" w="100px" borderTopRadius="xl" bg="gray.emphasized" />
+            <Box opacity={0.5}>
+              <Icon
+                as="svg"
+                width="50px"
+                height="195px"
+                viewBox="0 0 50 200"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                mx="-0.5"
+              >
+                <path d={`M0 60 L50 130 L50 200 L0 200 Z`} fill="var(--chakra-colors-gray-emphasized)" />
+              </Icon>
+            </Box>
+            <Box zIndex="1" h="70px" w="100px" borderTopRadius="xl" bg="gray.emphasized" />
+          </Flex>
+        </Flex>
+      </>
+    );
+  }
 
   return (
     <FilterContextProvider
@@ -91,7 +193,13 @@ function RouteComponent() {
       <PageDotBackground />
       <Box pos="relative" maxW="100%">
         <Flex pos="relative" mb={6} align="center" gap={2} zIndex="1">
-          <Flex ref={activeUsersButtonRef} pos="relative" align="center" h="32px" />
+          <Flex pos="relative" align="center" h="32px">
+            <ActiveUsersButton
+              activeUsers={funnelResults.activeUsers || 0}
+              activeUsersVisible={activeUsersVisible}
+              setActiveUsersVisible={setActiveUsersVisible}
+            />
+          </Flex>
           <Flex flexGrow={1} justify="center" align="center">
             {!isMobile && (
               <Button variant="surface" size="xs" onClick={() => setHorizontalFunnel((value) => !value)}>
@@ -126,12 +234,7 @@ function RouteComponent() {
               exit={{ opacity: 0, y: 50 }}
               transition={{ duration: 0.2 }}
             >
-              <HorizontalFunnel
-                activeUsersButtonRef={activeUsersButtonRef}
-                funnelSteps={funnelSteps}
-                activeUsersVisible={activeUsersVisible}
-                setActiveUsersVisible={setActiveUsersVisible}
-              />
+              <HorizontalFunnel funnelSteps={funnelSteps} activeUsersVisible={activeUsersVisible} />
             </motion.div>
           ) : (
             <motion.div
@@ -141,12 +244,7 @@ function RouteComponent() {
               exit={{ opacity: 0, y: 50 }}
               transition={{ duration: 0.2 }}
             >
-              <VerticalFunnel
-                activeUsersButtonRef={activeUsersButtonRef}
-                funnelSteps={funnelSteps}
-                activeUsersVisible={activeUsersVisible}
-                setActiveUsersVisible={setActiveUsersVisible}
-              />
+              <VerticalFunnel funnelSteps={funnelSteps} activeUsersVisible={activeUsersVisible} />
             </motion.div>
           )}
         </AnimatePresence>

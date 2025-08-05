@@ -1,5 +1,7 @@
-import { EmptyState as ChakraEmptyState, VStack } from '@chakra-ui/react';
+import { EmptyState as ChakraEmptyState, Icon, VStack } from '@chakra-ui/react';
 import * as React from 'react';
+import { TbAlertTriangle } from 'react-icons/tb';
+import { CrispLink } from '../crisp-link';
 
 export interface EmptyStateProps extends ChakraEmptyState.RootProps {
   title: string;
@@ -27,3 +29,21 @@ export const EmptyState = React.forwardRef<HTMLDivElement, EmptyStateProps>(func
     </ChakraEmptyState.Root>
   );
 });
+
+interface ErrorStateProps {
+  title: string;
+}
+
+export const ErrorState = ({ title }: ErrorStateProps) => {
+  return (
+    <EmptyState
+      icon={<Icon as={TbAlertTriangle} color="red.fg" />}
+      title={title}
+      description={
+        <>
+          Please <CrispLink>reach out</CrispLink> if the problem persists.
+        </>
+      }
+    />
+  );
+};

@@ -1,7 +1,8 @@
 import { AspectRatio, Box, Card, Flex, Icon, Grid, Text, IconButton } from '@chakra-ui/react';
 import { Link } from '@tanstack/react-router';
-import { formatPercentage } from '@vemetric/common/math';
-import { TbEdit, TbEye, TbTrash } from 'react-icons/tb';
+import { formatNumber, formatPercentage } from '@vemetric/common/math';
+import { motion } from 'motion/react';
+import { TbEdit, TbEye, TbTrash, TbUserSquareRounded } from 'react-icons/tb';
 import { DeletePopover } from '@/components/delete-popover';
 import { Tooltip } from '@/components/ui/tooltip';
 import { trpc, type FunnelData } from '@/utils/trpc';
@@ -10,14 +11,15 @@ import { FunnelDialog } from './funnel-dialog';
 interface Props {
   projectId: string;
   funnel: FunnelData;
+  activeUsersVisible: boolean;
 }
 
-export const FunnelCard = ({ projectId, funnel }: Props) => {
+export const FunnelCard = ({ projectId, funnel, activeUsersVisible }: Props) => {
   const funnelSteps = funnel.stepResults;
   const activeUsers = funnelSteps[0].users;
-  const firstStepUsers = funnelSteps[1].users;
+  const firstStepUsers = activeUsersVisible ? activeUsers : funnelSteps[1].users;
   const lastStepUsers = funnelSteps[funnelSteps.length - 1].users;
-  const completedPercentage = (lastStepUsers / activeUsers) * 100;
+  const completedPercentage = (lastStepUsers / activeUsers) * 100 || 0;
 
   const utils = trpc.useUtils();
   const { mutate: deleteFunnel, isLoading } = trpc.funnels.delete.useMutation({
@@ -34,13 +36,13 @@ export const FunnelCard = ({ projectId, funnel }: Props) => {
       _hover={{ borderColor: 'purple.500/50' }}
       className="group"
     >
-      <Card.Header py={1.5} borderBottom="1px solid" borderColor="gray.emphasized/50">
+      <Card.Header pos="relative" py={1.5} borderBottom="1px solid" borderColor="gray.emphasized/50">
         <Flex justify="space-between" align="center">
           <Text fontSize="sm" fontWeight="semibold">
             {funnel.name}
           </Text>
           <Tooltip content={`${formatPercentage(completedPercentage)} of users completed this funnel`}>
-            <Text fontSize="xs" fontWeight="semibold" opacity="0.8">
+            <Text fontSize="xs" fontWeight="semibold" opacity="0.8" zIndex="1">
               {formatPercentage(completedPercentage)}
             </Text>
           </Tooltip>
@@ -49,21 +51,31 @@ export const FunnelCard = ({ projectId, funnel }: Props) => {
       <Card.Body p={0} pt={2.5} transition="all 0.2s ease-in-out" _groupHover={{ bg: 'gray.subtle/70' }}>
         <AspectRatio ratio={16 / 9}>
           <Flex h="100%" justify="flex-start!important" align="flex-end!important">
-            <Grid templateColumns={`repeat(${funnelSteps.length - 1}, 80px)`} alignItems="flex-end" h="90%" px={4}>
-              {funnelSteps.slice(1).map((step, index) => {
-                const isLastStep = index === funnelSteps.length - 2;
+            <Grid
+              templateColumns={`repeat(${activeUsersVisible ? funnelSteps.length : funnelSteps.length - 1}, 80px)`}
+              alignItems="flex-end"
+              h="90%"
+              px={4}
+            >
+              {funnelSteps.map((step, index) => {
+                const isFirstStep = activeUsersVisible ? index === 0 : index === 1;
+                const isLastStep = index === funnelSteps.length - 1;
 
-                const barPercentage = (step.users / firstStepUsers) * 100;
-                const nextBarPercentage = isLastStep ? 0 : (funnelSteps[index + 2].users / firstStepUsers) * 100;
+                if (index === 0 && !activeUsersVisible) {
+                  return null;
+                }
+
+                const barPercentage = (step.users / firstStepUsers) * 100 || 0;
+                const nextBarPercentage = isLastStep ? 0 : (funnelSteps[index + 1].users / firstStepUsers) * 100 || 0;
 
                 const sameHeight = Math.abs(barPercentage - nextBarPercentage) < 5;
                 const startY = 100 - barPercentage;
                 const endY = 100 - nextBarPercentage;
 
-                const completedPercentage = (step.users / activeUsers) * 100 || 0;
+                const completedPercentage = (step.users / firstStepUsers) * 100 || 0;
 
                 return (
-                  <Flex pos="relative" h="100%" w="100%" key={index} align="flex-end">
+                  <Flex pos="relative" h="100%" w="100%" key={activeUsersVisible ? index : index - 1} align="flex-end">
                     {!isLastStep && (
                       <Box pos="absolute" h="100%" w="52%" right="-6%" opacity={{ base: 0.15, _dark: 0.2 }}>
                         <svg
@@ -74,22 +86,26 @@ export const FunnelCard = ({ projectId, funnel }: Props) => {
                           fill="none"
                           xmlns="http://www.w3.org/2000/svg"
                         >
-                          <path
-                            d={
-                              sameHeight
-                                ? `M0 ${startY + 1} L50 ${endY + 1} L50 104 L0 104 Z`
-                                : `M0 ${startY + 1.5} C12 ${startY + 1.5}, 30 ${endY}, 50 ${endY + 1} L50 104 L0 104 Z`
-                            }
+                          <motion.path
+                            initial={{ d: 'M0 104 C0 104, 50 104, 50 104 L50 104 L0 104 Z' }}
+                            animate={{
+                              d: sameHeight
+                                ? `M0 ${startY + 1.5} C0 ${startY + 1.5}, 50 ${endY + 1.5}, 50 ${
+                                    endY + 1
+                                  } L50 104 L0 104 Z`
+                                : `M0 ${startY + 1.5} C12 ${startY + 1.5}, 30 ${endY}, 50 ${endY + 1} L50 104 L0 104 Z`,
+                            }}
                             strokeWidth="2"
                             stroke="var(--chakra-colors-purple-500)"
                             fill="var(--chakra-colors-purple-500)"
+                            transition={{ duration: 0.4, ease: 'easeInOut' }}
                           />
                         </svg>
                       </Box>
                     )}
                     <Box
+                      asChild
                       pos="relative"
-                      h={`${barPercentage}%`}
                       w="60%"
                       borderTopRadius="lg"
                       bg="linear-gradient(to top, rgb(59 130 246 / 50%), rgb(59 130 246 / 30%)), var(--chakra-colors-bg-card)"
@@ -97,17 +113,28 @@ export const FunnelCard = ({ projectId, funnel }: Props) => {
                       borderColor="purple.400/60"
                       borderBottom="none"
                     >
-                      <Box
-                        pos="absolute"
-                        top="-16px"
-                        right="-1px"
-                        fontSize="2xs"
-                        fontWeight="semibold"
-                        textAlign="center"
-                        w="100%"
+                      <motion.div
+                        animate={{ height: `${barPercentage || 0}%` }}
+                        transition={{ duration: 0.4, ease: 'easeInOut' }}
                       >
-                        {formatPercentage(completedPercentage)}
-                      </Box>
+                        <Box
+                          pos="absolute"
+                          top="-16px"
+                          right="-1px"
+                          fontSize="2xs"
+                          fontWeight="semibold"
+                          textAlign="center"
+                          w="100%"
+                        >
+                          {isFirstStep ? (
+                            <Flex align="center" justify="center" gap={0.5} fontSize="xs" ml="-1" mt="-1">
+                              <TbUserSquareRounded /> {formatNumber(step.users, true)}
+                            </Flex>
+                          ) : (
+                            formatPercentage(completedPercentage)
+                          )}
+                        </Box>
+                      </motion.div>
                     </Box>
                   </Flex>
                 );
@@ -118,7 +145,11 @@ export const FunnelCard = ({ projectId, funnel }: Props) => {
       </Card.Body>
 
       <Box asChild pos="absolute" inset={0}>
-        <Link to="/p/$projectId/funnels/$funnelId" params={{ projectId, funnelId: funnel.id }} />
+        <Link
+          to="/p/$projectId/funnels/$funnelId"
+          params={{ projectId, funnelId: funnel.id }}
+          search={{ u: activeUsersVisible || undefined }}
+        />
       </Box>
 
       <Flex
@@ -142,7 +173,11 @@ export const FunnelCard = ({ projectId, funnel }: Props) => {
               <Icon as={TbEdit} />
             </IconButton>
           </FunnelDialog>
-          <DeletePopover onDelete={() => deleteFunnel({ projectId, id: funnel.id })} isLoading={isLoading}>
+          <DeletePopover
+            onDelete={() => deleteFunnel({ projectId, id: funnel.id })}
+            isLoading={isLoading}
+            placement="top"
+          >
             <IconButton variant="surface" size="sm" boxShadow="xs" color="red.fg">
               <Icon as={TbTrash} />
             </IconButton>

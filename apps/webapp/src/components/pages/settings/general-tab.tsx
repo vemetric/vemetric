@@ -15,20 +15,11 @@ import {
 } from '@chakra-ui/react';
 import { Link as RouterLink, Navigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import {
-  TbDashboard,
-  TbNetwork,
-  TbSettings,
-  TbBrowserShare,
-  TbLockX,
-  TbAlertCircle,
-  TbFlagCode,
-  TbKey,
-} from 'react-icons/tb';
+import { TbDashboard, TbNetwork, TbSettings, TbBrowserShare, TbLockX, TbFlagCode, TbKey } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import { CodeBox } from '@/components/code-box';
 import { IntegrationGuides } from '@/components/integration-guides';
-import { EmptyState } from '@/components/ui/empty-state';
+import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
 import { trpc } from '@/utils/trpc';
@@ -119,7 +110,7 @@ export const GeneralTab = (props: Props) => {
       );
     }
 
-    return <EmptyState icon={<TbAlertCircle />} title="Error loading settings" />;
+    return <ErrorState title="Error loading settings" />;
   }
 
   if (isProjectSettingsLoading) {

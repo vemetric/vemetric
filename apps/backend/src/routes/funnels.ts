@@ -13,23 +13,41 @@ const upsertFunnelSchema = z.object({
 });
 
 export const funnelsRouter = router({
-  list: projectProcedure.query(async (opts) => {
+  list: timespanProcedure.query(async (opts) => {
     const {
-      ctx: { project },
+      ctx: { project, projectId, startDate },
     } = opts;
 
     const funnels = await dbFunnel.findByProjectId(project.id);
+    const activeUsers = (await clickhouseEvent.getActiveUsers(projectId, startDate)) ?? 0;
 
-    return {
-      funnels: funnels.map((funnel) => {
+    const funnelsWithResults = await Promise.all(
+      funnels.map(async (funnel) => {
         const steps = funnel.steps as FunnelStep[];
+
+        // Get real funnel results from ClickHouse
+        const funnelResults = await clickhouseEvent.getFunnelResults(projectId, steps, startDate);
+
+        // Transform results to the expected format
+        const stepResults: Array<{ users: number }> = [{ users: activeUsers }];
+
+        // Add users for each completed step
+        for (let i = 1; i <= steps.length; i++) {
+          const stageResult = funnelResults.find((r) => r.funnelStage === i);
+          stepResults.push({ users: stageResult?.userCount || 0 });
+        }
 
         return {
           ...funnel,
           steps,
-          stepResults: [{ users: 100 }, ...steps.map(() => ({ users: 75 }))] as Array<{ users: number }>,
+          stepResults,
         };
       }),
+    );
+
+    return {
+      activeUsers,
+      funnels: funnelsWithResults,
     };
   }),
 
@@ -95,8 +113,14 @@ export const funnelsRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Funnel not found' });
       }
 
+      const [funnelResults, activeUsers] = await Promise.all([
+        clickhouseEvent.getFunnelResults(projectId, funnel.steps as FunnelStep[], startDate),
+        clickhouseEvent.getActiveUsers(projectId, startDate),
+      ]);
+
       return {
-        funnelResults: await clickhouseEvent.getFunnelResults(projectId, funnel.steps as FunnelStep[], startDate),
+        funnelResults,
+        activeUsers,
       };
     }),
 });

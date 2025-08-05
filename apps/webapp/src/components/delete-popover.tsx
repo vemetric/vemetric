@@ -4,12 +4,13 @@ import type { PropsWithChildren } from 'react';
 interface Props {
   onDelete: () => void;
   isLoading: boolean;
+  placement?: 'top' | 'bottom';
 }
 
-export const DeletePopover = ({ onDelete, isLoading, children }: PropsWithChildren<Props>) => {
+export const DeletePopover = ({ onDelete, isLoading, placement = 'bottom', children }: PropsWithChildren<Props>) => {
   return (
-    <Popover.Root positioning={{ placement: 'top' }}>
-      <Popover.Trigger>{children}</Popover.Trigger>
+    <Popover.Root positioning={{ placement }}>
+      <Popover.Trigger asChild>{children}</Popover.Trigger>
       <Popover.Positioner>
         <Popover.Content minW="none" maxW="200px">
           <Popover.CloseTrigger />
@@ -19,7 +20,7 @@ export const DeletePopover = ({ onDelete, isLoading, children }: PropsWithChildr
           <Popover.Body p={2.5}>
             <Text fontWeight="medium">Do you really want to delete this funnel?</Text>
             <Flex mt={2} gap={2} justify="flex-end">
-              <Popover.CloseTrigger>
+              <Popover.CloseTrigger asChild>
                 <Button variant="surface" size="2xs">
                   Cancel
                 </Button>

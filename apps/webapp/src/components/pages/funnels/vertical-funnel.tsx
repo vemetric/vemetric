@@ -1,33 +1,31 @@
-import { Box, Portal, Text, Icon, Span, Card, Grid, Flex } from '@chakra-ui/react';
+import { Box, Text, Icon, Span, Card, Grid, Flex } from '@chakra-ui/react';
 import { formatNumber, formatPercentage } from '@vemetric/common/math';
 import { motion } from 'motion/react';
 import React from 'react';
 import { TbArrowNarrowRight, TbUserSquareRounded } from 'react-icons/tb';
-import { ActiveUsersButton } from './active-users-button';
 
 interface Props {
-  activeUsersButtonRef: React.RefObject<HTMLDivElement>;
-  funnelSteps: Array<{ users: number }>;
+  funnelSteps: Array<{ name: string; users: number }>;
   activeUsersVisible: boolean;
-  setActiveUsersVisible: (value: boolean) => void;
 }
 
 export const VerticalFunnel = (props: Props) => {
-  const { activeUsersButtonRef, funnelSteps, activeUsersVisible, setActiveUsersVisible } = props;
+  const { funnelSteps, activeUsersVisible } = props;
 
   const activeUsers = funnelSteps[0].users;
-  const maxUsers = Math.max(...funnelSteps.map((step) => step.users));
+  const firstStepUsers = funnelSteps[1].users;
+  const maxUsers = Math.max(
+    ...funnelSteps.map((step, index) => {
+      if (index === 0 && !activeUsersVisible) {
+        return 0;
+      }
+
+      return step.users;
+    }),
+  );
 
   return (
     <Box pos="relative" maxW="900px" mx="auto">
-      <Portal container={activeUsersButtonRef}>
-        <ActiveUsersButton
-          activeUsers={activeUsers}
-          activeUsersVisible={activeUsersVisible}
-          setActiveUsersVisible={setActiveUsersVisible}
-        />
-      </Portal>
-
       <Card.Root py={4.5} px={4} rounded="2xl">
         <Grid templateColumns="30px 1fr" columnGap={6}>
           {funnelSteps.map((step, index) => {
@@ -41,9 +39,10 @@ export const VerticalFunnel = (props: Props) => {
             const lostUsers = isUserStep ? 0 : previousUsers - step.users;
             const convertedUsersPercentage = (step.users / previousUsers) * 100 || 0;
             const lostUsersPercentage = (lostUsers / previousUsers) * 100 || 0;
-            const barWidthPercentage = (step.users / maxUsers) * 100;
+            const barWidthPercentage = Math.min((step.users / maxUsers) * 100 || 0, 100);
 
-            const completedUsersPercentage = (step.users / activeUsers) * 100 || 0;
+            const baseUsers = activeUsersVisible ? activeUsers : firstStepUsers;
+            const completedUsersPercentage = (step.users / baseUsers) * 100 || 0;
 
             return (
               <React.Fragment key={index}>
@@ -89,7 +88,7 @@ export const VerticalFunnel = (props: Props) => {
                   <Flex flexDir="column" gap={3} px="1px" pt="1.5px" pb={isLastStep ? '20px' : '50px'}>
                     <Flex justify="space-between" align="flex-end">
                       <Text fontWeight="semibold" fontSize="lg">
-                        {isUserStep ? 'Active Users' : `Step ${index}`}
+                        {step.name}
                       </Text>
                       {isFirstStep ? (
                         <Flex gap={1} align="center">
@@ -114,11 +113,10 @@ export const VerticalFunnel = (props: Props) => {
                         top="0"
                         left="0"
                         h="100%"
-                        zIndex={1}
                         w={`${barWidthPercentage}%`}
                         bg="linear-gradient(to right, rgb(59 130 246 / 70%), rgb(59 130 246 / 50%))"
                         borderRadius="lg"
-                        transition="all 0.3s ease-out"
+                        transition="all 0.4s ease-in-out"
                       />
                     </Box>
 

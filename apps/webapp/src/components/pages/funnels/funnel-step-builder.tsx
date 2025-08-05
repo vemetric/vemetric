@@ -93,9 +93,20 @@ export const FunnelStepBuilder = ({ steps, onChange, disabled }: FunnelStepBuild
             key={index}
             disabled={disabled}
             index={index}
+            isLastStep={index === steps.length - 1}
             step={step}
             updateStep={(updates) => updateStep(index, updates)}
             removeStep={steps.length > 1 ? () => removeStep(index) : undefined}
+            moveStep={(direction) => {
+              const newSteps = [...steps];
+              if (direction === 'up') {
+                [newSteps[index - 1], newSteps[index]] = [newSteps[index], newSteps[index - 1]];
+                onChange(newSteps);
+              } else if (direction === 'down') {
+                [newSteps[index], newSteps[index + 1]] = [newSteps[index + 1], newSteps[index]];
+                onChange(newSteps);
+              }
+            }}
           />
         ))}
       </Stack>

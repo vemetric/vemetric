@@ -1,11 +1,12 @@
 import { type FunnelStep } from '@vemetric/common/funnel';
-import { useState, useRef } from 'react';
+import { nanoid } from 'nanoid';
+import { useState, useRef, useEffect } from 'react';
 import { clone } from 'remeda';
 import { toaster } from '@/components/ui/toaster';
 import { useProjectContext } from '@/contexts/project-context';
 import { trpc } from '@/utils/trpc';
 
-export const DEFAULT_STEP: FunnelStep = {
+export const DEFAULT_STEP: Omit<FunnelStep, 'id'> = {
   name: '',
   filter: {
     type: 'page',
@@ -21,11 +22,12 @@ export const DEFAULT_STEP: FunnelStep = {
 };
 
 interface UseFunnelProps {
+  isDialogOpen: boolean;
   funnelId?: string;
   onSuccess?: (id: string) => void;
 }
 
-export function useFunnel({ funnelId, onSuccess }: UseFunnelProps) {
+export function useFunnel({ isDialogOpen, funnelId, onSuccess }: UseFunnelProps) {
   const { projectId } = useProjectContext();
   const isInitialized = useRef(false);
   const isEditMode = !!funnelId;
@@ -38,7 +40,7 @@ export function useFunnel({ funnelId, onSuccess }: UseFunnelProps) {
     _setFunnelName(name);
   };
 
-  const [steps, _setSteps] = useState<FunnelStep[]>([clone(DEFAULT_STEP)]);
+  const [steps, _setSteps] = useState<FunnelStep[]>([{ ...clone(DEFAULT_STEP), id: nanoid() }]);
   const setSteps = (steps: FunnelStep[]) => {
     hasChanges.current = true;
     _setSteps(steps);
@@ -51,7 +53,7 @@ export function useFunnel({ funnelId, onSuccess }: UseFunnelProps) {
   );
 
   // Initialize form data only once when data first loads (edit mode only)
-  if (isEditMode && funnelData?.funnel && !isInitialized.current) {
+  if (isDialogOpen && isEditMode && funnelData?.funnel && !isInitialized.current) {
     _setFunnelName(funnelData.funnel.name);
     _setSteps(funnelData.funnel.steps as FunnelStep[]);
     isInitialized.current = true;
@@ -113,12 +115,15 @@ export function useFunnel({ funnelId, onSuccess }: UseFunnelProps) {
     });
   };
 
-  const resetForm = () => {
-    hasChanges.current = false;
-    isInitialized.current = false;
-    _setFunnelName('');
-    _setSteps([clone(DEFAULT_STEP)]);
-  };
+  useEffect(() => {
+    if (!isDialogOpen) {
+      // lets reset the form when the dialog closes
+      hasChanges.current = false;
+      isInitialized.current = false;
+      _setFunnelName('');
+      _setSteps([{ ...clone(DEFAULT_STEP), id: nanoid() }]);
+    }
+  }, [isDialogOpen]);
 
   return {
     hasChanges,
@@ -128,7 +133,6 @@ export function useFunnel({ funnelId, onSuccess }: UseFunnelProps) {
     setSteps,
     onSubmit,
     isSubmitting,
-    resetForm,
     isEditMode,
     isLoadingFunnel: isEditMode && isLoadingFunnel,
   };

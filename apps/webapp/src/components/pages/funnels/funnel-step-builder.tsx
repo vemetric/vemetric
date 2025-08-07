@@ -1,5 +1,6 @@
 import { Button, Stack, Flex, Icon, Text, Box } from '@chakra-ui/react';
 import { type FunnelStep } from '@vemetric/common/funnel';
+import { nanoid } from 'nanoid';
 import { TbPlus } from 'react-icons/tb';
 import { FunnelStepForm } from './funnel-step-form';
 
@@ -12,6 +13,7 @@ interface FunnelStepBuilderProps {
 export const FunnelStepBuilder = ({ steps, onChange, disabled }: FunnelStepBuilderProps) => {
   const addStep = () => {
     const newStep: FunnelStep = {
+      id: nanoid(),
       name: '',
       filter: {
         type: 'page',
@@ -42,6 +44,7 @@ export const FunnelStepBuilder = ({ steps, onChange, disabled }: FunnelStepBuild
     if (updates.filter?.type && updates.filter.type !== currentStep.filter.type) {
       if (updates.filter.type === 'page') {
         newSteps[index] = {
+          id: currentStep.id,
           name: currentStep.name,
           filter: {
             type: 'page',
@@ -57,6 +60,7 @@ export const FunnelStepBuilder = ({ steps, onChange, disabled }: FunnelStepBuild
         };
       } else {
         newSteps[index] = {
+          id: currentStep.id,
           name: currentStep.name,
           filter: {
             type: 'event',
@@ -90,7 +94,7 @@ export const FunnelStepBuilder = ({ steps, onChange, disabled }: FunnelStepBuild
       <Stack gap={3}>
         {steps.map((step, index) => (
           <FunnelStepForm
-            key={index}
+            key={step.id}
             disabled={disabled}
             index={index}
             isLastStep={index === steps.length - 1}

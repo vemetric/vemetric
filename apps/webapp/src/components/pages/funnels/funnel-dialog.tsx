@@ -24,6 +24,9 @@ interface FunnelDialogProps {
 }
 
 export const FunnelDialog = ({ funnelId, children }: FunnelDialogProps) => {
+  const [open, _setOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
   const {
     hasChanges,
     isSubmitting,
@@ -32,19 +35,15 @@ export const FunnelDialog = ({ funnelId, children }: FunnelDialogProps) => {
     steps,
     setSteps,
     onSubmit,
-    resetForm,
     isEditMode,
     isLoadingFunnel,
   } = useFunnel({
+    isDialogOpen: open,
     funnelId,
     onSuccess: () => {
       _setOpen(false);
-      resetForm();
     },
   });
-
-  const [open, _setOpen] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const setOpen = (open: boolean) => {
     if (hasChanges.current && !open) {
@@ -53,15 +52,11 @@ export const FunnelDialog = ({ funnelId, children }: FunnelDialogProps) => {
     }
 
     _setOpen(open);
-    if (!open) {
-      resetForm();
-    }
   };
 
   const handleConfirmDiscard = () => {
     setConfirmOpen(false);
     _setOpen(false);
-    resetForm();
   };
 
   return (
@@ -94,7 +89,7 @@ export const FunnelDialog = ({ funnelId, children }: FunnelDialogProps) => {
               <Field.Label>Funnel Name</Field.Label>
               <InputGroup startElement={<TbChartFunnel />} width="full">
                 <Input
-                  placeholder="Checkout Funnel"
+                  placeholder="Enter funnel name..."
                   value={funnelName}
                   onChange={(e) => setFunnelName(e.target.value)}
                   disabled={isSubmitting || isLoadingFunnel}

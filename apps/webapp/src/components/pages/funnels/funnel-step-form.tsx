@@ -14,13 +14,7 @@ interface MoveIconButtonProps extends IconProps {
 }
 
 const MoveIconButton = ({ disabled, tooltipContent, onClick, ...props }: MoveIconButtonProps) => (
-  <Tooltip
-    disabled={disabled}
-    content={tooltipContent}
-    positioning={{ placement: 'left' }}
-    closeOnClick={false}
-    closeOnPointerDown={false}
-  >
+  <Tooltip disabled={disabled} content={tooltipContent} positioning={{ placement: 'left' }}>
     <Icon
       pos="absolute"
       left="14px"

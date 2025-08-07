@@ -568,9 +568,9 @@ export const clickhouseEvent = {
    * @param projectId - The project ID
    * @param steps - Array of funnel steps, each containing either pageview or event criteria
    * @param startDate - Start date for funnel analysis
-   * @param windowHours - Maximum time window between first and last step (default 24 hours)
+   * @param windowHours - Maximum time window between first and last step, default is a week (168 hours)
    */
-  getFunnelResults: async (projectId: bigint, steps: Array<FunnelStep>, startDate: Date, windowHours: number = 24) => {
+  getFunnelResults: async (projectId: bigint, steps: Array<FunnelStep>, startDate: Date, windowHours: number = 168) => {
     // Build the conditions for each step
     const stepConditions = steps.map((step) => {
       const conditions = [`projectId = ${escape(projectId)}`];

@@ -4,6 +4,8 @@ import { nanoid } from 'nanoid';
 import { TbPlus } from 'react-icons/tb';
 import { FunnelStepForm } from './funnel-step-form';
 
+const MAX_STEPS = 10;
+
 interface FunnelStepBuilderProps {
   steps: FunnelStep[];
   onChange: (steps: FunnelStep[]) => void;
@@ -85,7 +87,7 @@ export const FunnelStepBuilder = ({ steps, onChange, disabled }: FunnelStepBuild
         <Text fontSize="sm" fontWeight="medium">
           Steps
         </Text>
-        <Button size="xs" variant="outline" onClick={addStep} disabled={disabled || steps.length >= 10}>
+        <Button size="xs" variant="outline" onClick={addStep} disabled={disabled || steps.length >= MAX_STEPS}>
           <Icon as={TbPlus} />
           Add Step
         </Button>

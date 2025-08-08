@@ -67,7 +67,7 @@ function RouteComponent() {
   });
   const isResultsLoading = _isResultsLoading || !funnelResults;
 
-  // Transform funnel results from ClickHouse format to component format
+  // merge steps and results data
   const funnelSteps = React.useMemo(() => {
     if (isFunnelLoading || isResultsLoading) {
       return null;
@@ -80,14 +80,14 @@ function RouteComponent() {
     // Create array with users count for each stage
     const stepResults = [];
 
-    // First entry: total active users (from separate query)
+    // First entry: total active users
     stepResults.push({ name: 'Active Users', users: activeUsers });
 
     // Add users for each completed step with custom names
-    for (let i = 1; i <= funnelStepsData.length; i++) {
-      const stageResult = results.find((r) => r.funnelStage === i);
-      const stepData = funnelStepsData[i - 1];
-      const stepName = stepData?.name || `Step ${i}`;
+    for (let i = 0; i < funnelStepsData.length; i++) {
+      const stageResult = results[i];
+      const stepData = funnelStepsData[i];
+      const stepName = stepData?.name || `Step ${i + 1}`;
       stepResults.push({
         name: stepName,
         users: stageResult?.userCount || 0,

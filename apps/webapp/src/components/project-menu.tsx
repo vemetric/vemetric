@@ -80,6 +80,8 @@ export const ProjectMenu = () => {
               route = '/p/$projectId/users';
             } else if (routeId.startsWith('/_layout/p/$projectId/events/')) {
               route = '/p/$projectId/events';
+            } else if (routeId.startsWith('/_layout/p/$projectId/funnels/')) {
+              route = '/p/$projectId/funnels';
             }
 
             return (

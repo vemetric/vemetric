@@ -125,13 +125,23 @@ function RouteComponent() {
                     borderWidth="2px"
                     transition="all 0.2s ease-in-out"
                     _hover={{ bg: 'gray.subtle/50', borderColor: 'purple.500/50' }}
+                    className="group"
                   >
                     <Card.Body pos="relative">
                       <AspectRatio ratio={16 / 9}>
                         <Box />
                       </AspectRatio>
                       <Flex pos="absolute" inset={0} justify="center" align="center">
-                        <EmptyState icon={<TbChartFunnel />} title="Create a new funnel" />
+                        <EmptyState
+                          icon={
+                            <Icon
+                              as={TbChartFunnel}
+                              transition="all 0.2s ease-in-out"
+                              _groupHover={{ color: 'purple.500' }}
+                            />
+                          }
+                          title="Create a new funnel"
+                        />
                       </Flex>
                     </Card.Body>
                     <Box

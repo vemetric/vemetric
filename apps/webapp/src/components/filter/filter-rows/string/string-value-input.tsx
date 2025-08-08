@@ -1,5 +1,6 @@
 import { Box, Combobox, Input, useFilter, useListCollection } from '@chakra-ui/react';
 import type { IStringFilter } from '@vemetric/common/filters';
+import React from 'react';
 import { Tooltip } from '@/components/ui/tooltip';
 
 interface Props {
@@ -10,7 +11,9 @@ interface Props {
   placeholder?: string;
 }
 
-export const StringValueInput = ({ id, values, filter, onChange, placeholder }: Props) => {
+export const StringValueInput = React.memo(function StringValueInput(props: Props) {
+  const { id, values, filter, onChange, placeholder } = props;
+
   const { contains } = useFilter({ sensitivity: 'base' });
   const { collection, filter: filterCollection } = useListCollection({
     initialItems: values ?? [],
@@ -72,4 +75,4 @@ export const StringValueInput = ({ id, values, filter, onChange, placeholder }: 
       )}
     </>
   );
-};
+});

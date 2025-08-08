@@ -9,7 +9,7 @@ interface Props {
 export const BooleanFilterRow = ({ value, onChange, label }: Props) => {
   return (
     <>
-      <Text asChild fontWeight="semibold">
+      <Text asChild fontWeight="medium">
         <label
           onClick={() => {
             onChange(!value);

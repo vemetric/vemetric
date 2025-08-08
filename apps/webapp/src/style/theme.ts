@@ -5,6 +5,7 @@ import {
   comboboxAnatomy,
   emptyStateAnatomy,
   menuAnatomy,
+  selectAnatomy,
   tableAnatomy,
   tabsAnatomy,
   toastAnatomy,
@@ -38,6 +39,12 @@ export const vemetricTheme = createSystem(defaultConfig, {
       _dark: {
         bg: 'gray.300/50',
       },
+    },
+    '.simplebar-content-wrapper': {
+      outline: 'none!important',
+    },
+    '.simplebar-scrollbar::before': {
+      bg: 'gray.600!important',
     },
     '#crisp-chatbox > div > a': {
       display: 'none!important',
@@ -183,6 +190,13 @@ export const vemetricTheme = createSystem(defaultConfig, {
       combobox: defineSlotRecipe({
         slots: comboboxAnatomy.keys(),
         variants: {
+          variant: {
+            outline: {
+              input: {
+                borderColor: 'colorPalette.emphasized',
+              },
+            },
+          },
           size: {
             '2xs': {
               root: {
@@ -292,6 +306,23 @@ export const vemetricTheme = createSystem(defaultConfig, {
               item: {
                 py: 2.5,
                 px: 3,
+              },
+            },
+          },
+        },
+      }),
+      select: defineSlotRecipe({
+        slots: selectAnatomy.keys(),
+        variants: {
+          variant: {
+            outline: {
+              trigger: {
+                bg: 'bg.card',
+                borderColor: 'colorPalette.emphasized',
+                focusRingWidth: '0px',
+                _expanded: {
+                  borderColor: 'colorPalette.focusRing',
+                },
               },
             },
           },

@@ -15,7 +15,7 @@ interface Props {
 export const ListFilterRow = ({ filter, onChange, label, values }: Props) => {
   return (
     <>
-      <Text fontWeight="semibold">{label}</Text>
+      <Text fontWeight="medium">{label}</Text>
       <Flex justify="center">
         <OperatorButton
           operator={filter.operator}

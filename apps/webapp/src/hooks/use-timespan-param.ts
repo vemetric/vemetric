@@ -1,14 +1,22 @@
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { getRouteApi } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { getStoredTimespan, setStoredTimespan } from '@/utils/session-storage';
 
+export type TimespanRoute =
+  | '/public/$domain'
+  | '/_layout/p/$projectId/'
+  | '/_layout/p/$projectId/funnels/'
+  | '/_layout/p/$projectId/funnels/$funnelId';
+
 interface Props {
-  publicDashboard?: boolean;
+  from: TimespanRoute;
 }
 
-export const useTimespanParam = ({ publicDashboard }: Props) => {
-  const navigate = useNavigate({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
-  const { t: _timespan } = useSearch({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
+export const useTimespanParam = ({ from }: Props) => {
+  const route = getRouteApi(from);
+
+  const navigate = route.useNavigate();
+  const { t: _timespan } = route.useSearch();
   const timespan = _timespan ?? getStoredTimespan() ?? '24hrs';
 
   useEffect(() => {

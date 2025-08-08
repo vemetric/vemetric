@@ -164,6 +164,7 @@ export const FilterGroup = ({ group, onChange, onDelete: onDeleteGroup, nested, 
                     onChange={(operator) => {
                       onChange({ ...group, operator });
                     }}
+                    portalled
                   >
                     {group.operator === 'and' ? '&' : 'or'}
                   </OperatorButton>

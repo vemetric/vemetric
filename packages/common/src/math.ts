@@ -19,3 +19,7 @@ export const formatNumber = (value: number, shorten = false) => {
 
   return Intl.NumberFormat('en-US').format(value);
 };
+
+export const formatPercentage = (value: number) => {
+  return `${value.toFixed(2).replace(/[.,]00$/, '')}%`;
+};

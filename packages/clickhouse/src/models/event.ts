@@ -1,6 +1,7 @@
 import { type TimeSpan } from '@vemetric/common/charts/timespans';
 import { formatClickhouseDate } from '@vemetric/common/date';
 import type { IFilterConfig, stringOperatorsSchema } from '@vemetric/common/filters';
+import type { FunnelStep } from '@vemetric/common/funnel';
 import { jsonStringify } from '@vemetric/common/json';
 import type { IUserSortConfig } from '@vemetric/common/sort';
 import { escape } from 'sqlstring';
@@ -15,9 +16,9 @@ import { getEventFilterQueries } from '../utils/filters';
 import { buildStringFilterQuery } from '../utils/filters/base-filters';
 import { buildBrowserFilterQueries } from '../utils/filters/browser-filter';
 import { buildDeviceFilterQueries } from '../utils/filters/device-filter';
-import { buildEventFilterQueries } from '../utils/filters/event-filter';
+import { buildEventFilterQueries, buildEventFilterQuery } from '../utils/filters/event-filter';
 import { buildOsFilterQueries } from '../utils/filters/os-filter';
-import { buildPageFilterQueries } from '../utils/filters/page-filter';
+import { buildPageFilterQueries, buildPageFilterQuery } from '../utils/filters/page-filter';
 import { buildUserFilterQueries } from '../utils/filters/user-filter';
 import { buildUserSortQueries } from '../utils/sort/user-sort';
 import { withSpan } from '../utils/with-span';
@@ -325,7 +326,7 @@ export const clickhouseEvent = {
       const dateTransformMethod = getDateTransformMethod(timeSpan);
 
       const resultSet = await clickhouseClient.query({
-        query: `SELECT count(), ${dateTransformMethod}(createdAt) as date from event WHERE projectId=${escape(
+        query: `SELECT count(), ${dateTransformMethod}(createdAt) as date from ${TABLE_NAME} WHERE projectId=${escape(
           projectId,
         )} AND isPageView = 1 AND createdAt >= '${formatClickhouseDate(startDate)}' 
       ${pageFilterQueries ? `AND (${pageFilterQueries})` : ''}
@@ -348,7 +349,7 @@ export const clickhouseEvent = {
     async (projectId: bigint, timeSpan: TimeSpan, startDate: Date, filterQueries?: string) => {
       const dateTransformMethod = getDateTransformMethod(timeSpan);
       const resultSet = await clickhouseClient.query({
-        query: `SELECT count(distinct userId) as users, ${dateTransformMethod}(createdAt) as date from event WHERE projectId=${escape(
+        query: `SELECT count(distinct userId) as users, ${dateTransformMethod}(createdAt) as date from ${TABLE_NAME} WHERE projectId=${escape(
           projectId,
         )} AND createdAt >= '${formatClickhouseDate(startDate)}' ${filterQueries || ''} GROUP BY date;`,
         format: 'JSONEachRow',
@@ -366,7 +367,7 @@ export const clickhouseEvent = {
   ),
   getCurrentActiveUsers: withSpan('getCurrentActiveUsers', async (projectId: bigint, filterQueries?: string) => {
     const resultSet = await clickhouseClient.query({
-      query: `SELECT count(distinct userId) as users from event WHERE projectId=${escape(
+      query: `SELECT count(distinct userId) as users from ${TABLE_NAME} WHERE projectId=${escape(
         projectId,
       )} AND createdAt >= NOW() - INTERVAL 1 MINUTE ${filterQueries || ''};`,
       format: 'JSONEachRow',
@@ -376,7 +377,7 @@ export const clickhouseEvent = {
   }),
   getActiveUsers: withSpan('getActiveUsers', async (projectId: bigint, startDate: Date, filterQueries?: string) => {
     const resultSet = await clickhouseClient.query({
-      query: `SELECT count(distinct userId) as users from event WHERE projectId=${escape(
+      query: `SELECT count(distinct userId) as users from ${TABLE_NAME} WHERE projectId=${escape(
         projectId,
       )} AND createdAt >= '${formatClickhouseDate(startDate)}' ${filterQueries || ''};`,
       format: 'JSONEachRow',
@@ -567,39 +568,25 @@ export const clickhouseEvent = {
    * @param projectId - The project ID
    * @param steps - Array of funnel steps, each containing either pageview or event criteria
    * @param startDate - Start date for funnel analysis
-   * @param windowHours - Maximum time window between first and last step (default 24 hours)
+   * @param windowHours - Maximum time window between first and last step, default is a week (168 hours)
    */
-  getFunnelResults: async (
-    projectId: bigint,
-    steps: Array<{
-      type: 'pageview' | 'event';
-      name?: string; // Event name if type is 'event'
-      pathname?: string; // Page path if type is 'pageview'
-      customData?: Record<string, any>; // Optional custom data filters
-    }>,
-    startDate: Date,
-    windowHours: number = 24,
-  ) => {
+  getFunnelResults: async (projectId: bigint, steps: Array<FunnelStep>, startDate: Date, windowHours: number = 168) => {
     // Build the conditions for each step
     const stepConditions = steps.map((step) => {
       const conditions = [`projectId = ${escape(projectId)}`];
 
-      if (step.type === 'pageview') {
+      if (step.filter.type === 'page') {
         conditions.push('isPageView = 1');
-        if (step.pathname) {
-          conditions.push(`pathname = ${escape(step.pathname)}`);
+        const pageFilterQuery = buildPageFilterQuery(step.filter);
+        if (pageFilterQuery) {
+          conditions.push(pageFilterQuery);
         }
       } else {
         conditions.push('isPageView = 0');
-        if (step.name) {
-          conditions.push(`name = ${escape(step.name)}`);
+        const eventFilterQuery = buildEventFilterQuery(step.filter);
+        if (eventFilterQuery) {
+          conditions.push(eventFilterQuery);
         }
-      }
-
-      if (step.customData) {
-        Object.entries(step.customData).forEach(([key, value]) => {
-          conditions.push(`JSONExtractString(customData, ${escape(key)}) = ${escape(value)}`);
-        });
       }
 
       return conditions.join(' AND ');
@@ -607,22 +594,31 @@ export const clickhouseEvent = {
 
     const resultSet = await clickhouseClient.query({
       query: `
-        SELECT
-          funnelStage,
-          COUNT(*) AS userCount
-        FROM
-          (
-            SELECT windowFunnel(${escape(windowHours * 60 * 60)})(
+        WITH funnel_data AS (
+          SELECT 
+            userId,
+            windowFunnel(${escape(windowHours * 60 * 60)})(
               toDateTime(createdAt),
               ${stepConditions.map((condition) => `(${condition})`).join(',')}
-            ) as funnelStage
-            FROM ${TABLE_NAME}
-            WHERE projectId = ${escape(projectId)}
-              AND createdAt >= '${formatClickhouseDate(startDate)}'
-            GROUP BY userId
-          ) as funnelResults
-        GROUP BY funnelStage
-        ORDER BY funnelStage`,
+            ) as maxStage
+          FROM ${TABLE_NAME}
+          WHERE projectId = ${escape(projectId)}
+            AND createdAt >= '${formatClickhouseDate(startDate)}'
+          GROUP BY userId
+        )
+        SELECT 
+          stage as funnelStage,
+          COUNT(*) as userCount
+        FROM (
+          SELECT 
+            userId,
+            maxStage,
+            arrayJoin(range(1, maxStage + 1)) as stage
+          FROM funnel_data
+          WHERE maxStage > 0
+        )
+        GROUP BY stage
+        ORDER BY stage`,
       format: 'JSONEachRow',
     });
 

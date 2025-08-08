@@ -1,28 +1,10 @@
 import { TRPCError } from '@trpc/server';
-import { isTimespanAllowed, TIME_SPAN_DATA, TIME_SPANS } from '@vemetric/common/charts/timespans';
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { sourcesSchema } from '@vemetric/common/sources';
 import { clickhouseEvent, clickhouseSession, getUserFilterQueries } from 'clickhouse';
 import { z } from 'zod';
-import { fillTimeSeries, getStartDate } from '../utils/timeseries';
-import { projectOrPublicProcedure, router } from '../utils/trpc';
-
-const timespanProcedure = projectOrPublicProcedure
-  .input(z.object({ timespan: z.enum(TIME_SPANS) }))
-  .use(async (opts) => {
-    const {
-      input,
-      ctx: { subscriptionStatus },
-    } = opts;
-
-    if (!isTimespanAllowed(input.timespan, subscriptionStatus.isActive)) {
-      throw new TRPCError({ code: 'FORBIDDEN', message: 'Upgrade to the Professional plan for longer data retention' });
-    }
-
-    return opts.next({
-      ctx: opts.ctx,
-    });
-  });
+import { fillTimeSeries } from '../utils/timeseries';
+import { timespanProcedure, router } from '../utils/trpc';
 
 export const dashboardRouter = router({
   getData: timespanProcedure
@@ -34,11 +16,8 @@ export const dashboardRouter = router({
     .query(async (opts) => {
       const {
         input: { timespan, filterConfig },
-        ctx: { projectId, project, subscriptionStatus, isPublicDashboard },
+        ctx: { projectId, project, subscriptionStatus, isPublicDashboard, startDate, timeSpanData },
       } = opts;
-
-      const timeSpanData = TIME_SPAN_DATA[timespan];
-      const startDate = getStartDate(timespan);
 
       const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
 
@@ -124,11 +103,9 @@ export const dashboardRouter = router({
     )
     .query(async (opts) => {
       const {
-        input: { timespan, filterConfig, source = 'referrer' },
-        ctx: { projectId },
+        input: { filterConfig, source = 'referrer' },
+        ctx: { projectId, startDate },
       } = opts;
-
-      const startDate = getStartDate(timespan);
 
       const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
 
@@ -158,11 +135,9 @@ export const dashboardRouter = router({
     )
     .query(async (opts) => {
       const {
-        input: { timespan, filterConfig },
-        ctx: { projectId },
+        input: { filterConfig },
+        ctx: { projectId, startDate },
       } = opts;
-
-      const startDate = getStartDate(timespan);
 
       const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
 
@@ -180,11 +155,9 @@ export const dashboardRouter = router({
     )
     .query(async (opts) => {
       const {
-        input: { timespan, filterConfig },
-        ctx: { projectId },
+        input: { filterConfig },
+        ctx: { projectId, startDate },
       } = opts;
-
-      const startDate = getStartDate(timespan);
 
       const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
 
@@ -202,11 +175,9 @@ export const dashboardRouter = router({
     )
     .query(async (opts) => {
       const {
-        input: { timespan, filterConfig },
-        ctx: { projectId },
+        input: { filterConfig },
+        ctx: { projectId, startDate },
       } = opts;
-
-      const startDate = getStartDate(timespan);
 
       const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
 
@@ -224,11 +195,9 @@ export const dashboardRouter = router({
     )
     .query(async (opts) => {
       const {
-        input: { timespan, filterConfig },
-        ctx: { projectId },
+        input: { filterConfig },
+        ctx: { projectId, startDate },
       } = opts;
-
-      const startDate = getStartDate(timespan);
 
       const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
 
@@ -252,8 +221,8 @@ export const dashboardRouter = router({
     )
     .query(async (opts) => {
       const {
-        input: { eventName, timespan, filterConfig },
-        ctx: { projectId, isPublicDashboard },
+        input: { eventName, filterConfig },
+        ctx: { projectId, startDate, isPublicDashboard },
       } = opts;
 
       if (isPublicDashboard) {
@@ -262,8 +231,6 @@ export const dashboardRouter = router({
           message: 'Public dashboards do not support showing event properties',
         });
       }
-
-      const startDate = getStartDate(timespan);
 
       const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
 
@@ -289,8 +256,8 @@ export const dashboardRouter = router({
     )
     .query(async (opts) => {
       const {
-        input: { eventName, property, timespan, filterConfig },
-        ctx: { projectId, isPublicDashboard },
+        input: { eventName, property, filterConfig },
+        ctx: { projectId, startDate, isPublicDashboard },
       } = opts;
 
       if (isPublicDashboard) {
@@ -299,8 +266,6 @@ export const dashboardRouter = router({
           message: 'Public dashboards do not support showing event property values',
         });
       }
-
-      const startDate = getStartDate(timespan);
 
       const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
 

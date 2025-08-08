@@ -2,7 +2,7 @@ import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { logger } from '../utils/logger';
 import { paddleApi } from '../utils/paddle';
-import { organizationProcedure, organizationAdminProcedure, router } from '../utils/trpc';
+import { organizationProcedure, organizationAdminProcedure, router, projectOrPublicProcedure } from '../utils/trpc';
 import { getCurrentUsageCycle, getUsagePerOrganization } from '../utils/usage';
 
 export const billingRouter = router({
@@ -21,6 +21,15 @@ export const billingRouter = router({
     return {
       ...subscriptionStatus,
       usageStats,
+    };
+  }),
+  subscriptionActive: projectOrPublicProcedure.query(async (opts) => {
+    const {
+      ctx: { subscriptionStatus },
+    } = opts;
+
+    return {
+      isSubscriptionActive: subscriptionStatus.isActive,
     };
   }),
   billingInfo: organizationAdminProcedure.query(async (opts) => {

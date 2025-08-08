@@ -1,13 +1,14 @@
-import { Box } from '@chakra-ui/react';
+import { Box, type BoxProps } from '@chakra-ui/react';
 
-export const PageDotBackground = () => {
+export const PageDotBackground = (props: BoxProps) => {
   return (
     <Box
       pos="absolute"
       inset="1.5"
       backgroundImage="radial-gradient(circle at 1px 1px, var(--chakra-colors-gray-emphasized) 1px, transparent 0)"
       backgroundSize="15px 15px"
-      opacity={0.5}
+      opacity={0.45}
+      {...props}
     />
   );
 };

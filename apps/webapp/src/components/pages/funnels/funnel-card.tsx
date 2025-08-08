@@ -174,6 +174,7 @@ export const FunnelCard = ({ projectId, funnel, activeUsersVisible }: Props) => 
             </IconButton>
           </FunnelDialog>
           <DeletePopover
+            text="Do you really want to delete this funnel?"
             onDelete={() => deleteFunnel({ projectId, id: funnel.id })}
             isLoading={isLoading}
             placement="top"

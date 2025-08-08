@@ -215,7 +215,11 @@ function RouteComponent() {
                   <Icon as={TbEdit} />
                 </IconButton>
               </FunnelDialog>
-              <DeletePopover onDelete={() => deleteFunnel({ projectId, id: funnelId })} isLoading={isFunnelDeleting}>
+              <DeletePopover
+                text="Do you really want to delete this funnel?"
+                onDelete={() => deleteFunnel({ projectId, id: funnelId })}
+                isLoading={isFunnelDeleting}
+              >
                 <IconButton variant="surface" size="xs" color="red.fg">
                   <Icon as={TbTrash} />
                 </IconButton>

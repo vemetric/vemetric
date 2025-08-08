@@ -12,6 +12,7 @@ import { FunnelDialog } from '@/components/pages/funnels/funnel-dialog';
 import { TimespanSelect } from '@/components/timespan-select';
 import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import { useActiveUsersParam } from '@/hooks/use-activeusers-param';
+import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { useSetBreadcrumbs } from '@/stores/header-store';
 import { trpc } from '@/utils/trpc';
 
@@ -27,7 +28,7 @@ export const Route = createFileRoute('/_layout/p/$projectId/funnels/')({
 
 function RouteComponent() {
   const { projectId } = Route.useParams();
-  const { t: timespan = '3months' } = Route.useSearch();
+  const { timespan } = useTimespanParam({ from: '/_layout/p/$projectId/funnels/' });
   const { activeUsersVisible, setActiveUsersVisible } = useActiveUsersParam({ from: '/_layout/p/$projectId/funnels/' });
 
   const { data: filterableData } = trpc.filters.getFilterableData.useQuery({

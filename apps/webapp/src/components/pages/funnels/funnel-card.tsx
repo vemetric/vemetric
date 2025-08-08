@@ -128,7 +128,7 @@ export const FunnelCard = ({ projectId, funnel, activeUsersVisible }: Props) => 
                         >
                           {isFirstStep ? (
                             <Flex align="center" justify="center" gap={0.5} fontSize="xs" ml="-1" mt="-1">
-                              <TbUserSquareRounded /> {formatNumber(step.users, true)}
+                              <Icon as={TbUserSquareRounded} flexShrink={0} /> {formatNumber(step.users, true)}
                             </Flex>
                           ) : (
                             formatPercentage(completedPercentage)

@@ -139,7 +139,7 @@ export const HorizontalFunnel = (props: Props) => {
                       >
                         {isFirstStep ? (
                           <>
-                            <TbUserSquareRounded /> {formatNumber(step.users, true)}
+                            <Icon as={TbUserSquareRounded} flexShrink={0} /> {formatNumber(step.users, true)}
                           </>
                         ) : (
                           formatPercentage(completedUsersPercentage)

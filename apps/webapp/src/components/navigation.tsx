@@ -1,5 +1,5 @@
 import type { BoxProps, CardRootProps, FlexProps } from '@chakra-ui/react';
-import { Box, Card, Flex, Icon, IconButton, LinkOverlay, Spinner, Text } from '@chakra-ui/react';
+import { Box, Card, Flex, Icon, Spinner } from '@chakra-ui/react';
 import type { LinkProps } from '@tanstack/react-router';
 import { Link, useMatches, useParams } from '@tanstack/react-router';
 import { vemetric } from '@vemetric/react';
@@ -13,11 +13,10 @@ import {
   TbStack2,
   TbTool,
   TbUserSquareRounded,
-  TbBrandDiscord,
-  TbX,
 } from 'react-icons/tb';
 import { useOpenCrispChat } from '@/stores/crisp-chat-store';
 import { authClient } from '@/utils/auth';
+import { SocialButtons } from './social-buttons';
 import { ThemeSwitch } from './theme-switch';
 
 interface NavigationItemProps extends FlexProps {
@@ -61,12 +60,6 @@ export const NavDivider = (props: BoxProps) => (
 export const Navigation = (props: CardRootProps) => {
   const matches = useMatches();
   const routeId = matches[matches.length - 1].routeId;
-  const [bannerVisible, setBannerVisible] = useState(localStorage.getItem('discord-banner-visible') !== 'false');
-
-  const hideBanner = () => {
-    localStorage.setItem('discord-banner-visible', 'false');
-    setBannerVisible(false);
-  };
 
   const openCrispChat = useOpenCrispChat();
 
@@ -117,57 +110,11 @@ export const Navigation = (props: CardRootProps) => {
         Funnels
       </NavigationItem>
       <NavDivider />
-      <Box h={{ base: '0px', md: '30px', lg: '100px' }} />
-      <Flex p={2} justify="center" minH="30px">
-        {bannerVisible && (
-          <Flex
-            maxW="200px"
-            pos="relative"
-            overflow="hidden"
-            w="100%"
-            h="80px"
-            rounded="md"
-            bg="linear-gradient(to top,rgba(92, 76, 231, 0.9),rgba(141, 170, 255, 0.9))"
-            border="1px solid"
-            borderColor="bg.card"
-            boxShadow="sm"
-            color="white"
-            fontWeight="medium"
-          >
-            <LinkOverlay href="https://vemetric.com/discord" target="_blank" onClick={hideBanner}>
-              <Text py={1.5} px={2.5}>
-                Join our Discord Server!
-              </Text>
-            </LinkOverlay>
-            <Icon
-              as={TbBrandDiscord}
-              pos="absolute"
-              right={-2}
-              bottom={-2}
-              fontSize="60px"
-              transform="rotate(-20deg)"
-              opacity="0.5"
-            />
-            <IconButton
-              variant="ghost"
-              size="xs"
-              pos="absolute"
-              right={-1}
-              top={-0.5}
-              color="white"
-              bg="transparent!important"
-              onClick={(e) => {
-                e.stopPropagation();
-                hideBanner();
-              }}
-            >
-              <TbX />
-            </IconButton>
-          </Flex>
-        )}
+      <Box h={{ base: '30px', md: '30px', lg: '100px' }} />
+      <Flex p={2} align="flex-end" justify="center" gap={2}>
+        <SocialButtons />
       </Flex>
-      <NavDivider />
-      <Flex justify="center" p={3}>
+      <Flex justify="center" p={2}>
         <ThemeSwitch />
       </Flex>
       <NavDivider />

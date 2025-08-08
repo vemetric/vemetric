@@ -40,7 +40,7 @@ export function useFunnelForm({ isDialogOpen, funnelId, onSuccess }: UseFunnelPr
     _setFunnelName(name);
   };
 
-  const [steps, _setSteps] = useState<FunnelStep[]>([{ ...clone(DEFAULT_STEP), id: nanoid() }]);
+  const [steps, _setSteps] = useState<FunnelStep[]>(() => [{ ...clone(DEFAULT_STEP), id: nanoid() }]);
   const setSteps = (steps: FunnelStep[]) => {
     hasChanges.current = true;
     _setSteps(steps);

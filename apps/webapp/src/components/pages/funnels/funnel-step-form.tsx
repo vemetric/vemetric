@@ -1,5 +1,5 @@
-import type { IconProps } from '@chakra-ui/react';
-import { Button, Field, Input, Stack, Flex, Icon, Card, Text, IconButton } from '@chakra-ui/react';
+import type { BoxProps } from '@chakra-ui/react';
+import { Button, Field, Input, Stack, Flex, Icon, Card, Text, IconButton, Box } from '@chakra-ui/react';
 import type { FunnelStep } from '@vemetric/common/funnel';
 import { useState } from 'react';
 import { TbGripVertical, TbTrash, TbPencil, TbChevronUp, TbChevronDown } from 'react-icons/tb';
@@ -8,14 +8,15 @@ import { PageFilterForm } from '@/components/filter/filter-forms/page-filter-for
 import { Tooltip } from '@/components/ui/tooltip';
 import { StepTypeSelect } from './step-type-select';
 
-interface MoveIconButtonProps extends IconProps {
+interface MoveIconButtonProps extends BoxProps {
   disabled: boolean;
   tooltipContent: string;
 }
 
-const MoveIconButton = ({ disabled, tooltipContent, onClick, ...props }: MoveIconButtonProps) => (
+const MoveIconButton = ({ disabled, tooltipContent, children, ...props }: MoveIconButtonProps) => (
   <Tooltip disabled={disabled} content={tooltipContent} positioning={{ placement: 'left' }}>
-    <Icon
+    <Box
+      asChild
       pos="absolute"
       left="14px"
       rounded="sm"
@@ -27,9 +28,12 @@ const MoveIconButton = ({ disabled, tooltipContent, onClick, ...props }: MoveIco
       _groupHover={{ transform: 'translateY(0px)', opacity: disabled ? 0.4 : 1 }}
       _hover={{ outlineColor: disabled ? undefined : 'gray.emphasized' }}
       _active={{ bg: disabled ? undefined : 'gray.subtle' }}
-      onClick={disabled ? undefined : onClick}
       {...props}
-    />
+    >
+      <button type="button" disabled={disabled}>
+        {children}
+      </button>
+    </Box>
   </Tooltip>
 );
 
@@ -71,19 +75,21 @@ export const FunnelStepForm = ({
                 _groupHover={{ transform: 'translateY(-5px)', opacity: 0 }}
               />
               <MoveIconButton
-                as={TbChevronUp}
                 tooltipContent="Move step up"
                 disabled={isFirstStep}
                 top="0px"
                 onClick={() => moveStep('up')}
-              />
+              >
+                <TbChevronUp />
+              </MoveIconButton>
               <MoveIconButton
-                as={TbChevronDown}
                 tooltipContent="Move step down"
                 disabled={isLastStep}
                 bottom="1px"
                 onClick={() => moveStep('down')}
-              />
+              >
+                <TbChevronDown />
+              </MoveIconButton>
             </Flex>
             {editStepName ? (
               <Input

@@ -25,15 +25,11 @@ export const funnelsRouter = router({
       funnels.map(async (funnel) => {
         const steps = funnel.steps as FunnelStep[];
 
-        // Get real funnel results from ClickHouse
         const funnelResults = await clickhouseEvent.getFunnelResults(projectId, steps, startDate);
 
-        // Transform results to the expected format
         const stepResults: Array<{ users: number }> = [{ users: activeUsers }];
-
-        // Add users for each completed step
-        for (let i = 1; i <= steps.length; i++) {
-          const stageResult = funnelResults.find((r) => r.funnelStage === i);
+        for (let i = 0; i < steps.length; i++) {
+          const stageResult = funnelResults[i];
           stepResults.push({ users: stageResult?.userCount || 0 });
         }
 

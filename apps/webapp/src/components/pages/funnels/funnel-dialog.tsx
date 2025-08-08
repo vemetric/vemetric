@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { useFunnel } from '@/hooks/funnels/use-funnel';
+import { useFunnelForm } from '@/hooks/funnels/use-funnel-form';
 import { FunnelStepBuilder } from './funnel-step-builder';
 import { InputGroup } from '../../ui/input-group';
 
@@ -37,7 +37,7 @@ export const FunnelDialog = ({ funnelId, children }: FunnelDialogProps) => {
     onSubmit,
     isEditMode,
     isLoadingFunnel,
-  } = useFunnel({
+  } = useFunnelForm({
     isDialogOpen: open,
     funnelId,
     onSuccess: () => {

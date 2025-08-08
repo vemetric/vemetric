@@ -27,7 +27,7 @@ interface UseFunnelProps {
   onSuccess?: (id: string) => void;
 }
 
-export function useFunnel({ isDialogOpen, funnelId, onSuccess }: UseFunnelProps) {
+export function useFunnelForm({ isDialogOpen, funnelId, onSuccess }: UseFunnelProps) {
   const { projectId } = useProjectContext();
   const isInitialized = useRef(false);
   const isEditMode = !!funnelId;

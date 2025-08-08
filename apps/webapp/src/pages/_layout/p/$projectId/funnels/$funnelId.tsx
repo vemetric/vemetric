@@ -52,21 +52,33 @@ function RouteComponent() {
     data: funnelData,
     isError: isFunnelError,
     isLoading: _isFunnelLoading,
-  } = trpc.funnels.get.useQuery({
-    projectId,
-    id: funnelId,
-  });
+    isPreviousData: isFunnelPreviousData,
+  } = trpc.funnels.get.useQuery(
+    {
+      projectId,
+      id: funnelId,
+    },
+    {
+      keepPreviousData: true,
+    },
+  );
   const isFunnelLoading = _isFunnelLoading || !funnelData;
 
   const {
     data: funnelResults,
     isError: isResultsError,
     isLoading: _isResultsLoading,
-  } = trpc.funnels.getFunnelResults.useQuery({
-    projectId,
-    timespan,
-    id: funnelId,
-  });
+    isPreviousData: isResultsPreviousData,
+  } = trpc.funnels.getFunnelResults.useQuery(
+    {
+      projectId,
+      timespan,
+      id: funnelId,
+    },
+    {
+      keepPreviousData: true,
+    },
+  );
   const isResultsLoading = _isResultsLoading || !funnelResults;
 
   // merge steps and results data
@@ -223,6 +235,12 @@ function RouteComponent() {
           )}
         </AnimatePresence>
       </Box>
+
+      {(isFunnelPreviousData || isResultsPreviousData) && (
+        <Box pos="absolute" inset="0" opacity="0.8" zIndex="docked">
+          <Skeleton pos="absolute" inset="0" rounded="md" />
+        </Box>
+      )}
     </FilterContextProvider>
   );
 }

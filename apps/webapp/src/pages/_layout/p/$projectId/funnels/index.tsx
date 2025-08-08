@@ -40,10 +40,14 @@ function RouteComponent() {
     data: funnelsData,
     isLoading,
     isError,
-  } = trpc.funnels.list.useQuery({
-    projectId,
-    timespan,
-  });
+    isPreviousData,
+  } = trpc.funnels.list.useQuery(
+    {
+      projectId,
+      timespan,
+    },
+    { keepPreviousData: true },
+  );
 
   useSetBreadcrumbs(['Funnels']);
 
@@ -176,6 +180,12 @@ function RouteComponent() {
           </SimpleGrid>
         )}
       </Box>
+
+      {isPreviousData && (
+        <Box pos="absolute" inset="0" opacity="0.8" zIndex="docked">
+          <Skeleton pos="absolute" inset="0" rounded="md" />
+        </Box>
+      )}
     </FilterContextProvider>
   );
 }

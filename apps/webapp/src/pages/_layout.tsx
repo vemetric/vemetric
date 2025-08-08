@@ -1,7 +1,6 @@
 import { Box, Card, Flex, Grid } from '@chakra-ui/react';
 import { Outlet, createFileRoute, useNavigate, useParams } from '@tanstack/react-router';
 import { useEffect } from 'react';
-import { TbHome } from 'react-icons/tb';
 import { EventLimitDialog, eventLimitStore } from '@/components/event-limit-dialog';
 import { Header } from '@/components/header';
 import { Logo } from '@/components/logo';
@@ -9,7 +8,6 @@ import { MobileMenu } from '@/components/mobile-menu';
 import { Navigation } from '@/components/navigation';
 import { PageWrapper } from '@/components/page-wrapper';
 import { TabletHeader } from '@/components/tablet-header';
-import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from '@/components/ui/menu';
 import { toaster } from '@/components/ui/toaster';
 import { useOrganizationId } from '@/hooks/use-organization-id';
 import { getPricingPlan } from '@/utils/pricing';
@@ -64,7 +62,6 @@ export const Route = createFileRoute('/_layout')({
 });
 
 function LayoutComponent() {
-  const hostname = location.hostname.split('.').slice(-2).join('.');
   const { projectId } = useParams({ strict: false });
   const { organizationId } = useOrganizationId(projectId);
   const navigate = useNavigate();
@@ -138,18 +135,7 @@ function LayoutComponent() {
             align="center"
             height="max-content"
           >
-            <MenuRoot positioning={{ sameWidth: true }}>
-              <MenuTrigger textAlign="left">
-                <Logo />
-              </MenuTrigger>
-              <MenuContent>
-                <MenuItem asChild value="home">
-                  <a href={'https://' + hostname}>
-                    <TbHome size="18px" /> Home Page
-                  </a>
-                </MenuItem>
-              </MenuContent>
-            </MenuRoot>
+            <Logo />
             <Navigation />
           </Flex>
           <Box minW="0">

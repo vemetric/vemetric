@@ -56,8 +56,15 @@ export const FunnelStepForm = ({
   removeStep,
   disabled,
 }: FunnelStepFormProps) => {
-  const [editStepName, setEditStepName] = useState(false);
+  const [editStepName, setEditStepName] = useState<string | null>(null);
   const isFirstStep = index === 0;
+
+  const updateStepName = () => {
+    if (editStepName !== null) {
+      updateStep({ name: editStepName });
+      setEditStepName(null);
+    }
+  };
 
   return (
     <Card.Root size="sm" variant="outline">
@@ -91,7 +98,7 @@ export const FunnelStepForm = ({
                 <TbChevronDown />
               </MoveIconButton>
             </Flex>
-            {editStepName ? (
+            {editStepName !== null ? (
               <Input
                 className="funnel-step-name"
                 autoFocus
@@ -99,13 +106,16 @@ export const FunnelStepForm = ({
                 flexGrow={1}
                 size="2xs"
                 placeholder={`Step ${index + 1}`}
-                value={step.name}
-                onChange={(e) => updateStep({ name: e.target.value })}
-                onBlur={() => setEditStepName(false)}
+                value={editStepName}
+                onChange={(e) => setEditStepName(e.target.value)}
+                onBlur={updateStepName}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === 'Escape') {
+                  if (e.key === 'Enter') {
                     e.preventDefault();
-                    setEditStepName(false);
+                    updateStepName();
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    setEditStepName(null);
                   }
                 }}
               />
@@ -114,7 +124,12 @@ export const FunnelStepForm = ({
                 <Text fontSize="sm" fontWeight="medium" my={1} truncate>
                   {step.name || `Step ${index + 1}`}
                 </Text>
-                <IconButton size="2xs" variant="ghost" colorPalette="gray" onClick={() => setEditStepName(true)}>
+                <IconButton
+                  size="2xs"
+                  variant="ghost"
+                  colorPalette="gray"
+                  onClick={() => setEditStepName(step.name || '')}
+                >
                   <Icon as={TbPencil} />
                 </IconButton>
               </>

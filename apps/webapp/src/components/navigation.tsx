@@ -92,15 +92,6 @@ export const Navigation = (props: CardRootProps) => {
         Users
       </NavigationItem>
       <NavigationItem
-        isActive={routeId.startsWith('/_layout/p/$projectId/events/')}
-        icon={TbStack2}
-        as={Link}
-        to="/p/$projectId/events"
-        params={{ projectId }}
-      >
-        Events
-      </NavigationItem>
-      <NavigationItem
         isActive={routeId.startsWith('/_layout/p/$projectId/funnels/')}
         icon={TbChartFunnel}
         as={Link}
@@ -108,6 +99,15 @@ export const Navigation = (props: CardRootProps) => {
         params={{ projectId }}
       >
         Funnels
+      </NavigationItem>
+      <NavigationItem
+        isActive={routeId.startsWith('/_layout/p/$projectId/events/')}
+        icon={TbStack2}
+        as={Link}
+        to="/p/$projectId/events"
+        params={{ projectId }}
+      >
+        Events
       </NavigationItem>
       <NavDivider />
       <Box h={{ base: '30px', md: '30px', lg: '100px' }} />

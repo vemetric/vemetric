@@ -37,8 +37,8 @@ export const FunnelCard = ({ projectId, funnel, activeUsersVisible }: Props) => 
       className="group"
     >
       <Card.Header pos="relative" py={1.5} borderBottom="1px solid" borderColor="gray.emphasized/50">
-        <Flex justify="space-between" align="center">
-          <Text fontSize="sm" fontWeight="semibold">
+        <Flex justify="space-between" align="center" gap={2}>
+          <Text fontSize="sm" fontWeight="semibold" flexShrink={1} truncate>
             {funnel.name}
           </Text>
           <Tooltip content={`${formatPercentage(completedPercentage)} of users completed this funnel`}>
@@ -54,7 +54,7 @@ export const FunnelCard = ({ projectId, funnel, activeUsersVisible }: Props) => 
             <Grid
               templateColumns={`repeat(${activeUsersVisible ? funnelSteps.length : funnelSteps.length - 1}, 80px)`}
               alignItems="flex-end"
-              h="90%"
+              h="89%"
               px={4}
             >
               {funnelSteps.map((step, index) => {

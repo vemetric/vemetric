@@ -75,67 +75,71 @@ export const FunnelCard = ({ projectId, funnel, activeUsersVisible }: Props) => 
                 const completedPercentage = (step.users / firstStepUsers) * 100 || 0;
 
                 return (
-                  <Flex pos="relative" h="100%" w="100%" key={activeUsersVisible ? index : index - 1} align="flex-end">
-                    {!isLastStep && (
-                      <Box pos="absolute" h="100%" w="52%" right="-6%" opacity={{ base: 0.15, _dark: 0.2 }}>
-                        <svg
-                          width="100%"
-                          height="100%"
-                          viewBox="0 0 50 100"
-                          preserveAspectRatio="none"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <motion.path
-                            initial={{ d: 'M0 104 C0 104, 50 104, 50 104 L50 104 L0 104 Z' }}
-                            animate={{
-                              d: sameHeight
-                                ? `M0 ${startY + 1.5} C0 ${startY + 1.5}, 50 ${endY + 1.5}, 50 ${
-                                    endY + 1
-                                  } L50 104 L0 104 Z`
-                                : `M0 ${startY + 1.5} C12 ${startY + 1.5}, 30 ${endY}, 50 ${endY + 1} L50 104 L0 104 Z`,
-                            }}
-                            strokeWidth="2"
-                            stroke="var(--chakra-colors-purple-500)"
-                            fill="var(--chakra-colors-purple-500)"
-                            transition={{ duration: 0.4, ease: 'easeInOut' }}
-                          />
-                        </svg>
-                      </Box>
-                    )}
-                    <Box
-                      asChild
-                      pos="relative"
-                      w="60%"
-                      borderTopRadius="lg"
-                      bg="linear-gradient(to top, rgb(59 130 246 / 50%), rgb(59 130 246 / 30%)), var(--chakra-colors-bg-card)"
-                      border="1px solid"
-                      borderColor="purple.400/60"
-                      borderBottom="none"
-                    >
-                      <motion.div
-                        animate={{ height: `${barPercentage || 0}%` }}
-                        transition={{ duration: 0.4, ease: 'easeInOut' }}
-                      >
-                        <Box
-                          pos="absolute"
-                          top="-16px"
-                          right="-1px"
-                          fontSize="2xs"
-                          fontWeight="semibold"
-                          textAlign="center"
-                          w="100%"
-                        >
-                          {isFirstStep ? (
-                            <Flex align="center" justify="center" gap={0.5} fontSize="xs" ml="-1" mt="-1">
-                              <Icon as={TbUserSquareRounded} flexShrink={0} /> {formatNumber(step.users, true)}
-                            </Flex>
-                          ) : (
-                            formatPercentage(completedPercentage)
-                          )}
+                  <Flex asChild pos="relative" h="100%" w="100%" key={index} align="flex-end">
+                    <motion.div layout>
+                      {!isLastStep && (
+                        <Box pos="absolute" h="100%" w="52%" right="-6%" opacity={{ base: 0.15, _dark: 0.2 }}>
+                          <svg
+                            width="100%"
+                            height="100%"
+                            viewBox="0 0 50 100"
+                            preserveAspectRatio="none"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <motion.path
+                              initial={{ d: 'M0 104 C0 104, 50 104, 50 104 L50 104 L0 104 Z' }}
+                              animate={{
+                                d: sameHeight
+                                  ? `M0 ${startY + 1.5} C0 ${startY + 1.5}, 50 ${endY + 1.5}, 50 ${
+                                      endY + 1
+                                    } L50 104 L0 104 Z`
+                                  : `M0 ${startY + 1.5} C12 ${startY + 1.5}, 30 ${endY}, 50 ${
+                                      endY + 1
+                                    } L50 104 L0 104 Z`,
+                              }}
+                              strokeWidth="2"
+                              stroke="var(--chakra-colors-purple-500)"
+                              fill="var(--chakra-colors-purple-500)"
+                              transition={{ duration: 0.4, ease: 'easeInOut' }}
+                            />
+                          </svg>
                         </Box>
-                      </motion.div>
-                    </Box>
+                      )}
+                      <Box
+                        asChild
+                        pos="relative"
+                        w="60%"
+                        borderTopRadius="lg"
+                        bg="linear-gradient(to top, rgb(59 130 246 / 50%), rgb(59 130 246 / 30%)), var(--chakra-colors-bg-card)"
+                        border="1px solid"
+                        borderColor="purple.400/60"
+                        borderBottom="none"
+                      >
+                        <motion.div
+                          animate={{ height: `${barPercentage || 0}%` }}
+                          transition={{ duration: 0.4, ease: 'easeInOut' }}
+                        >
+                          <Box
+                            pos="absolute"
+                            top="-16px"
+                            right="-1px"
+                            fontSize="2xs"
+                            fontWeight="semibold"
+                            textAlign="center"
+                            w="100%"
+                          >
+                            {isFirstStep ? (
+                              <Flex align="center" justify="center" gap={0.5} fontSize="xs" ml="-1" mt="-1">
+                                <Icon as={TbUserSquareRounded} flexShrink={0} /> {formatNumber(step.users, true)}
+                              </Flex>
+                            ) : (
+                              formatPercentage(completedPercentage)
+                            )}
+                          </Box>
+                        </motion.div>
+                      </Box>
+                    </motion.div>
                   </Flex>
                 );
               })}

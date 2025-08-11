@@ -72,7 +72,8 @@ export const HorizontalFunnel = (props: Props) => {
 
             return (
               <Flex
-                key={activeUsersVisible ? index : index - 1}
+                asChild
+                key={index}
                 pos="relative"
                 px="84px"
                 align="flex-end"
@@ -80,89 +81,93 @@ export const HorizontalFunnel = (props: Props) => {
                 h={`${BAR_HEIGHT}px`}
                 pt={5}
               >
-                {!isLastStep && (
-                  <Box pos="absolute" bottom={0} h="95%" w="63%" right="-31%" opacity={{ base: 0.15, _dark: 0.2 }}>
-                    <svg
-                      width="100%"
-                      height="100%"
-                      viewBox="0 0 50 100"
-                      preserveAspectRatio="none"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <motion.path
-                        initial={{ d: 'M0 104 C0 104, 50 104, 50 104 L50 104 L0 104 Z' }}
-                        animate={{
-                          d: sameHeight
-                            ? `M0 ${startY + 1.5} C0 ${startY + 1.5}, 50 ${endY + 1.5}, 50 ${endY + 1} L50 104 L0 104 Z`
-                            : `M0 ${startY + 1.5} C12 ${startY + 1.5}, 30 ${endY}, 50 ${endY + 1} L50 104 L0 104 Z`,
-                        }}
-                        strokeWidth="2"
-                        stroke="var(--chakra-colors-purple-500)"
-                        fill="var(--chakra-colors-purple-500)"
-                        transition={TRANSITION}
-                      />
-                    </svg>
-                  </Box>
-                )}
-                <Flex flexDir="column" gap="1" justify="flex-end" h="100%">
-                  <Flex
-                    asChild
-                    pos="relative"
-                    flexDir="column"
-                    align="center"
-                    justify="center"
-                    bg="linear-gradient(to top, rgb(59 130 246 / 50%), rgb(59 130 246 / 30%)), var(--chakra-colors-bg-card)"
-                    border="1.5px solid"
-                    borderColor="purple.400"
-                    w="135px"
-                    borderTopRadius="2xl"
-                    gap={2}
-                    zIndex={1}
-                  >
-                    <motion.div
-                      initial={{ height: 0 }}
-                      animate={{ height: `${barPercentage || 0}%` }}
-                      transition={TRANSITION}
-                    >
-                      <Flex
-                        gap="1"
-                        align="center"
-                        justify="center"
-                        fontSize="sm"
-                        fontWeight="semibold"
-                        pos="absolute"
-                        top="-26px"
-                        right="-1px"
-                        textAlign="center"
-                        w="100%"
+                <motion.div layout transition={TRANSITION}>
+                  {!isLastStep && (
+                    <Box pos="absolute" bottom={0} h="95%" w="63%" right="-31%" opacity={{ base: 0.15, _dark: 0.2 }}>
+                      <svg
+                        width="100%"
+                        height="100%"
+                        viewBox="0 0 50 100"
+                        preserveAspectRatio="none"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
                       >
-                        {isFirstStep ? (
-                          <>
-                            <Icon as={TbUserSquareRounded} flexShrink={0} /> {formatNumber(step.users, true)}
-                          </>
-                        ) : (
-                          formatPercentage(completedUsersPercentage)
-                        )}
-                      </Flex>
-                    </motion.div>
+                        <motion.path
+                          initial={{ d: 'M0 104 C0 104, 50 104, 50 104 L50 104 L0 104 Z' }}
+                          animate={{
+                            d: sameHeight
+                              ? `M0 ${startY + 1.5} C0 ${startY + 1.5}, 50 ${endY + 1.5}, 50 ${
+                                  endY + 1
+                                } L50 104 L0 104 Z`
+                              : `M0 ${startY + 1.5} C12 ${startY + 1.5}, 30 ${endY}, 50 ${endY + 1} L50 104 L0 104 Z`,
+                          }}
+                          strokeWidth="2"
+                          stroke="var(--chakra-colors-purple-500)"
+                          fill="var(--chakra-colors-purple-500)"
+                          transition={TRANSITION}
+                        />
+                      </svg>
+                    </Box>
+                  )}
+                  <Flex flexDir="column" gap="1" justify="flex-end" h="100%">
+                    <Flex
+                      asChild
+                      pos="relative"
+                      flexDir="column"
+                      align="center"
+                      justify="center"
+                      bg="linear-gradient(to top, rgb(59 130 246 / 50%), rgb(59 130 246 / 30%)), var(--chakra-colors-bg-card)"
+                      border="1.5px solid"
+                      borderColor="purple.400"
+                      w="135px"
+                      borderTopRadius="2xl"
+                      gap={2}
+                      zIndex={1}
+                    >
+                      <motion.div
+                        initial={{ height: 0 }}
+                        animate={{ height: `${barPercentage || 0}%` }}
+                        transition={TRANSITION}
+                      >
+                        <Flex
+                          gap="1"
+                          align="center"
+                          justify="center"
+                          fontSize="sm"
+                          fontWeight="semibold"
+                          pos="absolute"
+                          top="-26px"
+                          right="-1px"
+                          textAlign="center"
+                          w="100%"
+                        >
+                          {isFirstStep ? (
+                            <>
+                              <Icon as={TbUserSquareRounded} flexShrink={0} /> {formatNumber(step.users, true)}
+                            </>
+                          ) : (
+                            formatPercentage(completedUsersPercentage)
+                          )}
+                        </Flex>
+                      </motion.div>
+                    </Flex>
                   </Flex>
-                </Flex>
-                <Box
-                  pos="absolute"
-                  left="6"
-                  bottom={0}
-                  zIndex={1}
-                  w="100%"
-                  h="1.5px"
-                  bg={
-                    isFirstStep || isLastStep
-                      ? `linear-gradient(to ${
-                          isFirstStep ? 'right' : 'left'
-                        }, transparent 0%, var(--chakra-colors-purple-400) 10%, var(--chakra-colors-purple-400) 100%)`
-                      : 'purple.400'
-                  }
-                />
+                  <Box
+                    pos="absolute"
+                    left="6"
+                    bottom={0}
+                    zIndex={1}
+                    w="100%"
+                    h="1.5px"
+                    bg={
+                      isFirstStep || isLastStep
+                        ? `linear-gradient(to ${
+                            isFirstStep ? 'right' : 'left'
+                          }, transparent 0%, var(--chakra-colors-purple-400) 10%, var(--chakra-colors-purple-400) 100%)`
+                        : 'purple.400'
+                    }
+                  />
+                </motion.div>
               </Flex>
             );
           })}

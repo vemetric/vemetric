@@ -5,6 +5,7 @@ import { clickhouseEvent } from 'clickhouse';
 import { dbFunnel } from 'database';
 import { z } from 'zod';
 import { projectProcedure, router, timespanProcedure } from '../utils/trpc';
+import { vemetric } from '../utils/vemetric-client';
 
 const upsertFunnelSchema = z.object({
   id: z.string().optional(),
@@ -65,12 +66,25 @@ export const funnelsRouter = router({
   upsert: projectProcedure.input(upsertFunnelSchema).mutation(async (opts) => {
     const {
       input: { id, name, steps },
-      ctx: { project },
+      ctx: { user, project },
     } = opts;
 
     if (id) {
       // Update existing funnel
       const funnel = await dbFunnel.update(id, { name, steps });
+
+      try {
+        await vemetric.trackEvent('FunnelUpdated', {
+          userIdentifier: user.id,
+          eventData: {
+            projectId: project.id,
+            projectDomain: project.domain,
+            funnelId: id,
+            funnelName: name,
+          },
+        });
+      } catch {}
+
       return { id: funnel.id };
     } else {
       // Create new funnel
@@ -79,6 +93,18 @@ export const funnelsRouter = router({
         projectId: project.id,
         steps,
       });
+
+      try {
+        await vemetric.trackEvent('FunnelCreated', {
+          userIdentifier: user.id,
+          eventData: {
+            projectId: project.id,
+            projectDomain: project.domain,
+            funnelName: name,
+          },
+        });
+      } catch {}
+
       return { id: funnel.id };
     }
   }),
@@ -86,9 +112,22 @@ export const funnelsRouter = router({
   delete: projectProcedure.input(z.object({ id: z.string() })).mutation(async (opts) => {
     const {
       input: { id },
+      ctx: { user, project },
     } = opts;
 
     await dbFunnel.delete(id);
+
+    try {
+      await vemetric.trackEvent('FunnelDeleted', {
+        userIdentifier: user.id,
+        eventData: {
+          projectId: project.id,
+          projectDomain: project.domain,
+          funnelId: id,
+        },
+      });
+    } catch {}
+
     return { success: true };
   }),
 

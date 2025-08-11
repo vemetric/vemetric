@@ -1,14 +1,15 @@
 import type { ListCollection } from '@chakra-ui/react';
-import { Box, Flex, Portal, Select, Text, Span } from '@chakra-ui/react';
+import { Box, Flex, Select, Text, Span } from '@chakra-ui/react';
 import { listOperatorValues, type IListFilter } from '@vemetric/common/filters';
 import { produce } from 'immer';
-import { Fragment, type ReactNode } from 'react';
+import type { ReactElement } from 'react';
+import { Fragment } from 'react';
 import { OperatorButton } from '../operator-button';
 
 interface Props {
   label: string;
   filter: IListFilter;
-  values: ListCollection<{ label: ReactNode; value: string }>;
+  values: ListCollection<{ label: ReactElement; value: string }>;
   onChange: (filter: IListFilter) => void;
 }
 
@@ -66,18 +67,16 @@ export const ListFilterRow = ({ filter, onChange, label, values }: Props) => {
               <Select.Indicator />
             </Select.IndicatorGroup>
           </Select.Control>
-          <Portal>
-            <Select.Positioner>
-              <Select.Content zIndex="1502!important">
-                {values.items.map(({ value, label }) => (
-                  <Select.Item item={value} key={value}>
-                    {label}
-                    <Select.ItemIndicator />
-                  </Select.Item>
-                ))}
-              </Select.Content>
-            </Select.Positioner>
-          </Portal>
+          <Select.Positioner>
+            <Select.Content zIndex="1502!important">
+              {values.items.map(({ value, label }) => (
+                <Select.Item item={value} key={value}>
+                  {label}
+                  <Select.ItemIndicator />
+                </Select.Item>
+              ))}
+            </Select.Content>
+          </Select.Positioner>
         </Select.Root>
       )}
     </>

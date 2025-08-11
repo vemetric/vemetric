@@ -32,7 +32,7 @@ export const LocationFilterButton = ({ filter, onChange, onDelete }: Props) => {
             <LocationFilterTitle />
           </Flex>
           <Button size="2xs" variant="ghost" rounded="sm" colorPalette="red" onClick={onDelete}>
-            Delete Delete
+            Delete
           </Button>
         </Flex>
       </Flex>

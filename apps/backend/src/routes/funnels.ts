@@ -4,6 +4,7 @@ import { funnelStepSchema } from '@vemetric/common/funnel';
 import { clickhouseEvent } from 'clickhouse';
 import { dbFunnel } from 'database';
 import { z } from 'zod';
+import { logger } from '../utils/logger';
 import { projectProcedure, router, timespanProcedure } from '../utils/trpc';
 import { vemetric } from '../utils/vemetric-client';
 
@@ -83,7 +84,9 @@ export const funnelsRouter = router({
             funnelName: name,
           },
         });
-      } catch {}
+      } catch (err) {
+        logger.error({ err }, 'Track event error');
+      }
 
       return { id: funnel.id };
     } else {
@@ -103,7 +106,9 @@ export const funnelsRouter = router({
             funnelName: name,
           },
         });
-      } catch {}
+      } catch (err) {
+        logger.error({ err }, 'Track event error');
+      }
 
       return { id: funnel.id };
     }
@@ -126,7 +131,9 @@ export const funnelsRouter = router({
           funnelId: id,
         },
       });
-    } catch {}
+    } catch (err) {
+      logger.error({ err }, 'Track event error');
+    }
 
     return { success: true };
   }),

@@ -19,7 +19,7 @@ export const FunnelCard = ({ projectId, funnel, activeUsersVisible }: Props) => 
   const activeUsers = funnelSteps[0].users;
   const firstStepUsers = activeUsersVisible ? activeUsers : funnelSteps[1].users;
   const lastStepUsers = funnelSteps[funnelSteps.length - 1].users;
-  const completedPercentage = (lastStepUsers / activeUsers) * 100 || 0;
+  const completedPercentage = (lastStepUsers / firstStepUsers) * 100 || 0;
 
   const utils = trpc.useUtils();
   const { mutate: deleteFunnel, isLoading } = trpc.funnels.delete.useMutation({
@@ -41,7 +41,12 @@ export const FunnelCard = ({ projectId, funnel, activeUsersVisible }: Props) => 
           <Text fontSize="sm" fontWeight="semibold" flexShrink={1} truncate>
             {funnel.name}
           </Text>
-          <Tooltip content={`${formatPercentage(completedPercentage)} of users completed this funnel`}>
+          <Tooltip
+            content={`${formatPercentage(completedPercentage)} of ${
+              activeUsersVisible ? 'all active users' : 'users that entered this funnel, also'
+            } completed this funnel`}
+            contentProps={{ maxW: activeUsersVisible ? undefined : '220px' }}
+          >
             <Text fontSize="xs" fontWeight="semibold" opacity="0.8" zIndex="1">
               {formatPercentage(completedPercentage)}
             </Text>

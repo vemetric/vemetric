@@ -4,7 +4,8 @@ import { buildStringFilterQuery } from './base-filters';
 export const buildPageFilterQuery = (filter: IPageFilter) => {
   if (
     (filter.pathFilter === undefined || filter.pathFilter.operator === 'any') &&
-    (filter.originFilter === undefined || filter.originFilter.operator === 'any')
+    (filter.originFilter === undefined || filter.originFilter.operator === 'any') &&
+    (filter.hashFilter === undefined || filter.hashFilter.operator === 'any')
   ) {
     return '';
   }
@@ -12,7 +13,14 @@ export const buildPageFilterQuery = (filter: IPageFilter) => {
   const pathQuery = buildStringFilterQuery('pathname', filter.pathFilter);
   const originQuery = buildStringFilterQuery('origin', filter.originFilter);
 
-  const query = [pathQuery, originQuery]
+  const hashFilter = {
+    ...filter.hashFilter,
+    operator: filter.hashFilter?.operator || 'any',
+    value: filter.hashFilter?.value ? '#' + filter.hashFilter.value : '',
+  };
+  const hashQuery = buildStringFilterQuery('urlHash', hashFilter);
+
+  const query = [pathQuery, originQuery, hashQuery]
     .map((s) => s.trim())
     .filter(Boolean)
     .join(' AND ');
@@ -27,8 +35,18 @@ export const buildPageFilterQueries = (filterConfig: IFilterConfig) => {
 
   const pageFilters = filterConfig.filters.filter((filter) => filter.type === 'page');
 
-  const positiveFilters = pageFilters.filter((filter) => !filter.pathFilter?.operator.includes('not'));
-  const negativeFilters = pageFilters.filter((filter) => filter.pathFilter?.operator.includes('not'));
+  const positiveFilters = pageFilters.filter(
+    (filter) =>
+      !filter.pathFilter?.operator.includes('not') &&
+      !filter.originFilter?.operator.includes('not') &&
+      !filter.hashFilter?.operator.includes('not'),
+  );
+  const negativeFilters = pageFilters.filter(
+    (filter) =>
+      filter.pathFilter?.operator.includes('not') ||
+      filter.originFilter?.operator.includes('not') ||
+      filter.hashFilter?.operator.includes('not'),
+  );
 
   const positiveQueries = positiveFilters
     .map((filter) => buildPageFilterQuery(filter))

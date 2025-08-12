@@ -1,4 +1,4 @@
-import { Box, Combobox, Input, useFilter, useListCollection } from '@chakra-ui/react';
+import { Box, Combobox, Input, InputGroup, useFilter, useListCollection } from '@chakra-ui/react';
 import type { IStringFilter } from '@vemetric/common/filters';
 import { Tooltip } from '@/components/ui/tooltip';
 
@@ -8,6 +8,7 @@ interface Props {
   values?: string[];
   onChange: (value: string) => void;
   placeholder?: string;
+  startAddon?: React.ReactNode;
 }
 
 export const StringValueInput = (props: Props) => {
@@ -61,17 +62,19 @@ export const StringValueInput = (props: Props) => {
           </Combobox.Positioner>
         </Combobox.Root>
       ) : (
-        <Input
-          id={id}
-          data-1p-ignore
-          size="2xs"
-          type="text"
-          value={filter.value}
-          onChange={(e) => {
-            onChange(e.target.value);
-          }}
-          placeholder={placeholder}
-        />
+        <InputGroup css={{ '& [data-group-item]': { px: 2 } }} startAddon={props.startAddon}>
+          <Input
+            id={id}
+            data-1p-ignore
+            size="2xs"
+            type="text"
+            value={filter.value}
+            onChange={(e) => {
+              onChange(e.target.value);
+            }}
+            placeholder={placeholder}
+          />
+        </InputGroup>
       )}
     </>
   );

@@ -10,9 +10,10 @@ interface Props {
   filter: IStringFilter;
   values?: string[];
   onChange: (filter: IStringFilter) => void;
+  startAddon?: React.ReactNode;
 }
 
-export const StringFilterRow = ({ filter, onChange, label, values }: Props) => {
+export const StringFilterRow = ({ filter, onChange, label, values, startAddon }: Props) => {
   const id = useId();
 
   return (
@@ -43,6 +44,7 @@ export const StringFilterRow = ({ filter, onChange, label, values }: Props) => {
             }),
           );
         }}
+        startAddon={startAddon}
       />
     </>
   );

@@ -63,6 +63,7 @@ export const pageFilterSchema = z.object({
   type: z.literal('page'),
   originFilter: stringFilterSchema.optional(),
   pathFilter: stringFilterSchema.optional(),
+  hashFilter: stringFilterSchema.optional(),
 });
 export type IPageFilter = z.infer<typeof pageFilterSchema>;
 

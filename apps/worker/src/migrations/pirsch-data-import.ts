@@ -196,8 +196,8 @@ async function importRawData() {
           // URL data
           origin: row.hostname ? `https://${row.hostname}` : '',
           pathname: row.path || '',
-          urlHash: '',
-          queryParams: {},
+          urlHash: '', // TODO: should be filled
+          queryParams: {}, // TODO: should be filled
 
           // UTM data
           utmSource: row.utm_source || '',

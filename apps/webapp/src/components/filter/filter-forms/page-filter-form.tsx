@@ -26,9 +26,14 @@ export const PageFilterForm = ({ filter: _filter, onChange, onSubmit, buttonText
       type: 'page',
       pathFilter: { operator: 'is', value: '' },
       originFilter: undefined,
+      hashFilter: undefined,
     },
   );
-  const { pathFilter = { value: '', operator: 'any' }, originFilter = { value: '', operator: 'any' } } = filter;
+  const {
+    pathFilter = { value: '', operator: 'any' },
+    originFilter = { value: '', operator: 'any' },
+    hashFilter = { value: '', operator: 'any' },
+  } = filter;
 
   return (
     <Flex
@@ -71,6 +76,19 @@ export const PageFilterForm = ({ filter: _filter, onChange, onSubmit, buttonText
             setFilter(newFilter);
             onChange?.(newFilter);
           }}
+        />
+        <StringFilterRow
+          label="Hash"
+          filter={hashFilter}
+          onChange={(hashFilter) => {
+            const newFilter = produce(filter, (draft) => {
+              draft.hashFilter = hashFilter;
+            });
+
+            setFilter(newFilter);
+            onChange?.(newFilter);
+          }}
+          startAddon="#"
         />
       </Grid>
       {onSubmit && (

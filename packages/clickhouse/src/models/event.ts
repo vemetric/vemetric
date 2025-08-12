@@ -23,6 +23,9 @@ import { buildUserFilterQueries } from '../utils/filters/user-filter';
 import { buildUserSortQueries } from '../utils/sort/user-sort';
 import { withSpan } from '../utils/with-span';
 
+// we round the current date to the nearest 30 seconds and subtract 4 minutes and 30 seconds
+const ONLINE_USERS_INTERVAL_QUERY = 'toStartOfInterval(NOW(), INTERVAL 30 SECOND) - INTERVAL 270 SECOND';
+
 const TABLE_NAME = 'event';
 
 export type ClickhouseEvent = DeviceData &
@@ -229,7 +232,7 @@ export const clickhouseEvent = {
     const resultSet = await clickhouseClient.query({
       query: `
         SELECT ${EVENT_KEY_SELECTOR}, 
-               max(createdAt) >= NOW() - INTERVAL 5 MINUTE as isOnline,
+               max(createdAt) >= ${ONLINE_USERS_INTERVAL_QUERY} as isOnline,
                max(createdAt) as eventTime
         FROM ${TABLE_NAME} 
         WHERE projectId = ${escape(projectId)} 
@@ -271,7 +274,7 @@ export const clickhouseEvent = {
                       argMax(userDisplayName, createdAt) as displayName,
                       argMax(countryCode, createdAt) as countryCode,
                       max(createdAt) as maxCreatedAt,
-                      max(createdAt) >= NOW() - INTERVAL 5 MINUTE as isOnline
+                      max(createdAt) >= ${ONLINE_USERS_INTERVAL_QUERY} as isOnline
                 FROM event
                 WHERE projectId=${escape(projectId)}
                   ${userFilterQueries ? `AND (${userFilterQueries})` : ''}
@@ -373,7 +376,7 @@ export const clickhouseEvent = {
     const resultSet = await clickhouseClient.query({
       query: `SELECT count(distinct userId) as users from ${TABLE_NAME} WHERE projectId=${escape(
         projectId,
-      )} AND createdAt >= NOW() - INTERVAL 5 MINUTE ${filterQueries || ''};`,
+      )} AND createdAt >= ${ONLINE_USERS_INTERVAL_QUERY} ${filterQueries || ''};`,
       format: 'JSONEachRow',
     });
     const result = (await resultSet.json()) as Array<any>;

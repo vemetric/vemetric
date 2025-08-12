@@ -5,7 +5,7 @@ import { jsonStringify } from '@vemetric/common/json';
 import type { ISources } from '@vemetric/common/sources';
 import { escape } from 'sqlstring';
 import { clickhouseClient, clickhouseInsert } from '../client';
-import { getDateTransformMethod } from '../utils/date';
+import { formatDateExpression } from '../utils/date';
 import { buildLocationFilterQueries } from '../utils/filters/location-filter';
 import { buildSourceFilterQueries } from '../utils/filters/source-filter';
 import { withSpan } from '../utils/with-span';
@@ -169,13 +169,12 @@ export const clickhouseSession = {
   getVisitDurationTimeSeries: withSpan(
     'getVisitDurationTimeSeries',
     async (projectId: bigint, timeSpan: TimeSpan, startDate: Date, filterQueries?: string) => {
-      const dateTransformMethod = getDateTransformMethod(timeSpan);
       const resultSet = await clickhouseClient.query({
         query: `
         SELECT 
           avg(maxDuration) as avgDuration,
           count(*) as sessionCount,
-          ${dateTransformMethod}(maxEndedAt) as date 
+          ${formatDateExpression(timeSpan, 'maxEndedAt')} as date 
         FROM (
           SELECT 
             id,

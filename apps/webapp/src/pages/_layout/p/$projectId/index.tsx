@@ -1,7 +1,7 @@
 import { AspectRatio, Box, Flex, SimpleGrid } from '@chakra-ui/react';
 import { createFileRoute, Navigate } from '@tanstack/react-router';
 import { zodValidator } from '@tanstack/zod-adapter';
-import { TIME_SPANS } from '@vemetric/common/charts/timespans';
+import { getTimespanRefetchInterval, TIME_SPANS } from '@vemetric/common/charts/timespans';
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { sourcesSchema } from '@vemetric/common/sources';
 import { z } from 'zod';
@@ -58,12 +58,21 @@ function Page() {
 
   const { data, error, isPreviousData } = trpc.dashboard.getData.useQuery(
     { projectId, timespan, filterConfig },
-    { keepPreviousData: true, onError: () => {} },
+    {
+      keepPreviousData: true,
+      onError: () => {},
+      refetchInterval: getTimespanRefetchInterval(timespan),
+    },
   );
-  const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery({
-    projectId,
-    timespan,
-  });
+  const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery(
+    {
+      projectId,
+      timespan,
+    },
+    {
+      refetchInterval: getTimespanRefetchInterval(timespan),
+    },
+  );
 
   useSetBreadcrumbs(['Dashboard']);
   useSetDocsLink(

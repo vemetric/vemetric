@@ -1,5 +1,6 @@
-import { Icon, Text, IconButton, Box, Flex, Grid, Link, Button } from '@chakra-ui/react';
+import { Icon, Text, IconButton, Box, Flex, Grid, Link, Button, Skeleton } from '@chakra-ui/react';
 import { Link as TanstackLink, useParams, useSearch } from '@tanstack/react-router';
+import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import type { IEventFilter } from '@vemetric/common/filters';
 import { formatNumber } from '@vemetric/common/math';
 import React, { useState } from 'react';
@@ -31,13 +32,19 @@ export const PropertyView = ({ publicDashboard, eventName, property, onBack }: P
 
   const activeFilters = filterConfig?.filters.filter((f) => f.type === 'event') ?? [];
 
-  const { data, error } = trpc.dashboard.getPropertyValues.useQuery({
-    ...params,
-    timespan,
-    eventName,
-    property,
-    filterConfig,
-  });
+  const { data, isPreviousData, error } = trpc.dashboard.getPropertyValues.useQuery(
+    {
+      ...params,
+      timespan,
+      eventName,
+      property,
+      filterConfig,
+    },
+    {
+      keepPreviousData: true,
+      refetchInterval: getTimespanRefetchInterval(timespan),
+    },
+  );
 
   const mostFiredValue = data?.values?.[0];
 
@@ -152,6 +159,11 @@ export const PropertyView = ({ publicDashboard, eventName, property, onBack }: P
           })}
         </Grid>
       </ListCard>
+      {isPreviousData && (
+        <Box pos="absolute" inset="0" opacity="0.8" zIndex="docked">
+          <Skeleton pos="absolute" inset="0" rounded="md" />
+        </Box>
+      )}
     </Box>
   );
 };

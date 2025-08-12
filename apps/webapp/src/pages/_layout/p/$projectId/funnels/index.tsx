@@ -88,7 +88,7 @@ function RouteComponent() {
               </Button>
             </FunnelDialog>
             <Box w="1px" h="26px" bg="gray.muted" />
-            <TimespanSelect from="/_layout/p/$projectId/funnels/" />
+            <TimespanSelect from="/_layout/p/$projectId/funnels/" excludeLive />
           </Flex>
         </Flex>
         {isError ? (

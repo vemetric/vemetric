@@ -1,5 +1,6 @@
 import { Text, Card, Flex, Box, Button, Grid, Icon, Skeleton } from '@chakra-ui/react';
 import { useParams, Link } from '@tanstack/react-router';
+import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import type { IBrowserFilter, IFilterConfig } from '@vemetric/common/filters';
 import { formatNumber } from '@vemetric/common/math';
 import React, { useState } from 'react';
@@ -32,7 +33,11 @@ export const BrowsersCard = ({ filterConfig, publicDashboard }: Props) => {
 
   const { data, isPreviousData, error } = trpc.dashboard.getBrowsers.useQuery(
     { ...params, timespan, filterConfig },
-    { keepPreviousData: true, onError: () => {} },
+    {
+      keepPreviousData: true,
+      onError: () => {},
+      refetchInterval: getTimespanRefetchInterval(timespan),
+    },
   );
   const mostUsedBrowser = data?.browsers?.[0];
 

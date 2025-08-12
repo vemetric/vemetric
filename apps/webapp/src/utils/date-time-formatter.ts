@@ -132,6 +132,10 @@ class DateTimeFormatter {
     return seconds ? this.timeSecondsFormatter.format(date) : this.timeFormatter.format(date);
   }
 
+  formatTimeWithSeconds(value: string | Date) {
+    return this.formatTime(value, true);
+  }
+
   formatWeek(value: string | Date) {
     const date = this.prepareDate(value);
     const weekNumber = getWeek(date, { weekStartsOn: 1 }); // Monday as first day of week

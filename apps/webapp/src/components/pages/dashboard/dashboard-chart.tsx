@@ -50,6 +50,10 @@ export function transformChartSeries(
 
     let formatMethod: keyof typeof dateTimeFormatter = 'formatTime';
     switch (interval) {
+      case 'thirty_seconds':
+        formatMethod = 'formatTimeWithSeconds';
+        endDate.setSeconds(startDate.getSeconds() + 29);
+        break;
       case 'ten_minutes':
         endDate.setMinutes(startDate.getMinutes() + 9);
         break;

@@ -208,7 +208,7 @@ function RouteComponent() {
               </DeletePopover>
             </Flex>
             <Box w="1px" h="26px" bg="gray.muted" />
-            <TimespanSelect from="/_layout/p/$projectId/funnels/$funnelId" />
+            <TimespanSelect from="/_layout/p/$projectId/funnels/$funnelId" excludeLive />
           </Flex>
         </Flex>
         <AnimatePresence mode="popLayout" initial={false}>

@@ -1,5 +1,6 @@
 import { Box, Text, Card, Flex, Grid, Icon, Button, Skeleton, Link as ChakraLink } from '@chakra-ui/react';
 import { useSearch, useParams, useNavigate, Link } from '@tanstack/react-router';
+import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import type { IFilter, IFilterConfig } from '@vemetric/common/filters';
 import { formatNumber } from '@vemetric/common/math';
 import { getSourceValue, SOURCE_VALUES } from '@vemetric/common/sources';
@@ -47,7 +48,10 @@ export const TopSourcesCard = ({ filterConfig, publicDashboard }: Props) => {
       filterConfig,
       source: sourceValue.segment === 'referrer' ? sourceValue.referrer : sourceValue.utm,
     },
-    { keepPreviousData: true },
+    {
+      keepPreviousData: true,
+      refetchInterval: getTimespanRefetchInterval(timespan),
+    },
   );
   const topSources = data?.data;
   const dataSource = data?.dataSource ?? 'referrer';

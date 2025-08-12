@@ -1,5 +1,6 @@
 import { Box, Flex, Grid, Icon, Button, Badge, Text, Card, Skeleton, Link as ChakraLink } from '@chakra-ui/react';
 import { Link, useParams } from '@tanstack/react-router';
+import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import type { IFilterConfig } from '@vemetric/common/filters';
 import { formatNumber } from '@vemetric/common/math';
 import React, { useState } from 'react';
@@ -49,7 +50,11 @@ export const MostVisitedPagesCard = ({ filterConfig, projectDomain, publicDashbo
 
   const { data, isPreviousData, error } = trpc.dashboard.getData.useQuery(
     { ...params, timespan, filterConfig },
-    { keepPreviousData: true, onError: () => {} },
+    {
+      keepPreviousData: true,
+      onError: () => {},
+      refetchInterval: getTimespanRefetchInterval(timespan),
+    },
   );
   const pages = data?.mostVisitedPages ?? [];
   const mostVisitedPage = pages?.[0];

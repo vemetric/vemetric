@@ -1,5 +1,6 @@
 import { Button, Box, Skeleton, Grid, Icon, Flex, Card, Text, Link as ChakraLink } from '@chakra-ui/react';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
+import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import type { IFilterConfig } from '@vemetric/common/filters';
 import { formatNumber } from '@vemetric/common/math';
 import { AnimatePresence, motion } from 'motion/react';
@@ -70,7 +71,11 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
 
   const { data, isPreviousData, error } = trpc.dashboard.getData.useQuery(
     { ...params, timespan, filterConfig },
-    { keepPreviousData: true, onError: () => {} },
+    {
+      keepPreviousData: true,
+      onError: () => {},
+      refetchInterval: getTimespanRefetchInterval(timespan),
+    },
   );
 
   const mostFiredEvent = data?.events?.[0];

@@ -1,6 +1,6 @@
 import { TIME_SPAN_DATA, type TimeSpan } from '@vemetric/common/charts/timespans';
 import { clickhouseDateToISO } from 'clickhouse';
-import { addMinutes, addHours, addDays, addWeeks, addMonths, format } from 'date-fns';
+import { addSeconds, addMinutes, addHours, addDays, addWeeks, addMonths, format } from 'date-fns';
 
 function roundDate(date: Date, interval: string) {
   // Convert to UTC for consistent rounding
@@ -16,6 +16,10 @@ function roundDate(date: Date, interval: string) {
   );
 
   switch (interval) {
+    case 'thirty_seconds':
+      utcDate.setUTCSeconds(utcDate.getUTCSeconds() - (utcDate.getUTCSeconds() % 30));
+      utcDate.setUTCMilliseconds(0);
+      break;
     case 'ten_minutes':
       utcDate.setUTCMinutes(utcDate.getUTCMinutes() - (utcDate.getUTCMinutes() % 10));
       utcDate.setUTCSeconds(0);
@@ -72,6 +76,9 @@ export function getStartDate(timespan: TimeSpan) {
 
   let startDate = roundDate(new Date(), timeSpanData.interval);
   switch (timespan) {
+    case 'live':
+      startDate = addSeconds(addMinutes(startDate, -4), -30);
+      break;
     case '1hr':
       startDate = addMinutes(startDate, -50);
       break;
@@ -132,6 +139,9 @@ export function fillTimeSeries(
       });
 
       switch (interval) {
+        case 'thirty_seconds':
+          currentDate = addSeconds(currentDate, 30);
+          break;
         case 'ten_minutes':
           currentDate = addMinutes(currentDate, 10);
           break;

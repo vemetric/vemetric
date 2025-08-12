@@ -1,5 +1,6 @@
-import { Icon, Text, IconButton, Box, Flex, Grid, Button } from '@chakra-ui/react';
+import { Icon, Text, IconButton, Box, Flex, Grid, Button, Skeleton } from '@chakra-ui/react';
 import { Navigate, useParams, useSearch } from '@tanstack/react-router';
+import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import { formatNumber } from '@vemetric/common/math';
 import React, { useState } from 'react';
 import { TbDatabaseSearch, TbChevronLeft, TbEye } from 'react-icons/tb';
@@ -24,12 +25,18 @@ export const EventPropertiesView = ({ publicDashboard, eventName, onBack, onSele
   });
   const [page, setPage] = useState(1);
 
-  const { data, error } = trpc.dashboard.getEventProperties.useQuery({
-    ...params,
-    timespan,
-    eventName,
-    filterConfig,
-  });
+  const { data, isPreviousData, error } = trpc.dashboard.getEventProperties.useQuery(
+    {
+      ...params,
+      timespan,
+      eventName,
+      filterConfig,
+    },
+    {
+      keepPreviousData: true,
+      refetchInterval: getTimespanRefetchInterval(timespan),
+    },
+  );
 
   const mostFiredProperty = data?.properties?.[0];
 
@@ -106,6 +113,11 @@ export const EventPropertiesView = ({ publicDashboard, eventName, onBack, onSele
           })}
         </Grid>
       </ListCard>
+      {isPreviousData && (
+        <Box pos="absolute" inset="0" opacity="0.8" zIndex="docked">
+          <Skeleton pos="absolute" inset="0" rounded="md" />
+        </Box>
+      )}
     </Box>
   );
 };

@@ -415,7 +415,7 @@ export const DashboardChart = (props: Props) => {
                           strokeWidth={2}
                           strokeLinejoin="round"
                           strokeLinecap="round"
-                          isAnimationActive={false}
+                          isAnimationActive={timespan === 'live'}
                           connectNulls={connectNulls}
                           fill={`url(#${categoryId})`}
                         />

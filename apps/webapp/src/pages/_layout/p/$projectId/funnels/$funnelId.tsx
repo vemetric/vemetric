@@ -18,7 +18,7 @@ import { TimespanSelect } from '@/components/timespan-select';
 import { ErrorState } from '@/components/ui/empty-state';
 import { useActiveUsersParam } from '@/hooks/use-activeusers-param';
 import { useTimespanParam } from '@/hooks/use-timespan-param';
-import { useSetBreadcrumbs } from '@/stores/header-store';
+import { useSetBreadcrumbs, useSetDocsLink } from '@/stores/header-store';
 import { trpc } from '@/utils/trpc';
 
 const searchSchema = z.object({
@@ -130,6 +130,7 @@ function RouteComponent() {
       funnelData?.funnel?.name || funnelId
     ),
   ]);
+  useSetDocsLink('https://vemetric.com/docs/product-analytics/funnels');
 
   if (isFunnelError || isResultsError) {
     return (

@@ -13,7 +13,7 @@ import { TimespanSelect } from '@/components/timespan-select';
 import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import { useActiveUsersParam } from '@/hooks/use-activeusers-param';
 import { useTimespanParam } from '@/hooks/use-timespan-param';
-import { useSetBreadcrumbs } from '@/stores/header-store';
+import { useSetBreadcrumbs, useSetDocsLink } from '@/stores/header-store';
 import { trpc } from '@/utils/trpc';
 
 const searchSchema = z.object({
@@ -50,6 +50,7 @@ function RouteComponent() {
   );
 
   useSetBreadcrumbs(['Funnels']);
+  useSetDocsLink('https://vemetric.com/docs/product-analytics/funnels');
 
   return (
     <FilterContextProvider

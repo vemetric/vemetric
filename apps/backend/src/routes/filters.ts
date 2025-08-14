@@ -2,8 +2,10 @@ import { isTimespanAllowed, TIME_SPANS } from '@vemetric/common/charts/timespans
 import { COUNTRIES } from '@vemetric/common/countries';
 import { getEventName } from '@vemetric/common/event';
 import { stringOperatorsSchema } from '@vemetric/common/filters';
+import type { FunnelStep } from '@vemetric/common/funnel';
 import { getNormalizedDomain } from '@vemetric/common/url';
 import { clickhouseEvent } from 'clickhouse';
+import { dbFunnel } from 'database';
 import { addDays, startOfDay } from 'date-fns';
 import { z } from 'zod';
 import { getStartDate } from '../utils/timeseries';
@@ -14,9 +16,15 @@ export const filtersRouter = router({
     .input(z.object({ timespan: z.enum(TIME_SPANS).optional() }))
     .query(async (opts) => {
       const {
-        input: { timespan },
+        input: { timespan: _timespan },
         ctx: { projectId, project, subscriptionStatus },
       } = opts;
+
+      let timespan = _timespan;
+      if (timespan === 'live' || timespan === '1hr' || timespan === '24hrs' || timespan === '7days') {
+        // everything below 30 days can be confusing for filterable data, so we always correct to 30days in that case
+        timespan = '30days';
+      }
 
       const timespanStartDate =
         timespan && isTimespanAllowed(timespan, subscriptionStatus.isActive) ? getStartDate(timespan) : null;
@@ -24,7 +32,15 @@ export const filtersRouter = router({
 
       const filterableData = await clickhouseEvent.getFilterableData(projectId, startDate);
 
+      // Get funnels for the project
+      const funnels = await dbFunnel.findByProjectId(project.id);
+
       return {
+        funnels: funnels.map((f) => ({
+          id: f.id,
+          name: f.name,
+          steps: (f.steps as Array<FunnelStep>).map((step: FunnelStep) => ({ id: step.id, name: step.name })),
+        })),
         eventNames: filterableData.eventNames.sort((a, b) => {
           const eventNameA = getEventName(a);
           const eventNameB = getEventName(b);

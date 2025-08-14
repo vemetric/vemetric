@@ -1,6 +1,7 @@
 import { BrowserFilterForm, BrowserFilterTitle } from '../filter-forms/browser-filter-form';
 import { DeviceFilterTitle, DeviceFilterForm } from '../filter-forms/device-filter-form';
 import { EventFilterForm, EventFilterTitle } from '../filter-forms/event-filter-form';
+import { FunnelFilterForm, FunnelFilterTitle } from '../filter-forms/funnel-filter-form';
 import { LocationFilterForm, LocationFilterTitle } from '../filter-forms/location-filter-form';
 import { OsFilterForm, OsFilterTitle } from '../filter-forms/os-filter-form';
 import { PageFilterForm, PageFilterTitle } from '../filter-forms/page-filter-form';
@@ -18,6 +19,10 @@ export const ADD_FILTER_ITEMS = {
   event: {
     title: <EventFilterTitle />,
     filterForm: EventFilterForm,
+  },
+  funnel: {
+    title: <FunnelFilterTitle />,
+    filterForm: FunnelFilterForm,
   },
   user: {
     title: <UserFilterTitle />,

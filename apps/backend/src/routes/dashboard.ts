@@ -3,6 +3,7 @@ import { filterConfigSchema } from '@vemetric/common/filters';
 import { sourcesSchema } from '@vemetric/common/sources';
 import { clickhouseEvent, clickhouseSession, getUserFilterQueries } from 'clickhouse';
 import { z } from 'zod';
+import { getFilterFunnelsData } from '../utils/filter';
 import { fillTimeSeries } from '../utils/timeseries';
 import { timespanProcedure, router } from '../utils/trpc';
 
@@ -19,7 +20,8 @@ export const dashboardRouter = router({
         ctx: { projectId, project, subscriptionStatus, isPublicDashboard, startDate, timeSpanData },
       } = opts;
 
-      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
+      const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
 
       // Fetch all data in parallel
       const [
@@ -104,10 +106,11 @@ export const dashboardRouter = router({
     .query(async (opts) => {
       const {
         input: { filterConfig, source = 'referrer' },
-        ctx: { projectId, startDate },
+        ctx: { projectId, project, startDate },
       } = opts;
 
-      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
+      const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
 
       const topSourcesData = await clickhouseSession.getTopSources(
         projectId,
@@ -136,10 +139,11 @@ export const dashboardRouter = router({
     .query(async (opts) => {
       const {
         input: { filterConfig },
-        ctx: { projectId, startDate },
+        ctx: { projectId, project, startDate },
       } = opts;
 
-      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
+      const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
 
       const countryCodes = await clickhouseSession.getCountryCodes(projectId, startDate, filterQueries, filterConfig);
 
@@ -156,10 +160,11 @@ export const dashboardRouter = router({
     .query(async (opts) => {
       const {
         input: { filterConfig },
-        ctx: { projectId, startDate },
+        ctx: { projectId, project, startDate },
       } = opts;
 
-      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
+      const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
 
       const browsers = await clickhouseEvent.getBrowsers(projectId, startDate, filterQueries, filterConfig);
 
@@ -176,10 +181,11 @@ export const dashboardRouter = router({
     .query(async (opts) => {
       const {
         input: { filterConfig },
-        ctx: { projectId, startDate },
+        ctx: { projectId, project, startDate },
       } = opts;
 
-      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
+      const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
 
       const devices = await clickhouseEvent.getDevices(projectId, startDate, filterQueries, filterConfig);
 
@@ -196,10 +202,11 @@ export const dashboardRouter = router({
     .query(async (opts) => {
       const {
         input: { filterConfig },
-        ctx: { projectId, startDate },
+        ctx: { projectId, project, startDate },
       } = opts;
 
-      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
+      const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
 
       const operatingSystems = await clickhouseEvent.getOperatingSystems(
         projectId,
@@ -222,7 +229,7 @@ export const dashboardRouter = router({
     .query(async (opts) => {
       const {
         input: { eventName, filterConfig },
-        ctx: { projectId, startDate, isPublicDashboard },
+        ctx: { projectId, project, startDate, isPublicDashboard },
       } = opts;
 
       if (isPublicDashboard) {
@@ -232,7 +239,8 @@ export const dashboardRouter = router({
         });
       }
 
-      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
+      const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
 
       const properties = await clickhouseEvent.getEventProperties(
         projectId,
@@ -257,7 +265,7 @@ export const dashboardRouter = router({
     .query(async (opts) => {
       const {
         input: { eventName, property, filterConfig },
-        ctx: { projectId, startDate, isPublicDashboard },
+        ctx: { projectId, project, startDate, isPublicDashboard },
       } = opts;
 
       if (isPublicDashboard) {
@@ -267,7 +275,8 @@ export const dashboardRouter = router({
         });
       }
 
-      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
+      const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
 
       const values = await clickhouseEvent.getPropertyValues(
         projectId,

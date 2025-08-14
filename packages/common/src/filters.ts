@@ -139,6 +139,14 @@ const osFilterSchema = z.object({
 });
 export type IOsFilter = z.infer<typeof osFilterSchema>;
 
+const funnelFilterSchema = z.object({
+  type: z.literal('funnel'),
+  id: z.string(),
+  step: z.number().min(0),
+  operator: z.enum(['completed', 'notCompleted']),
+});
+export type IFunnelFilter = z.infer<typeof funnelFilterSchema>;
+
 const filterSchema = z.union([
   pageFilterSchema,
   eventFilterSchema,
@@ -151,6 +159,7 @@ const filterSchema = z.union([
   browserFilterSchema,
   deviceFilterSchema,
   osFilterSchema,
+  funnelFilterSchema,
 ]);
 export type IFilter = z.infer<typeof filterSchema>;
 

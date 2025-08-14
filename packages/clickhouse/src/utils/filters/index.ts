@@ -1,9 +1,11 @@
 import { formatClickhouseDate } from '@vemetric/common/date';
 import type { IFilterConfig } from '@vemetric/common/filters';
+import type { FunnelStep } from '@vemetric/common/funnel';
 import { escape } from 'sqlstring';
 import { buildBrowserFilterQuery } from './browser-filter';
 import { buildDeviceFilterQuery } from './device-filter';
 import { buildEventFilterQuery } from './event-filter';
+import { buildFunnelFilterQuery } from './funnel-filter';
 import { buildLocationFilterQuery } from './location-filter';
 import { buildOsFilterQuery } from './os-filter';
 import { buildPageFilterQuery } from './page-filter';
@@ -11,8 +13,13 @@ import { buildReferrerFilterQuery, buildReferrerTypeFilterQuery, buildReferrerUr
 import { buildUserFilterQuery } from './user-filter';
 import { buildUtmTagsFilterQuery } from './utm-tags-filter';
 
-export const getUserFilterQueries = (props: { filterConfig: IFilterConfig; projectId: bigint; startDate?: Date }) => {
-  const { filterConfig, projectId, startDate } = props;
+export const getUserFilterQueries = (props: {
+  filterConfig: IFilterConfig;
+  projectId: bigint;
+  startDate?: Date;
+  funnelsData?: Map<string, FunnelStep[]>;
+}) => {
+  const { filterConfig, projectId, startDate, funnelsData } = props;
 
   if (!filterConfig) {
     return {
@@ -205,6 +212,30 @@ export const getUserFilterQueries = (props: { filterConfig: IFilterConfig; proje
                 AND deleted = 0
               GROUP BY userId
               HAVING count() >= 1)`);
+        break;
+      }
+      case 'funnel': {
+        if (!funnelsData) {
+          return;
+        }
+
+        const funnelSteps = funnelsData.get(filter.id);
+        if (!funnelSteps || !funnelSteps[filter.step]) {
+          return;
+        }
+
+        const filterQuery = buildFunnelFilterQuery(filter, projectId, funnelSteps, startDate);
+        if (!filterQuery) {
+          return;
+        }
+
+        userIdQueries.push(`
+          (SELECT DISTINCT userId
+            FROM event
+            WHERE projectId=${escape(projectId)}
+              AND ${filterQuery}
+              ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+            GROUP BY userId)`);
         break;
       }
     }

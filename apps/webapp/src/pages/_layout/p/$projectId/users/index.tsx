@@ -91,6 +91,7 @@ function Page() {
           browserNames: filterableData?.browserNames ?? [],
           deviceTypes: filterableData?.deviceTypes ?? [],
           osNames: filterableData?.osNames ?? [],
+          funnels: filterableData?.funnels ?? [],
         }}
       >
         {!isLoading && !isFilterableDataLoading && isInitialized ? (

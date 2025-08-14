@@ -1,6 +1,12 @@
 import { createContext, useContext } from 'react';
 import type { ADD_FILTER_ITEMS } from './add-filter/add-filters-items';
 
+interface FunnelData {
+  id: string;
+  name: string;
+  steps: Array<{ id: string; name: string }>;
+}
+
 interface FilterContextType {
   pagePaths: string[];
   eventNames: string[];
@@ -16,6 +22,7 @@ interface FilterContextType {
   browserNames: string[];
   deviceTypes: string[];
   osNames: string[];
+  funnels: FunnelData[];
   disabledFilters?: Array<keyof typeof ADD_FILTER_ITEMS>;
   defaultOperator?: 'and' | 'or';
 }

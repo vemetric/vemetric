@@ -4,6 +4,7 @@ import type { ClickhouseEvent } from 'clickhouse';
 import { clickhouseEvent, clickhouseSession, clickhouseUser, getUserFilterQueries } from 'clickhouse';
 import { addDays, addMonths, startOfDay } from 'date-fns';
 import { z } from 'zod';
+import { getFilterFunnelsData } from '../utils/filter';
 import { projectProcedure, router } from '../utils/trpc';
 
 const EVENTS_PER_PAGE = 50;
@@ -28,8 +29,9 @@ export const usersRouter = router({
       } = opts;
 
       const startDate = getFreePlanStartDate(subscriptionStatus.isActive);
+      const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
 
-      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate });
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
 
       const offset = (page - 1) * USERS_PER_PAGE;
       const [users] = await Promise.all([

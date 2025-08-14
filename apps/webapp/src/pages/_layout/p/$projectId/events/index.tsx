@@ -123,7 +123,7 @@ function RouteComponent() {
           osNames: filterableData?.osNames ?? [],
 
           defaultOperator: 'or',
-          disabledFilters: ['page', 'referrer', 'referrerUrl', 'referrerType', 'utmTags'],
+          disabledFilters: ['page', 'referrer', 'referrerUrl', 'referrerType', 'utmTags', 'funnel'],
           // we leave data empty for filters that are not available on the events page
           pagePaths: [],
           origins: [],
@@ -134,6 +134,7 @@ function RouteComponent() {
           utmMediums: [],
           utmSources: [],
           utmTerms: [],
+          funnels: [],
         }}
       >
         <PageDotBackground />

@@ -93,6 +93,7 @@ function Page() {
           browserNames: filterableData?.browserNames ?? [],
           deviceTypes: filterableData?.deviceTypes ?? [],
           osNames: filterableData?.osNames ?? [],
+          funnels: filterableData?.funnels ?? [],
         }}
       >
         <PageWrapper maxW="1000px" flexDir="column" px={{ base: 2, md: 5 }} pt={{ base: 2, md: 4 }}>

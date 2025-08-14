@@ -16,10 +16,11 @@ import { getEventFilterQueries } from '../utils/filters';
 import { buildStringFilterQuery } from '../utils/filters/base-filters';
 import { buildBrowserFilterQueries } from '../utils/filters/browser-filter';
 import { buildDeviceFilterQueries } from '../utils/filters/device-filter';
-import { buildEventFilterQueries, buildEventFilterQuery } from '../utils/filters/event-filter';
+import { buildEventFilterQueries } from '../utils/filters/event-filter';
 import { buildOsFilterQueries } from '../utils/filters/os-filter';
-import { buildPageFilterQueries, buildPageFilterQuery } from '../utils/filters/page-filter';
+import { buildPageFilterQueries } from '../utils/filters/page-filter';
 import { buildUserFilterQueries } from '../utils/filters/user-filter';
+import { buildFunnelStepConditions, buildWindowFunnelSubquery } from '../utils/funnel';
 import { buildUserSortQueries } from '../utils/sort/user-sort';
 import { withSpan } from '../utils/with-span';
 
@@ -576,57 +577,28 @@ export const clickhouseEvent = {
    * @param projectId - The project ID
    * @param steps - Array of funnel steps, each containing either pageview or event criteria
    * @param startDate - Start date for funnel analysis
-   * @param windowHours - Maximum time window between first and last step, default is a week (168 hours)
+   * @param windowHours - Maximum time window between first and last step
    */
-  getFunnelResults: async (projectId: bigint, steps: Array<FunnelStep>, startDate: Date, windowHours: number = 168) => {
-    // Build the conditions for each step
-    const stepConditions = steps.map((step) => {
-      const conditions = [`projectId = ${escape(projectId)}`];
-
-      if (step.filter.type === 'page') {
-        conditions.push('isPageView = 1');
-        const pageFilterQuery = buildPageFilterQuery(step.filter);
-        if (pageFilterQuery) {
-          conditions.push(pageFilterQuery);
-        }
-      } else {
-        conditions.push('isPageView = 0');
-        const eventFilterQuery = buildEventFilterQuery(step.filter);
-        if (eventFilterQuery) {
-          conditions.push(eventFilterQuery);
-        }
-      }
-
-      return conditions.join(' AND ');
-    });
+  getFunnelResults: async (projectId: bigint, steps: Array<FunnelStep>, startDate: Date, windowHours?: number) => {
+    const stepConditions = buildFunnelStepConditions(steps, projectId);
+    const funnelSubquery = buildWindowFunnelSubquery(projectId, stepConditions, startDate, windowHours);
 
     const resultSet = await clickhouseClient.query({
       query: `
-        WITH funnel_data AS (
-          SELECT 
-            userId,
-            windowFunnel(${escape(windowHours * 60 * 60)})(
-              toDateTime(createdAt),
-              ${stepConditions.map((condition) => `(${condition})`).join(',')}
-            ) as maxStage
-          FROM ${TABLE_NAME}
-          WHERE projectId = ${escape(projectId)}
-            AND createdAt >= '${formatClickhouseDate(startDate)}'
-          GROUP BY userId
-        )
+      WITH funnel_data AS (${funnelSubquery})
+      SELECT 
+        stage as funnelStage,
+        COUNT(*) as userCount
+      FROM (
         SELECT 
-          stage as funnelStage,
-          COUNT(*) as userCount
-        FROM (
-          SELECT 
-            userId,
-            maxStage,
-            arrayJoin(range(1, maxStage + 1)) as stage
-          FROM funnel_data
-          WHERE maxStage > 0
-        )
-        GROUP BY stage
-        ORDER BY stage`,
+          userId,
+          maxStage,
+          arrayJoin(range(1, maxStage + 1)) as stage
+        FROM funnel_data
+        WHERE maxStage > 0
+      )
+      GROUP BY stage
+      ORDER BY stage`,
       format: 'JSONEachRow',
     });
 

@@ -69,6 +69,7 @@ function RouteComponent() {
         browserNames: filterableData?.browserNames ?? [],
         deviceTypes: filterableData?.deviceTypes ?? [],
         osNames: filterableData?.osNames ?? [],
+        funnels: filterableData?.funnels ?? [],
       }}
     >
       <PageDotBackground />

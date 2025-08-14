@@ -6,6 +6,7 @@ import { FilterButton } from './filter-button';
 import { BrowserFilterButton } from './filter-buttons/browser-filter-button';
 import { DeviceFilterButton } from './filter-buttons/device-filter-button';
 import { EventFilterButton } from './filter-buttons/event-filter-button';
+import { FunnelFilterButton } from './filter-buttons/funnel-filter-button';
 import { LocationFilterButton } from './filter-buttons/location-filter-button';
 import { OsFilterButton } from './filter-buttons/os-filter-button';
 import { PageFilterButton } from './filter-buttons/page-filter-button';
@@ -132,6 +133,11 @@ export const FilterGroup = ({ group, onChange, onDelete: onDeleteGroup, nested, 
                   break;
                 case 'os':
                   component = <OsFilterButton filter={filter} onChange={onChangeFilter} onDelete={onDeleteFilter} />;
+                  break;
+                case 'funnel':
+                  component = (
+                    <FunnelFilterButton filter={filter} onChange={onChangeFilter} onDelete={onDeleteFilter} />
+                  );
                   break;
                 default:
                   component = (

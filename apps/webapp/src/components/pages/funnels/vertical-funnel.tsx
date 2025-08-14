@@ -1,16 +1,21 @@
-import { Box, Text, Icon, Span, Card, Grid, Flex } from '@chakra-ui/react';
+import { Box, Text, Icon, Span, Card, Grid, Flex, IconButton } from '@chakra-ui/react';
+import { Link } from '@tanstack/react-router';
+import type { IFilterConfig } from '@vemetric/common/filters';
 import { formatNumber, formatPercentage } from '@vemetric/common/math';
 import { motion } from 'motion/react';
 import React from 'react';
-import { TbArrowNarrowRight, TbUserSquareRounded } from 'react-icons/tb';
+import { TbArrowNarrowRight, TbUserSquareRounded, TbUsers } from 'react-icons/tb';
+import { Tooltip } from '@/components/ui/tooltip';
 
 interface Props {
   funnelSteps: Array<{ name: string; users: number }>;
   activeUsersVisible: boolean;
+  projectId: string;
+  funnelId: string;
 }
 
 export const VerticalFunnel = (props: Props) => {
-  const { funnelSteps, activeUsersVisible } = props;
+  const { funnelSteps, activeUsersVisible, projectId, funnelId } = props;
 
   const activeUsers = funnelSteps[0].users;
   const firstStepUsers = funnelSteps[1].users;
@@ -43,6 +48,22 @@ export const VerticalFunnel = (props: Props) => {
 
             const baseUsers = activeUsersVisible ? activeUsers : firstStepUsers;
             const completedUsersPercentage = (step.users / baseUsers) * 100 || 0;
+
+            // Create filter config for users who completed this step
+            const stepIndex = index - 1; // -1 because first step is "Active Users"
+            const usersFilterConfig: IFilterConfig | undefined = !isUserStep
+              ? {
+                  filters: [
+                    {
+                      type: 'funnel',
+                      id: funnelId,
+                      step: stepIndex,
+                      operator: 'completed',
+                    },
+                  ],
+                  operator: 'and',
+                }
+              : undefined;
 
             return (
               <React.Fragment key={index}>
@@ -87,9 +108,20 @@ export const VerticalFunnel = (props: Props) => {
                 >
                   <Flex flexDir="column" gap={3} px="1px" pt="1.5px" pb={isLastStep ? '20px' : '50px'}>
                     <Flex justify="space-between" align="flex-end">
-                      <Text fontWeight="semibold" fontSize="lg">
-                        {step.name}
-                      </Text>
+                      <Flex align="center" gap={3}>
+                        <Text fontWeight="semibold" fontSize="lg">
+                          {step.name}
+                        </Text>
+                        {!isUserStep && usersFilterConfig && (
+                          <Tooltip content="View users who completed this step">
+                            <IconButton asChild variant="surface" size="2xs">
+                              <Link to="/p/$projectId/users" params={{ projectId }} search={{ f: usersFilterConfig }}>
+                                <Icon as={TbUsers} />
+                              </Link>
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </Flex>
                       {isFirstStep ? (
                         <Flex gap={1} align="center">
                           <TbUserSquareRounded />

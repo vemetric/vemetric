@@ -1,8 +1,9 @@
 import { AspectRatio, Box, Card, Flex, Icon, Grid, Text, IconButton } from '@chakra-ui/react';
 import { Link } from '@tanstack/react-router';
+import type { IFilterConfig } from '@vemetric/common/filters';
 import { formatNumber, formatPercentage } from '@vemetric/common/math';
 import { motion } from 'motion/react';
-import { TbEdit, TbEye, TbTrash, TbUserSquareRounded } from 'react-icons/tb';
+import { TbEdit, TbEye, TbTrash, TbUserSquareRounded, TbUsers } from 'react-icons/tb';
 import { DeletePopover } from '@/components/delete-popover';
 import { Tooltip } from '@/components/ui/tooltip';
 import { trpc, type FunnelData } from '@/utils/trpc';
@@ -20,6 +21,20 @@ export const FunnelCard = ({ projectId, funnel, activeUsersVisible }: Props) => 
   const firstStepUsers = activeUsersVisible ? activeUsers : funnelSteps[1].users;
   const lastStepUsers = funnelSteps[funnelSteps.length - 1].users;
   const completedPercentage = (lastStepUsers / firstStepUsers) * 100 || 0;
+
+  // Create filter config for users who completed the last step
+  const lastStepIndex = funnelSteps.length - 2; // -2 because first step is "Active Users"
+  const usersFilterConfig: IFilterConfig = {
+    filters: [
+      {
+        type: 'funnel',
+        id: funnel.id,
+        step: lastStepIndex,
+        operator: 'completed',
+      },
+    ],
+    operator: 'and',
+  };
 
   const utils = trpc.useUtils();
   const { mutate: deleteFunnel, isLoading } = trpc.funnels.delete.useMutation({
@@ -172,11 +187,20 @@ export const FunnelCard = ({ projectId, funnel, activeUsersVisible }: Props) => 
         _groupHover={{ opacity: 1, transform: 'translateY(0)' }}
       >
         <Flex align="center" gap={2.5}>
-          <IconButton asChild variant="surface" size="sm" boxShadow="xs">
-            <Link to="/p/$projectId/funnels/$funnelId" params={{ projectId, funnelId: funnel.id }}>
-              <Icon as={TbEye} />
-            </Link>
-          </IconButton>
+          <Tooltip content="View users who completed this funnel">
+            <IconButton asChild variant="surface" size="sm" boxShadow="xs">
+              <Link to="/p/$projectId/users" params={{ projectId }} search={{ f: usersFilterConfig }}>
+                <Icon as={TbUsers} />
+              </Link>
+            </IconButton>
+          </Tooltip>
+          <Tooltip content="View this funnel">
+            <IconButton asChild variant="surface" size="sm" boxShadow="xs">
+              <Link to="/p/$projectId/funnels/$funnelId" params={{ projectId, funnelId: funnel.id }}>
+                <Icon as={TbEye} />
+              </Link>
+            </IconButton>
+          </Tooltip>
           <FunnelDialog funnelId={funnel.id}>
             <IconButton variant="surface" size="sm" boxShadow="xs">
               <Icon as={TbEdit} />

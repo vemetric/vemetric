@@ -222,7 +222,7 @@ function RouteComponent() {
               exit={{ opacity: 0, y: 50 }}
               transition={{ duration: 0.2 }}
             >
-              <HorizontalFunnel funnelSteps={funnelSteps} activeUsersVisible={activeUsersVisible} />
+              <HorizontalFunnel funnelSteps={funnelSteps} activeUsersVisible={activeUsersVisible} projectId={projectId} funnelId={funnelId} />
             </motion.div>
           ) : (
             <motion.div
@@ -232,7 +232,7 @@ function RouteComponent() {
               exit={{ opacity: 0, y: 50 }}
               transition={{ duration: 0.2 }}
             >
-              <VerticalFunnel funnelSteps={funnelSteps} activeUsersVisible={activeUsersVisible} />
+              <VerticalFunnel funnelSteps={funnelSteps} activeUsersVisible={activeUsersVisible} projectId={projectId} funnelId={funnelId} />
             </motion.div>
           )}
         </AnimatePresence>

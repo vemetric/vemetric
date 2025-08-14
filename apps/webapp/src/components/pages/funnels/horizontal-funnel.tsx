@@ -1,9 +1,12 @@
-import { Flex, Box, Text, Grid, Icon, Span } from '@chakra-ui/react';
+import { Flex, Box, Text, Grid, Icon, Span, IconButton } from '@chakra-ui/react';
+import { Link } from '@tanstack/react-router';
+import type { IFilterConfig } from '@vemetric/common/filters';
 import { formatNumber, formatPercentage } from '@vemetric/common/math';
 import { motion } from 'motion/react';
 import { useState } from 'react';
-import { TbArrowNarrowRight, TbUserSquareRounded } from 'react-icons/tb';
+import { TbArrowNarrowRight, TbUserSquareRounded, TbUsers } from 'react-icons/tb';
 import SimpleBar from 'simplebar-react';
+import { Tooltip } from '@/components/ui/tooltip';
 
 const COLUMN_WIDTH = 303;
 const BAR_HEIGHT = 380;
@@ -12,10 +15,12 @@ const TRANSITION = { bounce: false, duration: 0.4, ease: 'easeInOut' };
 interface Props {
   activeUsersVisible: boolean;
   funnelSteps: Array<{ name: string; users: number }>;
+  projectId: string;
+  funnelId: string;
 }
 
 export const HorizontalFunnel = (props: Props) => {
-  const { activeUsersVisible, funnelSteps } = props;
+  const { activeUsersVisible, funnelSteps, projectId, funnelId } = props;
 
   const [leftOverlayOpacity, setLeftOverlayOpacity] = useState(0);
   const [rightOverlayOpacity, setRightOverlayOpacity] = useState(1);
@@ -183,6 +188,22 @@ export const HorizontalFunnel = (props: Props) => {
             const convertedUsersPercentage = (step.users / previousUsers) * 100 || 0;
             const lostUsersPercentage = (lostUsers / previousUsers) * 100 || 0;
 
+            // Create filter config for users who completed this step
+            const stepIndex = index - 1; // -1 because first step is "Active Users"
+            const usersFilterConfig: IFilterConfig | undefined = !isUserStep
+              ? {
+                  filters: [
+                    {
+                      type: 'funnel',
+                      id: funnelId,
+                      step: stepIndex,
+                      operator: 'completed',
+                    },
+                  ],
+                  operator: 'and',
+                }
+              : undefined;
+
             return (
               <Flex key={index} bg="linear-gradient(to bottom, var(--chakra-colors-bg-content) 50%, transparent 100%)">
                 <Flex asChild flexDir="column" gap={2} pos="relative" py="4" px="45px" minH="200px" w="100%">
@@ -217,9 +238,20 @@ export const HorizontalFunnel = (props: Props) => {
                       bg="linear-gradient(to bottom, var(--chakra-colors-purple-400) 50%, transparent 100%)"
                       opacity={(isUserStep && !activeUsersVisible) || isLastStep ? 0 : 0.8}
                     />
-                    <Text fontWeight="semibold" textAlign="center">
-                      {step.name}
-                    </Text>
+                    <Flex align="center" justify="center" gap={3}>
+                      <Text fontWeight="semibold" textAlign="center">
+                        {step.name}
+                      </Text>
+                      {!isUserStep && usersFilterConfig && (
+                        <Tooltip content="View users who completed this step">
+                          <IconButton asChild variant="surface" size="2xs">
+                            <Link to="/p/$projectId/users" params={{ projectId }} search={{ f: usersFilterConfig }}>
+                              <Icon as={TbUsers} />
+                            </Link>
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </Flex>
                     <Grid templateColumns="20px 1fr" alignItems="center" gap={1} my={3}>
                       <Icon as={TbArrowNarrowRight} color="green.600" />
                       <Text>

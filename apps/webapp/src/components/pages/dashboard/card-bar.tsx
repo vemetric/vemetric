@@ -20,7 +20,7 @@ export const CardBar = ({ value, maxValue }: Props) => {
     >
       <motion.div
         animate={{
-          width: `${(value / (maxValue ?? 1)) * 100}%`,
+          width: `${(value / (maxValue || 1)) * 100}%`,
         }}
       />
     </Box>

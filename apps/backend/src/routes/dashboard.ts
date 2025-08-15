@@ -1,7 +1,9 @@
 import { TRPCError } from '@trpc/server';
 import { filterConfigSchema } from '@vemetric/common/filters';
+import type { FunnelStep } from '@vemetric/common/funnel';
 import { sourcesSchema } from '@vemetric/common/sources';
 import { clickhouseEvent, clickhouseSession, getUserFilterQueries } from 'clickhouse';
+import { dbFunnel } from 'database';
 import { z } from 'zod';
 import { getFilterFunnelsData } from '../utils/filter';
 import { fillTimeSeries } from '../utils/timeseries';
@@ -217,6 +219,103 @@ export const dashboardRouter = router({
 
       return {
         operatingSystems,
+      };
+    }),
+  getFunnels: timespanProcedure
+    .input(
+      z.object({
+        filterConfig: filterConfigSchema,
+      }),
+    )
+    .query(async (opts) => {
+      const {
+        input: { filterConfig },
+        ctx: { projectId, project, startDate },
+      } = opts;
+
+      const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
+
+      const filteredFunnelIds =
+        filterConfig?.filters.filter((filter) => filter.type === 'funnel').map((filter) => filter.id) ?? [];
+      const funnels = await dbFunnel.findByProjectId(project.id);
+      const filteredFunnels = funnels.filter(
+        (funnel) => filteredFunnelIds.length < 1 || filteredFunnelIds.includes(funnel.id),
+      );
+
+      const funnelsWithResults = await Promise.all(
+        filteredFunnels.map(async (funnel) => {
+          const steps = funnel.steps as FunnelStep[];
+          const funnelResults = await clickhouseEvent.getFunnelResults(
+            projectId,
+            steps,
+            startDate,
+            undefined,
+            filterQueries,
+          );
+
+          const firstStepUsers = funnelResults[0]?.userCount || 0;
+          const lastStepUsers = funnelResults[steps.length - 1]?.userCount || 0;
+          const conversionRate = firstStepUsers > 0 ? (lastStepUsers / firstStepUsers) * 100 : 0;
+
+          return {
+            id: funnel.id,
+            name: funnel.name,
+            steps,
+            conversionRate,
+            completedUsers: lastStepUsers,
+            firstStepUsers,
+          };
+        }),
+      );
+
+      return {
+        funnels: funnelsWithResults.sort((a, b) => b.conversionRate - a.conversionRate),
+      };
+    }),
+  getFunnelSteps: timespanProcedure
+    .input(
+      z.object({
+        funnelId: z.string(),
+        filterConfig: filterConfigSchema,
+      }),
+    )
+    .query(async (opts) => {
+      const {
+        input: { funnelId, filterConfig },
+        ctx: { projectId, project, startDate },
+      } = opts;
+
+      const funnel = await dbFunnel.findById(funnelId);
+      if (!funnel || funnel.projectId !== project.id) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Funnel not found' });
+      }
+
+      const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
+
+      const steps = funnel.steps as FunnelStep[];
+      const funnelResults = await clickhouseEvent.getFunnelResults(
+        projectId,
+        steps,
+        startDate,
+        undefined,
+        filterQueries,
+      );
+
+      const stepResults = steps.map((step, index) => ({
+        name: step.name,
+        users: funnelResults[index]?.userCount || 0,
+      }));
+
+      return {
+        funnel: {
+          id: funnel.id,
+          name: funnel.name,
+          steps,
+        },
+        stepResults,
+        firstStepUsers: funnelResults[0]?.userCount || 0,
       };
     }),
   getEventProperties: timespanProcedure

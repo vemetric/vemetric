@@ -31,7 +31,7 @@ export const UserCardSelect = ({ publicDashboard }: Props) => {
     >
       <SegmentGroup.Indicator />
       <SegmentGroup.Item value="countries">
-        <SegmentGroup.ItemText>Countries</SegmentGroup.ItemText>
+        <SegmentGroup.ItemText>Browsers</SegmentGroup.ItemText>
         <SegmentGroup.ItemHiddenInput />
       </SegmentGroup.Item>
       <MenuRoot positioning={{ placement: 'bottom-end' }}>
@@ -39,9 +39,7 @@ export const UserCardSelect = ({ publicDashboard }: Props) => {
           <MenuTrigger asChild>
             <Box pos="absolute" inset="0" />
           </MenuTrigger>
-          <SegmentGroup.ItemText>
-            {u === 'devices' ? 'Devices' : u === 'os' ? 'Operating Systems' : 'Browsers'}
-          </SegmentGroup.ItemText>
+          <SegmentGroup.ItemText>{u === 'os' ? 'Operating Systems' : 'Devices'}</SegmentGroup.ItemText>
           <SegmentGroup.ItemHiddenInput />
         </SegmentGroup.Item>
         <MenuContent>
@@ -51,12 +49,11 @@ export const UserCardSelect = ({ publicDashboard }: Props) => {
               navigate({
                 resetScroll: false,
                 search: (prev) => {
-                  return { ...prev, u: value as 'browsers' | 'devices' | 'os' };
+                  return { ...prev, u: value as 'devices' | 'os' };
                 },
               });
             }}
           >
-            <MenuRadioItem value="browsers">Browsers</MenuRadioItem>
             <MenuRadioItem value="devices">Devices</MenuRadioItem>
             <MenuRadioItem value="os">Operating Systems</MenuRadioItem>
           </MenuRadioItemGroup>

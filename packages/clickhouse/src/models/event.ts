@@ -578,10 +578,17 @@ export const clickhouseEvent = {
    * @param steps - Array of funnel steps, each containing either pageview or event criteria
    * @param startDate - Start date for funnel analysis
    * @param windowHours - Maximum time window between first and last step
+   * @param filterQueries - Optional filter queries to apply
    */
-  getFunnelResults: async (projectId: bigint, steps: Array<FunnelStep>, startDate: Date, windowHours?: number) => {
+  getFunnelResults: async (
+    projectId: bigint,
+    steps: Array<FunnelStep>,
+    startDate: Date,
+    windowHours?: number,
+    filterQueries?: string,
+  ) => {
     const stepConditions = buildFunnelStepConditions(steps, projectId);
-    const funnelSubquery = buildWindowFunnelSubquery(projectId, stepConditions, startDate, windowHours);
+    const funnelSubquery = buildWindowFunnelSubquery(projectId, stepConditions, startDate, windowHours, filterQueries);
 
     const resultSet = await clickhouseClient.query({
       query: `

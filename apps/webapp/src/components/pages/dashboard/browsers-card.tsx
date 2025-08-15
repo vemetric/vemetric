@@ -4,7 +4,7 @@ import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import type { IBrowserFilter, IFilterConfig } from '@vemetric/common/filters';
 import { formatNumber } from '@vemetric/common/math';
 import React, { useState } from 'react';
-import { TbUserSquareRounded, TbFilter, TbFilterOff, TbMap2, TbUsers } from 'react-icons/tb';
+import { TbFilter, TbFilterOff, TbMap2, TbUsers, TbBrandChrome } from 'react-icons/tb';
 import { isDeepEqual } from 'remeda';
 import { BrowserIcon } from '@/components/browser-icon';
 import { CardIcon } from '@/components/card-icon';
@@ -50,9 +50,9 @@ export const BrowsersCard = ({ filterConfig, publicDashboard }: Props) => {
           <Flex flexDir="column" gap={1}>
             <Flex align="center" gap={1.5}>
               <CardIcon size="xs">
-                <TbUserSquareRounded />
+                <TbBrandChrome />
               </CardIcon>
-              <Text>Users</Text>
+              <Text>Browsers</Text>
             </Flex>
             <Text textStyle="sm" fontWeight="normal" color="fg.muted" pl={0.5}>
               <NumberCounter value={data?.browsers.length ?? 0} /> browser

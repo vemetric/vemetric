@@ -5,7 +5,7 @@ import { COUNTRIES } from '@vemetric/common/countries';
 import type { IFilterConfig, ILocationFilter } from '@vemetric/common/filters';
 import { formatNumber } from '@vemetric/common/math';
 import React, { useState } from 'react';
-import { TbUserSquareRounded, TbFilter, TbFilterOff, TbMap2, TbUsers } from 'react-icons/tb';
+import { TbFilter, TbFilterOff, TbMap2, TbUsers } from 'react-icons/tb';
 import { isDeepEqual } from 'remeda';
 import { CardIcon } from '@/components/card-icon';
 import { CountryFlag } from '@/components/country-flag';
@@ -18,7 +18,6 @@ import { trpc } from '@/utils/trpc';
 import { CardBar } from './card-bar';
 import { DashboardCardHeader } from './dashboard-card-header';
 import { LIST_CARD_PAGE_SIZE, ListCard } from './list-card';
-import { UserCardSelect } from './user-card-select';
 
 interface Props {
   filterConfig: IFilterConfig;
@@ -51,17 +50,14 @@ export const CountriesCard = ({ filterConfig, publicDashboard }: Props) => {
           <Flex flexDir="column" gap={1}>
             <Flex align="center" gap={1.5}>
               <CardIcon size="xs">
-                <TbUserSquareRounded />
+                <TbMap2 />
               </CardIcon>
-              <Text>Users</Text>
+              <Text>Countries</Text>
             </Flex>
             <Text textStyle="sm" fontWeight="normal" color="fg.muted" pl={0.5}>
-              from <NumberCounter value={data?.countryCodes.length ?? 0} /> countr
+              <NumberCounter value={data?.countryCodes.length ?? 0} /> countr
               {data?.countryCodes.length === 1 ? 'y' : 'ies'}
             </Text>
-          </Flex>
-          <Flex flexGrow={1} justify="flex-end">
-            <UserCardSelect publicDashboard={publicDashboard} />
           </Flex>
         </Flex>
       </DashboardCardHeader>

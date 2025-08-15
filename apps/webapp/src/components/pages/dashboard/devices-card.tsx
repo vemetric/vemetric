@@ -4,7 +4,7 @@ import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import type { IDeviceFilter, IFilterConfig } from '@vemetric/common/filters';
 import { formatNumber } from '@vemetric/common/math';
 import React, { useState } from 'react';
-import { TbUserSquareRounded, TbFilter, TbFilterOff, TbMap2, TbUsers } from 'react-icons/tb';
+import { TbFilter, TbFilterOff, TbMap2, TbUsers, TbDeviceDesktop } from 'react-icons/tb';
 import { isDeepEqual } from 'remeda';
 import { CardIcon } from '@/components/card-icon';
 import { DeviceIcon } from '@/components/device-icon';
@@ -50,9 +50,9 @@ export const DevicesCard = ({ filterConfig, publicDashboard }: Props) => {
           <Flex flexDir="column" gap={1}>
             <Flex align="center" gap={1.5}>
               <CardIcon size="xs">
-                <TbUserSquareRounded />
+                <TbDeviceDesktop />
               </CardIcon>
-              <Text>Users</Text>
+              <Text>Devices</Text>
             </Flex>
             <Text textStyle="sm" fontWeight="normal" color="fg.muted" pl={0.5}>
               <NumberCounter value={data?.devices.length ?? 0} /> device

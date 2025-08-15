@@ -15,6 +15,7 @@ import { CountriesCard } from '@/components/pages/dashboard/countries-card';
 import { DashboardChart } from '@/components/pages/dashboard/dashboard-chart';
 import { DevicesCard } from '@/components/pages/dashboard/devices-card';
 import { EventsCard } from '@/components/pages/dashboard/events/events-card';
+import { FunnelsCard } from '@/components/pages/dashboard/funnels/funnels-card';
 import { MostVisitedPagesCard } from '@/components/pages/dashboard/most-visited-pages-card';
 import { OperatingSystemsCard } from '@/components/pages/dashboard/os-card';
 import { TopSourcesCard } from '@/components/pages/dashboard/top-sources-card';
@@ -46,6 +47,8 @@ const dashboardSearchSchema = z.object({
   e: z.boolean().optional(),
   se: z.string().optional(), // selected event to show properties for
   ep: z.string().optional(), // selected event property to show values for
+  sf: z.string().optional(), // selected funnel to show steps for
+  fu: z.boolean().optional(), // show active users in funnels (vs first step users)
 });
 
 export const Route = createFileRoute('/public/$domain')({
@@ -186,14 +189,14 @@ function Page() {
                   />
                   <TopSourcesCard filterConfig={filterConfig} publicDashboard />
                   <EventsCard filterConfig={filterConfig} publicDashboard />
-                  {userType === 'browsers' ? (
-                    <BrowsersCard filterConfig={filterConfig} publicDashboard />
+                  <CountriesCard filterConfig={filterConfig} />
+                  <FunnelsCard filterConfig={filterConfig} activeUsers={data.users ?? 0} />
+                  {userType === 'os' ? (
+                    <OperatingSystemsCard filterConfig={filterConfig} />
                   ) : userType === 'devices' ? (
-                    <DevicesCard filterConfig={filterConfig} publicDashboard />
-                  ) : userType === 'os' ? (
-                    <OperatingSystemsCard filterConfig={filterConfig} publicDashboard />
+                    <DevicesCard filterConfig={filterConfig} />
                   ) : (
-                    <CountriesCard filterConfig={filterConfig} publicDashboard />
+                    <BrowsersCard filterConfig={filterConfig} />
                   )}
                 </SimpleGrid>
               </Flex>

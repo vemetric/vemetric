@@ -146,7 +146,7 @@ function RouteComponent() {
                     _hover={{ bg: 'gray.subtle/50', borderColor: 'purple.500/50' }}
                     className="group"
                   >
-                    <Card.Body pos="relative">
+                    <Card.Body pos="relative" w="100%">
                       <AspectRatio ratio={16 / 9}>
                         <Box />
                       </AspectRatio>

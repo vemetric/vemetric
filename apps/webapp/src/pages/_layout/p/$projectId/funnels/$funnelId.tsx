@@ -2,11 +2,14 @@ import { Box, Button, Card, Flex, Icon, IconButton, LinkOverlay, Skeleton, useBr
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { TIME_SPANS } from '@vemetric/common/charts/timespans';
+import { filterConfigSchema } from '@vemetric/common/filters';
 import { AnimatePresence, motion } from 'motion/react';
 import React, { useState } from 'react';
 import { TbChartBarPopular, TbEdit, TbTrash } from 'react-icons/tb';
 import { z } from 'zod';
 import { DeletePopover } from '@/components/delete-popover';
+import { AddFilterButton } from '@/components/filter/add-filter/add-filter-button';
+import { FilterContainer } from '@/components/filter/filter-container';
 import { FilterContextProvider } from '@/components/filter/filter-context';
 import { PageDotBackground } from '@/components/page-dot-background';
 import { ActiveUsersButton } from '@/components/pages/funnels/active-users-button';
@@ -24,6 +27,7 @@ import { trpc } from '@/utils/trpc';
 const searchSchema = z.object({
   t: z.enum(TIME_SPANS).optional(),
   u: z.boolean().optional(),
+  f: filterConfigSchema,
 });
 
 export const Route = createFileRoute('/_layout/p/$projectId/funnels/$funnelId')({
@@ -34,6 +38,7 @@ export const Route = createFileRoute('/_layout/p/$projectId/funnels/$funnelId')(
 function RouteComponent() {
   const navigate = Route.useNavigate();
   const { projectId, funnelId } = Route.useParams();
+  const { f: filterConfig } = Route.useSearch();
   const { timespan } = useTimespanParam({ from: '/_layout/p/$projectId/funnels/$funnelId' });
   const { activeUsersVisible, setActiveUsersVisible } = useActiveUsersParam({
     from: '/_layout/p/$projectId/funnels/$funnelId',
@@ -74,6 +79,7 @@ function RouteComponent() {
       projectId,
       timespan,
       id: funnelId,
+      filterConfig,
     },
     {
       keepPreviousData: true,
@@ -114,13 +120,21 @@ function RouteComponent() {
   const { mutate: deleteFunnel, isLoading: isFunnelDeleting } = trpc.funnels.delete.useMutation({
     onSuccess: async () => {
       await utils.funnels.list.refetch();
-      navigate({ to: '/p/$projectId/funnels', params: { projectId } });
+      navigate({
+        to: '/p/$projectId/funnels',
+        params: { projectId },
+        search: { u: activeUsersVisible || undefined, f: filterConfig },
+      });
     },
   });
 
   useSetBreadcrumbs([
     <LinkOverlay key="funnels" asChild>
-      <Link to="/p/$projectId/funnels" params={{ projectId }}>
+      <Link
+        to="/p/$projectId/funnels"
+        params={{ projectId }}
+        search={{ u: activeUsersVisible || undefined, f: filterConfig }}
+      >
         Funnels
       </Link>
     </LinkOverlay>,
@@ -171,19 +185,19 @@ function RouteComponent() {
         browserNames: filterableData?.browserNames ?? [],
         deviceTypes: filterableData?.deviceTypes ?? [],
         osNames: filterableData?.osNames ?? [],
-        funnels: filterableData?.funnels ?? [],
+
+        disabledFilters: ['funnel'],
+        funnels: [],
       }}
     >
       <PageDotBackground />
       <Box pos="relative" maxW="100%">
-        <Flex pos="relative" mb={6} align="center" gap={2} zIndex="1">
-          <Flex pos="relative" align="center" h="32px">
-            <ActiveUsersButton
-              activeUsers={funnelResults.activeUsers || 0}
-              activeUsersVisible={activeUsersVisible}
-              setActiveUsersVisible={setActiveUsersVisible}
-            />
-          </Flex>
+        <Flex pos="relative" align="center" gap={2} zIndex="1" flexWrap="wrap">
+          <ActiveUsersButton
+            activeUsers={funnelResults.activeUsers || 0}
+            activeUsersVisible={activeUsersVisible}
+            setActiveUsersVisible={setActiveUsersVisible}
+          />
           <Flex flexGrow={1} justify="center" align="center">
             {!isMobile && (
               <Button variant="surface" size="xs" onClick={() => setHorizontalFunnel((value) => !value)}>
@@ -192,7 +206,9 @@ function RouteComponent() {
               </Button>
             )}
           </Flex>
-          <Flex align="center" gap={3}>
+          <Flex align="center" justify="flex-end" gap={3} flexGrow={1}>
+            <AddFilterButton from="/p/$projectId/funnels/$funnelId" filterConfig={filterConfig} />
+            <Box w="1px" h="26px" bg="gray.muted" />
             <Flex align="center" gap={2.5}>
               <FunnelDialog funnelId={funnelId}>
                 <IconButton variant="surface" size="xs">
@@ -213,6 +229,9 @@ function RouteComponent() {
             <TimespanSelect from="/_layout/p/$projectId/funnels/$funnelId" excludeLive />
           </Flex>
         </Flex>
+        <Box my={3}>
+          <FilterContainer filterConfig={filterConfig} from="/p/$projectId/funnels" />
+        </Box>
         <AnimatePresence mode="popLayout" initial={false}>
           {horizontalFunnel && !isMobile ? (
             <motion.div
@@ -222,7 +241,12 @@ function RouteComponent() {
               exit={{ opacity: 0, y: 50 }}
               transition={{ duration: 0.2 }}
             >
-              <HorizontalFunnel funnelSteps={funnelSteps} activeUsersVisible={activeUsersVisible} projectId={projectId} funnelId={funnelId} />
+              <HorizontalFunnel
+                funnelSteps={funnelSteps}
+                activeUsersVisible={activeUsersVisible}
+                projectId={projectId}
+                funnelId={funnelId}
+              />
             </motion.div>
           ) : (
             <motion.div
@@ -232,7 +256,12 @@ function RouteComponent() {
               exit={{ opacity: 0, y: 50 }}
               transition={{ duration: 0.2 }}
             >
-              <VerticalFunnel funnelSteps={funnelSteps} activeUsersVisible={activeUsersVisible} projectId={projectId} funnelId={funnelId} />
+              <VerticalFunnel
+                funnelSteps={funnelSteps}
+                activeUsersVisible={activeUsersVisible}
+                projectId={projectId}
+                funnelId={funnelId}
+              />
             </motion.div>
           )}
         </AnimatePresence>

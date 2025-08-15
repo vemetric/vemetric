@@ -13,9 +13,10 @@ interface Props {
   projectId: string;
   funnel: FunnelData;
   activeUsersVisible: boolean;
+  filterConfig: IFilterConfig;
 }
 
-export const FunnelCard = ({ projectId, funnel, activeUsersVisible }: Props) => {
+export const FunnelCard = ({ projectId, funnel, activeUsersVisible, filterConfig }: Props) => {
   const funnelSteps = funnel.stepResults;
   const activeUsers = funnelSteps[0].users;
   const firstStepUsers = activeUsersVisible ? activeUsers : funnelSteps[1].users;
@@ -172,7 +173,7 @@ export const FunnelCard = ({ projectId, funnel, activeUsersVisible }: Props) => 
         <Link
           to="/p/$projectId/funnels/$funnelId"
           params={{ projectId, funnelId: funnel.id }}
-          search={{ u: activeUsersVisible || undefined }}
+          search={{ u: activeUsersVisible || undefined, f: filterConfig }}
         />
       </Box>
 
@@ -196,7 +197,11 @@ export const FunnelCard = ({ projectId, funnel, activeUsersVisible }: Props) => 
           </Tooltip>
           <Tooltip content="View this funnel">
             <IconButton asChild variant="surface" size="sm" boxShadow="xs">
-              <Link to="/p/$projectId/funnels/$funnelId" params={{ projectId, funnelId: funnel.id }}>
+              <Link
+                to="/p/$projectId/funnels/$funnelId"
+                params={{ projectId, funnelId: funnel.id }}
+                search={{ u: activeUsersVisible || undefined, f: filterConfig }}
+              >
                 <Icon as={TbEye} />
               </Link>
             </IconButton>

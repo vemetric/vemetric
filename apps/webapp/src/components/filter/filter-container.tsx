@@ -1,11 +1,12 @@
 import { Box, Flex } from '@chakra-ui/react';
 import type { IFilterConfig } from '@vemetric/common/filters';
+import type { RoutesWithFiltering } from '@/hooks/use-filters';
 import { useFilters } from '@/hooks/use-filters';
 import { FilterGroup } from './filter-group';
 
 interface Props {
   filterConfig: IFilterConfig;
-  from: '/p/$projectId' | '/p/$projectId/users' | '/public/$domain' | '/p/$projectId/events';
+  from: RoutesWithFiltering;
 }
 
 export const FilterContainer = ({ filterConfig, from }: Props) => {

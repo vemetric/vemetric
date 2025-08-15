@@ -1,9 +1,11 @@
 import { TRPCError } from '@trpc/server';
+import { filterConfigSchema } from '@vemetric/common/filters';
 import type { FunnelStep } from '@vemetric/common/funnel';
 import { funnelStepSchema } from '@vemetric/common/funnel';
-import { clickhouseEvent } from 'clickhouse';
+import { clickhouseEvent, getUserFilterQueries } from 'clickhouse';
 import { dbFunnel } from 'database';
 import { z } from 'zod';
+import { getFilterFunnelsData } from '../utils/filter';
 import { logger } from '../utils/logger';
 import { projectProcedure, router, timespanProcedure } from '../utils/trpc';
 import { vemetric } from '../utils/vemetric-client';
@@ -15,19 +17,28 @@ const upsertFunnelSchema = z.object({
 });
 
 export const funnelsRouter = router({
-  list: timespanProcedure.query(async (opts) => {
-    const {
-      ctx: { project, projectId, startDate },
-    } = opts;
+  list: timespanProcedure
+    .input(
+      z.object({
+        filterConfig: filterConfigSchema,
+      }),
+    )
+    .query(async (opts) => {
+      const {
+        input: { filterConfig },
+        ctx: { project, projectId, startDate },
+      } = opts;
 
     const funnels = await dbFunnel.findByProjectId(project.id);
-    const activeUsers = (await clickhouseEvent.getActiveUsers(projectId, startDate)) ?? 0;
+    const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
+    const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
+    const activeUsers = (await clickhouseEvent.getActiveUsers(projectId, startDate, filterQueries)) ?? 0;
 
     const funnelsWithResults = await Promise.all(
       funnels.map(async (funnel) => {
         const steps = funnel.steps as FunnelStep[];
 
-        const funnelResults = await clickhouseEvent.getFunnelResults(projectId, steps, startDate);
+        const funnelResults = await clickhouseEvent.getFunnelResults(projectId, steps, startDate, undefined, filterQueries);
 
         const stepResults: Array<{ users: number }> = [{ users: activeUsers }];
         for (let i = 0; i < steps.length; i++) {
@@ -142,11 +153,12 @@ export const funnelsRouter = router({
     .input(
       z.object({
         id: z.string(),
+        filterConfig: filterConfigSchema,
       }),
     )
     .query(async (opts) => {
       const {
-        input: { id },
+        input: { id, filterConfig },
         ctx: { project, projectId, startDate },
       } = opts;
 
@@ -155,9 +167,12 @@ export const funnelsRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Funnel not found' });
       }
 
+      const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
+
       const [funnelResults, activeUsers] = await Promise.all([
-        clickhouseEvent.getFunnelResults(projectId, funnel.steps as FunnelStep[], startDate),
-        clickhouseEvent.getActiveUsers(projectId, startDate),
+        clickhouseEvent.getFunnelResults(projectId, funnel.steps as FunnelStep[], startDate, undefined, filterQueries),
+        clickhouseEvent.getActiveUsers(projectId, startDate, filterQueries),
       ]);
 
       return {

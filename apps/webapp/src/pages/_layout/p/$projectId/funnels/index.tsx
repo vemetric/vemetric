@@ -2,8 +2,11 @@ import { AspectRatio, Box, Button, Card, Flex, Icon, SimpleGrid, Skeleton } from
 import { createFileRoute } from '@tanstack/react-router';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { TIME_SPANS } from '@vemetric/common/charts/timespans';
+import { filterConfigSchema } from '@vemetric/common/filters';
 import { TbChartFunnel, TbPlus } from 'react-icons/tb';
 import { z } from 'zod';
+import { AddFilterButton } from '@/components/filter/add-filter/add-filter-button';
+import { FilterContainer } from '@/components/filter/filter-container';
 import { FilterContextProvider } from '@/components/filter/filter-context';
 import { PageDotBackground } from '@/components/page-dot-background';
 import { ActiveUsersButton } from '@/components/pages/funnels/active-users-button';
@@ -19,6 +22,7 @@ import { trpc } from '@/utils/trpc';
 const searchSchema = z.object({
   t: z.enum(TIME_SPANS).optional(),
   u: z.boolean().optional(),
+  f: filterConfigSchema,
 });
 
 export const Route = createFileRoute('/_layout/p/$projectId/funnels/')({
@@ -28,6 +32,7 @@ export const Route = createFileRoute('/_layout/p/$projectId/funnels/')({
 
 function RouteComponent() {
   const { projectId } = Route.useParams();
+  const { f: filterConfig } = Route.useSearch();
   const { timespan } = useTimespanParam({ from: '/_layout/p/$projectId/funnels/' });
   const { activeUsersVisible, setActiveUsersVisible } = useActiveUsersParam({ from: '/_layout/p/$projectId/funnels/' });
 
@@ -45,6 +50,7 @@ function RouteComponent() {
     {
       projectId,
       timespan,
+      filterConfig,
     },
     { keepPreviousData: true },
   );
@@ -69,20 +75,22 @@ function RouteComponent() {
         browserNames: filterableData?.browserNames ?? [],
         deviceTypes: filterableData?.deviceTypes ?? [],
         osNames: filterableData?.osNames ?? [],
-        funnels: filterableData?.funnels ?? [],
+
+        disabledFilters: ['funnel'],
+        funnels: [],
       }}
     >
       <PageDotBackground />
       <Box pos="relative" maxW="100%">
-        <Flex pos="relative" mb={6} align="center" gap={2} justify="space-between">
-          <Flex pos="relative" align="center" h="32px">
-            <ActiveUsersButton
-              activeUsers={funnelsData?.activeUsers ?? 0}
-              activeUsersVisible={activeUsersVisible}
-              setActiveUsersVisible={setActiveUsersVisible}
-            />
-          </Flex>
-          <Flex align="center" gap={3}>
+        <Flex pos="relative" align="center" gap={2} justify="space-between" flexWrap="wrap">
+          <ActiveUsersButton
+            activeUsers={funnelsData?.activeUsers ?? 0}
+            activeUsersVisible={activeUsersVisible}
+            setActiveUsersVisible={setActiveUsersVisible}
+          />
+          <Flex align="center" justify="flex-end" gap={3} flexGrow={1}>
+            <AddFilterButton from="/p/$projectId/funnels" filterConfig={filterConfig} />
+            <Box w="1px" h="26px" bg="gray.muted" />
             <FunnelDialog>
               <Button variant="surface" size={{ base: 'xs', md: 'sm' }}>
                 <Icon as={TbPlus} />
@@ -93,6 +101,9 @@ function RouteComponent() {
             <TimespanSelect from="/_layout/p/$projectId/funnels/" excludeLive />
           </Flex>
         </Flex>
+        <Box my={3}>
+          <FilterContainer filterConfig={filterConfig} from="/p/$projectId/funnels" />
+        </Box>
         {isError ? (
           <Card.Root py={6}>
             <ErrorState title="Error loading funnels" />
@@ -120,6 +131,7 @@ function RouteComponent() {
                       projectId={projectId}
                       funnel={funnel}
                       activeUsersVisible={activeUsersVisible}
+                      filterConfig={filterConfig}
                     />
                   );
                 })}

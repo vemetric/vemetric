@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { TbFilterPlus } from 'react-icons/tb';
 import { PopoverMenuHeader } from '@/components/popover-menu/popover-menu-header';
+import type { RoutesWithFiltering } from '@/hooks/use-filters';
 import { useFilters } from '@/hooks/use-filters';
 import { AddFilterOverview } from './add-filter-overview';
 import { OPERATOR_BUTTON_MENU_CLASS_NAME } from '../operator-button';
@@ -18,7 +19,7 @@ const getMotionViewProps = (overview?: boolean) => ({
 
 interface Props {
   filterConfig: IFilterConfig;
-  from: '/p/$projectId' | '/p/$projectId/users' | '/public/$domain' | '/p/$projectId/events';
+  from: RoutesWithFiltering;
 }
 
 export const AddFilterButton = ({ filterConfig, from }: Props) => {

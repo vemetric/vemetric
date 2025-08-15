@@ -1,12 +1,13 @@
 import { Flex, Button } from '@chakra-ui/react';
 import { PopoverMenuButton } from '@/components/popover-menu/popover-menu-button';
 import { PopoverMenuHeader } from '@/components/popover-menu/popover-menu-header';
+import type { RoutesWithFiltering } from '@/hooks/use-filters';
 import { useFilters } from '@/hooks/use-filters';
 import { useFilterContext } from '../filter-context';
 import { ADD_FILTER_ITEMS } from './add-filters-items';
 
 interface Props {
-  from: '/p/$projectId' | '/p/$projectId/users' | '/p/$projectId/events' | '/public/$domain';
+  from: RoutesWithFiltering;
   setFilterView: (view: string) => void;
   onClose: () => void;
 }

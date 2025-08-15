@@ -3,8 +3,17 @@ import type { IFilter, IFilterConfig } from '@vemetric/common/filters';
 import { isDeepEqual } from 'remeda';
 import { useFilterContext } from '@/components/filter/filter-context';
 
+export type RoutesWithFiltering =
+  | '/p/$projectId'
+  | '/p/$projectId/users'
+  | '/p/$projectId/events'
+  | '/public/$domain'
+  | '/p/$projectId/events'
+  | '/p/$projectId/funnels'
+  | '/p/$projectId/funnels/$funnelId';
+
 interface Props {
-  from: '/p/$projectId' | '/p/$projectId/users' | '/p/$projectId/events' | '/public/$domain' | '/p/$projectId/events';
+  from: RoutesWithFiltering;
 }
 
 export const useFilters = ({ from }: Props) => {

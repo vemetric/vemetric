@@ -23,9 +23,6 @@ export const ActiveUsersButton = ({ activeUsers, activeUsersVisible, setActiveUs
       closeOnPointerDown={false}
     >
       <Button
-        pos="absolute"
-        left={0}
-        top={0}
         colorPalette={activeUsersVisible ? 'purple' : 'gray'}
         variant="surface"
         size="xs"

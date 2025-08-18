@@ -149,7 +149,11 @@ export const FunnelsCard = ({ filterConfig, publicDashboard, activeUsers }: Prop
                 setPage={setPage}
                 error={error}
                 emptyState={
-                  <EmptyState icon={<TbChartFunnel />} title="No funnels available">
+                  <EmptyState
+                    icon={<TbChartFunnel />}
+                    title="No funnels available"
+                    description="Create your first funnel to start tracking conversions."
+                  >
                     {'projectId' in params && (
                       <Button asChild mt={4}>
                         <Link to="/p/$projectId/funnels" params={{ projectId: params.projectId }}>

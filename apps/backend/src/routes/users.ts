@@ -1,7 +1,9 @@
 import { filterConfigSchema } from '@vemetric/common/filters';
+import type { FunnelStep } from '@vemetric/common/funnel';
 import { userSortConfigSchema } from '@vemetric/common/sort';
 import type { ClickhouseEvent } from 'clickhouse';
 import { clickhouseEvent, clickhouseSession, clickhouseUser, getUserFilterQueries } from 'clickhouse';
+import { dbFunnel } from 'database';
 import { addDays, addMonths, startOfDay } from 'date-fns';
 import { z } from 'zod';
 import { getFilterFunnelsData } from '../utils/filter';
@@ -156,4 +158,46 @@ export const usersRouter = router({
 
     return { startDate, eventMap: Object.fromEntries(eventMap) };
   }),
+  funnelProgress: projectProcedure
+    .input(z.object({ projectId: z.string(), userId: z.string() }))
+    .query(async (opts) => {
+      const {
+        input: { userId },
+        ctx: { projectId, project, subscriptionStatus },
+      } = opts;
+
+      const startDate = getFreePlanStartDate(subscriptionStatus.isActive);
+
+      // Get all funnels for the project
+      const funnels = await dbFunnel.findByProjectId(project.id);
+
+      if (funnels.length === 0) {
+        return { funnelsData: [] };
+      }
+
+      // Get user's funnel progress
+      const funnelProgress = await clickhouseEvent.getUserFunnelProgress(
+        projectId,
+        BigInt(userId),
+        funnels.map((funnel) => ({
+          id: funnel.id,
+          name: funnel.name,
+          steps: funnel.steps as FunnelStep[],
+        })),
+        startDate,
+      );
+
+      // Prepare all funnels data with progress information
+      const funnelsData = funnels.map((funnel) => {
+        const progress = funnelProgress.find((p) => p.funnelId === funnel.id);
+        return {
+          funnelId: funnel.id,
+          funnelName: funnel.name,
+          completedStep: progress?.completedStep || 0,
+          totalSteps: (funnel.steps as FunnelStep[]).length,
+        };
+      });
+
+      return { funnelsData };
+    }),
 });

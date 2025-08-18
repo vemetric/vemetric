@@ -58,7 +58,11 @@ export const FunnelFilterForm: React.FC<Props> = ({ filter: _filter, onSubmit, b
 
   if (funnels.length === 0) {
     return (
-      <EmptyState icon={<TbChartFunnel />} title="No funnels available">
+      <EmptyState
+        icon={<TbChartFunnel />}
+        title="No funnels available"
+        description="Create your first funnel to start tracking conversions."
+      >
         {projectId && (
           <Button asChild size="sm" mt={4} _hover={{ textDecoration: 'none' }}>
             <Link to="/p/$projectId/funnels" params={{ projectId }}>

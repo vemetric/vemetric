@@ -827,4 +827,60 @@ export const clickhouseEvent = {
       return rows.map(mapRowToEvent);
     },
   ),
+
+  /**
+   * Get funnel progress for a specific user
+   * Returns which funnels the user has completed (started first step)
+   */
+  getUserFunnelProgress: async (
+    projectId: bigint,
+    userId: bigint,
+    funnels: Array<{ id: string; name: string; steps: FunnelStep[] }>,
+    startDate?: Date,
+  ): Promise<Array<{ funnelId: string; funnelName: string; completedStep: number; totalSteps: number }>> => {
+    if (funnels.length === 0) return [];
+
+    const results = await Promise.all(
+      funnels.map(async (funnel) => {
+        const stepConditions = buildFunnelStepConditions(funnel.steps, projectId);
+        const userCondition = `AND userId = ${escape(userId)}`;
+        
+        const funnelSubquery = buildWindowFunnelSubquery(
+          projectId, 
+          stepConditions, 
+          startDate || new Date(0), 
+          undefined, 
+          userCondition
+        );
+
+        const resultSet = await clickhouseClient.query({
+          query: `
+            WITH funnel_data AS (${funnelSubquery})
+            SELECT 
+              userId,
+              maxStage as completedStep
+            FROM funnel_data
+            WHERE userId = ${escape(userId)}
+            AND maxStage > 0
+          `,
+          format: 'JSONEachRow',
+        });
+
+        const result = (await resultSet.json()) as Array<{ userId: string; completedStep: number }>;
+        
+        if (result.length > 0) {
+          return {
+            funnelId: funnel.id,
+            funnelName: funnel.name,
+            completedStep: result[0].completedStep,
+            totalSteps: funnel.steps.length,
+          };
+        }
+        
+        return null;
+      })
+    );
+
+    return results.filter((result): result is NonNullable<typeof result> => result !== null);
+  },
 };

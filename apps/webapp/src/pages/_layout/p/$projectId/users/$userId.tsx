@@ -33,6 +33,7 @@ import { OsIcon } from '@/components/os-icon';
 import { ActivityHeatmap } from '@/components/pages/user/activity-heatmap';
 import { DateSeparator } from '@/components/pages/user/date-separator';
 import { EventCard } from '@/components/pages/user/event-card';
+import { RenderAttributeValue } from '@/components/pages/user/render-attribute-value';
 import { UserAvatar } from '@/components/pages/user/user-avatar';
 import { UserFunnelProgress } from '@/components/pages/user/user-funnel-progress';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -706,7 +707,7 @@ function Page() {
                                     {key}
                                   </Box>
                                   <Box fontWeight="medium" textAlign="right" truncate>
-                                    {typeof value === 'boolean' ? JSON.stringify(value) : value}
+                                    <RenderAttributeValue value={value} />
                                   </Box>
                                 </Fragment>
                               ))}

@@ -25,7 +25,7 @@ export function generateUserId(options?: GenerateUserIdOptions): bigint {
   }
 
   const { projectId, ipAddress, userAgent, salt } = options;
-  const data = `${projectId}:${ipAddress}:${userAgent}:${salt}`;
+  const data = `${String(projectId)}:${ipAddress}:${userAgent}:${salt}`;
   return createSiphash(userIdKey, data);
 }
 

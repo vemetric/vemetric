@@ -18,6 +18,7 @@ import {
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { formatNumber } from '@vemetric/common/math';
 import { motion } from 'motion/react';
+import { TbPlus } from 'react-icons/tb';
 import { ResponsiveContainer, AreaChart as RechartsAreaChart, XAxis, YAxis, Area, CartesianGrid } from 'recharts';
 import { BaseLayout } from '@/components/base-layout';
 import { CreateProjectDialog } from '@/components/create-project-dialog';
@@ -57,7 +58,7 @@ const ProjectCard = (props: Props) => {
         rounded="l3"
         overflow="hidden"
       >
-        <Center w="full" h="full" bg="bg.muted" color="fg.subtle" pos="relative">
+        <Center w="full" h="full" bg="bg.card/70" color="fg.subtle" pos="relative">
           {project.activeUserTimeSeries === undefined ? (
             <Spinner size="xl" />
           ) : (
@@ -218,13 +219,39 @@ function Page() {
                     <AspectRatio
                       ratio={CARD_ASPECT_RATIO}
                       pos="relative"
-                      borderWidth="1px"
+                      borderWidth="2px"
+                      borderStyle="dashed"
                       borderColor="gray.emphasized"
                       rounded="l3"
                       overflow="hidden"
                     >
-                      <Center w="full" h="full" bg="bg.muted" color="fg.subtle" fontSize="5xl">
-                        +
+                      <Center w="full" h="full" bg="bg.card/70" color="fg.subtle" fontSize="5xl">
+                        <TbPlus />
+
+                        <Box
+                          pos="absolute"
+                          right="-125px"
+                          bottom="-125px"
+                          w="220px"
+                          h="220px"
+                          border="12px solid"
+                          borderColor="gray.emphasized"
+                          bg="gray.emphasized/50"
+                          rounded="full"
+                          opacity="0.2"
+                        />
+                        <Box
+                          pos="absolute"
+                          left="-125px"
+                          top="-125px"
+                          w="220px"
+                          h="220px"
+                          border="12px solid"
+                          borderColor="gray.emphasized"
+                          bg="gray.emphasized/50"
+                          rounded="full"
+                          opacity="0.2"
+                        />
                       </Center>
                     </AspectRatio>
 

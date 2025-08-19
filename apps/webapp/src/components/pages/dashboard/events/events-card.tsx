@@ -160,7 +160,7 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
                       icon = <TbExternalLink />;
                     } else if (eventIcons[event.name]) {
                       icon = (
-                        <Box transform="scale(0.8)" filter="grayscale(25%)" opacity={0.9}>
+                        <Box transform="scale(0.8)" filter="grayscale(0.3)" opacity={0.9}>
                           {eventIcons[event.name]}
                         </Box>
                       );

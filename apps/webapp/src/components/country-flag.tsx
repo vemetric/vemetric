@@ -12,6 +12,7 @@ export const CountryFlag = ({ countryCode }: { countryCode: string }) => {
       rounded="1.5px"
       overflow="hidden"
       boxShadow="sm"
+      filter="grayscale(0.3)"
       _before={{
         content: '""',
         pos: 'absolute',

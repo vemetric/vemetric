@@ -192,6 +192,7 @@ export const TopSourcesCard = ({ filterConfig, publicDashboard }: Props) => {
                           rounded="4px"
                           color="gray.fg"
                           overflow="hidden"
+                          filter="grayscale(0.3)"
                         >
                           <ReferrerIcon source={dataSource} {...topSource} />
                         </Flex>

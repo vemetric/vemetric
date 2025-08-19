@@ -25,6 +25,7 @@ export const RenderAttributeValue: FC<RenderAttributeValueProps> = ({ value }) =
               textDecoration="underline"
               outline="none"
               _hover={{ opacity: 0.7 }}
+              display="inline"
             >
               {content}
             </Link>

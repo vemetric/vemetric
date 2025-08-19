@@ -7,6 +7,7 @@ import { EventIconButton } from '@/components/event-icon-button';
 import { OsIcon } from '@/components/os-icon';
 import { Tooltip } from '@/components/ui/tooltip';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
+import { RenderAttributeValue } from './render-attribute-value';
 
 interface Props {
   event: {
@@ -16,7 +17,7 @@ interface Props {
     pathname?: string;
     urlHash?: string;
     createdAt: string;
-    customData: Record<string, unknown>;
+    customData: Record<string, any>;
     clientName?: string;
     clientVersion?: string;
     osName?: string;
@@ -97,9 +98,9 @@ export const EventCard = ({ event, lastPageViewDate }: Props) => {
                       URL
                     </Box>
                     <Box fontWeight="medium" textAlign="right" truncate>
-                      {event.origin}
-                      {event.pathname}
-                      {event.urlHash}
+                      <RenderAttributeValue
+                        value={(event.origin ?? '') + (event.pathname ?? '') + (event.urlHash ?? '')}
+                      />
                     </Box>
                   </Fragment>
                 )}
@@ -111,7 +112,7 @@ export const EventCard = ({ event, lastPageViewDate }: Props) => {
                         {key}
                       </Box>
                       <Box fontWeight="medium" textAlign="right" truncate>
-                        {typeof value === 'boolean' ? JSON.stringify(value) : (value as any)}
+                        <RenderAttributeValue value={value} />
                       </Box>
                     </Fragment>
                   ))}

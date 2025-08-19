@@ -14,6 +14,7 @@ import { OsIcon } from '@/components/os-icon';
 import { useEventsPageStore } from '@/stores/events-page-store';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import { getUserName } from '@/utils/user';
+import { RenderAttributeValue } from '../user/render-attribute-value';
 import { UserAvatar } from '../user/user-avatar';
 
 export const EventCardSkeleton = (props: BoxProps) => {
@@ -202,7 +203,7 @@ export const EventCard = ({ event, previousEventId, nextEventId }: Props) => {
                           {key}
                         </Box>
                         <Box fontWeight="medium" textAlign="right" truncate>
-                          {typeof value === 'boolean' ? JSON.stringify(value) : (value as any)}
+                          <RenderAttributeValue value={value} />
                         </Box>
                       </Fragment>
                     ))}

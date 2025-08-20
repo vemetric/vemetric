@@ -11,8 +11,10 @@ import { CardIcon } from '@/components/card-icon';
 import { DeviceIcon } from '@/components/device-icon';
 import { EventIconButton } from '@/components/event-icon-button';
 import { OsIcon } from '@/components/os-icon';
+import { Tooltip } from '@/components/ui/tooltip';
 import { useEventsPageStore } from '@/stores/events-page-store';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
+import { isEntityUnknown } from '@/utils/event';
 import { getUserName } from '@/utils/user';
 import { RenderAttributeValue } from '../user/render-attribute-value';
 import { UserAvatar } from '../user/user-avatar';
@@ -53,6 +55,8 @@ interface Props {
 export const EventCard = ({ event, previousEventId, nextEventId }: Props) => {
   const state = useEventsPageStore();
   const { eventsOpened } = useSnapshot(state);
+  const isFooterVisible =
+    !isEntityUnknown(event.clientName) || !isEntityUnknown(event.osName) || !isEntityUnknown(event.deviceType);
 
   const isOpen = eventsOpened.includes(event.id);
   const isAnyOpen = eventsOpened.length > 0;
@@ -209,45 +213,49 @@ export const EventCard = ({ event, previousEventId, nextEventId }: Props) => {
                     ))}
                 </SimpleGrid>
               </Box>
-              <Flex
-                gap={3}
-                align="center"
-                justify="space-between"
-                opacity={0.8}
-                mt={1}
-                borderTop="1px solid"
-                borderColor="gray.emphasized"
-                pt={3}
-                pb={2}
-                px={4}
-                bg="gray.subtle/50"
-                flexWrap="wrap"
-              >
-                {event.clientName && (
-                  <Flex align="center" gap={1.5}>
-                    <BrowserIcon browserName={event.clientName ?? ''} />
-                    <Text textStyle="sm" fontWeight="medium" truncate>
-                      {event.clientName} <Span opacity={0.5}>{event.clientVersion}</Span>
-                    </Text>
-                  </Flex>
-                )}
-                {event.osName && (
-                  <Flex align="center" gap={1.5}>
-                    <OsIcon osName={event.osName ?? ''} />
-                    <Text textStyle="sm" fontWeight="medium" truncate>
-                      {event.osName} <Span opacity={0.5}>{event.osVersion}</Span>
-                    </Text>
-                  </Flex>
-                )}
-                {event.deviceType && (
-                  <Flex align="center" gap={1.5}>
-                    <DeviceIcon deviceType={event.deviceType ?? ''} />
-                    <Text textStyle="sm" fontWeight="medium" truncate>
-                      {event.deviceType}
-                    </Text>
-                  </Flex>
-                )}
-              </Flex>
+              {isFooterVisible && (
+                <Flex
+                  gap={3}
+                  align="center"
+                  justify="space-between"
+                  opacity={0.8}
+                  mt={1}
+                  borderTop="1px solid"
+                  borderColor="gray.emphasized"
+                  pt={3}
+                  pb={2}
+                  px={4}
+                  bg="gray.subtle/50"
+                  flexWrap="wrap"
+                >
+                  <Tooltip content="Browser">
+                    <Flex align="center" gap={1.5}>
+                      <BrowserIcon browserName={event.clientName ?? ''} />
+                      <Text textStyle="sm" fontWeight="medium" truncate>
+                        {event.clientName ?? 'Unknown'}
+                        {!isEntityUnknown(event.clientVersion) && <Span opacity={0.5}> {event.clientVersion}</Span>}
+                      </Text>
+                    </Flex>
+                  </Tooltip>
+                  <Tooltip content="Operating System">
+                    <Flex align="center" gap={1.5}>
+                      <OsIcon osName={event.osName ?? ''} />
+                      <Text textStyle="sm" fontWeight="medium" truncate>
+                        {event.osName ?? 'Unknown'}
+                        {!isEntityUnknown(event.osVersion) && <Span opacity={0.5}> {event.osVersion}</Span>}
+                      </Text>
+                    </Flex>
+                  </Tooltip>
+                  <Tooltip content="Device">
+                    <Flex align="center" gap={1.5}>
+                      <DeviceIcon deviceType={event.deviceType ?? ''} />
+                      <Text textStyle="sm" fontWeight="medium" truncate>
+                        {event.deviceType ?? 'unknown'}
+                      </Text>
+                    </Flex>
+                  </Tooltip>
+                </Flex>
+              )}
             </motion.div>
           </Card.Body>
         </Card.Root>

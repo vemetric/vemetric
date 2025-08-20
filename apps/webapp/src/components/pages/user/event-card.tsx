@@ -7,6 +7,7 @@ import { EventIconButton } from '@/components/event-icon-button';
 import { OsIcon } from '@/components/os-icon';
 import { Tooltip } from '@/components/ui/tooltip';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
+import { isEntityUnknown } from '@/utils/event';
 import { RenderAttributeValue } from './render-attribute-value';
 
 interface Props {
@@ -31,6 +32,8 @@ export const EventCard = ({ event, lastPageViewDate }: Props) => {
   const [isOpen, setIsOpen] = useState(false);
   const isDesktop = useBreakpointValue({ base: false, lg: true });
   const isPageView = event.name === '$$pageView';
+  const isFooterVisible =
+    !isEntityUnknown(event.clientName) || !isEntityUnknown(event.osName) || !isEntityUnknown(event.deviceType);
 
   let tooltipContent = 'Custom Event';
   if (isPageView) {
@@ -47,15 +50,15 @@ export const EventCard = ({ event, lastPageViewDate }: Props) => {
   }
 
   return (
-    <Tooltip
-      disabled={!isDesktop}
-      content={tooltipContent}
-      closeOnClick={false}
-      closeOnPointerDown={false}
-      positioning={{ placement: 'bottom-start', gutter: 3 }}
-      contentProps={{ whiteSpace: 'nowrap', truncate: true, maxW: '700px' }}
-    >
-      <Card.Root key={event.id} overflow="hidden" data-event-card>
+    <Card.Root key={event.id} overflow="hidden" data-event-card>
+      <Tooltip
+        disabled={!isDesktop || isOpen}
+        content={tooltipContent}
+        closeOnClick={false}
+        closeOnPointerDown={false}
+        positioning={{ placement: 'bottom-start', gutter: 3 }}
+        contentProps={{ whiteSpace: 'nowrap', truncate: true, maxW: '700px' }}
+      >
         <Card.Header
           as="button"
           cursor="pointer"
@@ -82,42 +85,44 @@ export const EventCard = ({ event, lastPageViewDate }: Props) => {
             )}
           </Flex>
         </Card.Header>
-        <Card.Body asChild p={0} flex="auto" overflow="hidden">
-          <motion.div initial={{ height: 0 }} animate={{ height: isOpen ? 'auto' : 0 }}>
-            <Box p={4} pb={3} borderTop="1px dashed" borderColor="gray.emphasized/70">
-              <SimpleGrid textStyle="sm" columns={2} gap={2.5} gridTemplateColumns="1fr 3fr">
-                <Box fontWeight="semibold" opacity={0.6}>
-                  Date
-                </Box>
-                <Box fontWeight="medium" textAlign="right" truncate>
-                  {dateTimeFormatter.formatTime(event.createdAt, true)}
-                </Box>
-                {isPageView && (
-                  <Fragment>
+      </Tooltip>
+      <Card.Body asChild p={0} flex="auto" overflow="hidden">
+        <motion.div initial={{ height: 0 }} animate={{ height: isOpen ? 'auto' : 0 }}>
+          <Box p={4} pb={3} borderTop="1px dashed" borderColor="gray.emphasized/70">
+            <SimpleGrid textStyle="sm" columns={2} gap={2.5} gridTemplateColumns="1fr 3fr">
+              <Box fontWeight="semibold" opacity={0.6}>
+                Date
+              </Box>
+              <Box fontWeight="medium" textAlign="right" truncate>
+                {dateTimeFormatter.formatTime(event.createdAt, true)}
+              </Box>
+              {isPageView && (
+                <Fragment>
+                  <Box fontWeight="semibold" opacity={0.6}>
+                    URL
+                  </Box>
+                  <Box fontWeight="medium" textAlign="right" truncate>
+                    <RenderAttributeValue
+                      value={(event.origin ?? '') + (event.pathname ?? '') + (event.urlHash ?? '')}
+                    />
+                  </Box>
+                </Fragment>
+              )}
+              {Object.entries(event.customData)
+                .sort((a, b) => a[0].localeCompare(b[0]))
+                .map(([key, value]) => (
+                  <Fragment key={key}>
                     <Box fontWeight="semibold" opacity={0.6}>
-                      URL
+                      {key}
                     </Box>
                     <Box fontWeight="medium" textAlign="right" truncate>
-                      <RenderAttributeValue
-                        value={(event.origin ?? '') + (event.pathname ?? '') + (event.urlHash ?? '')}
-                      />
+                      <RenderAttributeValue value={value} />
                     </Box>
                   </Fragment>
-                )}
-                {Object.entries(event.customData)
-                  .sort((a, b) => a[0].localeCompare(b[0]))
-                  .map(([key, value]) => (
-                    <Fragment key={key}>
-                      <Box fontWeight="semibold" opacity={0.6}>
-                        {key}
-                      </Box>
-                      <Box fontWeight="medium" textAlign="right" truncate>
-                        <RenderAttributeValue value={value} />
-                      </Box>
-                    </Fragment>
-                  ))}
-              </SimpleGrid>
-            </Box>
+                ))}
+            </SimpleGrid>
+          </Box>
+          {isFooterVisible && (
             <Flex
               gap={3}
               align="center"
@@ -132,34 +137,36 @@ export const EventCard = ({ event, lastPageViewDate }: Props) => {
               bg="gray.subtle/50"
               flexWrap="wrap"
             >
-              {event.clientName && (
+              <Tooltip content="Browser">
                 <Flex align="center" gap={1.5}>
                   <BrowserIcon browserName={event.clientName ?? ''} />
                   <Text textStyle="sm" fontWeight="medium" truncate>
-                    {event.clientName} <Span opacity={0.5}>{event.clientVersion}</Span>
+                    {event.clientName ?? 'Unknown'}
+                    {!isEntityUnknown(event.clientVersion) && <Span opacity={0.5}> {event.clientVersion}</Span>}
                   </Text>
                 </Flex>
-              )}
-              {event.osName && (
+              </Tooltip>
+              <Tooltip content="Operating System">
                 <Flex align="center" gap={1.5}>
                   <OsIcon osName={event.osName ?? ''} />
                   <Text textStyle="sm" fontWeight="medium" truncate>
-                    {event.osName} <Span opacity={0.5}>{event.osVersion}</Span>
+                    {event.osName ?? 'Unknown'}
+                    {!isEntityUnknown(event.osVersion) && <Span opacity={0.5}> {event.osVersion}</Span>}
                   </Text>
                 </Flex>
-              )}
-              {event.deviceType && (
+              </Tooltip>
+              <Tooltip content="Device">
                 <Flex align="center" gap={1.5}>
                   <DeviceIcon deviceType={event.deviceType ?? ''} />
                   <Text textStyle="sm" fontWeight="medium" truncate>
-                    {event.deviceType}
+                    {event.deviceType ?? 'unknown'}
                   </Text>
                 </Flex>
-              )}
+              </Tooltip>
             </Flex>
-          </motion.div>
-        </Card.Body>
-      </Card.Root>
-    </Tooltip>
+          )}
+        </motion.div>
+      </Card.Body>
+    </Card.Root>
   );
 };

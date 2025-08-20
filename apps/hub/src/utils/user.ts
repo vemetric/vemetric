@@ -8,6 +8,7 @@ import { generateUserId, dbUserIdentificationMap } from 'database';
 import type { Context } from 'hono';
 import { z } from 'zod';
 import { setUserIdCookie } from './cookie';
+import { logger } from './logger';
 import { getUserIdFromRequest } from './request';
 
 export const REDIS_USER_IDENTIFY_EXPIRATION = 60; // seconds
@@ -28,6 +29,7 @@ export async function identifyUser(context: Context, body: IdentifySchema, proje
 
   let userId = await getUserIdFromRequest(context, false);
   const { identifier, displayName } = body;
+  logger.info({ projectId: String(projectId), userId: String(userId), identifier }, 'start identifying user');
 
   const { set, setOnce } = body.data ?? {};
   const now = formatClickhouseDate(new Date());
@@ -36,6 +38,10 @@ export async function identifyUser(context: Context, body: IdentifySchema, proje
     const existingUserWithId = await dbUserIdentificationMap.findByUserId(String(projectId), String(userId));
 
     if (existingUserWithId && existingUserWithId.identifier === identifier) {
+      logger.info(
+        { projectId: String(projectId), userId: String(userId), identifier },
+        'user already identified, updating user',
+      );
       await addToQueue(updateUserQueue, {
         projectId: String(projectId),
         userId: String(userId),
@@ -48,6 +54,15 @@ export async function identifyUser(context: Context, body: IdentifySchema, proje
     }
 
     if (existingUserWithId && existingUserWithId?.identifier !== identifier) {
+      logger.info(
+        {
+          projectId: String(projectId),
+          userId: String(userId),
+          identifier,
+          existingIdentifier: existingUserWithId?.identifier,
+        },
+        'user already identified, but with different identifier',
+      );
       // we have a user with the same id but different identifier, so we generate a new id before executing the merge logic (leave the old user as it is)
       userId = null;
     }
@@ -55,6 +70,10 @@ export async function identifyUser(context: Context, body: IdentifySchema, proje
 
   const existingUserWithIdentifer = await dbUserIdentificationMap.findByIdentifier(String(projectId), identifier);
   if (!existingUserWithIdentifer) {
+    logger.info(
+      { projectId: String(projectId), userId: String(userId), identifier },
+      'user identified for the first time, create the user',
+    );
     // the user has been identified for the first time .. no need to merge, we'll just assign all the past events directly to him
     if (userId === null) {
       userId = generateUserId();
@@ -79,6 +98,10 @@ export async function identifyUser(context: Context, body: IdentifySchema, proje
     );
   } else {
     const newUserId = BigInt(existingUserWithIdentifer.userId);
+    logger.info(
+      { projectId: String(projectId), userId: String(userId), newUserId: String(newUserId), identifier },
+      'user was already identified, try to merge',
+    );
 
     await addToQueue(updateUserQueue, {
       projectId: String(projectId),

@@ -39,6 +39,7 @@ createRoot(document.getElementById('root')!).render(
           '/p/*/user/*',
           '/p/*/settings',
           '/p/*/funnels',
+          '/p/*/funnels/*',
           '/p/*/events',
         ]}
       />

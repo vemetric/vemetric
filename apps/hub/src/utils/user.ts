@@ -11,6 +11,14 @@ import { setUserIdCookie } from './cookie';
 import { logger } from './logger';
 import { getUserIdFromRequest } from './request';
 
+const enableLogs = false;
+const logInfo = (params: Record<string, unknown>, msg: string) => {
+  if (!enableLogs) {
+    return;
+  }
+  logger.info(params, msg);
+};
+
 export const REDIS_USER_IDENTIFY_EXPIRATION = 60; // seconds
 // used to make sure identification of a user is not done multiple at the same time
 export function getRedisUserIdentifyKey(projectId: bigint, identifier: string) {
@@ -29,7 +37,7 @@ export async function identifyUser(context: Context, body: IdentifySchema, proje
 
   let userId = await getUserIdFromRequest(context, false);
   const { identifier, displayName } = body;
-  logger.info({ projectId: String(projectId), userId: String(userId), identifier }, 'start identifying user');
+  logInfo({ projectId: String(projectId), userId: String(userId), identifier }, 'start identifying user');
 
   const { set, setOnce } = body.data ?? {};
   const now = formatClickhouseDate(new Date());
@@ -38,7 +46,7 @@ export async function identifyUser(context: Context, body: IdentifySchema, proje
     const existingUserWithId = await dbUserIdentificationMap.findByUserId(String(projectId), String(userId));
 
     if (existingUserWithId && existingUserWithId.identifier === identifier) {
-      logger.info(
+      logInfo(
         { projectId: String(projectId), userId: String(userId), identifier },
         'user already identified, updating user',
       );
@@ -54,7 +62,7 @@ export async function identifyUser(context: Context, body: IdentifySchema, proje
     }
 
     if (existingUserWithId && existingUserWithId?.identifier !== identifier) {
-      logger.info(
+      logInfo(
         {
           projectId: String(projectId),
           userId: String(userId),
@@ -70,7 +78,7 @@ export async function identifyUser(context: Context, body: IdentifySchema, proje
 
   const existingUserWithIdentifer = await dbUserIdentificationMap.findByIdentifier(String(projectId), identifier);
   if (!existingUserWithIdentifer) {
-    logger.info(
+    logInfo(
       { projectId: String(projectId), userId: String(userId), identifier },
       'user identified for the first time, create the user',
     );
@@ -93,12 +101,12 @@ export async function identifyUser(context: Context, body: IdentifySchema, proje
         data: { ...set, ...setOnce },
       },
       {
-        jobId: String(userId),
+        jobId: `${String(projectId)}:${String(userId)}`,
       },
     );
   } else {
     const newUserId = BigInt(existingUserWithIdentifer.userId);
-    logger.info(
+    logInfo(
       { projectId: String(projectId), userId: String(userId), newUserId: String(newUserId), identifier },
       'user was already identified, try to merge',
     );
@@ -113,6 +121,9 @@ export async function identifyUser(context: Context, body: IdentifySchema, proje
 
     if (userId !== null) {
       const oldUserId = String(userId);
+      const date = new Date();
+      date.setMilliseconds(0);
+      date.setSeconds(date.getSeconds() - (date.getSeconds() % 5));
 
       await addToQueue(
         mergeUserQueue,
@@ -123,8 +134,8 @@ export async function identifyUser(context: Context, body: IdentifySchema, proje
           displayName,
         },
         {
-          jobId: `${oldUserId}:${String(newUserId)}`,
-          delay: 5000,
+          jobId: `${String(projectId)}:${oldUserId}:${String(newUserId)}:${date.toISOString()}`,
+          delay: 6000,
         },
       );
     }

@@ -16,7 +16,10 @@ export async function initMergeUserWorker() {
       const newUserId = BigInt(_newUserId);
 
       // we found an existing user with the same identifier, so we merge the events and devices into it
-      logger.info({ projectId: String(projectId) }, 'found existing user, merging events and devices');
+      logger.info(
+        { projectId: _projectId, oldUserId: _oldUserId, newUserId: _newUserId },
+        'found existing user, merging events and devices',
+      );
       const existingUser = await dbUserIdentificationMap.findByUserId(String(projectId), String(newUserId));
       if (!existingUser) {
         throw new Error(`User not found: ${newUserId}`);

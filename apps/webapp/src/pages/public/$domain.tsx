@@ -189,14 +189,14 @@ function Page() {
                   />
                   <TopSourcesCard filterConfig={filterConfig} publicDashboard />
                   <EventsCard filterConfig={filterConfig} publicDashboard />
-                  <CountriesCard filterConfig={filterConfig} />
-                  <FunnelsCard filterConfig={filterConfig} activeUsers={data.users ?? 0} />
+                  <CountriesCard filterConfig={filterConfig} publicDashboard />
+                  <FunnelsCard filterConfig={filterConfig} publicDashboard activeUsers={data.users ?? 0} />
                   {userType === 'os' ? (
-                    <OperatingSystemsCard filterConfig={filterConfig} />
+                    <OperatingSystemsCard filterConfig={filterConfig} publicDashboard />
                   ) : userType === 'devices' ? (
-                    <DevicesCard filterConfig={filterConfig} />
+                    <DevicesCard filterConfig={filterConfig} publicDashboard />
                   ) : (
-                    <BrowsersCard filterConfig={filterConfig} />
+                    <BrowsersCard filterConfig={filterConfig} publicDashboard />
                   )}
                 </SimpleGrid>
               </Flex>

@@ -12,7 +12,6 @@ import {
   DialogRoot,
   DialogTitle,
   DialogTrigger,
-  DialogBackdrop,
 } from '@/components/ui/dialog';
 import { useCreateProject } from '@/hooks/use-create-project';
 import { InputGroup } from './ui/input-group';
@@ -43,7 +42,6 @@ export const CreateProjectDialog = ({ children, open: _open, setOpen: _setOpen }
         (_setOpen ?? setOpen)(open);
       }}
     >
-      <DialogBackdrop />
       {children && <DialogTrigger asChild>{children}</DialogTrigger>}
       <DialogContent as="form" onSubmit={onSubmit}>
         <DialogHeader>

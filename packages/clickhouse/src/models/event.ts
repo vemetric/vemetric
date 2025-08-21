@@ -190,9 +190,9 @@ export const clickhouseEvent = {
     const row = result[0];
     return mapRowToEvent(row);
   },
-  getFirstEvent: async (projectId: bigint): Promise<ClickhouseEvent | null> => {
+  getFirstEvent: async (projectId: bigint): Promise<Pick<ClickhouseEvent, 'createdAt'> | null> => {
     const resultSet = await clickhouseClient.query({
-      query: `SELECT ${EVENT_KEY_SELECTOR} FROM ${TABLE_NAME} WHERE projectId=${escape(
+      query: `SELECT ${transformKeySelector('createdAt')} FROM ${TABLE_NAME} WHERE projectId=${escape(
         projectId,
       )} GROUP BY id HAVING sum(sign) > 0 ORDER BY ${transformKeySelector('createdAt')} ASC LIMIT 1`,
       format: 'JSONEachRow',
@@ -203,7 +203,9 @@ export const clickhouseEvent = {
     }
 
     const row = result[0];
-    return mapRowToEvent(row);
+    return {
+      createdAt: row[transformKeySelector('createdAt')],
+    };
   },
   findByUserId: async (projectId: bigint, userId: bigint): Promise<Array<ClickhouseEvent>> => {
     const resultSet = await clickhouseClient.query({
@@ -844,13 +846,13 @@ export const clickhouseEvent = {
       funnels.map(async (funnel) => {
         const stepConditions = buildFunnelStepConditions(funnel.steps, projectId);
         const userCondition = `AND userId = ${escape(userId)}`;
-        
+
         const funnelSubquery = buildWindowFunnelSubquery(
-          projectId, 
-          stepConditions, 
-          startDate || new Date(0), 
-          undefined, 
-          userCondition
+          projectId,
+          stepConditions,
+          startDate || new Date(0),
+          undefined,
+          userCondition,
         );
 
         const resultSet = await clickhouseClient.query({
@@ -867,7 +869,7 @@ export const clickhouseEvent = {
         });
 
         const result = (await resultSet.json()) as Array<{ userId: string; completedStep: number }>;
-        
+
         if (result.length > 0) {
           return {
             funnelId: funnel.id,
@@ -876,9 +878,9 @@ export const clickhouseEvent = {
             totalSteps: funnel.steps.length,
           };
         }
-        
+
         return null;
-      })
+      }),
     );
 
     return results.filter((result): result is NonNullable<typeof result> => result !== null);

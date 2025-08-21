@@ -32,8 +32,6 @@ export const organizationRouter = router({
       } catch (err) {
         logger.error({ err }, 'Track event error');
       }
-
-      logger.info('Onboarding complete', { userId: user.id, organizationId: organization.id });
     }),
   pricingOnboarding: loggedInProcedure.mutation(async (opts) => {
     const {

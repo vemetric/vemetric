@@ -3,6 +3,7 @@ import { VemetricScript } from '@vemetric/react';
 import { parse, stringify } from 'jsurl2';
 import { createRoot } from 'react-dom/client';
 import { ClientProviders } from './components/client-providers';
+import { errorRoute } from './components/error-route';
 import { notFoundRoute } from './components/not-found-route';
 import { Provider } from './components/ui/provider';
 import { Toaster } from './components/ui/toaster';
@@ -12,6 +13,7 @@ import 'simplebar-react/dist/simplebar.min.css';
 const router = createRouter({
   routeTree,
   defaultNotFoundComponent: notFoundRoute,
+  defaultErrorComponent: errorRoute,
   trailingSlash: 'never',
   parseSearch: parseSearchWith(parse),
   stringifySearch: stringifySearchWith(stringify),
@@ -23,6 +25,11 @@ declare module '@tanstack/react-router' {
     router: typeof router;
   }
 }
+
+// reloads the app if there is an error fetching an outdated chunk due to a new build deployed
+window.addEventListener('vite:preloadError', () => {
+  window.location.reload();
+});
 
 const hostname = location.hostname.split('.').slice(-2).join('.');
 

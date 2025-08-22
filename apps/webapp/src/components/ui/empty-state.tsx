@@ -32,17 +32,20 @@ export const EmptyState = React.forwardRef<HTMLDivElement, EmptyStateProps>(func
 
 interface ErrorStateProps {
   title: string;
+  description?: React.ReactNode;
 }
 
-export const ErrorState = ({ title }: ErrorStateProps) => {
+export const ErrorState = ({ title, description }: ErrorStateProps) => {
   return (
     <EmptyState
       icon={<Icon as={TbAlertTriangle} color="red.fg" />}
       title={title}
       description={
-        <>
-          Please <CrispLink>reach out</CrispLink> if the problem persists.
-        </>
+        description || (
+          <>
+            Please <CrispLink>reach out</CrispLink> if the problem persists.
+          </>
+        )
       }
     />
   );

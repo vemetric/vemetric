@@ -45,6 +45,21 @@ const DEVICE_KEY_SELECTOR = DEVICE_KEYS.map(transformKeySelector).join(',');
 const JSON_KEYS = DEVICE_KEYS.filter((key) => typeof EXAMPLE_DEVICE[key] === 'object');
 const BIGINT_KEYS = DEVICE_KEYS.filter((key) => typeof EXAMPLE_DEVICE[key] === 'bigint');
 
+const mapRowToDevice = (row: any): ClickhouseDevice => {
+  const device: ClickhouseDevice = JSON.parse(jsonStringify(EXAMPLE_DEVICE));
+  DEVICE_KEYS.forEach((key) => {
+    const keyValue = row[transformKeySelector(key)];
+    if (JSON_KEYS.includes(key)) {
+      (device as any)[key] = keyValue ? JSON.parse(keyValue) : undefined;
+    } else if (BIGINT_KEYS.includes(key)) {
+      (device as any)[key] = BigInt(keyValue);
+    } else {
+      (device as any)[key] = keyValue;
+    }
+  });
+  return device;
+};
+
 export const clickhouseDevice = {
   exists: async (projectId: bigint, id: bigint) => {
     const resultSet = await clickhouseClient.query({
@@ -64,20 +79,22 @@ export const clickhouseDevice = {
       format: 'JSONEachRow',
     });
     const result = (await resultSet.json()) as Array<any>;
-    return result.map((row) => {
-      const device: ClickhouseDevice = JSON.parse(jsonStringify(EXAMPLE_DEVICE));
-      DEVICE_KEYS.forEach((key) => {
-        const keyValue = row[transformKeySelector(key)];
-        if (JSON_KEYS.includes(key)) {
-          (device as any)[key] = keyValue ? JSON.parse(keyValue) : undefined;
-        } else if (BIGINT_KEYS.includes(key)) {
-          (device as any)[key] = BigInt(keyValue);
-        } else {
-          (device as any)[key] = keyValue;
-        }
-      });
-      return device;
+    return result.map(mapRowToDevice);
+  },
+  findById: async (projectId: bigint, deviceId: bigint): Promise<ClickhouseDevice | null> => {
+    const resultSet = await clickhouseClient.query({
+      query: `SELECT ${DEVICE_KEY_SELECTOR} FROM ${TABLE_NAME} WHERE projectId=${escape(projectId)} AND id=${escape(
+        deviceId,
+      )} GROUP BY id HAVING sum(sign) > 0`,
+      format: 'JSONEachRow',
     });
+    const result = (await resultSet.json()) as Array<any>;
+    if (result.length === 0) {
+      return null;
+    }
+
+    const row = result[0];
+    return mapRowToDevice(row);
   },
   insert: async (devices: Array<Omit<ClickhouseDevice, 'createdAt'>>) => {
     await clickhouseInsert({

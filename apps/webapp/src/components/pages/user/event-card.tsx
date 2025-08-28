@@ -1,4 +1,5 @@
 import { Box, Text, Flex, Card, SimpleGrid, useBreakpointValue, Span } from '@chakra-ui/react';
+import { isEntityUnknown } from '@vemetric/common/event';
 import { motion } from 'motion/react';
 import { Fragment, useState } from 'react';
 import { BrowserIcon } from '@/components/browser-icon';
@@ -7,7 +8,6 @@ import { EventIconButton } from '@/components/event-icon-button';
 import { OsIcon } from '@/components/os-icon';
 import { Tooltip } from '@/components/ui/tooltip';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
-import { isEntityUnknown } from '@/utils/event';
 import { RenderAttributeValue } from './render-attribute-value';
 
 interface Props {

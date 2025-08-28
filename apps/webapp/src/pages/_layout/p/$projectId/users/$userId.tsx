@@ -119,6 +119,7 @@ function Page() {
   const nowDate = dateTimeFormatter.formatDate(new Date());
   const groupedEvents = Object.entries(groupBy(events, (event) => event.sessionId));
   const user = userData?.user;
+  const deviceData = userData?.deviceData;
 
   const isUserLoading = _isUserLoading || !userData;
   const isEventsLoading = !eventsData || (isPreviousData && events.length === 0);
@@ -141,7 +142,6 @@ function Page() {
   }, [isUserLoading, isEventsLoading]);
 
   const countryCode = user?.countryCode || latestEvent?.countryCode;
-  // TODO: also retrieve this from the user table once we persist it there
   const isOnline = latestEvent?.isOnline;
 
   let lastDate: string | null = null;
@@ -495,33 +495,33 @@ function Page() {
                             </HStack>
                           </Flex>
                           <Flex flexDir="column" gap={1.5} align="flex-end">
-                            {latestEvent?.clientName && (
+                            {deviceData?.clientName && (
                               <Flex align="center" gap={1.5}>
-                                <BrowserIcon browserName={latestEvent?.clientName ?? ''} />
+                                <BrowserIcon browserName={deviceData?.clientName ?? ''} />
                                 <Text textStyle="sm" fontWeight="medium" truncate>
-                                  {latestEvent?.clientName}{' '}
+                                  {deviceData?.clientName}{' '}
                                   <Span hideBelow="md" opacity={0.5}>
-                                    {latestEvent?.clientVersion}
+                                    {deviceData?.clientVersion}
                                   </Span>
                                 </Text>
                               </Flex>
                             )}
-                            {latestEvent?.osName && (
+                            {deviceData?.osName && (
                               <Flex align="center" gap={1.5}>
-                                <OsIcon osName={latestEvent?.osName ?? ''} />
+                                <OsIcon osName={deviceData?.osName ?? ''} />
                                 <Text textStyle="sm" fontWeight="medium" truncate>
-                                  {latestEvent?.osName}{' '}
+                                  {deviceData?.osName}{' '}
                                   <Span hideBelow="md" opacity={0.5}>
-                                    {latestEvent?.osVersion}
+                                    {deviceData?.osVersion}
                                   </Span>
                                 </Text>
                               </Flex>
                             )}
-                            {latestEvent?.deviceType && (
+                            {deviceData?.deviceType && (
                               <Flex align="center" gap={1.5}>
-                                <DeviceIcon deviceType={latestEvent?.deviceType ?? ''} />
+                                <DeviceIcon deviceType={deviceData?.deviceType ?? ''} />
                                 <Text textStyle="sm" fontWeight="medium" truncate>
-                                  {latestEvent?.deviceType}
+                                  {deviceData?.deviceType}
                                 </Text>
                               </Flex>
                             )}

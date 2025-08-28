@@ -11,3 +11,7 @@ export function getEventName(name: string) {
   }
   return name;
 }
+
+export const isEntityUnknown = (value?: string) => {
+  return !value || value.toLowerCase() === 'unknown';
+};

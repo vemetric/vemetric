@@ -1,7 +1,7 @@
 import type { BoxProps } from '@chakra-ui/react';
 import { Box, Text, Flex, Card, SimpleGrid, Span, Icon, LinkOverlay, Skeleton } from '@chakra-ui/react';
 import { Link } from '@tanstack/react-router';
-import { getEventName } from '@vemetric/common/event';
+import { getEventName, isEntityUnknown } from '@vemetric/common/event';
 import { motion } from 'motion/react';
 import { Fragment } from 'react';
 import { TbBolt, TbChevronRight } from 'react-icons/tb';
@@ -14,7 +14,6 @@ import { OsIcon } from '@/components/os-icon';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useEventsPageStore } from '@/stores/events-page-store';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
-import { isEntityUnknown } from '@/utils/event';
 import { getUserName } from '@/utils/user';
 import { RenderAttributeValue } from '../user/render-attribute-value';
 import { UserAvatar } from '../user/user-avatar';

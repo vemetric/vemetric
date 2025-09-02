@@ -153,6 +153,27 @@ export const clickhouseSession = {
       return mapRowToSession(row);
     });
   },
+  findByUserIdInTimeRange: async (
+    projectId: bigint,
+    userId: bigint,
+    startTime: Date,
+    endTime: Date,
+  ): Promise<Array<ClickhouseSession>> => {
+    const resultSet = await clickhouseClient.query({
+      query: `SELECT ${SESSION_KEY_SELECTOR} FROM ${TABLE_NAME} 
+        WHERE projectId=${escape(projectId)} 
+          AND userId=${escape(userId)}
+          AND startedAt <= '${formatClickhouseDate(endTime)}'
+          AND endedAt >= '${formatClickhouseDate(startTime)}'
+        GROUP BY id 
+        HAVING argMax(deleted, endedAt) = 0`,
+      format: 'JSONEachRow',
+    });
+    const result = (await resultSet.json()) as Array<any>;
+    return result.map((row) => {
+      return mapRowToSession(row);
+    });
+  },
   insert: async (sessions: Array<ClickhouseSession>) => {
     await clickhouseInsert({
       table: TABLE_NAME,

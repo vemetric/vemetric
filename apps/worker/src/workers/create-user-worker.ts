@@ -6,6 +6,7 @@ import { Worker } from 'bullmq';
 import type { ClickhouseUser } from 'clickhouse';
 import { clickhouseEvent, clickhouseUser } from 'clickhouse';
 import { getGeoData } from '../utils/geo';
+import { getUserFirstPageViewData } from '../utils/user';
 
 export async function initCreateUserWorker() {
   return new Worker<CreateUserQueueProps>(
@@ -30,7 +31,7 @@ export async function initCreateUserWorker() {
       }
 
       const geoData = await getGeoData(ipAddress);
-      const initialPageView = await clickhouseEvent.getFirstPageViewByUserId(projectId, userId!);
+      const firstPageView = await clickhouseEvent.getFirstPageViewByUserId(projectId, userId!);
       const user: ClickhouseUser = {
         projectId,
         id: userId,
@@ -41,29 +42,7 @@ export async function initCreateUserWorker() {
         updatedAt: createdAt,
         customData: data,
         ...geoData,
-        ...(initialPageView
-          ? {
-              firstSeenAt: initialPageView.createdAt,
-              countryCode: initialPageView.countryCode,
-              city: initialPageView.city,
-              initialDeviceId: initialPageView.deviceId,
-              userAgent: initialPageView.userAgent,
-              referrer: initialPageView.referrer,
-              referrerUrl: initialPageView.referrerUrl,
-              referrerType: initialPageView.referrerType,
-
-              origin: initialPageView.origin,
-              pathname: initialPageView.pathname,
-              urlHash: initialPageView.urlHash,
-              queryParams: initialPageView.queryParams,
-
-              utmSource: initialPageView.utmSource,
-              utmMedium: initialPageView.utmMedium,
-              utmCampaign: initialPageView.utmCampaign,
-              utmContent: initialPageView.utmContent,
-              utmTerm: initialPageView.utmTerm,
-            }
-          : {}),
+        ...getUserFirstPageViewData(firstPageView),
       };
       await clickhouseUser.insert([user]);
     },

@@ -1,0 +1,1 @@
+export const SESSION_DURATION_MINUTES = 30;

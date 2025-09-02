@@ -1,6 +1,7 @@
 import { formatClickhouseDate } from '@vemetric/common/date';
 import { getClientIp } from '@vemetric/common/request-ip';
 import { createUserQueue } from '@vemetric/queues/create-user-queue';
+import { enrichUserQueue } from '@vemetric/queues/enrich-user-queue';
 import { mergeUserQueue } from '@vemetric/queues/merge-user-queue';
 import { addToQueue } from '@vemetric/queues/queue-utils';
 import { updateUserDataModel, updateUserQueue } from '@vemetric/queues/update-user-queue';
@@ -9,7 +10,6 @@ import type { Context } from 'hono';
 import { z } from 'zod';
 import { setUserIdCookie } from './cookie';
 import { logger } from './logger';
-import { getUserIdFromRequest } from './request';
 
 const enableLogs = false;
 const logInfo = (params: Record<string, unknown>, msg: string) => {
@@ -32,10 +32,9 @@ export const identifySchema = z.object({
 });
 export type IdentifySchema = z.infer<typeof identifySchema>;
 
-export async function identifyUser(context: Context, body: IdentifySchema, projectId: bigint) {
+export async function identifyUser(context: Context, body: IdentifySchema, projectId: bigint, userId: bigint | null) {
   const { allowCookies } = context.var;
 
-  let userId = await getUserIdFromRequest(context, false);
   const { identifier, displayName } = body;
   logInfo({ projectId: String(projectId), userId: String(userId), identifier }, 'start identifying user');
 
@@ -119,11 +118,12 @@ export async function identifyUser(context: Context, body: IdentifySchema, proje
       data: body.data,
     });
 
+    const fiveSecondRoundedDate = new Date();
+    fiveSecondRoundedDate.setMilliseconds(0);
+    fiveSecondRoundedDate.setSeconds(fiveSecondRoundedDate.getSeconds() - (fiveSecondRoundedDate.getSeconds() % 5));
+
     if (userId !== null) {
       const oldUserId = String(userId);
-      const date = new Date();
-      date.setMilliseconds(0);
-      date.setSeconds(date.getSeconds() - (date.getSeconds() % 5));
 
       await addToQueue(
         mergeUserQueue,
@@ -134,11 +134,24 @@ export async function identifyUser(context: Context, body: IdentifySchema, proje
           displayName,
         },
         {
-          jobId: `${String(projectId)}:${oldUserId}:${String(newUserId)}:${date.toISOString()}`,
+          jobId: `${String(projectId)}:${oldUserId}:${String(newUserId)}:${fiveSecondRoundedDate.toISOString()}`,
           delay: 6000,
         },
       );
     }
+
+    // Queue enrichment for the existing user to backfill attribution data if needed
+    await addToQueue(
+      enrichUserQueue,
+      {
+        projectId: String(projectId),
+        userId: String(newUserId),
+      },
+      {
+        jobId: `${String(projectId)}:${String(newUserId)}:${fiveSecondRoundedDate.toISOString()}`,
+        delay: 10000, // Delay to ensure user is created/updated first
+      },
+    );
 
     // we set the cookie to the id of the existing user
     userId = newUserId;

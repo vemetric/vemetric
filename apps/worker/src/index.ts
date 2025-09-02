@@ -3,6 +3,7 @@ import { logger } from './utils/logger';
 import { initCreateUserWorker } from './workers/create-user-worker';
 import { initDeviceWorker } from './workers/device-worker';
 import { initEmailWorker } from './workers/email-worker';
+import { initEnrichUserWorker } from './workers/enrich-user-worker';
 import { initEventWorker } from './workers/event-worker';
 import { initFirstEventWorker } from './workers/first-event-worker';
 import { initMergeUserWorker } from './workers/merge-user-worker';
@@ -19,6 +20,7 @@ async function main() {
     workers.push(await initSessionWorker());
     workers.push(await initCreateUserWorker());
     workers.push(await initUpdateUserWorker());
+    workers.push(await initEnrichUserWorker());
     workers.push(await initMergeUserWorker());
     workers.push(await initDeviceWorker());
     workers.push(await initEmailWorker());

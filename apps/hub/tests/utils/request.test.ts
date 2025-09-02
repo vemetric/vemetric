@@ -1,12 +1,12 @@
 import { getClientIp } from '@vemetric/common/request-ip';
 import { dbUserIdentificationMap, dbSalt, generateUserId } from 'database';
-import { HTTPException } from 'hono/http-exception';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Mock } from 'vitest';
 import type { HonoContext } from '../../src/types';
 import { getUserIdFromCookie } from '../../src/utils/cookie';
 import { getUserIdFromRequest } from '../../src/utils/request';
 import { hasActiveSession } from '../../src/utils/session';
+import { identifyUser } from '../../src/utils/user';
 
 // Mock dependencies
 vi.mock('../../src/utils/cookie', () => ({
@@ -15,6 +15,10 @@ vi.mock('../../src/utils/cookie', () => ({
 
 vi.mock('../../src/utils/session', () => ({
   hasActiveSession: vi.fn(),
+}));
+
+vi.mock('../../src/utils/user', () => ({
+  identifyUser: vi.fn(),
 }));
 
 vi.mock('@vemetric/common/request-ip', () => ({
@@ -86,12 +90,24 @@ describe('getUserIdFromRequest', () => {
     expect(dbUserIdentificationMap.findByIdentifier).toHaveBeenCalledWith('123', 'api-user-123');
   });
 
-  it('should throw 401 if API user identifier not found', async () => {
+  it('should automatically identify user via API if user identifier not found', async () => {
     vi.mocked(getUserIdFromCookie).mockReturnValue(null);
-    mockJson.mockResolvedValue({ userIdentifier: 'non-existent' });
+    mockJson.mockResolvedValue({ userIdentifier: 'non-existent', displayName: 'Test User' });
     vi.mocked(dbUserIdentificationMap.findByIdentifier).mockResolvedValue(null);
+    vi.mocked(generateUserId).mockReturnValue(BigInt(999));
 
-    await expect(getUserIdFromRequest(mockContext)).rejects.toThrow(HTTPException);
+    const result = await getUserIdFromRequest(mockContext);
+    expect(result).toBe(BigInt(999));
+    expect(identifyUser).toHaveBeenCalledWith(
+      mockContext,
+      {
+        data: undefined,
+        displayName: 'Test User',
+        identifier: 'non-existent',
+      },
+      BigInt(123),
+      BigInt(999),
+    );
   });
 
   it('should return userId from browser identifier', async () => {

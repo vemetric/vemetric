@@ -2,11 +2,11 @@ import { getClientIp } from '@vemetric/common/request-ip';
 import type { UserIdentificationMap } from 'database';
 import { dbSalt, dbUserIdentificationMap, generateUserId } from 'database';
 import type { HonoRequest } from 'hono';
-import { HTTPException } from 'hono/http-exception';
 import { getUserIdFromCookie } from './cookie';
 import type { HonoContext } from '../types';
 import { logger } from './logger';
 import { hasActiveSession } from './session';
+import { identifyUser } from './user';
 
 export function isPrefetchRequest(req: HonoRequest) {
   const xPurpose = req.header('X-Purpose');
@@ -40,12 +40,26 @@ export async function getUserIdFromRequest(context: HonoContext, useBodyIdentifi
     if (typeof userIdentifier === 'string') {
       // this is the case for the API call, e.g. via the NodeJS SDK
       user = await dbUserIdentificationMap.findByIdentifier(String(projectId), userIdentifier);
-      if (!user) {
-        logger.error({ 'req.path': req.path, projectId, userIdentifier }, "Couldn't find user by identifier.");
-        throw new HTTPException(401);
+      if (user) {
+        return BigInt(user.userId);
       }
 
-      return BigInt(user.userId);
+      // Auto-identify the user from backend if no user found with the given identifier
+      logger.info({ 'req.path': req.path, projectId, userIdentifier }, 'Auto-identifying user from backend.');
+
+      const userId = generateUserId();
+      await identifyUser(
+        context,
+        {
+          identifier: userIdentifier,
+          displayName: typeof bodyData.displayName === 'string' ? bodyData.displayName : undefined,
+          data: bodyData.userData,
+        },
+        projectId,
+        userId,
+      );
+
+      return userId;
     } else {
       if (useBodyIdentifier && bodyData.identifier) {
         // this is the case when the user was already identified in the browser and it sends the identifier from the sessionStorage to the server

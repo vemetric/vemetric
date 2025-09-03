@@ -5,6 +5,7 @@ import { clickhouseDevice, clickhouseEvent, clickhouseSession, clickhouseUser, g
 import { dbUserIdentificationMap } from 'database';
 import { insertDeviceIfNotExists } from '../utils/device';
 import { logger } from '../utils/logger';
+import { reassignExistingSessionsToEvents } from '../utils/merge-user';
 
 export async function initMergeUserWorker() {
   return new Worker<MergeUserQueueProps>(
@@ -35,49 +36,73 @@ export async function initMergeUserWorker() {
         logger.error({ err }, 'Error deleting devices');
       }
 
-      // update all sessions to the new user id, and delete the old ones
-      const existingSessions = await clickhouseSession.findByUserId(projectId, oldUserId);
-      if (existingSessions.length > 0) {
-        await clickhouseSession.insert(
-          existingSessions.map((session) => ({
-            ...session,
-            userId: newUserId,
-            userIdentifier: existingUser.identifier,
-            userDisplayName: displayName ?? existingUserClickhouse?.displayName,
-          })),
-        );
-        await clickhouseSession.delete(existingSessions.map((session) => ({ ...session, id: '' })));
-      }
-
-      // update all events to the new user id, and delete the old ones, also insert the corresponding devices for the new user if they don't exist yet
       const existingEvents = await clickhouseEvent.findByUserId(projectId, oldUserId);
-      if (existingEvents.length > 0) {
-        await clickhouseEvent.delete(existingEvents.map((event) => ({ ...event, sessionId: '' })));
+      if (existingEvents.length <= 0) {
+        return;
+      }
+      const oldUserSessions = await clickhouseSession.findByUserId(projectId, oldUserId);
+      const { sessionsWithTimeUpdates, newUserSessionsToDelete, oldSessionsToMigrate, sessionIdMapping } =
+        await reassignExistingSessionsToEvents({
+          projectId,
+          newUserId,
+          existingEvents,
+          oldUserSessions,
+        });
 
-        const insertedDeviceIds: bigint[] = [];
-        for (const event of existingEvents) {
-          const deviceId = getDeviceId(projectId, newUserId, event);
-          if (!insertedDeviceIds.includes(deviceId)) {
-            await insertDeviceIfNotExists(projectId, newUserId, deviceId, event);
-            insertedDeviceIds.push(deviceId);
-          }
-        }
-
-        await clickhouseEvent.insert(
-          existingEvents.map((event) => {
-            const deviceId = getDeviceId(projectId, newUserId, event);
-
+      // Migrate old sessions that still have events assigned to the new user
+      if (oldSessionsToMigrate.length > 0) {
+        await clickhouseSession.insert(
+          oldSessionsToMigrate.map((session) => {
             return {
-              ...event,
-              projectId,
+              ...session,
               userId: newUserId,
-              deviceId,
-              userDisplayName: displayName ?? existingUserClickhouse?.displayName,
               userIdentifier: existingUser.identifier,
+              userDisplayName: displayName ?? existingUserClickhouse?.displayName,
             };
           }),
         );
       }
+
+      // update (and insert) sessions from the new user where times have changed
+      if (sessionsWithTimeUpdates.length > 0) {
+        await clickhouseSession.insert(sessionsWithTimeUpdates);
+      }
+
+      // Delete all sessions from the old user and also sessions from the new user that have updated their start time (because that's part of the primary key in clickhouse)
+      if (oldUserSessions.length > 0 || newUserSessionsToDelete.length > 0) {
+        await clickhouseSession.delete(
+          [...oldUserSessions, ...newUserSessionsToDelete].map((session) => ({ ...session, id: '' })),
+        );
+      }
+
+      // Delete all old events
+      await clickhouseEvent.delete(existingEvents.map((event) => ({ ...event, sessionId: '' })));
+
+      const insertedDeviceIds: bigint[] = [];
+      for (const event of existingEvents) {
+        const deviceId = getDeviceId(projectId, newUserId, event);
+        if (!insertedDeviceIds.includes(deviceId)) {
+          await insertDeviceIfNotExists(projectId, newUserId, deviceId, event);
+          insertedDeviceIds.push(deviceId);
+        }
+      }
+
+      // Add all events to the new user with proper session and device assignment
+      await clickhouseEvent.insert(
+        existingEvents.map((event) => {
+          const deviceId = getDeviceId(projectId, newUserId, event);
+
+          return {
+            ...event,
+            projectId,
+            userId: newUserId,
+            deviceId,
+            sessionId: sessionIdMapping.get(event.sessionId) ?? event.sessionId,
+            userDisplayName: displayName ?? existingUserClickhouse?.displayName,
+            userIdentifier: existingUser.identifier,
+          };
+        }),
+      );
     },
     {
       connection: {

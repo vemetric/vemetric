@@ -1,6 +1,7 @@
+import { SESSION_DURATION_MINUTES } from '@vemetric/common/session';
 import { getRedisClient } from './redis';
 
-const REDIS_SESSION_DURATION = 60 * 30; // 30 mins
+const REDIS_SESSION_DURATION = 60 * SESSION_DURATION_MINUTES;
 
 function getRedisSessionKey(projectId: bigint, userId: bigint) {
   return `sessionid:${projectId}:${userId}`;

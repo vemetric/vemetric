@@ -35,7 +35,7 @@ export async function initEventWorker() {
 
       const user: ClickhouseUser | null = await clickhouseUser.findById(projectId, userId);
       const userIdentifier = user?.identifier ?? reqIdentifier;
-      const userDisplayName = user?.displayName ?? reqDisplayName;
+      const userDisplayName = reqDisplayName ?? user?.displayName;
 
       const userAgent = headers['user-agent'];
       const referrer = await getReferrerFromHeaders(projectId, headers);

@@ -111,7 +111,7 @@ export const trackEvent = async (context: HonoContext, body: EventSchema) => {
     reqDisplayName: body?.displayName,
   });
 
-  const evenQueueData = {
+  const eventQueueData = {
     projectId: String(projectId),
     userId: String(userId),
     eventId,
@@ -126,17 +126,18 @@ export const trackEvent = async (context: HonoContext, body: EventSchema) => {
     reqIdentifier: body?.identifier,
     reqDisplayName: body?.displayName,
   };
-  await addToQueue(eventQueue, evenQueueData, {
+  await addToQueue(eventQueue, eventQueueData, {
     jobId: eventId,
   });
 
-  if (body.userData) {
+  if (body.userData || body?.displayName) {
     await addToQueue(
       updateUserQueue,
       {
         projectId: String(projectId),
         userId: String(userId),
         updatedAt: now,
+        displayName: body?.displayName,
         data: body.userData,
       },
       {

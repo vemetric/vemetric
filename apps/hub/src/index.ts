@@ -127,7 +127,8 @@ app.post(
     await redisClient?.setEx(redisKey, REDIS_USER_IDENTIFY_EXPIRATION, '1');
 
     try {
-      const response = await identifyUser(context, body, projectId);
+      const userId = await getUserIdFromRequest(context, false);
+      const response = await identifyUser(context, body, projectId, userId);
 
       await redisClient?.del(redisKey);
 

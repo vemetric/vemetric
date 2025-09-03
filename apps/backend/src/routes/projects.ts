@@ -68,6 +68,7 @@ export const projectsRouter = router({
       try {
         await vemetric.trackEvent('ProjectCreated', {
           userIdentifier: user.id,
+          userDisplayName: user.name,
           eventData: { projectId: project.id, domain: resolvedDomain },
           userData: { setOnce: { createdProject: true, projectDomain: resolvedDomain } },
         });

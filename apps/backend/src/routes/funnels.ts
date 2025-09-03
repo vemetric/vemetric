@@ -29,36 +29,42 @@ export const funnelsRouter = router({
         ctx: { project, projectId, startDate },
       } = opts;
 
-    const funnels = await dbFunnel.findByProjectId(project.id);
-    const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
-    const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
-    const activeUsers = (await clickhouseEvent.getActiveUsers(projectId, startDate, filterQueries)) ?? 0;
+      const funnels = await dbFunnel.findByProjectId(project.id);
+      const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
+      const activeUsers = (await clickhouseEvent.getActiveUsers(projectId, startDate, filterQueries)) ?? 0;
 
-    const funnelsWithResults = await Promise.all(
-      funnels.map(async (funnel) => {
-        const steps = funnel.steps as FunnelStep[];
+      const funnelsWithResults = await Promise.all(
+        funnels.map(async (funnel) => {
+          const steps = funnel.steps as FunnelStep[];
 
-        const funnelResults = await clickhouseEvent.getFunnelResults(projectId, steps, startDate, undefined, filterQueries);
+          const funnelResults = await clickhouseEvent.getFunnelResults(
+            projectId,
+            steps,
+            startDate,
+            undefined,
+            filterQueries,
+          );
 
-        const stepResults: Array<{ users: number }> = [{ users: activeUsers }];
-        for (let i = 0; i < steps.length; i++) {
-          const stageResult = funnelResults[i];
-          stepResults.push({ users: stageResult?.userCount || 0 });
-        }
+          const stepResults: Array<{ users: number }> = [{ users: activeUsers }];
+          for (let i = 0; i < steps.length; i++) {
+            const stageResult = funnelResults[i];
+            stepResults.push({ users: stageResult?.userCount || 0 });
+          }
 
-        return {
-          ...funnel,
-          steps,
-          stepResults,
-        };
-      }),
-    );
+          return {
+            ...funnel,
+            steps,
+            stepResults,
+          };
+        }),
+      );
 
-    return {
-      activeUsers,
-      funnels: funnelsWithResults,
-    };
-  }),
+      return {
+        activeUsers,
+        funnels: funnelsWithResults,
+      };
+    }),
 
   get: projectProcedure.input(z.object({ id: z.string() })).query(async (opts) => {
     const {
@@ -88,6 +94,7 @@ export const funnelsRouter = router({
       try {
         await vemetric.trackEvent('FunnelUpdated', {
           userIdentifier: user.id,
+          userDisplayName: user.name,
           eventData: {
             projectId: project.id,
             projectDomain: project.domain,
@@ -111,6 +118,7 @@ export const funnelsRouter = router({
       try {
         await vemetric.trackEvent('FunnelCreated', {
           userIdentifier: user.id,
+          userDisplayName: user.name,
           eventData: {
             projectId: project.id,
             projectDomain: project.domain,
@@ -136,6 +144,7 @@ export const funnelsRouter = router({
     try {
       await vemetric.trackEvent('FunnelDeleted', {
         userIdentifier: user.id,
+        userDisplayName: user.name,
         eventData: {
           projectId: project.id,
           projectDomain: project.domain,

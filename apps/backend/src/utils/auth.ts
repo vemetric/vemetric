@@ -8,6 +8,7 @@ import { dbOrganization, dbProject, prismaClient } from 'database';
 import { DOMAIN } from '../consts';
 import { sendEmailVerificationLink, sendPasswordResetLink } from './email';
 import { logger } from './logger';
+import { vemetric } from './vemetric-client';
 
 export const TRUSTED_ORIGINS = ['https://app.' + DOMAIN, 'https://' + DOMAIN];
 
@@ -70,6 +71,15 @@ export const auth = betterAuth({
         }
       }
     }),
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          await vemetric.trackEvent('Signup', { userIdentifier: user.id, eventData: { provider: 'email' } });
+        },
+      },
+    },
   },
   plugins: [
     customSession(async ({ user, session }) => {

@@ -20,7 +20,7 @@
     "@vemetric/common": "workspace:*",
     "@vemetric/email": "workspace:*",
     "@vemetric/logger": "workspace:*",
-    "@vemetric/node": "0.1.0",
+    "@vemetric/node": "0.1.3",
     "@vemetric/queues": "workspace:*",
     "bullmq": "^5.41.5",
     "clickhouse": "workspace:*",

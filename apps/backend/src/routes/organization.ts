@@ -26,6 +26,7 @@ export const organizationRouter = router({
       try {
         await vemetric.trackEvent('OrganizationCreated', {
           userIdentifier: user.id,
+          userDisplayName: firstName,
           eventData: { organizationId: String(organization.id) },
           userData: { setOnce: { createdOrganization: true } },
         });

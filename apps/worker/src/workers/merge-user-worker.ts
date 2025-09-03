@@ -4,7 +4,14 @@ import type { MergeUserQueueProps } from '@vemetric/queues/merge-user-queue';
 import { mergeUserQueueName } from '@vemetric/queues/queue-names';
 import { Worker } from 'bullmq';
 import type { ClickhouseSession } from 'clickhouse';
-import { clickhouseDevice, clickhouseEvent, clickhouseSession, clickhouseUser, getDeviceId } from 'clickhouse';
+import {
+  clickhouseDateToISO,
+  clickhouseDevice,
+  clickhouseEvent,
+  clickhouseSession,
+  clickhouseUser,
+  getDeviceId,
+} from 'clickhouse';
 import { dbUserIdentificationMap } from 'database';
 import { insertDeviceIfNotExists } from '../utils/device';
 import { logger } from '../utils/logger';
@@ -13,9 +20,9 @@ const SESSION_DURATION_MS = SESSION_DURATION_MINUTES * 60 * 1000;
 
 // Helper function to check if an event time falls within a session (with 30-minute window)
 const eventBelongsToSession = (eventTime: string, session: ClickhouseSession) => {
-  const eventDate = new Date(eventTime).getTime();
-  const sessionStart = new Date(session.startedAt).getTime();
-  const sessionEnd = new Date(session.endedAt).getTime();
+  const eventDate = new Date(clickhouseDateToISO(eventTime)).getTime();
+  const sessionStart = new Date(clickhouseDateToISO(session.startedAt)).getTime();
+  const sessionEnd = new Date(clickhouseDateToISO(session.endedAt)).getTime();
   // Add 30 minutes buffer for session inactivity timeout
   const sessionStartWithBuffer = sessionStart - SESSION_DURATION_MS;
   const sessionEndWithBuffer = sessionEnd + SESSION_DURATION_MS;
@@ -56,7 +63,7 @@ export async function initMergeUserWorker() {
       const existingEvents = await clickhouseEvent.findByUserId(projectId, oldUserId);
 
       if (existingEvents.length > 0) {
-        const eventTimes = existingEvents.map((e) => new Date(e.createdAt).getTime());
+        const eventTimes = existingEvents.map((e) => new Date(clickhouseDateToISO(e.createdAt)).getTime());
         const minEventTime = Math.min(...eventTimes);
         const maxEventTime = Math.max(...eventTimes);
 
@@ -74,7 +81,10 @@ export async function initMergeUserWorker() {
         // Create a map of sessions to migrate and session ID mappings
         const oldSessionIdsToMigrate = new Set<string>();
         const sessionIdMapping = new Map<string, string>(); // old session id -> new session id
-        const sessionTimeUpdates = new Map<string, { startedAt: Date; endedAt: Date; duration: number }>(); // track time updates for existing sessions
+        const sessionTimeUpdates = new Map<
+          string,
+          { changedStart: boolean; startedAt: Date; endedAt: Date; duration: number }
+        >(); // track time updates for existing sessions
 
         // we iterate through all the events and see if we can find a new session to assign it to
         for (const event of existingEvents) {
@@ -86,7 +96,7 @@ export async function initMergeUserWorker() {
             sessionIdMapping.set(event.sessionId, newSession.id);
 
             // Update the session time bounds if needed
-            const eventTime = new Date(event.createdAt).getTime();
+            const eventTime = new Date(clickhouseDateToISO(event.createdAt)).getTime();
             const existing = sessionTimeUpdates.get(newSession.id);
 
             if (existing) {
@@ -96,18 +106,20 @@ export async function initMergeUserWorker() {
               const newEnd = Math.max(currentEnd, eventTime);
 
               sessionTimeUpdates.set(newSession.id, {
+                changedStart: existing.changedStart || newStart !== currentStart,
                 startedAt: new Date(newStart),
                 endedAt: new Date(newEnd),
                 duration: Math.round((newEnd - newStart) / 1000),
               });
             } else {
-              const currentStart = new Date(newSession.startedAt).getTime();
-              const currentEnd = new Date(newSession.endedAt).getTime();
+              const currentStart = new Date(clickhouseDateToISO(newSession.startedAt)).getTime();
+              const currentEnd = new Date(clickhouseDateToISO(newSession.endedAt)).getTime();
               const newStart = Math.min(currentStart, eventTime);
               const newEnd = Math.max(currentEnd, eventTime);
 
               if (newStart < currentStart || newEnd > currentEnd) {
                 sessionTimeUpdates.set(newSession.id, {
+                  changedStart: newStart !== currentStart,
                   startedAt: new Date(newStart),
                   endedAt: new Date(newEnd),
                   duration: Math.round((newEnd - newStart) / 1000),
@@ -121,12 +133,17 @@ export async function initMergeUserWorker() {
           oldSessionIdsToMigrate.add(event.sessionId);
         }
 
+        const newUserSessionsToDelete: Array<ClickhouseSession> = [];
         // Update the new users' sessions where the times have changed
         if (sessionTimeUpdates.size > 0) {
           const sessionsToUpdate: Array<ClickhouseSession> = [];
           sessionTimeUpdates.forEach((timeUpdate, sessionId) => {
             const session = newUserSessions.find((s) => s.id === sessionId);
             if (session) {
+              if (timeUpdate.changedStart) {
+                // the start time has changed, we delete the session because it counts as a new one
+                newUserSessionsToDelete.push(session);
+              }
               sessionsToUpdate.push({
                 ...session,
                 duration: timeUpdate.duration,
@@ -160,9 +177,11 @@ export async function initMergeUserWorker() {
           );
         }
 
-        // Delete all old sessions
-        if (oldUserSessions.length > 0) {
-          await clickhouseSession.delete(oldUserSessions.map((session) => ({ ...session, id: '' })));
+        // Delete all old sessions + new sessions that have updated their start time
+        if (oldUserSessions.length > 0 || newUserSessionsToDelete.length > 0) {
+          await clickhouseSession.delete(
+            [...oldUserSessions, ...newUserSessionsToDelete].map((session) => ({ ...session, id: '' })),
+          );
         }
 
         // Delete all old events

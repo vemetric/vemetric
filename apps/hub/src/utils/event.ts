@@ -130,7 +130,7 @@ export const trackEvent = async (context: HonoContext, body: EventSchema) => {
     jobId: eventId,
   });
 
-  if (body.userData) {
+  if (body.userData || body?.displayName) {
     await addToQueue(
       updateUserQueue,
       {

@@ -14,14 +14,13 @@ export async function initEnrichUserWorker() {
       const projectId = BigInt(_projectId);
       const userId = BigInt(_userId);
 
-      // Check if the user exists and is missing attribution data
       const existingUser = await clickhouseUser.findById(projectId, userId);
       if (!existingUser) {
         logger.warn({ projectId: _projectId, userId: _userId }, 'User not found for enrichment');
         return;
       }
 
-      // Check if user already has attribution data (origin is a good indicator)
+      // Check if user already has attribution data (origin is a good indicator as it comes from a page view)
       if (existingUser.origin) {
         return;
       }

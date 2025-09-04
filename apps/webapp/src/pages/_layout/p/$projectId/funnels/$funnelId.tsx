@@ -206,7 +206,7 @@ function RouteComponent() {
               </Button>
             )}
           </Flex>
-          <Flex align="center" justify="flex-end" gap={3} flexGrow={1}>
+          <Flex align="center" justify="flex-end" gap={3} flexGrow={[1, 0]}>
             <AddFilterButton from="/p/$projectId/funnels/$funnelId" filterConfig={filterConfig} />
             <Box w="1px" h="26px" bg="gray.muted" />
             <Flex align="center" gap={2.5}>
@@ -230,7 +230,7 @@ function RouteComponent() {
           </Flex>
         </Flex>
         <Box my={3}>
-          <FilterContainer filterConfig={filterConfig} from="/p/$projectId/funnels" />
+          <FilterContainer filterConfig={filterConfig} from="/p/$projectId/funnels/$funnelId" />
         </Box>
         <AnimatePresence mode="popLayout" initial={false}>
           {horizontalFunnel && !isMobile ? (

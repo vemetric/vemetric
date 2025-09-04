@@ -47,8 +47,8 @@ const EXAMPLE_USER: Required<ClickhouseUser> = {
   customData: {},
 };
 
-const transformKeySelector = (key: keyof ClickhouseUser, prefix = '', idColName = 'id') =>
-  key === idColName ? prefix + key : `argMax(${prefix}${key}, ${prefix}updatedAt)`;
+const transformKeySelector = (key: keyof ClickhouseUser, idColName = 'id') =>
+  key === idColName ? key : `argMax(${key}, updatedAt)`;
 
 const USER_KEYS = Object.keys(EXAMPLE_USER) as Array<keyof ClickhouseUser>;
 const USER_KEY_IDENTIFIER_SELECTOR = USER_KEYS.map((key) => transformKeySelector(key, 'identifier')).join(',');
@@ -107,7 +107,7 @@ export const clickhouseUser = {
       : '';
 
     const resultSet = await clickhouseClient.query({
-      query: `SELECT ${USER_KEYS.map((key) => transformKeySelector(key, 'u.')).join(',')}${deviceSelect}
+      query: `SELECT ${USER_KEYS.map((key) => transformKeySelector(key)).join(',')}${deviceSelect}
       FROM ${TABLE_NAME} u${deviceJoin}
       WHERE u.projectId=${escape(projectId)} AND u.id=${escape(id)}
       GROUP BY u.id

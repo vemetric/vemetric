@@ -1,5 +1,5 @@
+import { Center, Spinner } from '@chakra-ui/react';
 import { Navigate, createFileRoute } from '@tanstack/react-router';
-import { SplashScreen } from '@/components/splash-screen';
 import { trpc } from '@/utils/trpc';
 
 export const Route = createFileRoute('/_layout/p/$projectId/user/$identifier')({
@@ -22,5 +22,9 @@ function Page() {
     return <div>User with Identifier not found: {identifier}</div>;
   }
 
-  return <SplashScreen />;
+  return (
+    <Center p={5}>
+      <Spinner size="xl" colorPalette="purple" color="colorPalette.fg" borderWidth="2.5px" />
+    </Center>
+  );
 }

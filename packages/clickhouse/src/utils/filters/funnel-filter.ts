@@ -8,6 +8,7 @@ export const buildFunnelFilterQuery = (
   projectId: bigint,
   funnelSteps: FunnelStep[],
   startDate?: Date,
+  endDate?: Date,
 ): string | null => {
   const { step, operator } = filter;
 
@@ -18,7 +19,7 @@ export const buildFunnelFilterQuery = (
   // Build conditions for each step up to and including the target step
   const stepsToCheck = funnelSteps.slice(0, step + 1);
   const stepConditions = buildFunnelStepConditions(stepsToCheck, projectId);
-  const funnelSubquery = buildWindowFunnelSubquery(projectId, stepConditions, startDate);
+  const funnelSubquery = buildWindowFunnelSubquery(projectId, stepConditions, startDate, endDate);
 
   const funnelQuery = `
     (SELECT userId

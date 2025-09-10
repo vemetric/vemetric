@@ -1,5 +1,9 @@
-import type { TimeSpan } from '@vemetric/common/charts/timespans';
-import { TIME_SPAN_DATA } from '@vemetric/common/charts/timespans';
+import {
+  getCustomDateRangeInterval,
+  TIME_SPAN_DATA,
+  type ChartInterval,
+  type TimeSpan,
+} from '@vemetric/common/charts/timespans';
 
 export function clickhouseDateToISO(date: string) {
   let isoDate = `${date.replace(' ', 'T')}`;
@@ -9,11 +13,10 @@ export function clickhouseDateToISO(date: string) {
   return `${isoDate}Z`;
 }
 
-function getDateTransformMethod(timeSpan: TimeSpan) {
+function getDateTransformMethod(interval: ChartInterval) {
   let dateTransformMethod = 'toStartOfHour';
-  const timeSpanData = TIME_SPAN_DATA[timeSpan];
 
-  switch (timeSpanData.interval) {
+  switch (interval) {
     case 'thirty_seconds':
       // For 30-second intervals, return a special marker that will be handled in queries
       dateTransformMethod = 'THIRTY_SECONDS';
@@ -38,8 +41,20 @@ function getDateTransformMethod(timeSpan: TimeSpan) {
   return dateTransformMethod;
 }
 
-export function formatDateExpression(timeSpan: TimeSpan, field: string): string {
-  const method = getDateTransformMethod(timeSpan);
+interface TimeSpanOptions {
+  timeSpan: TimeSpan;
+  startDate?: Date;
+  endDate?: Date;
+}
+
+export function formatDateExpression({ timeSpan, startDate, endDate }: TimeSpanOptions, field: string): string {
+  const timeSpanData = TIME_SPAN_DATA[timeSpan];
+  let timeSpanInterval = timeSpanData.interval;
+  if (timeSpan === 'custom' && startDate && endDate) {
+    timeSpanInterval = getCustomDateRangeInterval(startDate, endDate);
+  }
+
+  const method = getDateTransformMethod(timeSpanInterval);
 
   if (method === 'THIRTY_SECONDS') {
     // Round to 30-second intervals

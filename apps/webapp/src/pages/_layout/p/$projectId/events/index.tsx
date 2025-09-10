@@ -41,6 +41,7 @@ function RouteComponent() {
 
   const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery({
     projectId,
+    timespan: '30days',
   });
 
   const {

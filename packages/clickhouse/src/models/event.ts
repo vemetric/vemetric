@@ -1,4 +1,3 @@
-import { type TimeSpan } from '@vemetric/common/charts/timespans';
 import { formatClickhouseDate } from '@vemetric/common/date';
 import type { IFilterConfig, stringOperatorsSchema } from '@vemetric/common/filters';
 import type { FunnelStep } from '@vemetric/common/funnel';
@@ -9,7 +8,7 @@ import type { z } from 'zod';
 import { clickhouseClient, clickhouseInsert } from '../client';
 import type { DeviceData } from './device';
 import { EXAMPLE_DEVICE_DATA } from './device';
-import type { GeoData, ReferrerData, UrlData } from './session';
+import type { FilterOptions, GeoData, ReferrerData, UrlData } from './session';
 import { EXAMPLE_URL_DATA } from './session';
 import { formatDateExpression } from '../utils/date';
 import { getEventFilterQueries } from '../utils/filters';
@@ -115,7 +114,7 @@ interface PaginationOptions {
 }
 
 export const clickhouseEvent = {
-  getFilterableData: withSpan('getFilterableData', async (projectId: bigint, startDate: Date) => {
+  getFilterableData: withSpan('getFilterableData', async (projectId: bigint, startDate: Date, endDate?: Date) => {
     const formattedStartDate = formatClickhouseDate(startDate);
 
     const resultSet = await clickhouseClient.query({
@@ -126,6 +125,7 @@ export const clickhouseEvent = {
             FROM event 
             WHERE projectId = ${escape(projectId)} 
               AND createdAt >= '${formattedStartDate}'
+              ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
               AND name <> ''
               AND isPageView <> 1
           ) as eventNames,
@@ -319,49 +319,44 @@ export const clickhouseEvent = {
     const result = (await resultSet.json()) as Array<any>;
     return result.length > 0 ? Number(result[0]['count(id)']) : 0;
   }),
-  getPageViewTimeSeries: withSpan(
-    'getPageViewTimeSeries',
-    async (
-      projectId: bigint,
-      timeSpan: TimeSpan,
-      startDate: Date,
-      filterQueries: string,
-      filterConfig: IFilterConfig,
-    ) => {
-      const pageFilterQueries = buildPageFilterQueries(filterConfig);
+  getPageViewTimeSeries: withSpan('getPageViewTimeSeries', async (projectId: bigint, filterOptions: FilterOptions) => {
+    const { timeSpan, startDate, endDate, filterQueries, filterConfig } = filterOptions;
+    const pageFilterQueries = buildPageFilterQueries(filterConfig);
 
-      const resultSet = await clickhouseClient.query({
-        query: `SELECT count(), ${formatDateExpression(
-          timeSpan,
-          'createdAt',
-        )} as date from ${TABLE_NAME} WHERE projectId=${escape(
-          projectId,
-        )} AND isPageView = 1 AND createdAt >= '${formatClickhouseDate(startDate)}' 
+    const resultSet = await clickhouseClient.query({
+      query: `SELECT count(), ${formatDateExpression(
+        { timeSpan, startDate, endDate },
+        'createdAt',
+      )} as date from ${TABLE_NAME} WHERE projectId=${escape(
+        projectId,
+      )} AND isPageView = 1 AND createdAt >= '${formatClickhouseDate(startDate)}'
+      ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
       ${pageFilterQueries ? `AND (${pageFilterQueries})` : ''}
       ${filterQueries || ''} GROUP BY date;`,
-        format: 'JSONEachRow',
-      });
-      const result = (await resultSet.json()) as Array<any>;
-      if (result.length === 0) {
-        return null;
-      }
+      format: 'JSONEachRow',
+    });
+    const result = (await resultSet.json()) as Array<any>;
+    if (result.length === 0) {
+      return null;
+    }
 
-      return result.map((row) => ({
-        count: Number(row['count()']),
-        date: row['date'],
-      }));
-    },
-  ),
+    return result.map((row) => ({
+      count: Number(row['count()']),
+      date: row['date'],
+    }));
+  }),
   getActiveUserTimeSeries: withSpan(
     'getActiveUserTimeSeries',
-    async (projectId: bigint, timeSpan: TimeSpan, startDate: Date, filterQueries?: string) => {
+    async (projectId: bigint, filterOptions: Omit<FilterOptions, 'filterConfig'>) => {
+      const { timeSpan, startDate, endDate, filterQueries } = filterOptions;
+
       const resultSet = await clickhouseClient.query({
         query: `SELECT count(distinct userId) as users, ${formatDateExpression(
-          timeSpan,
+          { timeSpan, startDate, endDate },
           'createdAt',
         )} as date from ${TABLE_NAME} WHERE projectId=${escape(projectId)} AND createdAt >= '${formatClickhouseDate(
           startDate,
-        )}' ${filterQueries || ''} GROUP BY date;`,
+        )}' ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''} ${filterQueries} GROUP BY date;`,
         format: 'JSONEachRow',
       });
       const result = (await resultSet.json()) as Array<any>;
@@ -385,50 +380,58 @@ export const clickhouseEvent = {
     const result = (await resultSet.json()) as Array<any>;
     return Number(result[0]['users']);
   }),
-  getActiveUsers: withSpan('getActiveUsers', async (projectId: bigint, startDate: Date, filterQueries?: string) => {
-    const resultSet = await clickhouseClient.query({
-      query: `SELECT count(distinct userId) as users from ${TABLE_NAME} WHERE projectId=${escape(
-        projectId,
-      )} AND createdAt >= '${formatClickhouseDate(startDate)}' ${filterQueries || ''};`,
-      format: 'JSONEachRow',
-    });
-    const result = (await resultSet.json()) as Array<any>;
-    if (result.length === 0) {
-      return null;
-    }
-
-    const firstResult = result[0];
-    return Number(firstResult['users']);
-  }),
-  getMostVisitedPages: withSpan(
-    'getMostVisitedPages',
-    async (projectId: bigint, startDate: Date, filterQueries: string, filterConfig: IFilterConfig) => {
-      const pageFilterQueries = buildPageFilterQueries(filterConfig);
-
+  getActiveUsers: withSpan(
+    'getActiveUsers',
+    async (projectId: bigint, options: { startDate: Date; endDate?: Date; filterQueries?: string }) => {
+      const { startDate, endDate, filterQueries } = options;
       const resultSet = await clickhouseClient.query({
-        query: `SELECT origin, pathname, count() as pageViews, count(distinct userId) as users from event WHERE projectId=${escape(
+        query: `SELECT count(distinct userId) as users from ${TABLE_NAME} WHERE projectId=${escape(
           projectId,
-        )} AND isPageView = 1 AND createdAt >= '${formatClickhouseDate(startDate)}' 
-      ${pageFilterQueries ? ` AND (${pageFilterQueries}) ` : ''}
-      ${filterQueries || ''} GROUP BY origin, pathname ORDER BY users DESC, pageViews DESC;`,
+        )} AND createdAt >= '${formatClickhouseDate(startDate)}' ${
+          endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''
+        }
+        ${filterQueries || ''};`,
         format: 'JSONEachRow',
       });
       const result = (await resultSet.json()) as Array<any>;
-      return result.map((row) => ({
-        origin: row.origin as string,
-        pathname: row.pathname as string,
-        pageViews: Number(row.pageViews),
-        users: Number(row.users),
-      }));
+      if (result.length === 0) {
+        return null;
+      }
+
+      const firstResult = result[0];
+      return Number(firstResult['users']);
     },
   ),
-  getBrowsers: async (projectId: bigint, startDate: Date, filterQueries: string, filterConfig: IFilterConfig) => {
+  getMostVisitedPages: withSpan('getMostVisitedPages', async (projectId: bigint, filterOptions: FilterOptions) => {
+    const { startDate, endDate, filterQueries, filterConfig } = filterOptions;
+    const pageFilterQueries = buildPageFilterQueries(filterConfig);
+
+    const resultSet = await clickhouseClient.query({
+      query: `SELECT origin, pathname, count() as pageViews, count(distinct userId) as users from event WHERE projectId=${escape(
+        projectId,
+      )} AND isPageView = 1 AND createdAt >= '${formatClickhouseDate(startDate)}' 
+      ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
+      ${pageFilterQueries ? ` AND (${pageFilterQueries}) ` : ''}
+      ${filterQueries || ''} GROUP BY origin, pathname ORDER BY users DESC, pageViews DESC;`,
+      format: 'JSONEachRow',
+    });
+    const result = (await resultSet.json()) as Array<any>;
+    return result.map((row) => ({
+      origin: row.origin as string,
+      pathname: row.pathname as string,
+      pageViews: Number(row.pageViews),
+      users: Number(row.users),
+    }));
+  }),
+  getBrowsers: async (projectId: bigint, filterOptions: Omit<FilterOptions, 'timeSpan'>) => {
+    const { startDate, endDate, filterQueries, filterConfig } = filterOptions;
     const browserFilterQueries = buildBrowserFilterQueries(filterConfig);
 
     const resultSet = await clickhouseClient.query({
       query: `SELECT clientName, count(distinct userId) as users from event WHERE projectId=${escape(
         projectId,
       )} AND isPageView = 1 AND clientType = 'browser' AND createdAt >= '${formatClickhouseDate(startDate)}' 
+      ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
       ${browserFilterQueries ? ` AND (${browserFilterQueries}) ` : ''}
       ${filterQueries || ''} GROUP BY clientName ORDER BY users DESC;`,
       format: 'JSONEachRow',
@@ -439,13 +442,15 @@ export const clickhouseEvent = {
       users: Number(row.users),
     }));
   },
-  getDevices: async (projectId: bigint, startDate: Date, filterQueries: string, filterConfig: IFilterConfig) => {
+  getDevices: async (projectId: bigint, filterOptions: Omit<FilterOptions, 'timeSpan'>) => {
+    const { startDate, endDate, filterQueries, filterConfig } = filterOptions;
     const deviceFilterQueries = buildDeviceFilterQueries(filterConfig);
 
     const resultSet = await clickhouseClient.query({
       query: `SELECT deviceType, count(distinct userId) as users from event WHERE projectId=${escape(
         projectId,
       )} AND isPageView = 1 AND clientType = 'browser' AND createdAt >= '${formatClickhouseDate(startDate)}' 
+      ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
       ${deviceFilterQueries ? ` AND (${deviceFilterQueries}) ` : ''}
       ${filterQueries || ''} GROUP BY deviceType ORDER BY users DESC;`,
       format: 'JSONEachRow',
@@ -456,18 +461,15 @@ export const clickhouseEvent = {
       users: Number(row.users),
     }));
   },
-  getOperatingSystems: async (
-    projectId: bigint,
-    startDate: Date,
-    filterQueries: string,
-    filterConfig: IFilterConfig,
-  ) => {
+  getOperatingSystems: async (projectId: bigint, filterOptions: Omit<FilterOptions, 'timeSpan'>) => {
+    const { startDate, endDate, filterQueries, filterConfig } = filterOptions;
     const osFilterQueries = buildOsFilterQueries(filterConfig);
 
     const resultSet = await clickhouseClient.query({
       query: `SELECT osName, count(distinct userId) as users from event WHERE projectId=${escape(
         projectId,
       )} AND isPageView = 1 AND clientType = 'browser' AND createdAt >= '${formatClickhouseDate(startDate)}' 
+      ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
       ${osFilterQueries ? ` AND (${osFilterQueries}) ` : ''}
       ${filterQueries || ''} GROUP BY osName ORDER BY users DESC;`,
       format: 'JSONEachRow',
@@ -478,75 +480,71 @@ export const clickhouseEvent = {
       users: Number(row.users),
     }));
   },
-  getEvents: withSpan(
-    'getEvents',
-    async (projectId: bigint, startDate: Date, filterQueries: string, filterConfig: IFilterConfig) => {
-      const eventFilterQueries = buildEventFilterQueries(filterConfig);
+  getEvents: withSpan('getEvents', async (projectId: bigint, filterOptions: FilterOptions) => {
+    const { startDate, endDate, filterConfig, filterQueries } = filterOptions;
+    const eventFilterQueries = buildEventFilterQueries(filterConfig);
 
-      const resultSet = await clickhouseClient.query({
-        query: `SELECT name, count() as count, count(distinct userId) as users from event WHERE projectId=${escape(
-          projectId,
-        )} AND isPageView <> 1 AND createdAt >= '${formatClickhouseDate(startDate)}' 
+    const resultSet = await clickhouseClient.query({
+      query: `SELECT name, count() as count, count(distinct userId) as users from event WHERE projectId=${escape(
+        projectId,
+      )} AND isPageView <> 1 AND createdAt >= '${formatClickhouseDate(startDate)}' 
+      ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
       ${eventFilterQueries ? `AND (${eventFilterQueries})` : ''}
       ${filterQueries || ''} GROUP BY name ORDER BY users DESC, count DESC;`,
-        format: 'JSONEachRow',
-      });
-      const result = (await resultSet.json()) as Array<any>;
-      return result.map((row) => ({
-        name: row.name as string,
-        count: Number(row.count),
-        users: Number(row.users),
-      }));
-    },
-  ),
-  getEventsTimeSeries: withSpan(
-    'getEventsTimeSeries',
-    async (
-      projectId: bigint,
-      timeSpan: TimeSpan,
-      startDate: Date,
-      filterQueries: string,
-      filterConfig: IFilterConfig,
-    ) => {
-      const eventFilterQueries = buildEventFilterQueries(filterConfig);
+      format: 'JSONEachRow',
+    });
+    const result = (await resultSet.json()) as Array<any>;
+    return result.map((row) => ({
+      name: row.name as string,
+      count: Number(row.count),
+      users: Number(row.users),
+    }));
+  }),
+  getEventsTimeSeries: withSpan('getEventsTimeSeries', async (projectId: bigint, filterOptions: FilterOptions) => {
+    const { timeSpan, startDate, endDate, filterQueries, filterConfig } = filterOptions;
+    const eventFilterQueries = buildEventFilterQueries(filterConfig);
 
-      const resultSet = await clickhouseClient.query({
-        query: `SELECT count(), ${formatDateExpression(
-          timeSpan,
-          'createdAt',
-        )} as date from event WHERE projectId=${escape(
-          projectId,
-        )} AND isPageView <> 1 AND createdAt >= '${formatClickhouseDate(startDate)}' 
+    const resultSet = await clickhouseClient.query({
+      query: `SELECT count(), ${formatDateExpression(
+        { timeSpan, startDate, endDate },
+        'createdAt',
+      )} as date from event WHERE projectId=${escape(
+        projectId,
+      )} AND isPageView <> 1 AND createdAt >= '${formatClickhouseDate(startDate)}' ${
+        endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''
+      }
       ${eventFilterQueries ? `AND (${eventFilterQueries})` : ''}
       ${filterQueries || ''} GROUP BY date;`,
-        format: 'JSONEachRow',
-      });
-      const result = (await resultSet.json()) as Array<any>;
-      if (result.length === 0) {
-        return null;
-      }
+      format: 'JSONEachRow',
+    });
+    const result = (await resultSet.json()) as Array<any>;
+    if (result.length === 0) {
+      return null;
+    }
 
-      return result.map((row) => ({
-        count: Number(row['count()']),
-        date: row['date'],
-      }));
-    },
-  ),
+    return result.map((row) => ({
+      count: Number(row['count()']),
+      date: row['date'],
+    }));
+  }),
   getBounceRateTimeSeries: withSpan(
     'getBounceRateTimeSeries',
-    async (projectId: bigint, timeSpan: TimeSpan, startDate: Date, filterQueries?: string) => {
+    async (projectId: bigint, filterOptions: FilterOptions) => {
+      const { timeSpan, startDate, endDate, filterQueries } = filterOptions;
+
       const resultSet = await clickhouseClient.query({
         query: `
         WITH 
         sessions AS (
           SELECT 
             sessionId,
-            ${formatDateExpression(timeSpan, 'createdAt')} as date,
+            ${formatDateExpression({ timeSpan, startDate, endDate }, 'createdAt')} as date,
             count() as pageViews
           FROM ${TABLE_NAME} 
           WHERE projectId=${escape(projectId)} 
             AND isPageView = 1 
             AND createdAt >= '${formatClickhouseDate(startDate)}'
+            ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
             ${filterQueries || ''}
           GROUP BY sessionId, date
         )
@@ -579,6 +577,7 @@ export const clickhouseEvent = {
    * @param projectId - The project ID
    * @param steps - Array of funnel steps, each containing either pageview or event criteria
    * @param startDate - Start date for funnel analysis
+   * @param endDate - Optional end date for funnel analysis, else it will analyze until now
    * @param windowHours - Maximum time window between first and last step
    * @param filterQueries - Optional filter queries to apply
    */
@@ -586,11 +585,19 @@ export const clickhouseEvent = {
     projectId: bigint,
     steps: Array<FunnelStep>,
     startDate: Date,
+    endDate?: Date,
     windowHours?: number,
     filterQueries?: string,
   ) => {
     const stepConditions = buildFunnelStepConditions(steps, projectId);
-    const funnelSubquery = buildWindowFunnelSubquery(projectId, stepConditions, startDate, windowHours, filterQueries);
+    const funnelSubquery = buildWindowFunnelSubquery(
+      projectId,
+      stepConditions,
+      startDate,
+      endDate,
+      windowHours,
+      filterQueries,
+    );
 
     const resultSet = await clickhouseClient.query({
       query: `
@@ -681,13 +688,8 @@ export const clickhouseEvent = {
   },
   getEventProperties: withSpan(
     'getEventProperties',
-    async (
-      projectId: bigint,
-      eventName: string,
-      startDate: Date,
-      filterQueries: string,
-      filterConfig: IFilterConfig,
-    ) => {
+    async (projectId: bigint, eventName: string, filterOptions: Omit<FilterOptions, 'timeSpan'>) => {
+      const { startDate, endDate, filterQueries, filterConfig } = filterOptions;
       const eventFilterQueries = buildEventFilterQueries(filterConfig);
 
       const resultSet = await clickhouseClient.query({
@@ -700,6 +702,7 @@ export const clickhouseEvent = {
           WHERE projectId = ${escape(projectId)}
             AND name = ${escape(eventName)}
             AND createdAt >= '${formatClickhouseDate(startDate)}'
+            ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
             AND isPageView <> 1
             ${eventFilterQueries ? `AND (${eventFilterQueries})` : ''}
             ${filterQueries || ''}
@@ -719,14 +722,8 @@ export const clickhouseEvent = {
   ),
   getPropertyValues: withSpan(
     'getPropertyValues',
-    async (
-      projectId: bigint,
-      eventName: string,
-      property: string,
-      startDate: Date,
-      filterQueries: string,
-      filterConfig: IFilterConfig,
-    ) => {
+    async (projectId: bigint, eventName: string, property: string, filterOptions: Omit<FilterOptions, 'timeSpan'>) => {
+      const { startDate, endDate, filterQueries, filterConfig } = filterOptions;
       const eventFilterQueries = buildEventFilterQueries(filterConfig);
 
       const resultSet = await clickhouseClient.query({
@@ -739,6 +736,7 @@ export const clickhouseEvent = {
           WHERE projectId = ${escape(projectId)}
             AND name = ${escape(eventName)}
             AND createdAt >= '${formatClickhouseDate(startDate)}'
+            ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
             AND isPageView <> 1
             AND JSONHas(customData, ${escape(property)})
             ${eventFilterQueries ? `AND (${eventFilterQueries})` : ''}
@@ -839,6 +837,7 @@ export const clickhouseEvent = {
     userId: bigint,
     funnels: Array<{ id: string; name: string; steps: FunnelStep[] }>,
     startDate?: Date,
+    endDate?: Date,
   ): Promise<Array<{ funnelId: string; funnelName: string; completedStep: number; totalSteps: number }>> => {
     if (funnels.length === 0) return [];
 
@@ -850,7 +849,8 @@ export const clickhouseEvent = {
         const funnelSubquery = buildWindowFunnelSubquery(
           projectId,
           stepConditions,
-          startDate || new Date(0),
+          startDate,
+          endDate,
           undefined,
           userCondition,
         );

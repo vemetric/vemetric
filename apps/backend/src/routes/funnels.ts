@@ -26,13 +26,13 @@ export const funnelsRouter = router({
     .query(async (opts) => {
       const {
         input: { filterConfig },
-        ctx: { project, projectId, startDate },
+        ctx: { project, projectId, startDate, endDate },
       } = opts;
 
       const funnels = await dbFunnel.findByProjectId(project.id);
       const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
-      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
-      const activeUsers = (await clickhouseEvent.getActiveUsers(projectId, startDate, filterQueries)) ?? 0;
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, endDate, funnelsData });
+      const activeUsers = (await clickhouseEvent.getActiveUsers(projectId, { startDate, endDate, filterQueries })) ?? 0;
 
       const funnelsWithResults = await Promise.all(
         funnels.map(async (funnel) => {
@@ -42,6 +42,7 @@ export const funnelsRouter = router({
             projectId,
             steps,
             startDate,
+            endDate,
             undefined,
             filterQueries,
           );
@@ -168,7 +169,7 @@ export const funnelsRouter = router({
     .query(async (opts) => {
       const {
         input: { id, filterConfig },
-        ctx: { project, projectId, startDate },
+        ctx: { project, projectId, startDate, endDate },
       } = opts;
 
       const funnel = await dbFunnel.findById(id);
@@ -177,11 +178,18 @@ export const funnelsRouter = router({
       }
 
       const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
-      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, endDate, funnelsData });
 
       const [funnelResults, activeUsers] = await Promise.all([
-        clickhouseEvent.getFunnelResults(projectId, funnel.steps as FunnelStep[], startDate, undefined, filterQueries),
-        clickhouseEvent.getActiveUsers(projectId, startDate, filterQueries),
+        clickhouseEvent.getFunnelResults(
+          projectId,
+          funnel.steps as FunnelStep[],
+          startDate,
+          endDate,
+          undefined,
+          filterQueries,
+        ),
+        clickhouseEvent.getActiveUsers(projectId, { startDate, endDate, filterQueries }),
       ]);
 
       return {

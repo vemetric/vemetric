@@ -1,12 +1,20 @@
 import * as Sentry from '@sentry/bun';
 import { TRPCError, initTRPC } from '@trpc/server';
-import { isTimespanAllowed, TIME_SPAN_DATA, TIME_SPANS } from '@vemetric/common/charts/timespans';
+import {
+  getCustomDateRangeInterval,
+  isTimespanAllowed,
+  TIME_SPAN_DATA,
+  TIME_SPANS,
+  timeSpanRangeMax,
+  timeSpanRangeMin,
+} from '@vemetric/common/charts/timespans';
 import { dbOrganization, dbProject, OrganizationRole } from 'database';
+import { addDays, format, isAfter, isBefore } from 'date-fns';
 import superjson from 'superjson';
 import { z } from 'zod';
 import type { HonoContext } from '../types';
 import { getSubscriptionStatus } from './billing';
-import { getStartDate } from './timeseries';
+import { getStartDate, getEndDate } from './timeseries';
 
 const t = initTRPC.context<HonoContext>().create({
   transformer: superjson,
@@ -222,25 +230,69 @@ export const projectOrPublicProcedure = publicProcedure
   });
 
 export const timespanProcedure = projectOrPublicProcedure
-  .input(z.object({ timespan: z.enum(TIME_SPANS) }))
+  .input(
+    z.object({
+      timespan: z.enum(TIME_SPANS),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+    }),
+  )
   .use(async (opts) => {
     const {
       input,
       ctx: { subscriptionStatus },
     } = opts;
 
-    if (!isTimespanAllowed(input.timespan, subscriptionStatus.isActive)) {
-      throw new TRPCError({ code: 'FORBIDDEN', message: 'Upgrade to the Professional plan for longer data retention' });
+    const startDate = getStartDate(input.timespan, input.startDate);
+    if (isNaN(startDate.getTime())) {
+      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid start date format' });
     }
 
-    const timeSpanData = TIME_SPAN_DATA[input.timespan];
-    const startDate = getStartDate(input.timespan);
+    const endDate = getEndDate(input.timespan, input.endDate || input.startDate);
+
+    let timeSpanData = TIME_SPAN_DATA[input.timespan];
+
+    // For custom date ranges, determine the best interval based on the date range
+    if (input.timespan === 'custom' && endDate) {
+      if (isNaN(endDate.getTime())) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid end date format' });
+      }
+
+      if (isBefore(startDate, timeSpanRangeMin)) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `Start date cannot be before ${format(timeSpanRangeMin, 'yyyy-MM-dd')}`,
+        });
+      }
+      if (isAfter(endDate, timeSpanRangeMax)) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `End date cannot be after ${format(timeSpanRangeMax, 'yyyy-MM-dd')}`,
+        });
+      }
+
+      const interval = getCustomDateRangeInterval(startDate, endDate);
+      timeSpanData = { ...timeSpanData, interval };
+    }
+
+    const upgradeMessage = 'Upgrade to the Professional plan for longer data retention';
+    if (input.timespan === 'custom' && !subscriptionStatus.isActive) {
+      if (isBefore(startDate, addDays(new Date(), -32))) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: upgradeMessage,
+        });
+      }
+    } else if (!isTimespanAllowed(input.timespan, subscriptionStatus.isActive)) {
+      throw new TRPCError({ code: 'FORBIDDEN', message: upgradeMessage });
+    }
 
     return opts.next({
       ctx: {
         ...opts.ctx,
         timeSpanData,
         startDate,
+        endDate,
       },
     });
   });

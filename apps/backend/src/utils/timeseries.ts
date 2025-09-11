@@ -71,7 +71,7 @@ function addYearsUTC(date: Date, amount: number): Date {
   return result;
 }
 
-export function getStartDate(timespan: TimeSpan, customStartDate?: string) {
+export function getTimeSpanStartDate(timespan: TimeSpan, customStartDate?: string) {
   if (timespan === 'custom' && customStartDate) {
     return new Date(customStartDate + 'T00:00:00Z');
   }
@@ -109,7 +109,7 @@ export function getStartDate(timespan: TimeSpan, customStartDate?: string) {
   return startDate;
 }
 
-export function getEndDate(timespan: TimeSpan, customEndDate?: string) {
+export function getTimeSpanEndDate(timespan: TimeSpan, customEndDate?: string) {
   if (timespan === 'custom' && customEndDate) {
     const endDate = new Date(customEndDate + 'T23:59:59Z');
     return endDate;

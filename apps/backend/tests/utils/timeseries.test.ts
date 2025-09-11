@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { getStartDate, fillTimeSeries } from '../../src/utils/timeseries';
+import { getTimeSpanStartDate, fillTimeSeries } from '../../src/utils/timeseries';
 
 describe('getStartDate', () => {
   beforeEach(() => {
@@ -13,37 +13,37 @@ describe('getStartDate', () => {
   });
 
   it('should return start date for 1hr timespan', () => {
-    const result = getStartDate('1hr');
+    const result = getTimeSpanStartDate('1hr');
     expect(result.toISOString()).toBe('2024-01-15T11:10:00.000Z');
   });
 
   it('should return start date for 24hrs timespan', () => {
-    const result = getStartDate('24hrs');
+    const result = getTimeSpanStartDate('24hrs');
     expect(result.toISOString()).toBe('2024-01-14T13:00:00.000Z');
   });
 
   it('should return start date for 7days timespan', () => {
-    const result = getStartDate('7days');
+    const result = getTimeSpanStartDate('7days');
     expect(result.toISOString()).toBe('2024-01-09T00:00:00.000Z');
   });
 
   it('should return start date for 30days timespan', () => {
-    const result = getStartDate('30days');
+    const result = getTimeSpanStartDate('30days');
     expect(result.toISOString()).toBe('2023-12-17T00:00:00.000Z');
   });
 
   it('should return start date for 3months timespan', () => {
-    const result = getStartDate('3months');
+    const result = getTimeSpanStartDate('3months');
     expect(result.toISOString()).toBe('2023-10-30T00:00:00.000Z');
   });
 
   it('should return start date for 6months timespan', () => {
-    const result = getStartDate('6months');
+    const result = getTimeSpanStartDate('6months');
     expect(result.toISOString()).toBe('2023-08-01T00:00:00.000Z');
   });
 
   it('should return start date for 1year timespan', () => {
-    const result = getStartDate('1year');
+    const result = getTimeSpanStartDate('1year');
     expect(result.toISOString()).toBe('2023-01-01T00:00:00.000Z');
   });
 });

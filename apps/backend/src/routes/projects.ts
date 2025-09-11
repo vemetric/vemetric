@@ -8,7 +8,7 @@ import { clickhouseEvent } from 'clickhouse';
 import { ProjectRole, dbProject } from 'database';
 import { z } from 'zod';
 import { logger } from '../utils/logger';
-import { fillTimeSeries, getStartDate } from '../utils/timeseries';
+import { fillTimeSeries, getTimeSpanStartDate } from '../utils/timeseries';
 import {
   loggedInProcedure,
   organizationProcedure,
@@ -152,7 +152,7 @@ export const projectsRouter = router({
 
     const timeSpan = '24hrs';
     const timeSpanData = TIME_SPAN_DATA[timeSpan];
-    const startDate = getStartDate(timeSpan);
+    const startDate = getTimeSpanStartDate(timeSpan);
 
     const projects = await dbProject.findByUserId(user.id);
     const projectData = await Promise.all(

@@ -14,7 +14,7 @@ import superjson from 'superjson';
 import { z } from 'zod';
 import type { HonoContext } from '../types';
 import { getSubscriptionStatus } from './billing';
-import { getStartDate, getEndDate } from './timeseries';
+import { getTimeSpanStartDate, getTimeSpanEndDate } from './timeseries';
 
 const t = initTRPC.context<HonoContext>().create({
   transformer: superjson,
@@ -243,18 +243,20 @@ export const timespanProcedure = projectOrPublicProcedure
       ctx: { subscriptionStatus },
     } = opts;
 
-    const startDate = getStartDate(input.timespan, input.startDate);
+    if (input.timespan === 'custom' && !input.startDate) {
+      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Start date is required for custom time span' });
+    }
+
+    const startDate = getTimeSpanStartDate(input.timespan, input.startDate);
     if (isNaN(startDate.getTime())) {
       throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid start date format' });
     }
-
-    const endDate = getEndDate(input.timespan, input.endDate || input.startDate);
+    const endDate = getTimeSpanEndDate(input.timespan, input.endDate || input.startDate);
 
     let timeSpanData = TIME_SPAN_DATA[input.timespan];
 
-    // For custom date ranges, determine the best interval based on the date range
-    if (input.timespan === 'custom' && endDate) {
-      if (isNaN(endDate.getTime())) {
+    if (input.timespan === 'custom') {
+      if (!endDate || isNaN(endDate.getTime())) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid end date format' });
       }
 

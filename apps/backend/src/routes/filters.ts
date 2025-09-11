@@ -5,7 +5,7 @@ import type { FunnelStep } from '@vemetric/common/funnel';
 import { getNormalizedDomain } from '@vemetric/common/url';
 import { clickhouseEvent } from 'clickhouse';
 import { dbFunnel } from 'database';
-import { addDays, differenceInDays, isBefore, startOfDay } from 'date-fns';
+import { addDays, differenceInDays, isAfter, startOfDay } from 'date-fns';
 import { z } from 'zod';
 import { projectOrPublicProcedure, router, timespanProcedure } from '../utils/trpc';
 
@@ -21,7 +21,7 @@ export const filtersRouter = router({
     const minimumDayRange = subscriptionStatus.isActive ? -90 : -30;
     if (!endDate) {
       const minStartDate = addDays(startOfDay(new Date()), minimumDayRange);
-      if (isBefore(startDate, minStartDate)) {
+      if (isAfter(startDate, minStartDate)) {
         startDate = minStartDate;
       }
     } else {

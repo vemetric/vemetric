@@ -19,14 +19,18 @@ interface Props {
   value: { start: DatePickerValue; end: DatePickerValue } | null;
   onRangeSelect: (range: { start: DatePickerValue; end: DatePickerValue }) => void;
   enableMonthRangeSelection?: boolean;
+  minRangeDisabledTooltip?: string;
 }
 
-const datePickerAllowedRange = {
-  min: parseDate(timeSpanRangeMin),
-  max: parseDate(timeSpanRangeMax),
-};
+export const DateRangePicker = ({
+  minDate: _minDate,
+  value,
+  onRangeSelect,
+  enableMonthRangeSelection,
+  minRangeDisabledTooltip,
+}: Props) => {
+  const minDate = _minDate ? _minDate : timeSpanRangeMin;
 
-export const DateRangePicker = ({ minDate, value, onRangeSelect, enableMonthRangeSelection }: Props) => {
   return (
     <DatePicker.Root
       inline
@@ -34,8 +38,8 @@ export const DateRangePicker = ({ minDate, value, onRangeSelect, enableMonthRang
       startOfWeek={1}
       selectionMode="range"
       numOfMonths={1}
-      min={minDate ? parseDate(minDate) : datePickerAllowedRange.min}
-      max={datePickerAllowedRange.max}
+      min={parseDate(minDate)}
+      max={parseDate(timeSpanRangeMax)}
       defaultValue={
         value
           ? [
@@ -84,7 +88,7 @@ export const DateRangePicker = ({ minDate, value, onRangeSelect, enableMonthRang
                 />
                 <Box p="1.5">
                   <Box overflow="hidden" rounded="md">
-                    <DayView monthOffset={0} />
+                    <DayView monthOffset={0} minDate={minDate} minRangeDisabledTooltip={minRangeDisabledTooltip} />
                   </Box>
                 </Box>
               </DatePicker.View>

@@ -18,7 +18,6 @@ import { DateRangePicker } from './ui/date-range-picker/date-range-picker';
 import { Status } from './ui/status';
 import { Tooltip } from './ui/tooltip';
 
-// TODO: show a tooltip in daterangepicker that user has to upgrade to pro plan for longer ranges
 const today = new Date();
 export const todayMinus31Days = addDays(new Date(today.getFullYear(), today.getMonth(), today.getDate()), -31);
 
@@ -79,6 +78,7 @@ export const TimespanSelect = ({ from, excludeLive = false }: Props) => {
                 {({ setOpen }) => (
                   <DateRangePicker
                     minDate={data?.isSubscriptionActive ? undefined : todayMinus31Days}
+                    minRangeDisabledTooltip="Upgrade to the Professional plan for longer data retention."
                     value={
                       timespan === 'custom' && startDate
                         ? {

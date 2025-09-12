@@ -20,6 +20,18 @@ app.use(
   honoPino({
     pino: logger,
     http: {
+      onReqBindings: (c) => {
+        return {
+          url: c.req.path,
+          method: c.req.method,
+          headers: {
+            'v-host': c.req.header('v-host') || '',
+            'v-referrer': c.req.header('v-referrer') || '',
+            'v-sdk': c.req.header('v-sdk') || '',
+            'v-sdk-version': c.req.header('v-sdk-version') || '',
+          },
+        };
+      },
       onResLevel: (c) => (c.error ? 'error' : 'trace'),
     },
   }),

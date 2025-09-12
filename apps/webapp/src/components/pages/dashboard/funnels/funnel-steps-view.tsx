@@ -32,7 +32,9 @@ export const FunnelStepsView = ({
   activeUsersVisible,
 }: Props) => {
   const params = useParams({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
-  const { timespan } = useTimespanParam({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
+  const { timespan, startDate, endDate } = useTimespanParam({
+    from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
+  });
   const [page, setPage] = useState(1);
   const { toggleFilter } = useFilters({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
 
@@ -41,7 +43,7 @@ export const FunnelStepsView = ({
     isPreviousData,
     error,
   } = trpc.dashboard.getFunnelSteps.useQuery(
-    { ...params, funnelId, timespan, filterConfig },
+    { ...params, funnelId, timespan, startDate, endDate, filterConfig },
     {
       keepPreviousData: true,
       refetchInterval: getTimespanRefetchInterval(timespan),

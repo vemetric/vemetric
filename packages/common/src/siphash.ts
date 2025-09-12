@@ -1,3 +1,4 @@
+import '../types.d';
 import type { Key } from 'siphash';
 import siphash from 'siphash';
 

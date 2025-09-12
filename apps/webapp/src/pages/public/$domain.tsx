@@ -1,7 +1,7 @@
 import { Text, AspectRatio, Button, Box, Flex, SimpleGrid, Link, HStack, LinkOverlay, Image } from '@chakra-ui/react';
 import { createFileRoute, Navigate } from '@tanstack/react-router';
-import { fallback, zodValidator } from '@tanstack/zod-adapter';
-import { getTimespanRefetchInterval, TIME_SPANS } from '@vemetric/common/charts/timespans';
+import { zodValidator } from '@tanstack/zod-adapter';
+import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { sourcesSchema } from '@vemetric/common/sources';
 import { z } from 'zod';
@@ -24,6 +24,7 @@ import { TimespanSelect } from '@/components/timespan-select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProjectProvider } from '@/contexts/project-context';
 import { getFaviconUrl } from '@/utils/favicon';
+import { timeSpanSearchMiddleware, timespanSearchSchema } from '@/utils/timespans';
 import { trpc } from '@/utils/trpc';
 
 const TopRowSkeletons = ({ loading }: { loading: boolean }) => (
@@ -40,7 +41,7 @@ const TopRowSkeletons = ({ loading }: { loading: boolean }) => (
 );
 
 const dashboardSearchSchema = z.object({
-  t: fallback(z.enum(TIME_SPANS), '24hrs').default('24hrs'),
+  ...timespanSearchSchema.shape,
   f: filterConfigSchema,
   s: sourcesSchema,
   u: z.enum(['countries', 'browsers', 'devices', 'os']).optional(),
@@ -53,21 +54,26 @@ const dashboardSearchSchema = z.object({
 
 export const Route = createFileRoute('/public/$domain')({
   validateSearch: zodValidator(dashboardSearchSchema),
+  search: {
+    middlewares: [timeSpanSearchMiddleware],
+  },
   component: Page,
 });
 
 function Page() {
   const { domain } = Route.useParams();
-  const { t: timespan, f: filterConfig, u: userType } = Route.useSearch();
+  const { t: timespan = '24hrs', sd: startDate, ed: endDate, f: filterConfig, u: userType } = Route.useSearch();
 
   const { data, error, isPreviousData } = trpc.dashboard.getData.useQuery(
-    { domain, timespan, filterConfig },
+    { domain, timespan, startDate, endDate, filterConfig },
     { keepPreviousData: true, onError: () => {}, refetchInterval: getTimespanRefetchInterval(timespan) },
   );
   const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery(
     {
       domain,
       timespan,
+      startDate,
+      endDate,
     },
     {
       refetchInterval: getTimespanRefetchInterval(timespan),
@@ -174,7 +180,13 @@ function Page() {
               </Box>
               <Flex mt={-2} flexDir="column" gap={3} pos="relative">
                 <Box pos="relative">
-                  <DashboardChart timespan={timespan} data={data} publicDashboard />
+                  <DashboardChart
+                    timespan={timespan}
+                    timespanStartDate={startDate}
+                    timespanEndDate={endDate}
+                    data={data}
+                    publicDashboard
+                  />
                   {isPreviousData && (
                     <Box pos="absolute" inset="0" opacity="0.8" zIndex="docked">
                       <Skeleton pos="absolute" inset="0" rounded="lg" />

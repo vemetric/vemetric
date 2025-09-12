@@ -17,9 +17,10 @@ export const getUserFilterQueries = (props: {
   filterConfig: IFilterConfig;
   projectId: bigint;
   startDate?: Date;
+  endDate?: Date;
   funnelsData?: Map<string, FunnelStep[]>;
 }) => {
-  const { filterConfig, projectId, startDate, funnelsData } = props;
+  const { filterConfig, projectId, startDate, endDate, funnelsData } = props;
 
   if (!filterConfig) {
     return {
@@ -44,6 +45,7 @@ export const getUserFilterQueries = (props: {
                 AND isPageView=1
                 AND ${filterQuery}
                 ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+                ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
               GROUP BY userId
               HAVING count() >= 1)`);
         break;
@@ -61,6 +63,7 @@ export const getUserFilterQueries = (props: {
               AND isPageView <> 1
               AND ${filterQuery}
               ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+              ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
             GROUP BY userId
             HAVING count() >= 1)`);
         break;
@@ -77,6 +80,7 @@ export const getUserFilterQueries = (props: {
             WHERE projectId=${escape(projectId)}
               AND ${filterQuery}
               ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+              ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
             GROUP BY userId
             HAVING count() >= 1)`);
         break;
@@ -93,6 +97,7 @@ export const getUserFilterQueries = (props: {
               WHERE projectId=${escape(projectId)}
                 AND ${filterQuery}
                 ${startDate ? `AND startedAt >= '${formatClickhouseDate(startDate)}'` : ''}
+                ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
                 AND deleted = 0
               GROUP BY userId
               HAVING count() >= 1)`);
@@ -110,6 +115,7 @@ export const getUserFilterQueries = (props: {
             WHERE projectId=${escape(projectId)}
               AND ${filterQuery}
               ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+              ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
             GROUP BY userId
             HAVING count() >= 1)`);
         break;
@@ -126,6 +132,7 @@ export const getUserFilterQueries = (props: {
             WHERE projectId=${escape(projectId)}
               AND ${filterQuery}
               ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+              ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
             GROUP BY userId
             HAVING count() >= 1)`);
         break;
@@ -142,6 +149,7 @@ export const getUserFilterQueries = (props: {
             WHERE projectId=${escape(projectId)}
               AND ${filterQuery}
               ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+              ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
             GROUP BY userId
             HAVING count() >= 1)`);
         break;
@@ -158,6 +166,7 @@ export const getUserFilterQueries = (props: {
               WHERE projectId=${escape(projectId)}
                 AND ${filterQuery}
                 ${startDate ? `AND startedAt >= '${formatClickhouseDate(startDate)}'` : ''}
+                ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
                 AND deleted = 0
               GROUP BY userId
               HAVING count() >= 1)`);
@@ -175,6 +184,7 @@ export const getUserFilterQueries = (props: {
               WHERE projectId=${escape(projectId)}
                 AND ${filterQuery}
                 ${startDate ? `AND startedAt >= '${formatClickhouseDate(startDate)}'` : ''}
+                ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
                 AND deleted = 0
               GROUP BY userId
               HAVING count() >= 1)`);
@@ -192,6 +202,7 @@ export const getUserFilterQueries = (props: {
               WHERE projectId=${escape(projectId)}
                 AND ${filterQuery}
                 ${startDate ? `AND startedAt >= '${formatClickhouseDate(startDate)}'` : ''}
+                ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
                 AND deleted = 0
               GROUP BY userId
               HAVING count() >= 1)`);
@@ -209,6 +220,7 @@ export const getUserFilterQueries = (props: {
               WHERE projectId=${escape(projectId)}
                 AND ${filterQuery}
                 ${startDate ? `AND startedAt >= '${formatClickhouseDate(startDate)}'` : ''}
+                ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
                 AND deleted = 0
               GROUP BY userId
               HAVING count() >= 1)`);
@@ -224,7 +236,7 @@ export const getUserFilterQueries = (props: {
           return;
         }
 
-        const filterQuery = buildFunnelFilterQuery(filter, projectId, funnelSteps, startDate);
+        const filterQuery = buildFunnelFilterQuery(filter, projectId, funnelSteps, startDate, endDate);
         if (!filterQuery) {
           return;
         }
@@ -235,6 +247,7 @@ export const getUserFilterQueries = (props: {
             WHERE projectId=${escape(projectId)}
               AND ${filterQuery}
               ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+              ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
             GROUP BY userId)`);
         break;
       }

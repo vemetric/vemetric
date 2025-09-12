@@ -1,6 +1,7 @@
 import { getRouteApi } from '@tanstack/react-router';
+import type { TimeSpan } from '@vemetric/common/charts/timespans';
 import { useEffect } from 'react';
-import { getStoredTimespan, setStoredTimespan } from '@/utils/session-storage';
+import { getStoredTimespanData, setStoredTimespanData } from '@/utils/session-storage';
 
 export type TimespanRoute =
   | '/public/$domain'
@@ -16,19 +17,26 @@ export const useTimespanParam = ({ from }: Props) => {
   const route = getRouteApi(from);
 
   const navigate = route.useNavigate();
-  const { t: _timespan } = route.useSearch();
-  const timespan = _timespan ?? getStoredTimespan() ?? '24hrs';
+  const { t, sd, ed } = route.useSearch() as {
+    t?: TimeSpan;
+    sd?: string;
+    ed?: string;
+  };
+  const storedTimeSpanData = getStoredTimespanData();
+  const timespan = t ?? storedTimeSpanData.timespan ?? '24hrs';
+  const startDate = sd ?? storedTimeSpanData.startDate;
+  const endDate = ed ?? storedTimeSpanData.endDate;
 
   useEffect(() => {
-    if (_timespan !== timespan) {
+    if (t !== timespan || sd !== startDate || ed !== endDate) {
       navigate({
-        search: (prev) => ({ ...prev, t: timespan }),
+        search: (prev) => ({ ...prev, t: timespan, sd: startDate, ed: endDate }),
         replace: true,
       });
     }
 
-    setStoredTimespan(timespan);
-  }, [timespan, _timespan, navigate]);
+    setStoredTimespanData(timespan, startDate, endDate);
+  }, [timespan, t, startDate, sd, endDate, ed, navigate]);
 
-  return { timespan };
+  return { timespan, startDate, endDate };
 };

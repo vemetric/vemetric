@@ -19,7 +19,9 @@ interface Props {
 
 export const EventPropertiesView = ({ publicDashboard, eventName, onBack, onSelectProperty }: Props) => {
   const params = useParams({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
-  const { timespan } = useTimespanParam({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
+  const { timespan, startDate, endDate } = useTimespanParam({
+    from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
+  });
   const { f: filterConfig } = useSearch({
     from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
   });
@@ -29,6 +31,8 @@ export const EventPropertiesView = ({ publicDashboard, eventName, onBack, onSele
     {
       ...params,
       timespan,
+      startDate,
+      endDate,
       eventName,
       filterConfig,
     },

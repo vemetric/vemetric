@@ -10,6 +10,14 @@ import { buildLocationFilterQueries } from '../utils/filters/location-filter';
 import { buildSourceFilterQueries } from '../utils/filters/source-filter';
 import { withSpan } from '../utils/with-span';
 
+export interface FilterOptions {
+  timeSpan: TimeSpan;
+  startDate: Date;
+  endDate?: Date;
+  filterQueries: string;
+  filterConfig: IFilterConfig;
+}
+
 const TABLE_NAME = 'session';
 
 export type UrlData = {
@@ -189,13 +197,15 @@ export const clickhouseSession = {
   },
   getVisitDurationTimeSeries: withSpan(
     'getVisitDurationTimeSeries',
-    async (projectId: bigint, timeSpan: TimeSpan, startDate: Date, filterQueries?: string) => {
+    async (projectId: bigint, filterOptions: FilterOptions) => {
+      const { timeSpan, startDate, endDate, filterQueries } = filterOptions;
+
       const resultSet = await clickhouseClient.query({
         query: `
         SELECT 
           avg(maxDuration) as avgDuration,
           count(*) as sessionCount,
-          ${formatDateExpression(timeSpan, 'maxEndedAt')} as date 
+          ${formatDateExpression({ timeSpan, startDate, endDate }, 'maxEndedAt')} as date 
         FROM (
           SELECT 
             id,
@@ -204,6 +214,7 @@ export const clickhouseSession = {
           FROM ${TABLE_NAME} 
           WHERE projectId=${escape(projectId)} 
             AND startedAt >= '${formatClickhouseDate(startDate)}'
+            ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
             ${(filterQueries || '').replace('sessionId', 'id')}
           GROUP BY id
           HAVING argMax(deleted, endedAt) = 0 AND maxDuration > 0
@@ -225,7 +236,8 @@ export const clickhouseSession = {
       }));
     },
   ),
-  getCountryCodes: async (projectId: bigint, startDate: Date, filterQueries: string, filterConfig: IFilterConfig) => {
+  getCountryCodes: async (projectId: bigint, filterOptions: Omit<FilterOptions, 'timeSpan'>) => {
+    const { startDate, endDate, filterQueries, filterConfig } = filterOptions;
     const locationFilterQueries = buildLocationFilterQueries(filterConfig);
 
     const resultSet = await clickhouseClient.query({
@@ -233,6 +245,7 @@ export const clickhouseSession = {
               FROM ${TABLE_NAME} 
               WHERE projectId=${escape(projectId)} 
               AND startedAt >= '${formatClickhouseDate(startDate)}' 
+              ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
               ${locationFilterQueries ? `AND (${locationFilterQueries})` : ''}
               ${(filterQueries || '').replace('sessionId', 'id')}
               AND deleted = 0
@@ -246,13 +259,8 @@ export const clickhouseSession = {
       users: Number(row.users),
     }));
   },
-  getTopSources: async (
-    projectId: bigint,
-    startDate: Date,
-    source: ISources,
-    filterQueries: string,
-    filterConfig: IFilterConfig,
-  ) => {
+  getTopSources: async (projectId: bigint, source: ISources, filterOptions: Omit<FilterOptions, 'timeSpan'>) => {
+    const { startDate, endDate, filterQueries, filterConfig } = filterOptions;
     const sourceFilterQueries = buildSourceFilterQueries(filterConfig, source);
 
     const transformColumn = (column: ISources) => {
@@ -277,12 +285,11 @@ export const clickhouseSession = {
     const resultSet = await clickhouseClient.query({
       query: `SELECT ${selectColumns.join(', ')}, count(distinct userId) as users from session WHERE projectId=${escape(
         projectId,
-      )} AND startedAt >= '${formatClickhouseDate(startDate)}' ${notEmptyFilter} ${(filterQueries || '').replace(
-        'sessionId',
-        'id',
-      )} ${
-        sourceFilterQueries ? `AND (${sourceFilterQueries})` : ''
-      } AND deleted = 0 GROUP BY ${source} ORDER BY users DESC;`,
+      )} AND startedAt >= '${formatClickhouseDate(startDate)}'
+       ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
+       ${notEmptyFilter} ${(filterQueries || '').replace('sessionId', 'id')} ${
+         sourceFilterQueries ? `AND (${sourceFilterQueries})` : ''
+       } AND deleted = 0 GROUP BY ${source} ORDER BY users DESC;`,
       format: 'JSONEachRow',
     });
     const result = (await resultSet.json()) as Array<any>;

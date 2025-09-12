@@ -43,7 +43,9 @@ interface Props {
 
 export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
   const params = useParams({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
-  const { timespan } = useTimespanParam({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
+  const { timespan, startDate, endDate } = useTimespanParam({
+    from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
+  });
   const {
     e: showEvents,
     se: selectedEvent,
@@ -70,7 +72,7 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
   const activeFilters = filterConfig?.filters.filter((f) => f.type === 'event') ?? [];
 
   const { data, isPreviousData, error } = trpc.dashboard.getData.useQuery(
-    { ...params, timespan, filterConfig },
+    { ...params, timespan, startDate, endDate, filterConfig },
     {
       keepPreviousData: true,
       onError: () => {},

@@ -1,7 +1,7 @@
 import { AspectRatio, Box, Flex, SimpleGrid } from '@chakra-ui/react';
 import { createFileRoute, Navigate } from '@tanstack/react-router';
 import { zodValidator } from '@tanstack/zod-adapter';
-import { getTimespanRefetchInterval, TIME_SPANS } from '@vemetric/common/charts/timespans';
+import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { sourcesSchema } from '@vemetric/common/sources';
 import { z } from 'zod';
@@ -22,6 +22,7 @@ import { TimespanSelect } from '@/components/timespan-select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { useSetBreadcrumbs, useSetDocsLink } from '@/stores/header-store';
+import { timeSpanSearchMiddleware, timespanSearchSchema } from '@/utils/timespans';
 import { trpc } from '@/utils/trpc';
 
 const TopRowSkeletons = ({ loading }: { loading: boolean }) => (
@@ -38,7 +39,7 @@ const TopRowSkeletons = ({ loading }: { loading: boolean }) => (
 );
 
 const dashboardSearchSchema = z.object({
-  t: z.enum(TIME_SPANS).optional(),
+  ...timespanSearchSchema.shape,
   f: filterConfigSchema,
   s: sourcesSchema,
   u: z.enum(['countries', 'browsers', 'devices', 'os']).optional(),
@@ -51,16 +52,19 @@ const dashboardSearchSchema = z.object({
 
 export const Route = createFileRoute('/_layout/p/$projectId/')({
   validateSearch: zodValidator(dashboardSearchSchema),
+  search: {
+    middlewares: [timeSpanSearchMiddleware],
+  },
   component: Page,
 });
 
 function Page() {
   const { projectId } = Route.useParams();
   const { f: filterConfig, u: userType } = Route.useSearch();
-  const { timespan } = useTimespanParam({ from: '/_layout/p/$projectId/' });
+  const { timespan, startDate, endDate } = useTimespanParam({ from: '/_layout/p/$projectId/' });
 
   const { data, error, isPreviousData } = trpc.dashboard.getData.useQuery(
-    { projectId, timespan, filterConfig },
+    { projectId, timespan, startDate, endDate, filterConfig },
     {
       keepPreviousData: true,
       onError: () => {},
@@ -71,6 +75,8 @@ function Page() {
     {
       projectId,
       timespan,
+      startDate,
+      endDate,
     },
     {
       refetchInterval: getTimespanRefetchInterval(timespan),
@@ -132,7 +138,7 @@ function Page() {
           </Box>
           <Flex flexDir="column" gap={3} pos="relative">
             <Box pos="relative">
-              <DashboardChart timespan={timespan} data={data} />
+              <DashboardChart timespan={timespan} timespanStartDate={startDate} timespanEndDate={endDate} data={data} />
               {isPreviousData && (
                 <Box pos="absolute" inset="0" opacity="0.8" zIndex="docked">
                   <Skeleton pos="absolute" inset="0" rounded="lg" />

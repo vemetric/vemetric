@@ -27,7 +27,9 @@ interface Props {
 
 export const TopSourcesCard = ({ filterConfig, publicDashboard }: Props) => {
   const params = useParams({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
-  const { timespan } = useTimespanParam({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
+  const { timespan, startDate, endDate } = useTimespanParam({
+    from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
+  });
   const { s: sourceType = 'referrer' } = useSearch({
     from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
   });
@@ -45,6 +47,8 @@ export const TopSourcesCard = ({ filterConfig, publicDashboard }: Props) => {
     {
       ...params,
       timespan,
+      startDate,
+      endDate,
       filterConfig,
       source: sourceValue.segment === 'referrer' ? sourceValue.referrer : sourceValue.utm,
     },

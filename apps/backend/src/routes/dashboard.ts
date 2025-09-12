@@ -18,12 +18,20 @@ export const dashboardRouter = router({
     )
     .query(async (opts) => {
       const {
-        input: { timespan, filterConfig },
-        ctx: { projectId, project, subscriptionStatus, isPublicDashboard, startDate, timeSpanData },
+        input: { timespan: timeSpan, filterConfig },
+        ctx: { projectId, project, subscriptionStatus, isPublicDashboard, startDate, endDate, timeSpanData },
       } = opts;
 
       const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
-      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, endDate, funnelsData });
+
+      const filterOptions = {
+        timeSpan,
+        startDate,
+        endDate,
+        filterQueries,
+        filterConfig,
+      };
 
       // Fetch all data in parallel
       const [
@@ -37,21 +45,26 @@ export const dashboardRouter = router({
         eventsData,
         eventsTimeSeriesData,
       ] = await Promise.all([
-        clickhouseEvent.getPageViewTimeSeries(projectId, timespan, startDate, filterQueries, filterConfig),
-        clickhouseEvent.getActiveUserTimeSeries(projectId, timespan, startDate, filterQueries),
-        clickhouseEvent.getBounceRateTimeSeries(projectId, timespan, startDate, filterQueries),
-        clickhouseSession.getVisitDurationTimeSeries(projectId, timespan, startDate, filterQueries),
+        clickhouseEvent.getPageViewTimeSeries(projectId, filterOptions),
+        clickhouseEvent.getActiveUserTimeSeries(projectId, filterOptions),
+        clickhouseEvent.getBounceRateTimeSeries(projectId, filterOptions),
+        clickhouseSession.getVisitDurationTimeSeries(projectId, filterOptions),
         clickhouseEvent.getCurrentActiveUsers(projectId, filterQueries),
-        clickhouseEvent.getActiveUsers(projectId, startDate, filterQueries),
-        clickhouseEvent.getMostVisitedPages(projectId, startDate, filterQueries, filterConfig),
-        clickhouseEvent.getEvents(projectId, startDate, filterQueries, filterConfig),
-        clickhouseEvent.getEventsTimeSeries(projectId, timespan, startDate, filterQueries, filterConfig),
+        clickhouseEvent.getActiveUsers(projectId, { startDate, endDate, filterQueries }),
+        clickhouseEvent.getMostVisitedPages(projectId, filterOptions),
+        clickhouseEvent.getEvents(projectId, filterOptions),
+        clickhouseEvent.getEventsTimeSeries(projectId, filterOptions),
       ]);
 
       // Process the data after receiving all results
-      const pageViewTimeSeries = fillTimeSeries(pageViewTimeSeriesData, startDate, timeSpanData.interval);
-      const activeUserTimeSeries = fillTimeSeries(activeUserTimeSeriesData, startDate, timeSpanData.interval);
-      const filledBounceRateTimeSeries = fillTimeSeries(bounceRateTimeSeriesData, startDate, timeSpanData.interval);
+      const pageViewTimeSeries = fillTimeSeries(pageViewTimeSeriesData, startDate, timeSpanData.interval, endDate);
+      const activeUserTimeSeries = fillTimeSeries(activeUserTimeSeriesData, startDate, timeSpanData.interval, endDate);
+      const filledBounceRateTimeSeries = fillTimeSeries(
+        bounceRateTimeSeriesData,
+        startDate,
+        timeSpanData.interval,
+        endDate,
+      );
       const bounceRate = bounceRateTimeSeriesData?.length
         ? (bounceRateTimeSeriesData.reduce((sum, ts) => sum + ts.bounces, 0) /
             bounceRateTimeSeriesData.reduce((sum, ts) => sum + ts.totalSessions, 0)) *
@@ -61,12 +74,13 @@ export const dashboardRouter = router({
         visitDurationTimeSeriesData,
         startDate,
         timeSpanData.interval,
+        endDate,
       );
       const visitDuration = visitDurationTimeSeriesData?.length
         ? visitDurationTimeSeriesData.reduce((sum, ts) => sum + ts.count * ts.sessionCount, 0) /
           visitDurationTimeSeriesData.reduce((sum, ts) => sum + ts.sessionCount, 0)
         : 0;
-      const eventsTimeSeries = fillTimeSeries(eventsTimeSeriesData, startDate, timeSpanData.interval);
+      const eventsTimeSeries = fillTimeSeries(eventsTimeSeriesData, startDate, timeSpanData.interval, endDate);
 
       const chartTimeSeries =
         activeUserTimeSeries?.map((ts, index) => ({
@@ -108,19 +122,18 @@ export const dashboardRouter = router({
     .query(async (opts) => {
       const {
         input: { filterConfig, source = 'referrer' },
-        ctx: { projectId, project, startDate },
+        ctx: { projectId, project, startDate, endDate },
       } = opts;
 
       const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
-      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, endDate, funnelsData });
 
-      const topSourcesData = await clickhouseSession.getTopSources(
-        projectId,
+      const topSourcesData = await clickhouseSession.getTopSources(projectId, source, {
         startDate,
-        source,
+        endDate,
         filterQueries,
         filterConfig,
-      );
+      });
 
       return {
         data: topSourcesData.filter((ts) => {
@@ -141,13 +154,18 @@ export const dashboardRouter = router({
     .query(async (opts) => {
       const {
         input: { filterConfig },
-        ctx: { projectId, project, startDate },
+        ctx: { projectId, project, startDate, endDate },
       } = opts;
 
       const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
-      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, endDate, funnelsData });
 
-      const countryCodes = await clickhouseSession.getCountryCodes(projectId, startDate, filterQueries, filterConfig);
+      const countryCodes = await clickhouseSession.getCountryCodes(projectId, {
+        startDate,
+        endDate,
+        filterQueries,
+        filterConfig,
+      });
 
       return {
         countryCodes,
@@ -162,13 +180,18 @@ export const dashboardRouter = router({
     .query(async (opts) => {
       const {
         input: { filterConfig },
-        ctx: { projectId, project, startDate },
+        ctx: { projectId, project, startDate, endDate },
       } = opts;
 
       const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
-      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, endDate, funnelsData });
 
-      const browsers = await clickhouseEvent.getBrowsers(projectId, startDate, filterQueries, filterConfig);
+      const browsers = await clickhouseEvent.getBrowsers(projectId, {
+        startDate,
+        endDate,
+        filterQueries,
+        filterConfig,
+      });
 
       return {
         browsers,
@@ -183,13 +206,13 @@ export const dashboardRouter = router({
     .query(async (opts) => {
       const {
         input: { filterConfig },
-        ctx: { projectId, project, startDate },
+        ctx: { projectId, project, startDate, endDate },
       } = opts;
 
       const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
-      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, endDate, funnelsData });
 
-      const devices = await clickhouseEvent.getDevices(projectId, startDate, filterQueries, filterConfig);
+      const devices = await clickhouseEvent.getDevices(projectId, { startDate, endDate, filterQueries, filterConfig });
 
       return {
         devices,
@@ -204,18 +227,18 @@ export const dashboardRouter = router({
     .query(async (opts) => {
       const {
         input: { filterConfig },
-        ctx: { projectId, project, startDate },
+        ctx: { projectId, project, startDate, endDate },
       } = opts;
 
       const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
-      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, endDate, funnelsData });
 
-      const operatingSystems = await clickhouseEvent.getOperatingSystems(
-        projectId,
+      const operatingSystems = await clickhouseEvent.getOperatingSystems(projectId, {
         startDate,
+        endDate,
         filterQueries,
         filterConfig,
-      );
+      });
 
       return {
         operatingSystems,
@@ -230,11 +253,11 @@ export const dashboardRouter = router({
     .query(async (opts) => {
       const {
         input: { filterConfig },
-        ctx: { projectId, project, startDate },
+        ctx: { projectId, project, startDate, endDate },
       } = opts;
 
       const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
-      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, endDate, funnelsData });
 
       const filteredFunnelIds =
         filterConfig?.filters.filter((filter) => filter.type === 'funnel').map((filter) => filter.id) ?? [];
@@ -250,6 +273,7 @@ export const dashboardRouter = router({
             projectId,
             steps,
             startDate,
+            endDate,
             undefined,
             filterQueries,
           );
@@ -283,7 +307,7 @@ export const dashboardRouter = router({
     .query(async (opts) => {
       const {
         input: { funnelId, filterConfig },
-        ctx: { projectId, project, startDate },
+        ctx: { projectId, project, startDate, endDate },
       } = opts;
 
       const funnel = await dbFunnel.findById(funnelId);
@@ -292,13 +316,14 @@ export const dashboardRouter = router({
       }
 
       const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
-      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, endDate, funnelsData });
 
       const steps = funnel.steps as FunnelStep[];
       const funnelResults = await clickhouseEvent.getFunnelResults(
         projectId,
         steps,
         startDate,
+        endDate,
         undefined,
         filterQueries,
       );
@@ -328,7 +353,7 @@ export const dashboardRouter = router({
     .query(async (opts) => {
       const {
         input: { eventName, filterConfig },
-        ctx: { projectId, project, startDate, isPublicDashboard },
+        ctx: { projectId, project, startDate, endDate, isPublicDashboard },
       } = opts;
 
       if (isPublicDashboard) {
@@ -339,15 +364,14 @@ export const dashboardRouter = router({
       }
 
       const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
-      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, endDate, funnelsData });
 
-      const properties = await clickhouseEvent.getEventProperties(
-        projectId,
-        eventName,
+      const properties = await clickhouseEvent.getEventProperties(projectId, eventName, {
         startDate,
+        endDate,
         filterQueries,
         filterConfig,
-      );
+      });
 
       return {
         properties,
@@ -364,7 +388,7 @@ export const dashboardRouter = router({
     .query(async (opts) => {
       const {
         input: { eventName, property, filterConfig },
-        ctx: { projectId, project, startDate, isPublicDashboard },
+        ctx: { projectId, project, startDate, endDate, isPublicDashboard },
       } = opts;
 
       if (isPublicDashboard) {
@@ -375,16 +399,14 @@ export const dashboardRouter = router({
       }
 
       const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
-      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, endDate, funnelsData });
 
-      const values = await clickhouseEvent.getPropertyValues(
-        projectId,
-        eventName,
-        property,
+      const values = await clickhouseEvent.getPropertyValues(projectId, eventName, property, {
         startDate,
+        endDate,
         filterQueries,
         filterConfig,
-      );
+      });
 
       return {
         values,

@@ -2,7 +2,7 @@ import type { CardRootProps } from '@chakra-ui/react';
 import { Card, Icon, AspectRatio, Box, Flex, SimpleGrid, Text, useBreakpointValue } from '@chakra-ui/react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import type { ChartInterval, TimeSpan } from '@vemetric/common/charts/timespans';
-import { TIME_SPAN_DATA } from '@vemetric/common/charts/timespans';
+import { getCustomDateRangeInterval, TIME_SPAN_DATA } from '@vemetric/common/charts/timespans';
 import { formatNumber } from '@vemetric/common/math';
 import React, { useState } from 'react';
 import { TbActivity } from 'react-icons/tb';
@@ -32,6 +32,16 @@ import { Status } from '@/components/ui/status';
 import { Tooltip } from '@/components/ui/tooltip';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import type { DashboardData } from '@/utils/trpc';
+
+const getTimespanInterval = (timespan: TimeSpan, _startDate?: string, _endDate?: string) => {
+  const timeSpanData = TIME_SPAN_DATA[timespan];
+  if (timespan === 'custom' && _startDate) {
+    const startDate = new Date(_startDate + 'T00:00:00Z');
+    const endDate = _endDate ? new Date(_endDate + 'T23:59:59Z') : new Date(_startDate + 'T23:59:59Z');
+    return getCustomDateRangeInterval(startDate, endDate);
+  }
+  return timeSpanData.interval;
+};
 
 const getYAxisDomain = (autoMinValue: boolean, minValue: number | undefined, maxValue: number | undefined) => {
   const minDomain = autoMinValue ? 'auto' : minValue ?? 0;
@@ -101,6 +111,8 @@ type PayloadItem = {
 
 interface Props extends CardRootProps {
   timespan: TimeSpan;
+  timespanStartDate?: string;
+  timespanEndDate?: string;
   data: DashboardData;
   autoMinValue?: boolean;
   minValue?: number;
@@ -115,6 +127,8 @@ export const DashboardChart = (props: Props) => {
   const {
     data,
     timespan,
+    timespanStartDate,
+    timespanEndDate,
     autoMinValue = false,
     minValue,
     maxValue,
@@ -129,9 +143,9 @@ export const DashboardChart = (props: Props) => {
   const { e: showEvents } = useSearch({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
   const navigate = useNavigate({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
 
-  const timeSpanData = TIME_SPAN_DATA[timespan];
-  const showEndDate = timeSpanData.interval === 'ten_minutes' || timeSpanData.interval === 'hourly';
-  const chartData = transformChartSeries(data.chartTimeSeries ?? [], timeSpanData.interval, timespan);
+  const timeSpanInterval = getTimespanInterval(timespan, timespanStartDate, timespanEndDate);
+  const showEndDate = timeSpanInterval === 'ten_minutes' || timeSpanInterval === 'hourly';
+  const chartData = transformChartSeries(data.chartTimeSeries ?? [], timeSpanInterval, timespan);
 
   const [activeMobileCategory, setActiveMobileCategory] = useState<ChartCategoryKey>('users');
   const [activeCategoryKeys, setActiveCategoryKeys] = useState<Array<ChartCategoryKey>>(['users', 'pageViews']);

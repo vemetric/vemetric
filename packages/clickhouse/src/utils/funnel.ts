@@ -36,6 +36,7 @@ export const buildWindowFunnelSubquery = (
   projectId: bigint,
   stepConditions: string[],
   startDate?: Date,
+  endDate?: Date,
   windowHours: number = 168,
   filterQueries?: string,
 ): string => {
@@ -49,6 +50,7 @@ export const buildWindowFunnelSubquery = (
     FROM event
     WHERE projectId = ${escape(projectId)}
       ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+      ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
       ${filterQueries ?? ''}
     GROUP BY userId
   `;

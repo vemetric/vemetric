@@ -33,7 +33,9 @@ interface Props {
 
 export const FunnelsCard = ({ filterConfig, publicDashboard, activeUsers }: Props) => {
   const params = useParams({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
-  const { timespan } = useTimespanParam({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
+  const { timespan, startDate, endDate } = useTimespanParam({
+    from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
+  });
   const { sf: selectedFunnel, fu: activeUsersVisible } = useSearch({
     from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
   });
@@ -57,7 +59,7 @@ export const FunnelsCard = ({ filterConfig, publicDashboard, activeUsers }: Prop
   const activeFilters = filterConfig?.filters.filter((f) => f.type === 'funnel') ?? [];
 
   const { data, isPreviousData, error } = trpc.dashboard.getFunnels.useQuery(
-    { ...params, timespan, filterConfig },
+    { ...params, timespan, startDate, endDate, filterConfig },
     {
       keepPreviousData: true,
       onError: () => {},

@@ -6,7 +6,7 @@ import { prismaClient } from 'database';
 import { logger } from '../utils/logger';
 
 async function main() {
-  /** TODO: already queued
+  /** HINT: already queued
   const noProjectSequence = getDripSequence('NO_PROJECT');
 
   const users = await prismaClient.user.findMany({

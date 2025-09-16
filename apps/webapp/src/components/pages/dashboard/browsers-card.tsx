@@ -26,13 +26,15 @@ interface Props {
 
 export const BrowsersCard = ({ filterConfig, publicDashboard }: Props) => {
   const params = useParams({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
-  const { timespan } = useTimespanParam({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
+  const { timespan, startDate, endDate } = useTimespanParam({
+    from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
+  });
   const { toggleFilter } = useFilters({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
 
   const activeFilters = filterConfig?.filters.filter((f) => f.type === 'browser') ?? [];
 
   const { data, isPreviousData, error } = trpc.dashboard.getBrowsers.useQuery(
-    { ...params, timespan, filterConfig },
+    { ...params, timespan, startDate, endDate, filterConfig },
     {
       keepPreviousData: true,
       onError: () => {},

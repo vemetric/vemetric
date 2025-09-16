@@ -6,6 +6,7 @@ export type HonoContextVars = {
   project: Project;
   allowCookies: boolean;
   proxyHost?: string;
+  ipAddress: string;
 };
 
 export type HonoContext = Context<{ Variables: HonoContextVars }>;

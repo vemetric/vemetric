@@ -1,4 +1,5 @@
 import { formatClickhouseDate } from '@vemetric/common/date';
+import { getClientIp } from '@vemetric/common/request-ip';
 import { addToQueue } from '@vemetric/queues/queue-utils';
 import { updateUserDataModel, updateUserQueue } from '@vemetric/queues/update-user-queue';
 import { generateUserId } from 'database';
@@ -90,6 +91,17 @@ app.use('*', async (context, next) => {
     const project = await getProjectByToken(context);
     context.set('project', project);
     context.set('projectId', BigInt(project.id));
+
+    const ipAddress = getClientIp(context) ?? '';
+    context.set('ipAddress', ipAddress);
+
+    if (project.excludedIps && ipAddress) {
+      // Use comma-wrapped check to avoid array allocation on every request
+      if (`,${project.excludedIps},`.includes(`,${ipAddress},`)) {
+        // Silently ignore requests from excluded IPs
+        return context.text('', 200);
+      }
+    }
 
     let allowCookies = false;
     const allowCookiesHeader = req.header('allow-cookies');

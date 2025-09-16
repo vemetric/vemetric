@@ -1,7 +1,6 @@
 import { formatClickhouseDate } from '@vemetric/common/date';
 import { EventNames } from '@vemetric/common/event';
 import { generateEventId } from '@vemetric/common/id';
-import { getClientIp } from '@vemetric/common/request-ip';
 import { getNormalizedDomain } from '@vemetric/common/url';
 import { createDeviceQueue } from '@vemetric/queues/create-device-queue';
 import { eventQueue } from '@vemetric/queues/event-queue';
@@ -63,7 +62,7 @@ export function validateSpecialEvents(context: HonoContext, body: EventSchema) {
 export const trackEvent = async (context: HonoContext, body: EventSchema) => {
   const { req } = context;
   const contextId = body.contextId;
-  const { projectId, allowCookies } = context.var;
+  const { projectId, allowCookies, ipAddress } = context.var;
 
   let userId = await getUserIdFromRequest(context);
 
@@ -85,8 +84,6 @@ export const trackEvent = async (context: HonoContext, body: EventSchema) => {
 
   const headers = req.header();
   delete headers['cookie'];
-
-  const ipAddress = getClientIp(context) ?? '';
 
   const eventId = generateEventId();
 

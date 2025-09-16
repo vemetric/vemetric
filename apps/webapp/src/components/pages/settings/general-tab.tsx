@@ -19,6 +19,7 @@ import { TbDashboard, TbNetwork, TbSettings, TbBrowserShare, TbLockX, TbFlagCode
 import { CardIcon } from '@/components/card-icon';
 import { CodeBox } from '@/components/code-box';
 import { IntegrationGuides } from '@/components/integration-guides';
+import { ExcludedIpsCard } from '@/components/pages/settings/excluded-ips-card';
 import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
@@ -214,6 +215,7 @@ export const GeneralTab = (props: Props) => {
           </VStack>
         </Card.Body>
       </Card.Root>
+      <ExcludedIpsCard projectId={projectId} initialExcludedIps={projectSettings.excludedIps} />
       <Card.Root>
         <Card.Header>
           <Flex align="center" gap={2}>

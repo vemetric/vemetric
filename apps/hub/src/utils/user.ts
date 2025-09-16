@@ -1,15 +1,14 @@
 import { formatClickhouseDate } from '@vemetric/common/date';
-import { getClientIp } from '@vemetric/common/request-ip';
 import { createUserQueue } from '@vemetric/queues/create-user-queue';
 import { enrichUserQueue } from '@vemetric/queues/enrich-user-queue';
 import { mergeUserQueue } from '@vemetric/queues/merge-user-queue';
 import { addToQueue } from '@vemetric/queues/queue-utils';
 import { updateUserDataModel, updateUserQueue } from '@vemetric/queues/update-user-queue';
 import { generateUserId, dbUserIdentificationMap } from 'database';
-import type { Context } from 'hono';
 import { z } from 'zod';
 import { setUserIdCookie } from './cookie';
 import { logger } from './logger';
+import type { HonoContext } from '../types';
 
 const enableLogs = false;
 const logInfo = (params: Record<string, unknown>, msg: string) => {
@@ -32,8 +31,13 @@ export const identifySchema = z.object({
 });
 export type IdentifySchema = z.infer<typeof identifySchema>;
 
-export async function identifyUser(context: Context, body: IdentifySchema, projectId: bigint, userId: bigint | null) {
-  const { allowCookies } = context.var;
+export async function identifyUser(
+  context: HonoContext,
+  body: IdentifySchema,
+  projectId: bigint,
+  userId: bigint | null,
+) {
+  const { allowCookies, ipAddress } = context.var;
 
   const { identifier, displayName } = body;
   logInfo({ projectId: String(projectId), userId: String(userId), identifier }, 'start identifying user');
@@ -85,7 +89,6 @@ export async function identifyUser(context: Context, body: IdentifySchema, proje
     if (userId === null) {
       userId = generateUserId();
     }
-    const ipAddress = getClientIp(context) ?? '';
     await dbUserIdentificationMap.create(String(projectId), String(userId), identifier);
 
     await addToQueue(

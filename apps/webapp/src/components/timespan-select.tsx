@@ -1,4 +1,4 @@
-import { Button, ButtonGroup, Flex, Popover, Portal } from '@chakra-ui/react';
+import { Button, ButtonGroup, Flex, Popover, Portal, Icon } from '@chakra-ui/react';
 import { getRouteApi, Navigate, useParams, useRouter } from '@tanstack/react-router';
 import type { TimeSpan } from '@vemetric/common/charts/timespans';
 import {
@@ -9,7 +9,15 @@ import {
 } from '@vemetric/common/charts/timespans';
 import { addDays, isBefore } from 'date-fns';
 import { TbCalendar, TbChevronDown } from 'react-icons/tb';
-import { MenuContent, MenuRadioItem, MenuRadioItemGroup, MenuRoot, MenuTrigger } from '@/components/ui/menu';
+import {
+  MenuContent,
+  MenuItem,
+  MenuRadioItem,
+  MenuRadioItemGroup,
+  MenuRoot,
+  MenuTrigger,
+  MenuSeparator,
+} from '@/components/ui/menu';
 import type { TimespanRoute } from '@/hooks/use-timespan-param';
 import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { formatTimeSpanDateRange } from '@/utils/timespans';
@@ -63,19 +71,19 @@ export const TimespanSelect = ({ from, excludeLive = false }: Props) => {
   };
 
   return (
-    <ButtonGroup attached variant="surface" size={{ base: 'xs', md: 'sm' }}>
-      <Popover.Root lazyMount unmountOnExit>
-        <Popover.Trigger asChild>
-          <Button px={2.5} roundedRight="none" _focusVisible={{ zIndex: 1 }}>
-            <TbCalendar />
-            {getCustomTimespanLabel()}
-          </Button>
-        </Popover.Trigger>
-        <Portal>
-          <Popover.Positioner>
-            <Popover.Content rounded="lg" overflow="hidden">
-              <Popover.Context>
-                {({ setOpen }) => (
+    <Popover.Root lazyMount unmountOnExit>
+      <Popover.Context>
+        {({ setOpen }) => (
+          <ButtonGroup attached variant="surface" size={{ base: 'xs', md: 'sm' }}>
+            <Popover.Trigger asChild>
+              <Button px={2.5} roundedRight="none" _focusVisible={{ zIndex: 1 }}>
+                <TbCalendar />
+                {getCustomTimespanLabel()}
+              </Button>
+            </Popover.Trigger>
+            <Portal>
+              <Popover.Positioner>
+                <Popover.Content rounded="lg" overflow="hidden">
                   <DateRangePicker
                     minDate={data?.isSubscriptionActive ? undefined : todayMinus31Days}
                     minRangeDisabledTooltip="Upgrade to the Professional plan for longer data retention."
@@ -104,54 +112,65 @@ export const TimespanSelect = ({ from, excludeLive = false }: Props) => {
                     }}
                     enableMonthRangeSelection
                   />
-                )}
-              </Popover.Context>
-            </Popover.Content>
-          </Popover.Positioner>
-        </Portal>
-      </Popover.Root>
-      <MenuRoot positioning={{ placement: 'bottom-end' }}>
-        <MenuTrigger asChild>
-          <Button roundedLeft="none" minW="20px" px={timespan === 'custom' ? 1.5 : 2.5}>
-            {timespan === 'live' && <Status value="success" color="fg" gap={1.5} />}{' '}
-            {timespan === 'custom' ? <TbChevronDown /> : timeSpanData.label}
-          </Button>
-        </MenuTrigger>
-        <MenuContent minW="10rem">
-          <MenuRadioItemGroup
-            value={timespan}
-            onValueChange={({ value }) => {
-              navigate({
-                resetScroll: false,
-                search: (prev) => ({ ...prev, t: String(value) as TimeSpan, sd: undefined, ed: undefined }),
-              });
-            }}
-          >
-            {Object.entries(TIME_SPAN_DATA)
-              .filter(([key]) => !excludeLive || key !== 'live')
-              .filter(([key]) => key !== 'custom')
-              .map(([key, value]) => {
-                const isDisabled = !isTimespanAllowed(key as TimeSpan, Boolean(data?.isSubscriptionActive));
+                </Popover.Content>
+              </Popover.Positioner>
+            </Portal>
+            <MenuRoot positioning={{ placement: 'bottom-end' }}>
+              <MenuTrigger asChild>
+                <Button roundedLeft="none" minW="20px" px={timespan === 'custom' ? 1.5 : 2.5}>
+                  {timespan === 'live' && <Status value="success" color="fg" gap={1.5} />}{' '}
+                  {timespan === 'custom' ? <TbChevronDown /> : timeSpanData.label}
+                </Button>
+              </MenuTrigger>
+              <MenuContent minW="10rem">
+                <MenuRadioItemGroup
+                  value={timespan}
+                  onValueChange={({ value }) => {
+                    navigate({
+                      resetScroll: false,
+                      search: (prev) => ({ ...prev, t: String(value) as TimeSpan, sd: undefined, ed: undefined }),
+                    });
+                  }}
+                >
+                  {Object.entries(TIME_SPAN_DATA)
+                    .filter(([key]) => !excludeLive || key !== 'live')
+                    .filter(([key]) => key !== 'custom')
+                    .map(([key, value]) => {
+                      const isDisabled = !isTimespanAllowed(key as TimeSpan, Boolean(data?.isSubscriptionActive));
 
-                return (
-                  <Tooltip
-                    key={key}
-                    contentProps={{ maxW: '230px' }}
-                    content="Upgrade to the Professional plan for longer data retention."
-                    disabled={!isDisabled}
+                      return (
+                        <Tooltip
+                          key={key}
+                          contentProps={{ maxW: '230px' }}
+                          content="Upgrade to the Professional plan for longer data retention."
+                          disabled={!isDisabled}
+                        >
+                          <MenuRadioItem value={key} disabled={isDisabled}>
+                            <Flex alignItems="center" gap={2}>
+                              {value.label}
+                              {key === 'live' ? <Status value="success" color="fg" gap={1.5} /> : null}
+                            </Flex>
+                          </MenuRadioItem>
+                        </Tooltip>
+                      );
+                    })}
+                  <MenuSeparator my="0" />
+                  <MenuItem
+                    value="custom"
+                    pl="2.5"
+                    onClick={() => {
+                      setOpen(true);
+                    }}
                   >
-                    <MenuRadioItem value={key} disabled={isDisabled}>
-                      <Flex alignItems="center" gap={2}>
-                        {value.label}
-                        {key === 'live' ? <Status value="success" color="fg" gap={1.5} /> : null}
-                      </Flex>
-                    </MenuRadioItem>
-                  </Tooltip>
-                );
-              })}
-          </MenuRadioItemGroup>
-        </MenuContent>
-      </MenuRoot>
-    </ButtonGroup>
+                    <Icon as={TbCalendar} />
+                    Custom
+                  </MenuItem>
+                </MenuRadioItemGroup>
+              </MenuContent>
+            </MenuRoot>
+          </ButtonGroup>
+        )}
+      </Popover.Context>
+    </Popover.Root>
   );
 };

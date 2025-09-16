@@ -266,7 +266,7 @@ export const timespanProcedure = projectOrPublicProcedure
           message: `Start date cannot be before ${format(timeSpanRangeMin, 'yyyy-MM-dd')}`,
         });
       }
-      if (isAfter(endDate, timeSpanRangeMax)) {
+      if (isAfter(endDate, addDays(timeSpanRangeMax, 2))) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message: `End date cannot be after ${format(timeSpanRangeMax, 'yyyy-MM-dd')}`,

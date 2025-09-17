@@ -1,4 +1,3 @@
-import { getClientIp } from '@vemetric/common/request-ip';
 import { dbUserIdentificationMap, dbSalt, generateUserId } from 'database';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Mock } from 'vitest';
@@ -52,6 +51,7 @@ describe('getUserIdFromRequest', () => {
         name: 'Test Project',
       },
       allowCookies: true,
+      ipAddress: '',
     },
     env: {},
     finalized: false,
@@ -137,13 +137,13 @@ describe('getUserIdFromRequest', () => {
     vi.mocked(getUserIdFromCookie).mockReturnValue(null);
     mockJson.mockResolvedValue({});
     Object.defineProperty(mockContext.var, 'allowCookies', { value: false });
+    Object.defineProperty(mockContext.var, 'ipAddress', { value: '127.0.0.1' });
     vi.mocked(dbSalt.getLatestSalts).mockResolvedValue({
       currentSalt: { id: 'current-salt', createdAt: new Date() },
       previousSalt: { id: 'previous-salt', createdAt: new Date() },
     });
     vi.mocked(hasActiveSession).mockResolvedValue(false);
     vi.mocked(generateUserId).mockReturnValue(BigInt(999));
-    vi.mocked(getClientIp).mockReturnValue('127.0.0.1');
 
     const result = await getUserIdFromRequest(mockContext);
     expect(result).toBe(BigInt(999));
@@ -159,13 +159,13 @@ describe('getUserIdFromRequest', () => {
     vi.mocked(getUserIdFromCookie).mockReturnValue(null);
     mockJson.mockResolvedValue({});
     Object.defineProperty(mockContext.var, 'allowCookies', { value: false });
+    Object.defineProperty(mockContext.var, 'ipAddress', { value: '192.168.1.1' });
     vi.mocked(dbSalt.getLatestSalts).mockResolvedValue({
       currentSalt: { id: 'current-salt', createdAt: new Date() },
       previousSalt: { id: 'previous-salt', createdAt: new Date() },
     });
     vi.mocked(hasActiveSession).mockResolvedValue(true);
     vi.mocked(generateUserId).mockReturnValue(BigInt(888));
-    vi.mocked(getClientIp).mockReturnValue('192.168.1.1');
 
     const result = await getUserIdFromRequest(mockContext);
     expect(result).toBe(BigInt(888));

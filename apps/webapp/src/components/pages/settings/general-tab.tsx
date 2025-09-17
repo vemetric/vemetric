@@ -215,7 +215,11 @@ export const GeneralTab = (props: Props) => {
           </VStack>
         </Card.Body>
       </Card.Root>
-      <ExcludedIpsCard projectId={projectId} initialExcludedIps={projectSettings.excludedIps} />
+      <ExcludedIpsCard
+        projectId={projectId}
+        currentIp={projectSettings.currentIp}
+        initialExcludedIps={projectSettings.excludedIps}
+      />
       <Card.Root>
         <Card.Header>
           <Flex align="center" gap={2}>

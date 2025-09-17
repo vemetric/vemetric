@@ -1,17 +1,19 @@
 import { Card, Button, Field, Flex, Stack, Text, Badge, HStack, Icon, Input, Spinner } from '@chakra-ui/react';
 import { useState, useEffect } from 'react';
-import { TbBan, TbX } from 'react-icons/tb';
+import { TbBan, TbUser, TbX } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import { toaster } from '@/components/ui/toaster';
+import { Tooltip } from '@/components/ui/tooltip';
 import { trpc } from '@/utils/trpc';
 
 interface Props {
   projectId: string;
+  currentIp: string | null;
   initialExcludedIps?: string[];
 }
 
 export const ExcludedIpsCard = (props: Props) => {
-  const { projectId, initialExcludedIps = [] } = props;
+  const { projectId, currentIp, initialExcludedIps = [] } = props;
   const [excludedIpValue, setExcludedIpValue] = useState('');
   const [removedIp, setRemovedIp] = useState('');
   const [excludedIps, setExcludedIps] = useState<string[]>(initialExcludedIps);
@@ -25,7 +27,6 @@ export const ExcludedIpsCard = (props: Props) => {
   const { mutate: addExcludedIp, isLoading: isAddingIp } = trpc.projects.addExcludedIp.useMutation({
     onSuccess: (data) => {
       setExcludedIps(data.excludedIps);
-      setExcludedIpValue('');
       toaster.create({
         title: 'IP address excluded successfully',
         type: 'success',
@@ -76,17 +77,27 @@ export const ExcludedIpsCard = (props: Props) => {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmedIp = excludedIpValue.trim();
+  const excludeIp = (ip: string, onSuccess?: () => void) => {
+    const trimmedIp = ip.trim();
 
     if (trimmedIp === '') {
       return; // Don't submit empty values
     }
 
-    addExcludedIp({
-      projectId,
-      ip: trimmedIp,
+    addExcludedIp(
+      {
+        projectId,
+        ip: trimmedIp,
+      },
+      { onSuccess },
+    );
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    excludeIp(excludedIpValue, () => {
+      setExcludedIpValue('');
     });
   };
 
@@ -117,28 +128,37 @@ export const ExcludedIpsCard = (props: Props) => {
             {excludedIps.length > 0 && (
               <HStack wrap="wrap" mt={2}>
                 {excludedIps.map((ip) => (
-                  <Badge
+                  <Tooltip
                     key={ip}
-                    display="flex"
-                    alignItems="center"
-                    size="sm"
-                    cursor="pointer"
-                    className="group"
-                    onClick={() => removeIp(ip)}
+                    content="This is your current IP address"
+                    disabled={ip !== currentIp}
+                    positioning={{ placement: 'top' }}
                   >
-                    {ip}{' '}
-                    {removedIp === ip ? (
-                      <Spinner size="xs" />
-                    ) : (
-                      <Icon as={TbX} _groupHover={{ color: 'red.600', opacity: 0.8 }} />
-                    )}
-                  </Badge>
+                    <Badge
+                      colorPalette={ip === currentIp ? 'purple' : 'gray'}
+                      display="flex"
+                      alignItems="center"
+                      size="sm"
+                      cursor="pointer"
+                      className="group"
+                      onClick={() => removeIp(ip)}
+                    >
+                      {ip === currentIp && <Icon as={TbUser} />}
+                      {ip}{' '}
+                      {removedIp === ip ? (
+                        <Spinner size="xs" />
+                      ) : (
+                        <Icon as={TbX} _groupHover={{ color: 'red.600', opacity: 0.8 }} />
+                      )}
+                    </Badge>
+                  </Tooltip>
                 ))}
               </HStack>
             )}
             <Flex as="form" gap={2} w="100%" onSubmit={handleSubmit}>
               <Input
                 size="sm"
+                disabled={isAddingIp}
                 value={excludedIpValue}
                 onChange={(e) => {
                   setExcludedIpValue(e.target.value);
@@ -151,6 +171,17 @@ export const ExcludedIpsCard = (props: Props) => {
               </Button>
             </Flex>
           </Field.Root>
+          {currentIp && !excludedIps.includes(currentIp) && (
+            <Flex align="center" gap={2} flexWrap="wrap">
+              <Text fontSize="sm" opacity={0.7}>
+                Your current IP address is:
+              </Text>
+              <Badge colorPalette="purple">{currentIp}</Badge>
+              <Button size="2xs" variant="subtle" loading={isAddingIp} onClick={() => excludeIp(currentIp)}>
+                Exclude it
+              </Button>
+            </Flex>
+          )}
         </Stack>
       </Card.Body>
     </Card.Root>

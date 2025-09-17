@@ -4,15 +4,15 @@ import { prismaClient } from '../client';
 export type { BillingInfo };
 
 export const dbBillingInfo = {
-  create: async (data: Omit<BillingInfo, 'createdAt'>) => {
-    return prismaClient.billingInfo.create({
-      data,
-    });
-  },
-  update: async (data: Partial<Omit<BillingInfo, 'organizationId'>> & { organizationId: string }) => {
-    return prismaClient.billingInfo.update({
+  upsert: async ({
+    createdAt,
+    transactionId,
+    ...data
+  }: Omit<BillingInfo, 'createdAt' | 'transactionId'> & Partial<Pick<BillingInfo, 'createdAt' | 'transactionId'>>) => {
+    return prismaClient.billingInfo.upsert({
       where: { organizationId: data.organizationId },
-      data,
+      create: { ...data, createdAt: createdAt || new Date(), transactionId: transactionId || '' },
+      update: { ...data, createdAt: createdAt, transactionId: transactionId },
     });
   },
   findByOrganizationId: async (organizationId: string) => {

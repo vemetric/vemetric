@@ -1,7 +1,6 @@
 import { Box, Button, Card, Flex, Icon, IconButton, LinkOverlay, Skeleton, useBreakpointValue } from '@chakra-ui/react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { zodValidator } from '@tanstack/zod-adapter';
-import { TIME_SPANS } from '@vemetric/common/charts/timespans';
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { AnimatePresence, motion } from 'motion/react';
 import React, { useState } from 'react';
@@ -22,16 +21,20 @@ import { ErrorState } from '@/components/ui/empty-state';
 import { useActiveUsersParam } from '@/hooks/use-activeusers-param';
 import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { useSetBreadcrumbs, useSetDocsLink } from '@/stores/header-store';
+import { timeSpanSearchMiddleware, timespanSearchSchema } from '@/utils/timespans';
 import { trpc } from '@/utils/trpc';
 
 const searchSchema = z.object({
-  t: z.enum(TIME_SPANS).optional(),
+  ...timespanSearchSchema.shape,
   u: z.boolean().optional(),
   f: filterConfigSchema,
 });
 
 export const Route = createFileRoute('/_layout/p/$projectId/funnels/$funnelId')({
   validateSearch: zodValidator(searchSchema),
+  search: {
+    middlewares: [timeSpanSearchMiddleware],
+  },
   component: RouteComponent,
 });
 
@@ -39,7 +42,7 @@ function RouteComponent() {
   const navigate = Route.useNavigate();
   const { projectId, funnelId } = Route.useParams();
   const { f: filterConfig } = Route.useSearch();
-  const { timespan } = useTimespanParam({ from: '/_layout/p/$projectId/funnels/$funnelId' });
+  const { timespan, startDate, endDate } = useTimespanParam({ from: '/_layout/p/$projectId/funnels/$funnelId' });
   const { activeUsersVisible, setActiveUsersVisible } = useActiveUsersParam({
     from: '/_layout/p/$projectId/funnels/$funnelId',
   });
@@ -51,6 +54,8 @@ function RouteComponent() {
   const { data: filterableData } = trpc.filters.getFilterableData.useQuery({
     projectId,
     timespan,
+    startDate,
+    endDate,
   });
 
   const {
@@ -78,6 +83,8 @@ function RouteComponent() {
     {
       projectId,
       timespan,
+      startDate,
+      endDate,
       id: funnelId,
       filterConfig,
     },

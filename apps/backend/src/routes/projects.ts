@@ -8,7 +8,7 @@ import { clickhouseEvent } from 'clickhouse';
 import { ProjectRole, dbProject } from 'database';
 import { z } from 'zod';
 import { logger } from '../utils/logger';
-import { fillTimeSeries, getStartDate } from '../utils/timeseries';
+import { fillTimeSeries, getTimeSpanStartDate } from '../utils/timeseries';
 import {
   loggedInProcedure,
   organizationProcedure,
@@ -151,9 +151,9 @@ export const projectsRouter = router({
       ctx: { user },
     } = opts;
 
-    const timespan = '24hrs';
-    const timeSpanData = TIME_SPAN_DATA[timespan];
-    const startDate = getStartDate(timespan);
+    const timeSpan = '24hrs';
+    const timeSpanData = TIME_SPAN_DATA[timeSpan];
+    const startDate = getTimeSpanStartDate(timeSpan);
 
     const projects = await dbProject.findByUserId(user.id);
     const projectData = await Promise.all(
@@ -162,8 +162,8 @@ export const projectsRouter = router({
 
         const dataPromises = Promise.all([
           clickhouseEvent.getCurrentActiveUsers(projectId),
-          clickhouseEvent.getActiveUserTimeSeries(projectId, timespan, startDate),
-          clickhouseEvent.getActiveUsers(projectId, startDate),
+          clickhouseEvent.getActiveUserTimeSeries(projectId, { timeSpan, startDate, filterQueries: '' }),
+          clickhouseEvent.getActiveUsers(projectId, { startDate }),
         ]);
 
         return {

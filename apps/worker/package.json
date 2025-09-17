@@ -36,7 +36,7 @@
     "@vemetric/eslint-config": "workspace:*",
     "csv-parser": "^3.2.0",
     "nanoid": "^5.0.4",
-    "typescript": "^5.2.2",
+    "typescript": "^5.7.3",
     "vitest": "^3.2.3"
   }
 }

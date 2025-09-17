@@ -28,6 +28,7 @@ export function CodeBox({ children, startElement, w, ...props }: Props) {
               </Box>
             </Card.Body>
             <IconButton
+              asChild
               pos="absolute"
               size="2xs"
               rounded="4px"

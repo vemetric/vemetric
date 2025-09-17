@@ -1,5 +1,6 @@
 import { trpcServer } from '@hono/trpc-server';
 import * as Sentry from '@sentry/bun';
+import { getClientIp } from '@vemetric/common/request-ip';
 import { clickhouseClient } from 'clickhouse';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -132,6 +133,7 @@ app.use(
     router: appRouter,
     createContext: (_opts, c: HonoContext) => ({
       var: {
+        ipAddress: getClientIp(c) ?? null,
         session: c.get('session'),
         user: c.get('user'),
       },

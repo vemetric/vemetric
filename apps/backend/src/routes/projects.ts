@@ -114,7 +114,10 @@ export const projectsRouter = router({
 
   settings: projectProcedure.query(async (opts) => {
     const {
-      ctx: { project },
+      ctx: {
+        project,
+        var: { ipAddress },
+      },
     } = opts;
 
     return {
@@ -122,6 +125,8 @@ export const projectsRouter = router({
       domain: project.domain,
       token: project.token,
       publicDashboard: project.publicDashboard,
+      excludedIps: project.excludedIps ? project.excludedIps.split(',') : [],
+      currentIp: ipAddress,
     };
   }),
 
@@ -229,5 +234,49 @@ export const projectsRouter = router({
     await dbProject.update(project.id, { eventIcons: updatedIcons });
 
     return updatedIcons;
+  }),
+
+  addExcludedIp: projectProcedure.input(z.object({ ip: z.string().ip() })).mutation(async (opts) => {
+    const {
+      input: { ip },
+      ctx: { project },
+    } = opts;
+
+    // Get current excluded IPs
+    const currentIps = project.excludedIps ? project.excludedIps.split(',') : [];
+
+    // Check if IP already exists
+    if (currentIps.includes(ip)) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'This IP address is already excluded',
+      });
+    }
+
+    // Add new IP and update
+    currentIps.push(ip);
+    const excludedIpsString = currentIps.join(',');
+    await dbProject.update(project.id, { excludedIps: excludedIpsString });
+
+    return { excludedIps: currentIps };
+  }),
+
+  removeExcludedIp: projectProcedure.input(z.object({ ip: z.string() })).mutation(async (opts) => {
+    const {
+      input: { ip },
+      ctx: { project },
+    } = opts;
+
+    // Get current excluded IPs
+    const currentIps = project.excludedIps ? project.excludedIps.split(',') : [];
+
+    // Filter out the IP to remove
+    const updatedIps = currentIps.filter((existingIp) => existingIp !== ip);
+
+    // Update database
+    const excludedIpsString = updatedIps.length > 0 ? updatedIps.join(',') : null;
+    await dbProject.update(project.id, { excludedIps: excludedIpsString });
+
+    return { excludedIps: updatedIps };
   }),
 });

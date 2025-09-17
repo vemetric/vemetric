@@ -134,6 +134,7 @@ model Project {
   publicDashboard Boolean   @default(false)
   eventIcons      Json      @default("{}")
   firstEventAt    DateTime?
+  excludedIps     String?   @db.Text
 
   users            UserProject[]
   organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)

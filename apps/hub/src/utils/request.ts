@@ -1,4 +1,3 @@
-import { getClientIp } from '@vemetric/common/request-ip';
 import type { UserIdentificationMap } from 'database';
 import { dbSalt, dbUserIdentificationMap, generateUserId } from 'database';
 import type { HonoRequest } from 'hono';
@@ -24,7 +23,7 @@ export function isPrefetchRequest(req: HonoRequest) {
 
 export async function getUserIdFromRequest(context: HonoContext, useBodyIdentifier = true) {
   const { req } = context;
-  const { projectId, allowCookies } = context.var;
+  const { projectId, allowCookies, ipAddress } = context.var;
 
   try {
     const userId = getUserIdFromCookie(context);
@@ -78,7 +77,6 @@ export async function getUserIdFromRequest(context: HonoContext, useBodyIdentifi
 
       const userAgent = req.header('user-agent');
       if (userAgent) {
-        const ipAddress = getClientIp(context) ?? '';
         const { currentSalt, previousSalt } = await dbSalt.getLatestSalts();
 
         const previousUserId = generateUserId({

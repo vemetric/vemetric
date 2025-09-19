@@ -4,7 +4,7 @@ import { Worker } from 'bullmq';
 import type { ClickhouseUser } from 'clickhouse';
 import { clickhouseSession, clickhouseUser } from 'clickhouse';
 import { getDeviceDataFromHeaders } from '../utils/device';
-import { getReferrerFromHeaders } from '../utils/referrer';
+import { getReferrerFromRequest } from '../utils/referrer';
 import { getSessionData, increaseClickhouseSessionDuration } from '../utils/session';
 import { getUrlParams } from '../utils/url';
 
@@ -31,7 +31,7 @@ export async function initSessionWorker() {
         const userDisplayName = user?.displayName ?? reqDisplayName;
 
         const userAgent = headers['user-agent'];
-        const referrer = await getReferrerFromHeaders(projectId, headers);
+        const referrer = await getReferrerFromRequest(projectId, headers, url);
         const urlParams = getUrlParams(url);
 
         const deviceData = await getDeviceDataFromHeaders(headers);

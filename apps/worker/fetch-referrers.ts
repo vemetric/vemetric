@@ -25,6 +25,7 @@ const customReferrers = {
   'bsky.app': { name: 'Bluesky', type: 'social' },
   'chatgpt.com': { name: 'ChatGPT', type: 'llm' },
   'perplexity.ai': { name: 'Perplexity', type: 'llm' },
+  perplexity: { name: 'Perplexity', type: 'llm' },
   'statics.teams.cdn.office.net': { name: 'Microsoft Teams', type: 'social' },
   'teams.microsoft.com': { name: 'Microsoft Teams', type: 'social' },
   'vemetric.com': { name: 'Vemetric', type: 'unknown' },

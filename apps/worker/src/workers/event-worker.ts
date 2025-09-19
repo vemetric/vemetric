@@ -6,7 +6,7 @@ import type { ClickhouseUser } from 'clickhouse';
 import { clickhouseEvent, clickhouseUser, getDeviceId } from 'clickhouse';
 import { getDeviceDataFromHeaders } from '../utils/device';
 import { ignoreEvent } from '../utils/event';
-import { getReferrerFromHeaders } from '../utils/referrer';
+import { getReferrerFromRequest } from '../utils/referrer';
 import { getSessionData } from '../utils/session';
 import { getUrlParams } from '../utils/url';
 
@@ -38,7 +38,7 @@ export async function initEventWorker() {
       const userDisplayName = reqDisplayName ?? user?.displayName;
 
       const userAgent = headers['user-agent'];
-      const referrer = await getReferrerFromHeaders(projectId, headers);
+      const referrer = await getReferrerFromRequest(projectId, headers, url);
       const urlParams = getUrlParams(url);
 
       if (ignoreEvent(urlParams)) {

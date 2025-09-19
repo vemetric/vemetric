@@ -81,7 +81,6 @@ export const paddleWebhookHandler = async (context: HonoContext) => {
         return context.text('', 400);
       }
 
-      const hasBillingInfo = Boolean(await dbBillingInfo.findByOrganizationId(organizationId));
       const billingInfo: Omit<BillingInfo, 'createdAt'> = {
         organizationId,
         customerId: entity.data.customerId,
@@ -100,11 +99,7 @@ export const paddleWebhookHandler = async (context: HonoContext) => {
         pricingOnboarded: true,
       });
 
-      if (hasBillingInfo) {
-        await dbBillingInfo.update({ ...billingInfo, createdAt: new Date() });
-      } else {
-        await dbBillingInfo.create(billingInfo);
-      }
+      await dbBillingInfo.upsert({ ...billingInfo, createdAt: new Date() });
 
       const organization = await dbOrganization.findById(organizationId);
       const orgUser = (await dbOrganization.getOrganizationUsers(organizationId))[0];
@@ -139,7 +134,7 @@ export const paddleWebhookHandler = async (context: HonoContext) => {
         return context.text('', 400);
       }
 
-      await dbBillingInfo.update({
+      await dbBillingInfo.upsert({
         organizationId,
         customerId: entity.data.customerId,
         addressId: entity.data.addressId,

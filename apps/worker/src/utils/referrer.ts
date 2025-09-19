@@ -4,48 +4,59 @@ import { dbProject } from 'database';
 import { logger } from './logger';
 import { referrers } from '../consts/referrers';
 
-export function getReferrer(projectDomain: string | undefined, url: string): ReferrerData | undefined {
-  try {
-    const resolvedDomain = getNormalizedDomain(url);
+export function getReferrer(
+  projectDomain: string | undefined,
+  url?: string,
+  paramValue?: string,
+): ReferrerData | undefined {
+  if (!url && !paramValue) {
+    return undefined;
+  }
 
-    if (projectDomain && resolvedDomain.endsWith(projectDomain)) {
+  try {
+    const resolvedDomain = getNormalizedDomain(url || '');
+    if (url && projectDomain && resolvedDomain.endsWith(projectDomain)) {
       return {
-        referrer: '',
+        referrer: paramValue || '',
         referrerUrl: url,
         referrerType: 'direct',
       };
     }
 
-    const referrer = referrers[resolvedDomain as keyof typeof referrers];
-    if (!referrer) {
-      return {
-        referrer: resolvedDomain,
-        referrerUrl: url,
-        referrerType: 'unknown',
-      };
-    }
-
+    const referrer = referrers[(paramValue || resolvedDomain || '') as keyof typeof referrers];
     return {
-      referrer: referrer.name,
-      referrerUrl: url,
-      referrerType: referrer.type,
+      referrer: referrer?.name || paramValue || resolvedDomain,
+      referrerUrl: url || '',
+      referrerType: referrer?.type || 'unknown',
     };
   } catch (err) {
     logger.error({ err }, 'Invalid Referrer URL');
     return {
-      referrer: url,
-      referrerUrl: url,
+      referrer: paramValue || url,
+      referrerUrl: url || '',
       referrerType: 'unknown',
     };
   }
 }
 
-export async function getReferrerFromHeaders(projectId: bigint, headers: Record<string, string>) {
-  const referrerHeader = headers['v-referrer'];
-  let referrer: ReferrerData | undefined = undefined;
-  if (referrerHeader) {
-    const project = await dbProject.findById(String(projectId));
-    referrer = getReferrer(project?.domain, referrerHeader);
+export async function getReferrerFromRequest(projectId: bigint, headers: Record<string, string>, url?: string) {
+  let paramValue: string | undefined;
+  if (url) {
+    try {
+      const urlObj = new URL(url);
+      const searchParams = urlObj.searchParams;
+      paramValue =
+        searchParams.get('ref')?.trim() ||
+        searchParams.get('via')?.trim() ||
+        searchParams.get('utm_source')?.trim() ||
+        searchParams.get('source')?.trim();
+    } catch {
+      // Invalid URL, continue with header fallback
+    }
   }
-  return referrer;
+
+  const referrerHeader = headers['v-referrer'];
+
+  const project = await dbProject.findById(String(projectId));
+  return getReferrer(project?.domain, referrerHeader || undefined, paramValue);
 }

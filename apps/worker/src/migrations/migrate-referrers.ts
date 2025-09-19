@@ -55,6 +55,7 @@ async function processBatch(
       continue;
     }
 
+    // TODO: reconsider this way of resolving the referrer, definitely also take the ref query params into consideration
     const resolvedReferrer = referrers[(row.referrerUrl || row.referrer) as keyof typeof referrers];
 
     const referrerData = resolvedReferrer

@@ -20,7 +20,7 @@ jobs:
         uses: oven-sh/setup-bun@v1
 
       - name: Install dependencies
-        run: pnpm i && bun i
+        run: pnpm i && bun i --frozen-lockfile
 
       - name: Lint
         run: pnpm lint

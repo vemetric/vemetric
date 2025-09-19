@@ -28,7 +28,7 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        run: pnpm i && bun i
+        run: pnpm i && bun i --frozen-lockfile
 
       - name: Fetch bots data (hub)
         working-directory: ./apps/hub

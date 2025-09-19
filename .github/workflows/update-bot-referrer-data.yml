@@ -9,12 +9,13 @@ on:
 jobs:
   update-data:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install PNPM
         uses: pnpm/action-setup@v4
@@ -46,11 +47,23 @@ jobs:
             echo "changes=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Commit and push changes
+      - name: Create Pull Request
         if: steps.check_changes.outputs.changes == 'true'
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add .
-          git commit -m "chore: update bot and referrer data"
-          git push
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: update bot and referrer data'
+          title: 'chore: update bot and referrer data'
+          body: |
+            ## Automated Monthly Update
+
+            This PR updates the bot and referrer detection data from upstream sources:
+            - Bot data from [Matomo Device Detector](https://github.com/matomo-org/device-detector)
+            - Referrer data from [Snowplow Referer Parser](https://github.com/snowplow-referer-parser/referer-parser)
+
+            This is an automated update that runs monthly to keep our detection data up-to-date.
+          branch: automated/update-bot-referrer-data
+          delete-branch: true
+          labels: |
+            automated
+            dependencies

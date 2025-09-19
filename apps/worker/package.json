@@ -7,6 +7,7 @@
     "dev": "bun run --hot src/index.ts",
     "start": "bun run src/index.ts",
     "lint": "eslint . --max-warnings 0",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "fetch-referrers": "bun fetch-referrers.ts",
     "migrate-referrers": "bun ./src/migrations/migrate-referrers.ts",
     "migrate-devices": "bun ./src/migrations/migrate-devices.ts",

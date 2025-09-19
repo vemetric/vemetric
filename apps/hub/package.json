@@ -8,6 +8,7 @@
     "build": "tsc --noEmit --skipLibCheck",
     "start": "bun run src/index.ts",
     "lint": "eslint . --max-warnings 0",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "fetch-bots": "bun fetch-bots.ts",
     "test": "vitest"
   },

@@ -32,11 +32,11 @@ jobs:
 
       - name: Fetch bots data (hub)
         working-directory: ./apps/hub
-        run: pnpm fetch-bots
+        run: pnpm fetch-bots && pnpm format
 
       - name: Fetch referrers data (worker)
         working-directory: ./apps/worker
-        run: pnpm fetch-referrers
+        run: pnpm fetch-referrers && pnpm format
 
       - name: Check for changes
         id: check_changes

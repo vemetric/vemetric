@@ -1,4 +1,4 @@
-import { Field, Input, Heading, Text, HStack, Stack, Link, Button } from '@chakra-ui/react';
+import { Field, Input, Heading, Text, HStack, Stack, Link, Button, Separator } from '@chakra-ui/react';
 import { createFileRoute, Link as RouterLink } from '@tanstack/react-router';
 import { motion } from 'motion/react';
 import { useState } from 'react';
@@ -157,6 +157,21 @@ function Page() {
             <Button type="submit" colorPalette="purple" loading={isLoading}>
               Sign in
             </Button>
+            <HStack>
+              <Separator flex="1" />
+              <Text flexShrink="0" fontSize={13}>
+                Or Sign in with
+              </Text>
+              <Separator flex="1" />
+            </HStack>
+            <HStack>
+              <Button type="submit" variant="surface" flex="1" loading={isLoading}>
+                Google
+              </Button>
+              <Button type="submit" flex="1" variant="solid" loading={isLoading}>
+                GitHub
+              </Button>
+            </HStack>
           </Stack>
 
           <Text textStyle="sm" color="fg.muted" textAlign="center">

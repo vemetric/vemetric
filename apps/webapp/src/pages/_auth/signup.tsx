@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { TbMail, TbLock } from 'react-icons/tb';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
+import { useSocialLogin } from '@/hooks/use-social-login';
 import { authClient } from '@/utils/auth';
 
 export const Route = createFileRoute('/_auth/signup')({
@@ -16,6 +17,7 @@ function Page() {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const { loginWithProvider } = useSocialLogin();
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,10 +125,10 @@ function Page() {
               <Separator flex="1" />
             </HStack>
             <HStack>
-              <Button type="submit" variant="surface" flex="1" loading={isLoading}>
+              <Button type="submit" variant="surface" flex="1" onClick={(e) => loginWithProvider('google', e)}>
                 Google
               </Button>
-              <Button type="submit" flex="1" variant="solid" loading={isLoading}>
+              <Button type="submit" flex="1" variant="solid" onClick={(e) => loginWithProvider('github', e)}>
                 GitHub
               </Button>
             </HStack>

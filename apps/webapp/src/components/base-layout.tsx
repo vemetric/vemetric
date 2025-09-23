@@ -1,5 +1,4 @@
 import { Flex, Link, Box } from '@chakra-ui/react';
-import { vemetric } from '@vemetric/react';
 import { useState } from 'react';
 import { authClient } from '@/utils/auth';
 import { Logo } from './logo';
@@ -44,9 +43,6 @@ export const BaseLayout = (props: Props) => {
                 fetchOptions: {
                   onRequest: () => {
                     setIsLogoutLoading(true);
-                  },
-                  onSuccess: async () => {
-                    await vemetric.resetUser();
                   },
                 },
               });

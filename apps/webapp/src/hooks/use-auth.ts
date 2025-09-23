@@ -12,15 +12,28 @@ export const useAuth = () => {
   const isLoggedIn = session !== null && session.user !== null;
 
   useEffect(() => {
-    if (isSessionLoading || !isLoggedIn || identifiedUserId === session?.user?.id) {
+    if (isSessionLoading) {
       return;
     }
 
-    identifiedUserId = session.user.id;
-    vemetric.identify({
-      identifier: session.user.id,
-      displayName: session.user.name,
-    });
+    if (isLoggedIn) {
+      if (identifiedUserId === session?.user?.id) {
+        return;
+      }
+
+      identifiedUserId = session.user.id;
+      vemetric.identify({
+        identifier: session.user.id,
+        displayName: session.user.name,
+      });
+    } else {
+      if (identifiedUserId === null) {
+        return;
+      }
+
+      identifiedUserId = null;
+      vemetric.resetUser();
+    }
   }, [isSessionLoading, isLoggedIn, session?.user?.id, session?.user?.name]);
 
   if (isSessionLoading) {

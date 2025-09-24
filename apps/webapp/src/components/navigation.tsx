@@ -2,7 +2,6 @@ import type { BoxProps, CardRootProps, FlexProps } from '@chakra-ui/react';
 import { Box, Card, Flex, Icon, Spinner } from '@chakra-ui/react';
 import type { LinkProps } from '@tanstack/react-router';
 import { Link, useMatches, useParams } from '@tanstack/react-router';
-import { vemetric } from '@vemetric/react';
 import type { ElementType } from 'react';
 import { useState } from 'react';
 import {
@@ -150,9 +149,6 @@ export const Navigation = (props: CardRootProps) => {
             fetchOptions: {
               onRequest: () => {
                 setIsLogoutLoading(true);
-              },
-              onSuccess: async () => {
-                await vemetric.resetUser();
               },
             },
           });

@@ -14,7 +14,7 @@ export const loginWithProvider = async (provider: 'google' | 'github') => {
   await authClient.signIn.social(
     {
       provider,
-      callbackURL: '/onboarding/organization',
+      callbackURL: 'https://' + window.location.hostname + '/',
     },
     {
       onError: (ctx) => {

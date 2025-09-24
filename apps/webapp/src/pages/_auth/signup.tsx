@@ -1,5 +1,5 @@
 import { Stack, Heading, Input, Button, Text, Link, Field, HStack, Separator } from '@chakra-ui/react';
-import { IconBrandGoogle, IconBrandGithub } from '@tabler/icons-react';
+import { IconBrandGoogleFilled, IconBrandGithub } from '@tabler/icons-react';
 import { createFileRoute, Link as RouterLink, useNavigate } from '@tanstack/react-router';
 import { motion } from 'motion/react';
 import { useState } from 'react';
@@ -125,7 +125,7 @@ function Page() {
             </HStack>
             <HStack>
               <Button type="button" variant="surface" flex="1" onClick={() => loginWithProvider('google')}>
-                <IconBrandGoogle stroke={2} />
+                <IconBrandGoogleFilled stroke={2} />
                 Google
               </Button>
               <Button type="button" flex="1" variant="solid" onClick={() => loginWithProvider('github')}>

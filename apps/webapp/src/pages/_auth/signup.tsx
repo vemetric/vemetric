@@ -1,12 +1,12 @@
 import { Stack, Heading, Input, Button, Text, Link, Field, HStack, Separator } from '@chakra-ui/react';
+import { IconBrandGoogle, IconBrandGithub } from '@tabler/icons-react';
 import { createFileRoute, Link as RouterLink, useNavigate } from '@tanstack/react-router';
 import { motion } from 'motion/react';
 import { useState } from 'react';
 import { TbMail, TbLock } from 'react-icons/tb';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
-import { useSocialLogin } from '@/hooks/use-social-login';
-import { authClient } from '@/utils/auth';
+import { authClient, loginWithProvider } from '@/utils/auth';
 
 export const Route = createFileRoute('/_auth/signup')({
   component: Page,
@@ -17,7 +17,6 @@ function Page() {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { loginWithProvider } = useSocialLogin();
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,10 +124,12 @@ function Page() {
               <Separator flex="1" />
             </HStack>
             <HStack>
-              <Button type="submit" variant="surface" flex="1" onClick={(e) => loginWithProvider('google', e)}>
+              <Button type="button" variant="surface" flex="1" onClick={() => loginWithProvider('google')}>
+                <IconBrandGoogle stroke={2} />
                 Google
               </Button>
-              <Button type="submit" flex="1" variant="solid" onClick={(e) => loginWithProvider('github', e)}>
+              <Button type="button" flex="1" variant="solid" onClick={() => loginWithProvider('github')}>
+                <IconBrandGithub stroke={2} />
                 GitHub
               </Button>
             </HStack>

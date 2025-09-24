@@ -2,7 +2,7 @@ import { Stack, Heading, Input, Button, Text, Link, Field, HStack, Separator } f
 import { createFileRoute, Link as RouterLink, useNavigate } from '@tanstack/react-router';
 import { motion } from 'motion/react';
 import { useState } from 'react';
-import { TbMail, TbLock, TbBrandGoogle, TbBrandGithub } from 'react-icons/tb';
+import { TbMail, TbLock, TbBrandGithub, TbBrandGoogleFilled } from 'react-icons/tb';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
 import { authClient, loginWithProvider } from '@/utils/auth';
@@ -117,14 +117,14 @@ function Page() {
             </Button>
             <HStack>
               <Separator flex="1" />
-              <Text flexShrink="0" fontSize={13}>
-                Or Sign in with
+              <Text flexShrink="0" fontSize="xs">
+                or Sign up with
               </Text>
               <Separator flex="1" />
             </HStack>
             <HStack>
               <Button type="button" variant="surface" flex="1" onClick={() => loginWithProvider('google')}>
-                <TbBrandGoogle />
+                <TbBrandGoogleFilled />
                 Google
               </Button>
               <Button type="button" flex="1" variant="solid" onClick={() => loginWithProvider('github')}>

@@ -1,30 +1,8 @@
-import { Box, Container, Text, Flex, HStack, Stack, Link, Avatar, Card } from '@chakra-ui/react';
+import { Box, Container, Flex, Stack, Link } from '@chakra-ui/react';
 import { createFileRoute, Outlet } from '@tanstack/react-router';
 import { AnimatePresence } from 'motion/react';
-import { TbMessage2 } from 'react-icons/tb';
 import { AuthIllustration } from '@/components/auth-illustration';
-import { CrispLink } from '@/components/crisp-link';
 import { Logo } from '@/components/logo';
-
-export const ContactCard = () => {
-  return (
-    <Card.Root size="sm" mt="5">
-      <Card.Body>
-        <HStack textStyle="sm">
-          <Avatar.Root size="xs">
-            <Avatar.Fallback />
-            <Avatar.Image src="/images/avatar/dominik2.jpg" />
-          </Avatar.Root>
-          <Text>Do you have any questions?</Text>
-          <CrispLink fontWeight="semibold">
-            <TbMessage2 />
-            Contact me
-          </CrispLink>
-        </HStack>
-      </Card.Body>
-    </Card.Root>
-  );
-};
 
 export const Route = createFileRoute('/_auth')({
   component: RouteComponent,
@@ -48,8 +26,6 @@ function RouteComponent() {
               <AnimatePresence>
                 <Outlet />
               </AnimatePresence>
-
-              <ContactCard />
             </Stack>
           </Container>
         </Flex>

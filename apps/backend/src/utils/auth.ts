@@ -94,6 +94,7 @@ export const auth = betterAuth({
     },
   },
   plugins: [
+    lastLoginMethod(),
     customSession(async ({ user, session }) => {
       const userOrganizations = await dbOrganization.getUserOrganizations(user.id, true);
       const userProjects = await dbProject.findByUserId(user.id);
@@ -120,3 +121,6 @@ export const auth = betterAuth({
     },
   },
 });
+function lastLoginMethod(): any {
+  throw new Error('Function not implemented.');
+}

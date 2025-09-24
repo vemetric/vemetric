@@ -123,11 +123,16 @@ function Page() {
               <Separator flex="1" />
             </HStack>
             <HStack>
-              <Button type="button" variant="surface" flex="1" onClick={() => loginWithProvider('google')}>
+              <Button
+                type="button"
+                variant="surface"
+                flex="1"
+                onClick={() => loginWithProvider('google', setIsLoading)}
+              >
                 <TbBrandGoogleFilled />
                 Google
               </Button>
-              <Button type="button" flex="1" variant="solid" onClick={() => loginWithProvider('github')}>
+              <Button type="button" flex="1" variant="solid" onClick={() => loginWithProvider('github', setIsLoading)}>
                 <TbBrandGithub />
                 GitHub
               </Button>

@@ -6,7 +6,7 @@ import { TbBrandGithub, TbBrandGoogleFilled, TbLock, TbMail } from 'react-icons/
 import { Checkbox } from '@/components/ui/checkbox';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
-import { authClient } from '@/utils/auth';
+import { authClient, loginWithProvider } from '@/utils/auth';
 
 export const Route = createFileRoute('/_auth/login')({
   component: Page,
@@ -48,27 +48,6 @@ function Page() {
               type: 'error',
             });
           }
-        },
-      },
-    );
-  };
-
-  const loginWithProvider = async (provider: 'google' | 'github') => {
-    await authClient.signIn.social(
-      {
-        provider,
-        callbackURL: 'https://' + window.location.hostname + '/',
-      },
-      {
-        onRequest: () => {
-          setIsLoading(true);
-        },
-        onError: (ctx) => {
-          setIsLoading(false);
-          toaster.create({
-            title: ctx.error.message || 'An error occurred during login',
-            type: 'error',
-          });
         },
       },
     );
@@ -200,7 +179,7 @@ function Page() {
                   flex="1"
                   variant="surface"
                   loading={isLoading}
-                  onClick={() => loginWithProvider('google')}
+                  onClick={() => loginWithProvider('google', setIsLoading)}
                 >
                   <TbBrandGoogleFilled />
                   Google
@@ -217,7 +196,7 @@ function Page() {
                   flex="1"
                   variant="solid"
                   loading={isLoading}
-                  onClick={() => loginWithProvider('github')}
+                  onClick={() => loginWithProvider('github', setIsLoading)}
                 >
                   <TbBrandGithub />
                   GitHub

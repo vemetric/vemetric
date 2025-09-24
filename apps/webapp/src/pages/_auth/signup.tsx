@@ -1,11 +1,11 @@
-import { Stack, Heading, Input, Button, Text, Link, Field } from '@chakra-ui/react';
+import { Stack, Heading, Input, Button, Text, Link, Field, HStack, Separator } from '@chakra-ui/react';
 import { createFileRoute, Link as RouterLink, useNavigate } from '@tanstack/react-router';
 import { motion } from 'motion/react';
 import { useState } from 'react';
-import { TbMail, TbLock } from 'react-icons/tb';
+import { TbMail, TbLock, TbBrandGoogle, TbBrandGithub } from 'react-icons/tb';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
-import { authClient } from '@/utils/auth';
+import { authClient, loginWithProvider } from '@/utils/auth';
 
 export const Route = createFileRoute('/_auth/signup')({
   component: Page,
@@ -115,6 +115,23 @@ function Page() {
             <Button type="submit" colorPalette="purple" loading={isLoading}>
               Sign up
             </Button>
+            <HStack>
+              <Separator flex="1" />
+              <Text flexShrink="0" fontSize={13}>
+                Or Sign in with
+              </Text>
+              <Separator flex="1" />
+            </HStack>
+            <HStack>
+              <Button type="button" variant="surface" flex="1" onClick={() => loginWithProvider('google')}>
+                <TbBrandGoogle />
+                Google
+              </Button>
+              <Button type="button" flex="1" variant="solid" onClick={() => loginWithProvider('github')}>
+                <TbBrandGithub />
+                GitHub
+              </Button>
+            </HStack>
           </Stack>
 
           <Text textStyle="sm" color="fg.muted" textAlign="center">

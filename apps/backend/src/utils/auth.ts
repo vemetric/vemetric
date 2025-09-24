@@ -4,7 +4,7 @@ import { addToQueue } from '@vemetric/queues/queue-utils';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { createAuthMiddleware, customSession } from 'better-auth/plugins';
-import { dbOrganization, dbProject, prismaClient } from 'database';
+import { dbAuthAccount, dbOrganization, dbProject, prismaClient } from 'database';
 import { DOMAIN } from '../consts';
 import { sendEmailVerificationLink, sendPasswordResetLink } from './email';
 import { logger } from './logger';
@@ -20,6 +20,17 @@ export const auth = betterAuth({
   database: prismaAdapter(prismaClient, {
     provider: 'postgresql',
   }),
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID as string, //!expecting client id from env file
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string, //!expecting client secret from env file
+    },
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID as string, //!expecting client id from env file
+      clientSecret: process.env.GITHUB_CLIENT_SECRET as string, //!expecting client secret from env file
+    },
+  },
+
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
@@ -76,7 +87,8 @@ export const auth = betterAuth({
     user: {
       create: {
         after: async (user) => {
-          await vemetric.trackEvent('Signup', { userIdentifier: user.id, eventData: { provider: 'email' } });
+          const provider = await dbAuthAccount.findProviderByUserId(user.id);
+          await vemetric.trackEvent('Signup', { userIdentifier: user.id, eventData: { provider } });
         },
       },
     },

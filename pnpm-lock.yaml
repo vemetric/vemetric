@@ -237,9 +237,6 @@ importers:
       '@paddle/paddle-js':
         specifier: ^1.4.0
         version: 1.4.0
-      '@tabler/icons-react':
-        specifier: ^3.35.0
-        version: 3.35.0(react@18.2.0)
       '@tanstack/react-query':
         specifier: ^4
         version: 4.36.1(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
@@ -2831,14 +2828,6 @@ packages:
 
   '@swc/helpers@0.5.15':
     resolution: {integrity: sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==}
-
-  '@tabler/icons-react@3.35.0':
-    resolution: {integrity: sha512-XG7t2DYf3DyHT5jxFNp5xyLVbL4hMJYJhiSdHADzAjLRYfL7AnjlRfiHDHeXxkb2N103rEIvTsBRazxXtAUz2g==}
-    peerDependencies:
-      react: '>= 16'
-
-  '@tabler/icons@3.35.0':
-    resolution: {integrity: sha512-yYXe+gJ56xlZFiXwV9zVoe3FWCGuZ/D7/G4ZIlDtGxSx5CGQK110wrnT29gUj52kEZoxqF7oURTk97GQxELOFQ==}
 
   '@tanstack/history@1.115.0':
     resolution: {integrity: sha512-K7JJNrRVvyjAVnbXOH2XLRhFXDkeP54Kt2P4FR1Kl2KDGlIbkua5VqZQD2rot3qaDrpufyUa63nuLai1kOLTsQ==}
@@ -9207,13 +9196,6 @@ snapshots:
   '@swc/helpers@0.5.15':
     dependencies:
       tslib: 2.8.1
-
-  '@tabler/icons-react@3.35.0(react@18.2.0)':
-    dependencies:
-      '@tabler/icons': 3.35.0
-      react: 18.2.0
-
-  '@tabler/icons@3.35.0': {}
 
   '@tanstack/history@1.115.0': {}
 

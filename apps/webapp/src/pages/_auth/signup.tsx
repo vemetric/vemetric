@@ -1,9 +1,8 @@
 import { Stack, Heading, Input, Button, Text, Link, Field, HStack, Separator } from '@chakra-ui/react';
-import { IconBrandGoogleFilled, IconBrandGithub } from '@tabler/icons-react';
 import { createFileRoute, Link as RouterLink, useNavigate } from '@tanstack/react-router';
 import { motion } from 'motion/react';
 import { useState } from 'react';
-import { TbMail, TbLock } from 'react-icons/tb';
+import { TbMail, TbLock, TbBrandGoogle, TbBrandGithub } from 'react-icons/tb';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
 import { authClient, loginWithProvider } from '@/utils/auth';
@@ -125,11 +124,11 @@ function Page() {
             </HStack>
             <HStack>
               <Button type="button" variant="surface" flex="1" onClick={() => loginWithProvider('google')}>
-                <IconBrandGoogleFilled stroke={2} />
+                <TbBrandGoogle />
                 Google
               </Button>
               <Button type="button" flex="1" variant="solid" onClick={() => loginWithProvider('github')}>
-                <IconBrandGithub stroke={2} />
+                <TbBrandGithub />
                 GitHub
               </Button>
             </HStack>

@@ -167,10 +167,10 @@ function Page() {
               <Separator flex="1" />
             </HStack>
             <HStack>
-              <Button type="submit" variant="surface" flex="1" onClick={(e) => loginWithProvider('google', e)}>
+              <Button type="button" variant="surface" flex="1" onClick={(e) => loginWithProvider('google', e)}>
                 Google
               </Button>
-              <Button type="submit" flex="1" variant="solid" onClick={(e) => loginWithProvider('github', e)}>
+              <Button type="button" flex="1" variant="solid" onClick={(e) => loginWithProvider('github', e)}>
                 GitHub
               </Button>
             </HStack>

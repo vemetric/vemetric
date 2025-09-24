@@ -6,7 +6,7 @@ import { TbBrandGithub, TbBrandGoogleFilled, TbLock, TbMail } from 'react-icons/
 import { Checkbox } from '@/components/ui/checkbox';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
-import { authClient, loginWithProvider } from '@/utils/auth';
+import { authClient } from '@/utils/auth';
 
 export const Route = createFileRoute('/_auth/login')({
   component: Page,
@@ -48,6 +48,27 @@ function Page() {
               type: 'error',
             });
           }
+        },
+      },
+    );
+  };
+
+  const loginWithProvider = async (provider: 'google' | 'github') => {
+    await authClient.signIn.social(
+      {
+        provider,
+        callbackURL: 'https://' + window.location.hostname + '/',
+      },
+      {
+        onRequest: () => {
+          setIsLoading(true);
+        },
+        onError: (ctx) => {
+          setIsLoading(false);
+          toaster.create({
+            title: ctx.error.message || 'An error occurred during login',
+            type: 'error',
+          });
         },
       },
     );
@@ -174,7 +195,13 @@ function Page() {
             </HStack>
             <HStack gap="4">
               <Flex flex="1" pos="relative">
-                <Button type="button" flex="1" variant="surface" onClick={() => loginWithProvider('google')}>
+                <Button
+                  type="button"
+                  flex="1"
+                  variant="surface"
+                  loading={isLoading}
+                  onClick={() => loginWithProvider('google')}
+                >
                   <TbBrandGoogleFilled />
                   Google
                 </Button>
@@ -185,7 +212,13 @@ function Page() {
                 )}
               </Flex>
               <Flex flex="1" pos="relative">
-                <Button type="button" flex="1" variant="solid" onClick={() => loginWithProvider('github')}>
+                <Button
+                  type="button"
+                  flex="1"
+                  variant="solid"
+                  loading={isLoading}
+                  onClick={() => loginWithProvider('github')}
+                >
                   <TbBrandGithub />
                   GitHub
                 </Button>

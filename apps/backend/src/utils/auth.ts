@@ -3,7 +3,7 @@ import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
 import { addToQueue } from '@vemetric/queues/queue-utils';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
-import { createAuthMiddleware, customSession } from 'better-auth/plugins';
+import { createAuthMiddleware, customSession, lastLoginMethod } from 'better-auth/plugins';
 import { dbAuthAccount, dbOrganization, dbProject, prismaClient } from 'database';
 import { DOMAIN } from '../consts';
 import { sendEmailVerificationLink, sendPasswordResetLink } from './email';
@@ -121,6 +121,3 @@ export const auth = betterAuth({
     },
   },
 });
-function lastLoginMethod(): any {
-  throw new Error('Function not implemented.');
-}

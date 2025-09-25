@@ -74,7 +74,7 @@ function Page() {
         <Stack gap="6">
           <Stack as="form" gap="5" onSubmit={onSubmit}>
             <Field.Root>
-              <Field.Label gap={4}>
+              <Field.Label gap={2}>
                 Email
                 {lastMethod === 'email' && (
                   <Badge colorPalette="blue" variant="solid">

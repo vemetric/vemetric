@@ -1,5 +1,5 @@
 import { vemetric } from '@vemetric/react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { authClient } from '@/utils/auth';
 
 export type AuthContext = ReturnType<typeof useAuth>;
@@ -7,7 +7,14 @@ export type AuthContext = ReturnType<typeof useAuth>;
 let identifiedUserId: string | null = null;
 
 export const useAuth = () => {
-  const { data: session, isPending: isSessionLoading, refetch } = authClient.useSession();
+  const { data: session, isPending, refetch } = authClient.useSession();
+
+  const [isSessionLoading, setIsSessionLoading] = useState(true);
+  useEffect(() => {
+    if (!isPending) {
+      setIsSessionLoading(false);
+    }
+  }, [isPending]);
 
   const isLoggedIn = session !== null && session.user !== null;
 

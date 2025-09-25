@@ -4,7 +4,7 @@ import { addToQueue } from '@vemetric/queues/queue-utils';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { createAuthMiddleware, customSession, lastLoginMethod } from 'better-auth/plugins';
-import { dbAuthAccount, dbOrganization, dbProject, prismaClient } from 'database';
+import { dbOrganization, dbProject, prismaClient } from 'database';
 import { DOMAIN } from '../consts';
 import { sendEmailVerificationLink, sendPasswordResetLink } from './email';
 import { logger } from './logger';
@@ -84,11 +84,13 @@ export const auth = betterAuth({
     }),
   },
   databaseHooks: {
-    user: {
+    account: {
       create: {
-        after: async (user) => {
-          const provider = await dbAuthAccount.findProviderByUserId(user.id);
-          await vemetric.trackEvent('Signup', { userIdentifier: user.id, eventData: { provider } });
+        after: async (account) => {
+          await vemetric.trackEvent('Signup', {
+            userIdentifier: account.userId,
+            eventData: { provider: account.providerId === 'credential' ? 'email' : account.providerId },
+          });
         },
       },
     },

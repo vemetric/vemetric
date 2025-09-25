@@ -1,7 +1,6 @@
 export * from './client';
 
 export * from './models/auth-user';
-export * from './models/auth-account';
 export * from './models/billing-info';
 export * from './models/email-drip-sequence';
 export * from './models/funnel';

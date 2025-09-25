@@ -97,7 +97,7 @@ function RouteComponent() {
       <>
         <PageDotBackground />
         <Flex gap={3} mb={3} justify="flex-end">
-          <Skeleton height={9} width="80px" loading />
+          <Skeleton height={[7, 9]} width={['60px', '80px']} loading />
         </Flex>
         <Flex flexDir="column" gap="6" pos="relative" maxW="500px" mx="auto">
           <DateSeparator>

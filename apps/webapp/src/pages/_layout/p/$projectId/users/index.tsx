@@ -10,6 +10,7 @@ import { CountryFlag } from '@/components/country-flag';
 import { AddFilterButton } from '@/components/filter/add-filter/add-filter-button';
 import { FilterContainer } from '@/components/filter/filter-container';
 import { FilterContextProvider } from '@/components/filter/filter-context';
+import { FilterSkeletons } from '@/components/filter/filter-skeletons';
 import { UserAvatar } from '@/components/pages/user/user-avatar';
 import { UserSortPopover } from '@/components/pages/user/user-sort-popover';
 import { ProjectInitCard } from '@/components/project-init-card';
@@ -110,12 +111,7 @@ function Page() {
           />
         </Box>
       ) : (
-        <Flex gap={3} mb={3}>
-          <Skeleton height={9} width="100px" loading={isLoading} />
-          <Skeleton height={9} width="100px" loading={isLoading} />
-          <Skeleton height={9} width="100px" loading={isLoading} />
-          <Skeleton height={9} width="100px" loading={isLoading} />
-        </Flex>
+        <FilterSkeletons loading mb="3" />
       )}
       <Card.Root overflow="hidden" textStyle="sm" pos="relative">
         <Grid

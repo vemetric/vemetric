@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { AddFilterButton } from '@/components/filter/add-filter/add-filter-button';
 import { FilterContainer } from '@/components/filter/filter-container';
 import { FilterContextProvider } from '@/components/filter/filter-context';
+import { FilterSkeletons } from '@/components/filter/filter-skeletons';
 import { Logo } from '@/components/logo';
 import { PageWrapper } from '@/components/page-wrapper';
 import { BrowsersCard } from '@/components/pages/dashboard/browsers-card';
@@ -26,19 +27,6 @@ import { ProjectProvider } from '@/contexts/project-context';
 import { getFaviconUrl } from '@/utils/favicon';
 import { timeSpanSearchMiddleware, timespanSearchSchema } from '@/utils/timespans';
 import { trpc } from '@/utils/trpc';
-
-const TopRowSkeletons = ({ loading }: { loading: boolean }) => (
-  <Flex>
-    <Flex gap={3}>
-      <Skeleton height={9} width="100px" loading={loading} />
-      <Skeleton height={9} width="100px" loading={loading} />
-      <Skeleton height={9} width="100px" loading={loading} />
-      <Skeleton height={9} width="100px" loading={loading} />
-    </Flex>
-    <Box flexGrow={1} />
-    <Skeleton height={9} width="144px" loading={loading} />
-  </Flex>
-);
 
 const dashboardSearchSchema = z.object({
   ...timespanSearchSchema.shape,
@@ -129,7 +117,7 @@ function Page() {
               <Box pos="sticky" top={0} zIndex="dropdown">
                 {isFilterableDataLoading ? (
                   <Box pt={3}>
-                    <TopRowSkeletons loading />
+                    <FilterSkeletons loading />
                   </Box>
                 ) : (
                   <Flex
@@ -215,7 +203,7 @@ function Page() {
             </>
           ) : (
             <Flex flexDir="column" gap={3}>
-              <TopRowSkeletons loading />
+              <FilterSkeletons loading />
               <AspectRatio ratio={16 / 7}>
                 <Skeleton height="full" width="full" loading />
               </AspectRatio>

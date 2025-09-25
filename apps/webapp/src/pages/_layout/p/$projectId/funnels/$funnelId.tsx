@@ -10,6 +10,7 @@ import { DeletePopover } from '@/components/delete-popover';
 import { AddFilterButton } from '@/components/filter/add-filter/add-filter-button';
 import { FilterContainer } from '@/components/filter/filter-container';
 import { FilterContextProvider } from '@/components/filter/filter-context';
+import { FilterSkeletons } from '@/components/filter/filter-skeletons';
 import { PageDotBackground } from '@/components/page-dot-background';
 import { ActiveUsersButton } from '@/components/pages/funnels/active-users-button';
 import { FunnelDialog } from '@/components/pages/funnels/funnel-dialog';
@@ -51,7 +52,7 @@ function RouteComponent() {
 
   const utils = trpc.useUtils();
 
-  const { data: filterableData } = trpc.filters.getFilterableData.useQuery({
+  const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery({
     projectId,
     timespan,
     startDate,
@@ -199,46 +200,55 @@ function RouteComponent() {
     >
       <PageDotBackground />
       <Box pos="relative" maxW="100%">
-        <Flex pos="relative" align="center" gap={2} zIndex="1" flexWrap="wrap">
-          <ActiveUsersButton
-            activeUsers={funnelResults.activeUsers || 0}
-            activeUsersVisible={activeUsersVisible}
-            setActiveUsersVisible={setActiveUsersVisible}
-          />
-          <Flex flexGrow={1} justify="center" align="center">
-            {!isMobile && (
-              <Button variant="surface" size="xs" onClick={() => setHorizontalFunnel((value) => !value)}>
-                <Icon as={TbChartBarPopular} transform={horizontalFunnel ? 'scaleX(-1)' : 'scaleY(-1) rotate(90deg)'} />{' '}
-                {horizontalFunnel ? 'Horizontal' : 'Vertical'}
-              </Button>
-            )}
-          </Flex>
-          <Flex align="center" justify="flex-end" gap={3} flexGrow={[1, 0]}>
-            <AddFilterButton from="/p/$projectId/funnels/$funnelId" filterConfig={filterConfig} />
-            <Box w="1px" h="26px" bg="gray.muted" />
-            <Flex align="center" gap={2.5}>
-              <FunnelDialog funnelId={funnelId}>
-                <IconButton variant="surface" size="xs">
-                  <Icon as={TbEdit} />
-                </IconButton>
-              </FunnelDialog>
-              <DeletePopover
-                text="Do you really want to delete this funnel?"
-                onDelete={() => deleteFunnel({ projectId, id: funnelId })}
-                isLoading={isFunnelDeleting}
-              >
-                <IconButton variant="surface" size="xs" color="red.fg">
-                  <Icon as={TbTrash} />
-                </IconButton>
-              </DeletePopover>
+        {isFilterableDataLoading ? (
+          <FilterSkeletons loading mb="6" />
+        ) : (
+          <>
+            <Flex pos="relative" align="center" gap={2} zIndex="1" flexWrap="wrap">
+              <ActiveUsersButton
+                activeUsers={funnelResults.activeUsers || 0}
+                activeUsersVisible={activeUsersVisible}
+                setActiveUsersVisible={setActiveUsersVisible}
+              />
+              <Flex flexGrow={1} justify="center" align="center">
+                {!isMobile && (
+                  <Button variant="surface" size="xs" onClick={() => setHorizontalFunnel((value) => !value)}>
+                    <Icon
+                      as={TbChartBarPopular}
+                      transform={horizontalFunnel ? 'scaleX(-1)' : 'scaleY(-1) rotate(90deg)'}
+                    />{' '}
+                    {horizontalFunnel ? 'Horizontal' : 'Vertical'}
+                  </Button>
+                )}
+              </Flex>
+              <Flex align="center" justify="flex-end" gap={[1.5, 3]} flexGrow={[1, 0]}>
+                <AddFilterButton from="/p/$projectId/funnels/$funnelId" filterConfig={filterConfig} />
+                <Box w="1px" h="26px" bg="gray.muted" />
+                <Flex align="center" gap={2.5}>
+                  <FunnelDialog funnelId={funnelId}>
+                    <IconButton variant="surface" size="xs">
+                      <Icon as={TbEdit} />
+                    </IconButton>
+                  </FunnelDialog>
+                  <DeletePopover
+                    text="Do you really want to delete this funnel?"
+                    onDelete={() => deleteFunnel({ projectId, id: funnelId })}
+                    isLoading={isFunnelDeleting}
+                  >
+                    <IconButton variant="surface" size="xs" color="red.fg">
+                      <Icon as={TbTrash} />
+                    </IconButton>
+                  </DeletePopover>
+                </Flex>
+                <Box w="1px" h="26px" bg="gray.muted" />
+                <TimespanSelect from="/_layout/p/$projectId/funnels/$funnelId" excludeLive />
+              </Flex>
             </Flex>
-            <Box w="1px" h="26px" bg="gray.muted" />
-            <TimespanSelect from="/_layout/p/$projectId/funnels/$funnelId" excludeLive />
-          </Flex>
-        </Flex>
-        <Box my={3}>
-          <FilterContainer filterConfig={filterConfig} from="/p/$projectId/funnels/$funnelId" />
-        </Box>
+            <Box my={3}>
+              <FilterContainer filterConfig={filterConfig} from="/p/$projectId/funnels/$funnelId" />
+            </Box>
+          </>
+        )}
         <AnimatePresence mode="popLayout" initial={false}>
           {horizontalFunnel && !isMobile ? (
             <motion.div

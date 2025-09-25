@@ -27,6 +27,12 @@ Vemetric is an open-source web and product analytics platform that helps you und
 - Powerful filtering mechanisms to see how your users interact with your Product & Website
 - Tracking across several subdomains
 
+## Contributing
+
+We love your input! Doesn't matter if you want to report a bug, fix an issue, or even contribute a new feature.
+
+Before contributing, please read our [Contribution Guide](CONTRIBUTING.md).
+
 ## Self hosting
 
 We're planning on supporting self hostable options of Vemetric in the future as a so called "Community Edition". It's still very early and we're currently focused on higher prioritized tasks.
@@ -36,17 +42,6 @@ We aren't sure yet which features will be available in the Community Edition, bu
 ## FAQs
 
 Please checkout [the FAQs](https://vemetric.com/docs/frequently-asked-questions) on the Vemetric Docs.
-
-## Contributing
-
-We love your input! Therefore we accept contributions like:
-
-- Reporting a bug
-- Discussing the current state of the code
-- Submitting a fix
-- Proposing new features
-
-Before contributing, please read our [Contributing Guide](CONTRIBUTING.md).
 
 ## License
 

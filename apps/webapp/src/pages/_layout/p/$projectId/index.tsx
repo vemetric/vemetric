@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { AddFilterButton } from '@/components/filter/add-filter/add-filter-button';
 import { FilterContainer } from '@/components/filter/filter-container';
 import { FilterContextProvider } from '@/components/filter/filter-context';
+import { FilterSkeletons } from '@/components/filter/filter-skeletons';
 import { BrowsersCard } from '@/components/pages/dashboard/browsers-card';
 import { CountriesCard } from '@/components/pages/dashboard/countries-card';
 import { DashboardChart } from '@/components/pages/dashboard/dashboard-chart';
@@ -24,19 +25,6 @@ import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { useSetBreadcrumbs, useSetDocsLink } from '@/stores/header-store';
 import { timeSpanSearchMiddleware, timespanSearchSchema } from '@/utils/timespans';
 import { trpc } from '@/utils/trpc';
-
-const TopRowSkeletons = ({ loading }: { loading: boolean }) => (
-  <Flex>
-    <Flex gap={3}>
-      <Skeleton height={9} width="100px" loading={loading} />
-      <Skeleton height={9} width="100px" loading={loading} />
-      <Skeleton height={9} width="100px" loading={loading} />
-      <Skeleton height={9} width="100px" loading={loading} />
-    </Flex>
-    <Box flexGrow={1} />
-    <Skeleton height={9} width="144px" loading={loading} />
-  </Flex>
-);
 
 const dashboardSearchSchema = z.object({
   ...timespanSearchSchema.shape,
@@ -119,7 +107,7 @@ function Page() {
           <Box mt={-3} pos="sticky" top={{ base: '44px', md: '122px', lg: '52px' }} zIndex="dropdown">
             {isFilterableDataLoading ? (
               <Box pt={3}>
-                <TopRowSkeletons loading />
+                <FilterSkeletons loading />
               </Box>
             ) : (
               <Flex pt={3} bg="bg.content" flexWrap="wrap" w="100%" columnGap={8} rowGap={4} align="center">
@@ -163,7 +151,7 @@ function Page() {
         </>
       ) : (
         <Flex flexDir="column" gap={3}>
-          <TopRowSkeletons loading={data?.isInitialized !== false} />
+          <FilterSkeletons loading={data?.isInitialized !== false} />
           <AspectRatio ratio={16 / 7}>
             <Skeleton height="full" width="full" loading={data?.isInitialized !== false} />
           </AspectRatio>

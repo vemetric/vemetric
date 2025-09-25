@@ -1,18 +1,19 @@
-import { Field, Input, Heading, Text, HStack, Stack, Link, Button } from '@chakra-ui/react';
+import { Field, Input, Heading, Text, HStack, Stack, Link, Button, Separator, Badge, Flex } from '@chakra-ui/react';
 import { createFileRoute, Link as RouterLink } from '@tanstack/react-router';
 import { motion } from 'motion/react';
 import { useState } from 'react';
-import { TbLock, TbMail } from 'react-icons/tb';
+import { TbBrandGithub, TbBrandGoogleFilled, TbLock, TbMail } from 'react-icons/tb';
 import { Checkbox } from '@/components/ui/checkbox';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
-import { authClient } from '@/utils/auth';
+import { authClient, loginWithProvider } from '@/utils/auth';
 
 export const Route = createFileRoute('/_auth/login')({
   component: Page,
 });
 
 function Page() {
+  const lastMethod = authClient.getLastUsedLoginMethod();
   const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [email, setEmail] = useState('');
@@ -73,7 +74,14 @@ function Page() {
         <Stack gap="6">
           <Stack as="form" gap="5" onSubmit={onSubmit}>
             <Field.Root>
-              <Field.Label>Email</Field.Label>
+              <Field.Label gap={2}>
+                Email
+                {lastMethod === 'email' && (
+                  <Badge colorPalette="blue" variant="solid">
+                    Last used
+                  </Badge>
+                )}
+              </Field.Label>
               <InputGroup startElement={<TbMail />} width="full">
                 <Input
                   disabled={isLoading}
@@ -157,6 +165,49 @@ function Page() {
             <Button type="submit" colorPalette="purple" loading={isLoading}>
               Sign in
             </Button>
+            <HStack>
+              <Separator flex="1" />
+              <Text flexShrink="0" fontSize="xs">
+                or Sign in with
+              </Text>
+              <Separator flex="1" />
+            </HStack>
+            <HStack gap="4">
+              <Flex flex="1" pos="relative">
+                <Button
+                  type="button"
+                  flex="1"
+                  variant="surface"
+                  loading={isLoading}
+                  onClick={() => loginWithProvider('google', setIsLoading)}
+                >
+                  <TbBrandGoogleFilled />
+                  Google
+                </Button>
+                {lastMethod === 'google' && (
+                  <Badge pos="absolute" top="-2.5" right="-2.5" colorPalette="blue" variant="solid">
+                    Last used
+                  </Badge>
+                )}
+              </Flex>
+              <Flex flex="1" pos="relative">
+                <Button
+                  type="button"
+                  flex="1"
+                  variant="solid"
+                  loading={isLoading}
+                  onClick={() => loginWithProvider('github', setIsLoading)}
+                >
+                  <TbBrandGithub />
+                  GitHub
+                </Button>
+                {lastMethod === 'github' && (
+                  <Badge pos="absolute" top="-2.5" right="-2.5" colorPalette="blue" variant="solid">
+                    Last used
+                  </Badge>
+                )}
+              </Flex>
+            </HStack>
           </Stack>
 
           <Text textStyle="sm" color="fg.muted" textAlign="center">

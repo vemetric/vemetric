@@ -4,6 +4,7 @@ import type { PropsWithChildren } from 'react';
 import { useState } from 'react';
 import superjson from 'superjson';
 import { trpc } from '@/utils/trpc';
+import { getBackendUrl } from '@/utils/url';
 
 export const ClientProviders = ({ children }: PropsWithChildren) => {
   const [queryClient] = useState(() => {
@@ -23,8 +24,7 @@ export const ClientProviders = ({ children }: PropsWithChildren) => {
     });
   });
 
-  const hostname = location.hostname.split('.').slice(-2).join('.');
-  const url = 'https://backend.' + hostname + '/trpc';
+  const url = getBackendUrl() + '/trpc';
 
   const [trpcClient] = useState(() =>
     trpc.createClient({

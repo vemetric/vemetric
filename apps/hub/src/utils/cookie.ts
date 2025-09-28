@@ -1,5 +1,5 @@
+import { getBaseDomain } from '@vemetric/common/env';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
-import { DOMAIN } from '../consts';
 import type { HonoContext } from '../types';
 
 const UID_COOKIE_NAME = '_vuid';
@@ -22,7 +22,7 @@ export function setUserIdCookie(context: HonoContext, userId: bigint) {
     secure: true,
     sameSite: 'None',
     path: '/',
-    domain: proxyHost ?? DOMAIN,
+    domain: proxyHost ?? getBaseDomain().split(':')[0], // remove port if present
     expires: expiresAt,
   });
 }
@@ -33,6 +33,6 @@ export function deleteUserIdCookie(context: HonoContext) {
   deleteCookie(context, UID_COOKIE_NAME, {
     path: '/',
     secure: true,
-    domain: proxyHost ?? DOMAIN,
+    domain: proxyHost ?? getBaseDomain().split(':')[0], // remove port if present
   });
 }

@@ -3,12 +3,11 @@ import { createFileRoute, Outlet } from '@tanstack/react-router';
 import { AnimatePresence } from 'motion/react';
 import { AuthIllustration } from '@/components/auth-illustration';
 import { Logo } from '@/components/logo';
+import { getLandingPageUrl } from '@/utils/url';
 
 export const Route = createFileRoute('/_auth')({
   component: RouteComponent,
 });
-
-const hostname = location.hostname.split('.').slice(-2).join('.');
 
 function RouteComponent() {
   return (
@@ -18,7 +17,7 @@ function RouteComponent() {
           <Container maxW="md">
             <Stack gap="7">
               <Flex justify="center">
-                <Link href={`https://${hostname}`}>
+                <Link href={getLandingPageUrl()}>
                   <Logo asLink={false} h="60px" />
                 </Link>
               </Flex>

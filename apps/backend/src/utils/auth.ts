@@ -1,3 +1,4 @@
+import { getBaseDomain, getVemetricUrl } from '@vemetric/common/env';
 import { getDripSequence, getStepDelay } from '@vemetric/email/email-drip-sequences';
 import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
 import { addToQueue } from '@vemetric/queues/queue-utils';
@@ -5,12 +6,11 @@ import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { createAuthMiddleware, customSession, lastLoginMethod } from 'better-auth/plugins';
 import { dbOrganization, dbProject, prismaClient } from 'database';
-import { DOMAIN } from '../consts';
 import { sendEmailVerificationLink, sendPasswordResetLink } from './email';
 import { logger } from './logger';
 import { vemetric } from './vemetric-client';
 
-export const TRUSTED_ORIGINS = ['https://app.' + DOMAIN, 'https://' + DOMAIN];
+export const TRUSTED_ORIGINS = [getVemetricUrl('app'), getVemetricUrl()];
 
 const emailVerificationTimestamps = new Map<string, number>();
 
@@ -119,7 +119,7 @@ export const auth = betterAuth({
     cookiePrefix: 'auth',
     crossSubDomainCookies: {
       enabled: true,
-      domain: DOMAIN,
+      domain: getBaseDomain().split(':')[0], // remove port if present
     },
   },
 });

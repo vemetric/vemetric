@@ -53,6 +53,10 @@ export default defineConfig({
     }),
   ],
   server: {
-    allowedHosts: ['app.vemetric.local'],
+    allowedHosts: ['app.vemetric.local', 'app.vemetric.localhost'],
+    port: 4000,
+    hmr: {
+      port: 4000,
+    },
   },
 });

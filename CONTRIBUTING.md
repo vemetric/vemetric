@@ -93,7 +93,7 @@ In case you want to have the Dev Proxy running on a different port, just specify
 
 Now that Vemetric is running, you should signup at `http://app.vemetric.localhost:4050` to create an account.
 
-Afterwards you'll be prompted to create an organization and a project. After creating a project, copy the token you'll see in the Dashboard of the newly created project.
+Afterwards you'll be prompted to create an organization and a project (use `vemetric.localhost:4050` as domain for the project). After creating a project, copy the token you'll see in the Dashboard of the newly created project.
 
 Paste the token in the `VEMETRIC_TOKEN` variable of your `.env` file and restart the dev script with `pnpm dev`.
 

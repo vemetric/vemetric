@@ -34,7 +34,7 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
-    requireEmailVerification: true,
+    requireEmailVerification: getBaseDomain().includes('localhost') ? false : true,
     sendResetPassword: async ({ user, url }) => {
       await sendPasswordResetLink(user.email, user.name, url);
     },

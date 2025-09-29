@@ -9,8 +9,7 @@ export function getDevProxyPortExtension(): string {
 }
 
 export function getBaseDomain(): string {
-  const port = getDevProxyPortExtension();
-  return process.env.DOMAIN || `vemetric.localhost${port}`;
+  return process.env.DOMAIN || `vemetric.localhost${getDevProxyPortExtension()}`;
 }
 
 type SubDomain = 'app' | 'backend' | 'hub';

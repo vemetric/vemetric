@@ -9,6 +9,7 @@ import { Provider } from './components/ui/provider';
 import { Toaster } from './components/ui/toaster';
 import { routeTree } from './routeTree.gen';
 import 'simplebar-react/dist/simplebar.min.css';
+import { getHubUrl } from './utils/url';
 
 const router = createRouter({
   routeTree,
@@ -31,14 +32,12 @@ window.addEventListener('vite:preloadError', () => {
   window.location.reload();
 });
 
-const hostname = location.hostname.split('.').slice(-2).join('.');
-
 createRoot(document.getElementById('root')!).render(
   <Provider>
     <ClientProviders>
       <VemetricScript
-        host={'https://hub.' + hostname}
-        token="WRlW37cPSLUAbXDk76wYU"
+        host={getHubUrl()}
+        token={import.meta.env.VEMETRIC_TOKEN || import.meta.env.VITE_VEMETRIC_TOKEN}
         maskPaths={[
           '/p/*',
           '/p/*/users',

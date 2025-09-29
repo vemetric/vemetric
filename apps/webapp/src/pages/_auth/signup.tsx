@@ -6,6 +6,7 @@ import { TbMail, TbLock, TbBrandGithub, TbBrandGoogleFilled } from 'react-icons/
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
 import { authClient, loginWithProvider } from '@/utils/auth';
+import { getAppUrl } from '@/utils/url';
 
 export const Route = createFileRoute('/_auth/signup')({
   component: Page,
@@ -35,7 +36,7 @@ function Page() {
         password,
         name: '',
         // callback url for email verification
-        callbackURL: 'https://' + window.location.hostname + '/',
+        callbackURL: getAppUrl() + '/',
       },
       {
         onRequest: () => {
@@ -118,7 +119,7 @@ function Page() {
             <HStack>
               <Separator flex="1" />
               <Text flexShrink="0" fontSize="xs">
-                or Sign up with
+                Or continue with
               </Text>
               <Separator flex="1" />
             </HStack>

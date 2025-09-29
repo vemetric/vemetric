@@ -1,10 +1,11 @@
+import { getVemetricUrl } from '@vemetric/common/env';
 import { Vemetric } from '@vemetric/node';
 
-if (!process.env.VEMETRIC_TOKEN || !process.env.VEMETRIC_DOMAIN) {
-  throw new Error('VEMETRIC_TOKEN and VEMETRIC_DOMAIN are required');
+if (!process.env.VEMETRIC_TOKEN) {
+  throw new Error('VEMETRIC_TOKEN is required');
 }
 
 export const vemetric = new Vemetric({
-  host: `https://hub.${process.env.VEMETRIC_DOMAIN}`,
+  host: getVemetricUrl('hub'),
   token: process.env.VEMETRIC_TOKEN,
 });

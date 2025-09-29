@@ -6,9 +6,9 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev --create-only",
-    "db:deploy": "prisma migrate deploy",
+    "db:generate": "dotenv -e ../../.env -- prisma generate",
+    "db:migrate": "dotenv -e ../../.env -- prisma migrate dev --create-only",
+    "db:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
     "lint": "eslint . --max-warnings 0"
   },
   "dependencies": {
@@ -18,6 +18,7 @@
   },
   "devDependencies": {
     "@vemetric/eslint-config": "workspace:*",
+    "dotenv-cli": "^10.0.0",
     "prisma": "^5.4.2"
   }
 }

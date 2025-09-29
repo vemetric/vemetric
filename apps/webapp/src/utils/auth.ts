@@ -2,11 +2,10 @@ import type { Auth } from 'backend';
 import { customSessionClient, lastLoginMethodClient } from 'better-auth/client/plugins';
 import { createAuthClient } from 'better-auth/react';
 import { toaster } from '@/components/ui/toaster';
-
-const hostname = location.hostname.split('.').slice(-2).join('.');
+import { getAppUrl, getBackendUrl } from './url';
 
 export const authClient = createAuthClient({
-  baseURL: 'https://backend.' + hostname + '/auth',
+  baseURL: getBackendUrl() + '/auth',
   plugins: [lastLoginMethodClient(), customSessionClient<Auth>()],
 });
 
@@ -14,7 +13,7 @@ export const loginWithProvider = async (provider: 'google' | 'github', setIsLoad
   await authClient.signIn.social(
     {
       provider,
-      callbackURL: 'https://' + window.location.hostname + '/',
+      callbackURL: getAppUrl() + '/',
     },
     {
       onRequest: () => {

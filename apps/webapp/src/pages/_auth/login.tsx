@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
 import { authClient, loginWithProvider } from '@/utils/auth';
+import { getAppUrl } from '@/utils/url';
 
 export const Route = createFileRoute('/_auth/login')({
   component: Page,
@@ -135,7 +136,7 @@ function Page() {
 
                   const res = await authClient.forgetPassword({
                     email,
-                    redirectTo: 'https://' + window.location.hostname + '/reset-password',
+                    redirectTo: getAppUrl() + '/reset-password',
                   });
 
                   if (res.error) {
@@ -168,7 +169,7 @@ function Page() {
             <HStack>
               <Separator flex="1" />
               <Text flexShrink="0" fontSize="xs">
-                or Sign in with
+                Or continue with
               </Text>
               <Separator flex="1" />
             </HStack>

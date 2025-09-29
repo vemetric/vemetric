@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun run --hot src/index.ts",
+    "dev": "bun --env-file=../../.env --env-file=.env run --hot src/index.ts",
     "start": "bun run src/index.ts",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",

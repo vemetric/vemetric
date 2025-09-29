@@ -6,7 +6,7 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
-    "migrate-local": "dotenv -e .env -- clickhouse-migrations migrate --migrations-home=./migrations",
+    "migrate-local": "dotenv -e ../../.env -- clickhouse-migrations migrate --migrations-home=./migrations",
     "migrate-prod": "clickhouse-migrations migrate --migrations-home=./migrations",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest"
@@ -25,6 +25,7 @@
     "@types/sqlstring": "^2.3.2",
     "@vemetric/eslint-config": "workspace:*",
     "clickhouse-migrations": "^0.1.13",
+    "dotenv-cli": "^10.0.0",
     "vitest": "^3.2.3"
   }
 }

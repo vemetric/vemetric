@@ -27,7 +27,7 @@ jobs:
       VITE_PADDLE_2M_YEARLY: ${{ secrets.PADDLE_2M_YEARLY }}
       VITE_PADDLE_5M_MONTHLY: ${{ secrets.PADDLE_5M_MONTHLY }}
       VITE_PADDLE_5M_YEARLY: ${{ secrets.PADDLE_5M_YEARLY }}
-      VEMETRIC_TOKEN: ${{ secrets.VEMETRIC_TOKEN }}
+      VITE_VEMETRIC_TOKEN: ${{ secrets.VEMETRIC_TOKEN }}
 
     steps:
       - name: Checkout code

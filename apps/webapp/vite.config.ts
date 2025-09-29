@@ -1,18 +1,11 @@
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
-export default defineConfig(({ mode }) => {
-  // Load env from parent directory for local development
-  const env = loadEnv(mode, '../../', '');
-
+export default defineConfig(() => {
   return {
-    envDir: '../../',
-    define: {
-      'import.meta.env.VEMETRIC_TOKEN': JSON.stringify(env.VEMETRIC_TOKEN),
-    },
     plugins: [
       tsconfigPaths(),
       TanStackRouterVite({ target: 'react', autoCodeSplitting: true }),

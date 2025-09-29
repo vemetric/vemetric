@@ -7,12 +7,13 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 export default defineConfig(({ mode }) => {
   // Load env from parent directory for local development
   const env = loadEnv(mode, '../../', '');
-  const vemetricToken = env.VEMETRIC_TOKEN || 'process.env.VITE_VEMETRIC_TOKEN';
 
   return {
     envDir: '../../',
     define: {
-      'import.meta.env.VEMETRIC_TOKEN': JSON.stringify(vemetricToken),
+      'import.meta.env.VEMETRIC_TOKEN': env.VEMETRIC_TOKEN
+        ? JSON.stringify(env.VEMETRIC_TOKEN)
+        : 'process.env.VITE_VEMETRIC_TOKEN',
     },
     plugins: [
       tsconfigPaths(),

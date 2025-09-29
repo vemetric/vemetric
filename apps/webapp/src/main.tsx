@@ -37,7 +37,7 @@ createRoot(document.getElementById('root')!).render(
     <ClientProviders>
       <VemetricScript
         host={getHubUrl()}
-        token="WRlW37cPSLUAbXDk76wYU"
+        token={import.meta.env.VEMETRIC_TOKEN || import.meta.env.VITE_VEMETRIC_TOKEN}
         maskPaths={[
           '/p/*',
           '/p/*/users',

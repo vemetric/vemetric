@@ -7,10 +7,7 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 export default defineConfig(({ mode }) => {
   // Load env from parent directory for local development
   const env = loadEnv(mode, '../../', '');
-
-  // Also check process.env for Cloudflare Pages deployment
-  // Cloudflare Pages sets env vars directly on process.env
-  const vemetricToken = process.env.VITE_VEMETRIC_TOKEN || env.VITE_VEMETRIC_TOKEN || env.VEMETRIC_TOKEN;
+  const vemetricToken = env.VEMETRIC_TOKEN || 'process.env.VITE_VEMETRIC_TOKEN';
 
   return {
     envDir: '../../',

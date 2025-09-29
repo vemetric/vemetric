@@ -11,9 +11,7 @@ export default defineConfig(({ mode }) => {
   return {
     envDir: '../../',
     define: {
-      'import.meta.env.VEMETRIC_TOKEN': env.VEMETRIC_TOKEN
-        ? JSON.stringify(env.VEMETRIC_TOKEN)
-        : process.env.VITE_VEMETRIC_TOKEN,
+      'import.meta.env.VEMETRIC_TOKEN': JSON.stringify(env.VEMETRIC_TOKEN),
     },
     plugins: [
       tsconfigPaths(),

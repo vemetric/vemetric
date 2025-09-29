@@ -1,9 +1,10 @@
-import { Hono } from 'hono';
-import { serve, type ServerWebSocket } from 'bun';
 import { getDevProxyPort, getDevProxyPortExtension } from '@vemetric/common/env';
+import { serve, type ServerWebSocket } from 'bun';
+import { Hono } from 'hono';
+import { logger } from './logger';
 
 if (process.env.VEMETRIC_DEV_PROXY_DISABLED === 'true') {
-  console.log('Vemetric Dev Proxy is disabled');
+  logger.info('Vemetric Dev Proxy is disabled');
   process.exit(0);
 }
 
@@ -80,15 +81,15 @@ app.all('*', async (c) => {
     const errorMessage = `Service unavailable: ${proxyConfig.target}`;
 
     if (error?.code === 'ConnectionRefused' || error?.code === 'ECONNREFUSED') {
-      console.warn(`[${new Date().toISOString()}] ${requestHost} -> ${proxyConfig.target} (service not running)`);
+      logger.warn(`[${new Date().toISOString()}] ${requestHost} -> ${proxyConfig.target} (service not running)`);
     } else if (error?.code === 'ECONNRESET' || error?.message?.includes('socket connection was closed')) {
-      console.info(
+      logger.info(
         `[${new Date().toISOString()}] ${requestHost} -> ${proxyConfig.target} (connection reset, likely restarting)`,
       );
     } else {
-      console.error(
+      logger.error(
+        { error: error?.message || error },
         `[${new Date().toISOString()}] Proxy error for ${requestHost} -> ${proxyConfig.target}:`,
-        error?.message || error,
       );
     }
 
@@ -129,7 +130,7 @@ serve({
       const targetWs = new WebSocket(wsTarget);
 
       targetWs.onopen = () => {
-        console.log(`[${new Date().toISOString()}] WebSocket connected: ${host} -> ${wsTarget}`);
+        logger.info(`[${new Date().toISOString()}] WebSocket connected: ${host} -> ${wsTarget}`);
       };
 
       targetWs.onmessage = (event) => ws.send(event.data);
@@ -147,9 +148,9 @@ serve({
   },
 });
 
-console.log(`\n🚀 Dev proxy server running on port ${PORT}`);
-console.log('📍 Available routes:');
+logger.info(`\n🚀 Dev proxy server running on port ${PORT}`);
+logger.info('📍 Available routes:');
 proxies.forEach(({ host, target }) => {
-  console.log(`   http://${host} → ${target}`);
+  logger.info(`   http://${host} → ${target}`);
 });
-console.log('');
+logger.info('');

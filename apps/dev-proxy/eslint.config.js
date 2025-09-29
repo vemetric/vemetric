@@ -1,3 +1,4 @@
-import baseConfig from '@vemetric/eslint-config/index.js';
+import { config } from '@vemetric/eslint-config/node';
 
-export default [...baseConfig];
+/** @type {import('eslint').Linter.Config} */
+export default config;

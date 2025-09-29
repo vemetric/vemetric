@@ -148,6 +148,12 @@ importers:
       hono:
         specifier: ^4.6.15
         version: 4.9.9
+      pino:
+        specifier: ^9.6.0
+        version: 9.6.0
+      pino-pretty:
+        specifier: ^13.0.0
+        version: 13.0.0
     devDependencies:
       '@types/bun':
         specifier: latest

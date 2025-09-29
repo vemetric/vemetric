@@ -119,7 +119,7 @@ function Page() {
             <HStack>
               <Separator flex="1" />
               <Text flexShrink="0" fontSize="xs">
-                or Sign up with
+                Or continue with
               </Text>
               <Separator flex="1" />
             </HStack>

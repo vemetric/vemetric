@@ -1,11 +1,13 @@
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useAuth } from '../../src/hooks/use-auth';
 import { useFeatureFlags } from '../../src/hooks/use-feature-flags';
+import { authClient } from '../../src/utils/auth';
 
-// Mock the useAuth hook
-vi.mock('../../src/hooks/use-auth', () => ({
-  useAuth: vi.fn(),
+// Mock the auth client
+vi.mock('../../src/utils/auth', () => ({
+  authClient: {
+    useSession: vi.fn(),
+  },
 }));
 
 describe('useFeatureFlags', () => {
@@ -29,26 +31,26 @@ describe('useFeatureFlags', () => {
   });
 
   it('should return false when projectId is undefined', () => {
-    (useAuth as any).mockReturnValue({ session: mockSession });
+    (authClient.useSession as any).mockReturnValue({ data: mockSession });
     const { result } = renderHook(() => useFeatureFlags(undefined));
     expect(result.current.hasFeatureFlag('feature1')).toBe(false);
   });
 
   it('should return false when projectId is null', () => {
-    (useAuth as any).mockReturnValue({ session: mockSession });
+    (authClient.useSession as any).mockReturnValue({ data: mockSession });
     const { result } = renderHook(() => useFeatureFlags(null));
     expect(result.current.hasFeatureFlag('feature1')).toBe(false);
   });
 
   it('should return false when project is not found', () => {
-    (useAuth as any).mockReturnValue({ session: mockSession });
+    (authClient.useSession as any).mockReturnValue({ data: mockSession });
     const { result } = renderHook(() => useFeatureFlags('non-existent-project'));
     expect(result.current.hasFeatureFlag('feature1')).toBe(false);
   });
 
   it('should return false when organization is not found', () => {
-    (useAuth as any).mockReturnValue({
-      session: {
+    (authClient.useSession as any).mockReturnValue({
+      data: {
         ...mockSession,
         organizations: [{ id: 'different-org', featureFlags: 'feature1' }],
       },
@@ -58,8 +60,8 @@ describe('useFeatureFlags', () => {
   });
 
   it('should return false when feature flags are not set', () => {
-    (useAuth as any).mockReturnValue({
-      session: {
+    (authClient.useSession as any).mockReturnValue({
+      data: {
         ...mockSession,
         organizations: [{ id: 'org-1', featureFlags: undefined }],
       },
@@ -69,7 +71,7 @@ describe('useFeatureFlags', () => {
   });
 
   it('should return true when feature flag exists', () => {
-    (useAuth as any).mockReturnValue({ session: mockSession });
+    (authClient.useSession as any).mockReturnValue({ data: mockSession });
     const { result } = renderHook(() => useFeatureFlags('project-1'));
     expect(result.current.hasFeatureFlag('feature1')).toBe(true);
     expect(result.current.hasFeatureFlag('feature2')).toBe(true);
@@ -77,14 +79,14 @@ describe('useFeatureFlags', () => {
   });
 
   it('should return false when feature flag does not exist', () => {
-    (useAuth as any).mockReturnValue({ session: mockSession });
+    (authClient.useSession as any).mockReturnValue({ data: mockSession });
     const { result } = renderHook(() => useFeatureFlags('project-1'));
     expect(result.current.hasFeatureFlag('non-existent-feature')).toBe(false);
   });
 
   it('should handle empty feature flags string', () => {
-    (useAuth as any).mockReturnValue({
-      session: {
+    (authClient.useSession as any).mockReturnValue({
+      data: {
         ...mockSession,
         organizations: [{ id: 'org-1', featureFlags: '' }],
       },
@@ -94,8 +96,8 @@ describe('useFeatureFlags', () => {
   });
 
   it('should handle feature flags with spaces', () => {
-    (useAuth as any).mockReturnValue({
-      session: {
+    (authClient.useSession as any).mockReturnValue({
+      data: {
         ...mockSession,
         organizations: [{ id: 'org-1', featureFlags: 'feature1, feature2, feature3' }],
       },

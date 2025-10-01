@@ -14,6 +14,7 @@ COPY apps/backend/package.json ./apps/backend/
 COPY apps/worker/package.json ./apps/worker/
 COPY apps/bullboard/package.json ./apps/bullboard/
 COPY apps/health-check/package.json ./apps/health-check/
+COPY apps/dev-proxy/package.json ./apps/dev-proxy/
 COPY packages/clickhouse/package.json ./packages/clickhouse/
 COPY packages/common/package.json ./packages/common/
 COPY packages/database/package.json ./packages/database/

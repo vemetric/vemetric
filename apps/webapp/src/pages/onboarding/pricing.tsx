@@ -7,8 +7,9 @@ import { OnboardingLayout } from '@/components/onboard-layout';
 import { PricingSlider } from '@/components/pages/settings/billing/pricing-slider';
 import { toaster } from '@/components/ui/toaster';
 import { Tooltip } from '@/components/ui/tooltip';
-import { useAuth } from '@/hooks/use-auth';
 import { useOpenCrispChat } from '@/stores/crisp-chat-store';
+import { authClient } from '@/utils/auth';
+import { requireOnboardingPricing } from '@/utils/auth-guards';
 import { openPaddleCheckout } from '@/utils/paddle';
 import { PRICING_PLANS } from '@/utils/pricing';
 import { trpc } from '@/utils/trpc';
@@ -18,11 +19,12 @@ const PricingCard = (props: CardRootProps) => {
 };
 
 export const Route = createFileRoute('/onboarding/pricing')({
+  beforeLoad: requireOnboardingPricing,
   component: Page,
 });
 
 function Page() {
-  const { session, refetchAuth } = useAuth();
+  const { data: session, refetch: refetchAuth } = authClient.useSession();
   const openCrispChat = useOpenCrispChat();
   const navigate = useNavigate();
 
@@ -40,14 +42,12 @@ function Page() {
       navigate({ to: '/onboarding/project' });
     },
     onError: (error) => {
+      setIsLoading(false);
       toaster.create({
         title: 'Error',
         description: error.message,
         type: 'error',
       });
-    },
-    onSettled: () => {
-      setIsLoading(false);
     },
   });
 

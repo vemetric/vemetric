@@ -1,7 +1,7 @@
 import type { BoxProps, CardRootProps, FlexProps } from '@chakra-ui/react';
 import { Box, Card, Flex, Icon, Spinner } from '@chakra-ui/react';
 import type { LinkProps } from '@tanstack/react-router';
-import { Link, useMatches, useParams } from '@tanstack/react-router';
+import { Link, useMatches, useNavigate, useParams } from '@tanstack/react-router';
 import type { ElementType } from 'react';
 import { useState } from 'react';
 import {
@@ -57,6 +57,7 @@ export const NavDivider = (props: BoxProps) => (
 );
 
 export const Navigation = (props: CardRootProps) => {
+  const navigate = useNavigate();
   const matches = useMatches();
   const routeId = matches[matches.length - 1].routeId;
 
@@ -140,18 +141,14 @@ export const Navigation = (props: CardRootProps) => {
         as="button"
         cursor="pointer"
         icon={isLogoutLoading ? Spinner : TbLogout}
-        onClick={() => {
+        onClick={async () => {
           if (isLogoutLoading) {
             return;
           }
 
-          authClient.signOut({
-            fetchOptions: {
-              onRequest: () => {
-                setIsLogoutLoading(true);
-              },
-            },
-          });
+          setIsLogoutLoading(true);
+          await authClient.signOut();
+          navigate({ to: '/login' });
         }}
       >
         Logout

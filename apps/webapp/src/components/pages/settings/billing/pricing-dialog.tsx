@@ -5,8 +5,8 @@ import { TbBolt } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import { toaster } from '@/components/ui/toaster';
 import { Tooltip } from '@/components/ui/tooltip';
-import { useAuth } from '@/hooks/use-auth';
 import { useOpenCrispChat } from '@/stores/crisp-chat-store';
+import { authClient } from '@/utils/auth';
 import { openPaddleCheckout } from '@/utils/paddle';
 import { PRICING_PLANS } from '@/utils/pricing';
 import { trpc } from '@/utils/trpc';
@@ -24,7 +24,7 @@ interface PricingDialogProps {
 
 export const PricingDialog = ({ open, onOpenChange, currentPlan, organizationId }: PricingDialogProps) => {
   const openCrispChat = useOpenCrispChat();
-  const { session } = useAuth();
+  const { data: session } = authClient.useSession();
   const [isYearly, setIsYearly] = useState(currentPlan?.isYearly ?? false);
   const [sliderValue, setSliderValue] = useState(currentPlan?.pricingPlanIndex ?? 0);
   const [updatePreviewData, setUpdatePreviewData] = useState<{

@@ -23,6 +23,7 @@ import { ResponsiveContainer, AreaChart as RechartsAreaChart, XAxis, YAxis, Area
 import { BaseLayout } from '@/components/base-layout';
 import { CreateProjectDialog } from '@/components/create-project-dialog';
 import { Status } from '@/components/ui/status';
+import { requireOnboarding } from '@/utils/auth-guards';
 import { getFaviconUrl } from '@/utils/favicon';
 import { trpc } from '@/utils/trpc';
 
@@ -171,6 +172,7 @@ const ProjectCard = (props: Props) => {
 };
 
 export const Route = createFileRoute('/')({
+  beforeLoad: requireOnboarding,
   component: Page,
 });
 

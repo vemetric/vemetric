@@ -1,8 +1,8 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { toaster } from '@/components/ui/toaster';
+import { authClient } from '@/utils/auth';
 import { trpc } from '@/utils/trpc';
-import { useAuth } from './use-auth';
 
 interface Props {
   onSuccess?: (projectId: string) => void;
@@ -13,7 +13,7 @@ export function useCreateProject({ onSuccess }: Props) {
   const [projectName, setProjectName] = useState('');
   const [domain, setDomain] = useState('');
   const navigate = useNavigate();
-  const { session, refetchAuth } = useAuth();
+  const { data: session, refetch: refetchAuth } = authClient.useSession();
   const { mutate } = trpc.projects.create.useMutation({
     onMutate: () => {
       setIsLoading(true);
@@ -22,7 +22,6 @@ export function useCreateProject({ onSuccess }: Props) {
       await refetchAuth();
       navigate({ to: '/p/$projectId', params: { projectId: id } });
       onSuccess?.(id);
-      setIsLoading(false);
     },
     onError: (error) => {
       toaster.create({

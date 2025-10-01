@@ -4,20 +4,16 @@ import { TbNetwork, TbDashboard } from 'react-icons/tb';
 import { OnboardingLayout } from '@/components/onboard-layout';
 import { InputGroup } from '@/components/ui/input-group';
 import { Tooltip } from '@/components/ui/tooltip';
-import { useAuth } from '@/hooks/use-auth';
 import { useCreateProject } from '@/hooks/use-create-project';
+import { requireOnboardingProject } from '@/utils/auth-guards';
 
 export const Route = createFileRoute('/onboarding/project')({
+  beforeLoad: requireOnboardingProject,
   component: Page,
 });
 
 function Page() {
-  const { refetchAuth } = useAuth();
-  const { isLoading, projectName, setProjectName, domain, setDomain, onSubmit } = useCreateProject({
-    onSuccess: () => {
-      refetchAuth();
-    },
-  });
+  const { isLoading, projectName, setProjectName, domain, setDomain, onSubmit } = useCreateProject({});
 
   return (
     <OnboardingLayout

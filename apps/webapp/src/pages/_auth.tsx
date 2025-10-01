@@ -3,9 +3,11 @@ import { createFileRoute, Outlet } from '@tanstack/react-router';
 import { AnimatePresence } from 'motion/react';
 import { AuthIllustration } from '@/components/auth-illustration';
 import { Logo } from '@/components/logo';
+import { requireAnonymous } from '@/utils/auth-guards';
 import { getLandingPageUrl } from '@/utils/url';
 
 export const Route = createFileRoute('/_auth')({
+  beforeLoad: requireAnonymous,
   component: RouteComponent,
 });
 

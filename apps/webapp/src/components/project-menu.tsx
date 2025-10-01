@@ -2,7 +2,7 @@ import { Button, Flex, Image, Text } from '@chakra-ui/react';
 import { Link, useMatches, useParams } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { TbChevronDown, TbDashboard } from 'react-icons/tb';
-import { useAuth } from '@/hooks/use-auth';
+import { authClient } from '@/utils/auth';
 import { getFaviconUrl } from '@/utils/favicon';
 import { CreateProjectDialog } from './create-project-dialog';
 import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from './ui/menu';
@@ -17,7 +17,7 @@ export const ProjectMenu = () => {
   const ref = useRef<HTMLButtonElement>(null);
   const [minWidth, setMinWidth] = useState<number | null>(null);
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
-  const { session } = useAuth();
+  const { data: session } = authClient.useSession();
   const { projects } = session ?? {};
   const params = useParams({ strict: false });
   const project = projects?.find((project) => project.id === params.projectId);

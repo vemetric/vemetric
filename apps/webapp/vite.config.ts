@@ -63,9 +63,12 @@ export default defineConfig(({ mode }) => {
     server: {
       allowedHosts: ['app.vemetric.local', 'app.vemetric.localhost'],
       port: 4000,
-      hmr: {
-        port: 4000,
-      },
+      hmr:
+        env.VEMETRIC_DEV_PROXY_DISABLED === 'true'
+          ? undefined
+          : {
+              port: 4000,
+            },
     },
   };
 });

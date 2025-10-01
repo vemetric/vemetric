@@ -5,10 +5,12 @@ import { TbBuilding, TbUserSquareRounded } from 'react-icons/tb';
 import { OnboardingLayout } from '@/components/onboard-layout';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
-import { useAuth } from '@/hooks/use-auth';
+import { authClient } from '@/utils/auth';
+import { requireOnboardingOrganization } from '@/utils/auth-guards';
 import { trpc } from '@/utils/trpc';
 
 export const Route = createFileRoute('/onboarding/organization')({
+  beforeLoad: requireOnboardingOrganization,
   component: Page,
 });
 
@@ -17,24 +19,23 @@ function Page() {
   const [firstName, setFirstName] = useState('');
   const [organizationName, setOrganizationName] = useState('');
   const navigate = useNavigate();
-  const { refetchAuth } = useAuth();
+  const { refetch: refetchAuth } = authClient.useSession();
+
   const { mutate } = trpc.organization.create.useMutation({
     onMutate: () => {
       setIsLoading(true);
     },
     onSuccess: async () => {
       await refetchAuth();
-      navigate({ to: '/onboarding/project' });
+      navigate({ to: '/onboarding/pricing' });
     },
     onError: (error) => {
+      setIsLoading(false);
       toaster.create({
         title: 'Error',
         description: error.message,
         type: 'error',
       });
-    },
-    onSettled: () => {
-      setIsLoading(false);
     },
   });
 

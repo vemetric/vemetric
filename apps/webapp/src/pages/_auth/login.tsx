@@ -1,5 +1,5 @@
 import { Field, Input, Heading, Text, HStack, Stack, Link, Button, Separator, Badge, Flex } from '@chakra-ui/react';
-import { createFileRoute, Link as RouterLink } from '@tanstack/react-router';
+import { createFileRoute, Link as RouterLink, useNavigate } from '@tanstack/react-router';
 import { motion } from 'motion/react';
 import { useState } from 'react';
 import { TbBrandGithub, TbBrandGoogleFilled, TbLock, TbMail } from 'react-icons/tb';
@@ -14,6 +14,7 @@ export const Route = createFileRoute('/_auth/login')({
 });
 
 function Page() {
+  const navigate = useNavigate();
   const lastMethod = authClient.getLastUsedLoginMethod();
   const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
@@ -34,6 +35,14 @@ function Page() {
         onRequest: () => {
           setPassword('');
           setIsLoading(true);
+        },
+        onSuccess: async () => {
+          const session = await authClient.getSession();
+          if (session?.data?.projects.length === 1) {
+            navigate({ to: `/p/${session.data.projects[0].id}` });
+          } else {
+            navigate({ to: '/' });
+          }
         },
         onError: (ctx) => {
           setIsLoading(false);

@@ -1,13 +1,15 @@
 import { createFileRoute, Navigate } from '@tanstack/react-router';
 import { SplashScreen } from '@/components/splash-screen';
-import { useAuth } from '@/hooks/use-auth';
+import { authClient } from '@/utils/auth';
+import { requireOnboarding } from '@/utils/auth-guards';
 
 export const Route = createFileRoute('/billing')({
+  beforeLoad: requireOnboarding,
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const { session, isSessionLoading } = useAuth();
+  const { data: session, isPending: isSessionLoading } = authClient.useSession();
 
   const project = session?.projects[0];
   if (isSessionLoading || !project) {

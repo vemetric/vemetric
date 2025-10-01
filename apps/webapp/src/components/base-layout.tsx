@@ -1,4 +1,5 @@
-import { Flex, Link, Box } from '@chakra-ui/react';
+import { Flex, Link, Box, Center, Spinner, Span } from '@chakra-ui/react';
+import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { authClient } from '@/utils/auth';
 import { Logo } from './logo';
@@ -11,6 +12,7 @@ interface Props {
 
 export const BaseLayout = (props: Props) => {
   const { children } = props;
+  const navigate = useNavigate();
   const [isLogoutLoading, setIsLogoutLoading] = useState(false);
 
   return (
@@ -33,22 +35,24 @@ export const BaseLayout = (props: Props) => {
           <Box w="1px" h="20px" bg="border.emphasized" />
           <Link
             as="button"
+            pos="relative"
             textStyle="sm"
-            onClick={() => {
+            onClick={async () => {
               if (isLogoutLoading) {
                 return;
               }
 
-              authClient.signOut({
-                fetchOptions: {
-                  onRequest: () => {
-                    setIsLogoutLoading(true);
-                  },
-                },
-              });
+              setIsLogoutLoading(true);
+              await authClient.signOut();
+              navigate({ to: '/login' });
             }}
           >
-            Logout
+            <Span opacity={isLogoutLoading ? 0.5 : 1}>Logout</Span>
+            {isLogoutLoading && (
+              <Center pos="absolute" top="0" left="0" w="100%" h="100%">
+                <Spinner size="xs" />
+              </Center>
+            )}
           </Link>
         </Flex>
       </Flex>

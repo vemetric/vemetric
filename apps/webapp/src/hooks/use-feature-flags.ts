@@ -1,4 +1,4 @@
-import { useAuth } from './use-auth';
+import { authClient } from '@/utils/auth';
 
 /**
  * Check if a specific feature flag is enabled for a particular organization
@@ -7,7 +7,7 @@ import { useAuth } from './use-auth';
  * @returns True if the flag is enabled for the specified organization
  */
 export const useFeatureFlags = (projectId: string | undefined | null) => {
-  const { session } = useAuth();
+  const { data: session } = authClient.useSession();
 
   return {
     hasFeatureFlag: (flagName: string) => {

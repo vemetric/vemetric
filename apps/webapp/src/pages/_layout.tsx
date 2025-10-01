@@ -10,6 +10,7 @@ import { PageWrapper } from '@/components/page-wrapper';
 import { TabletHeader } from '@/components/tablet-header';
 import { toaster } from '@/components/ui/toaster';
 import { useOrganizationId } from '@/hooks/use-organization-id';
+import { requireOnboarding } from '@/utils/auth-guards';
 import { getPricingPlan } from '@/utils/pricing';
 import { trpc } from '@/utils/trpc';
 
@@ -58,6 +59,7 @@ const BackgroundSvg = () => (
 let shownPastDueToast = false;
 
 export const Route = createFileRoute('/_layout')({
+  beforeLoad: requireOnboarding,
   component: LayoutComponent,
 });
 

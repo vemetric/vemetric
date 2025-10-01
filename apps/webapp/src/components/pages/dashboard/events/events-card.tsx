@@ -56,17 +56,11 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
   const navigate = useNavigate({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
   const { eventIcons } = useProjectContext();
 
-  const [isAnimating, setIsAnimating] = useState(false);
-
   const selectEvent = (eventName: string | null, property?: string | null) => {
-    setIsAnimating(true);
-    setTimeout(() => {
-      navigate({
-        search: (prev) => ({ ...prev, se: eventName ?? undefined, ep: property ?? undefined }),
-        resetScroll: false,
-      });
-      setTimeout(() => setIsAnimating(false), 300);
-    }, 1);
+    navigate({
+      search: (prev) => ({ ...prev, se: eventName ?? undefined, ep: property ?? undefined }),
+      resetScroll: false,
+    });
   };
 
   const activeFilters = filterConfig?.filters.filter((f) => f.type === 'event') ?? [];
@@ -114,7 +108,7 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
           </Button>
         </Flex>
       </DashboardCardHeader>
-      <Card.Body pos="relative" overflow={isAnimating ? 'hidden' : 'visible'}>
+      <Card.Body pos="relative" overflow="hidden">
         <AnimatePresence initial={false} mode="popLayout">
           {selectedEvent === undefined ? (
             <motion.div key="list" {...getMotionViewProps(true)}>

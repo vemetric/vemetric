@@ -667,13 +667,15 @@ export const clickhouseEvent = {
 
     const resultSet = await clickhouseClient.query({
       query: `
-        SELECT 
-          toDate(createdAt) as date,
-          count(*) as count
-        FROM ${TABLE_NAME}
-        WHERE projectId = ${escape(projectId)}
-        AND userId = ${escape(userId)}
-        AND createdAt >= '${formatClickhouseDate(startDate)}'
+        SELECT date, count(*) as count FROM (
+          SELECT toDate(any(createdAt)) as date
+          FROM ${TABLE_NAME}
+          WHERE projectId = ${escape(projectId)}
+          AND userId = ${escape(userId)}
+          AND createdAt >= '${formatClickhouseDate(startDate)}'
+          GROUP BY id
+          HAVING sum(sign) > 0 
+        )
         GROUP BY date
         ORDER BY date ASC
       `,

@@ -164,6 +164,11 @@ export const DashboardChart = (props: Props) => {
     });
   };
 
+  const handleLiveClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+    navigate({ search: (prev) => ({ ...prev, t: 'live' }) });
+  };
+
   const eventCategory = CHART_CATEGORY_MAP.events;
   const activeCategories = CHART_CATEGORIES.filter(([key]) =>
     isMobile ? activeMobileCategory === key : activeCategoryKeys.includes(key as ChartCategoryKey),
@@ -193,7 +198,7 @@ export const DashboardChart = (props: Props) => {
                       label={
                         categoryKey === 'users' ? (
                           <Tooltip content={`${onlineUsers} users are currently online`}>
-                            <Status value="success" color="fg" gap={1.5}>
+                            <Status value="success" color="fg" gap={1.5} onClick={handleLiveClick}>
                               <Text fontWeight="semibold">{onlineUsers}</Text>
                             </Status>
                           </Tooltip>

@@ -272,17 +272,26 @@ export const clickhouseEvent = {
       const resultSet = await clickhouseClient.query({
         query: `SELECT u.userId, u.identifier, u.displayName, u.countryCode, u.maxCreatedAt, u.isOnline${sortSelect}
               FROM (
-                SELECT userId,
-                      argMax(userIdentifier, createdAt) as identifier,
-                      argMax(userDisplayName, createdAt) as displayName,
-                      argMax(countryCode, createdAt) as countryCode,
-                      max(createdAt) as maxCreatedAt,
-                      max(createdAt) >= ${ONLINE_USERS_INTERVAL_QUERY} as isOnline
-                FROM event
-                WHERE projectId=${escape(projectId)}
-                  ${userFilterQueries ? `AND (${userFilterQueries})` : ''}
-                  ${filterQueries || ''}
-                  ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+                SELECT userId, 
+                  argMax(userIdentifier, eventCreatedAt) as identifier,
+                  argMax(userDisplayName, eventCreatedAt) as displayName,
+                  argMax(countryCode, eventCreatedAt) as countryCode,
+                  max(eventCreatedAt) as maxCreatedAt,
+                  max(eventCreatedAt) >= ${ONLINE_USERS_INTERVAL_QUERY} as isOnline
+                FROM (
+                  SELECT any(userId) as userId,
+                    argMax(userIdentifier, createdAt) as userIdentifier,
+                    argMax(userDisplayName, createdAt) as userDisplayName,
+                    argMax(countryCode, createdAt) as countryCode,
+                    max(createdAt) as eventCreatedAt
+                  FROM ${TABLE_NAME}
+                  WHERE projectId=${escape(projectId)}
+                    ${userFilterQueries ? `AND (${userFilterQueries})` : ''}
+                    ${filterQueries || ''}
+                    ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+                  GROUP BY id
+                  HAVING sum(sign) > 0
+                )
                 GROUP BY userId
               ) u
               ${joinClause}

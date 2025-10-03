@@ -67,14 +67,14 @@ export const AuthIllustration = () => {
   }, []);
 
   return (
-    <Box w="full" h="full" pos="relative" bg="linear-gradient(to top, #602fc4ff, #7157d1ff)" overflow="hidden">
+    <Box w="full" h="full" pos="relative" bg="linear-gradient(to top, #602fc4ff, #7157d1ff)" overflow="hidden" p={5}>
       <PageDotBackground dotColor="#9696be" />
       <Center pos="relative" h="full" w="full" flexDir="column">
         <Box
           pos="relative"
           transform={
             animateTransform
-              ? 'translate3d(20px, 0px, 100vmin) scale(1) rotateX(calc(var(--x1, -13) * 1deg)) rotateY(calc(var(--y1, 22) * 1deg)) rotateX(calc(var(--x2, 36) * 1deg))'
+              ? 'translate3d(0px, 0px, 100vmin) scale(1) rotateX(calc(var(--x1, -13) * 1deg)) rotateY(calc(var(--y1, 22) * 1deg)) rotateX(calc(var(--x2, 36) * 1deg))'
               : undefined
           }
           transition="all 1s ease-in-out"
@@ -83,16 +83,17 @@ export const AuthIllustration = () => {
             pos="absolute"
             inset="0"
             bg={{ base: 'whiteAlpha.300', _dark: 'blackAlpha.300' }}
-            rounded="xl"
+            rounded="lg"
             opacity={animateTransform ? 1 : 0}
           />
           <Box
             pos="relative"
             transition="transform 0.7s ease-in-out"
             transitionDelay="0.9s"
-            transform={animateTransform ? 'translate(15px, -15px)' : 'translate(0, 0)'}
+            transform={animateTransform ? 'translate(10px, -10px)' : 'translate(0, 0)'}
           >
             <Card.Root
+              rounded="lg"
               flex="1"
               maxW="800px"
               display="block"
@@ -366,12 +367,18 @@ export const AuthIllustration = () => {
           </Box>
         </Box>
         <Flex justifyContent="center" pos="relative" w="full">
-          <Box color={{ base: 'white', _dark: 'gray.200' }} pos="absolute" w="max-content">
+          <Box
+            color={{ base: 'white', _dark: 'gray.200' }}
+            pos="absolute"
+            w="max-content"
+            mt={8}
+            transform="translate3d(60px, 0px, 100vmin) scale(1) rotateX(calc(var(--x1, -13) * 1deg)) rotateY(calc(var(--y1, 22) * 1deg)) rotateX(calc(var(--x2, 36) * 1deg))"
+          >
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: 0.6, delay: 3.7 } }}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0, transition: { duration: 0.6, delay: 3.7 } }}
             >
-              <Text fontWeight="bold" fontSize="4xl" lineHeight="1.4em" maxW="430px" textAlign="center" mt={10} mb={3}>
+              <Text fontWeight="bold" fontSize="4xl" lineHeight="1.4em" maxW="430px" textAlign="center" mb={3}>
                 Simple, yet actionable Web & Product Analytics
               </Text>
             </motion.div>

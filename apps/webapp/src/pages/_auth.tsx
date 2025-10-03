@@ -1,8 +1,8 @@
 import { Box, Container, Flex, Stack, Link } from '@chakra-ui/react';
 import { createFileRoute, Outlet } from '@tanstack/react-router';
 import { AnimatePresence } from 'motion/react';
-import { AuthIllustration } from '@/components/auth-illustration';
 import { Logo } from '@/components/logo';
+import { AuthIllustration } from '@/components/pages/_auth/auth-illustration';
 import { requireAnonymous } from '@/utils/auth-guards';
 import { getLandingPageUrl } from '@/utils/url';
 

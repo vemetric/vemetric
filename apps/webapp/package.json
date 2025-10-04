@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "postinstall": "pnpm run chakra:build",
     "chakra:build": "chakra typegen src/style/theme.ts --strict",
-    "test": "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "generate-pwa-assets": "pwa-assets-generator --preset minimal-2023 public/logo.svg"
   },
   "dependencies": {

@@ -7,6 +7,7 @@ import { Logo } from '@/components/logo';
 import { MobileMenu } from '@/components/mobile-menu';
 import { Navigation } from '@/components/navigation';
 import { PageWrapper } from '@/components/page-wrapper';
+import { SplashScreen } from '@/components/splash-screen';
 import { TabletHeader } from '@/components/tablet-header';
 import { toaster } from '@/components/ui/toaster';
 import { useOrganizationId } from '@/hooks/use-organization-id';
@@ -60,6 +61,7 @@ let shownPastDueToast = false;
 
 export const Route = createFileRoute('/_layout')({
   beforeLoad: requireOnboarding,
+  pendingComponent: SplashScreen,
   component: LayoutComponent,
 });
 

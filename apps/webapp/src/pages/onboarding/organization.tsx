@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { TbBuilding, TbUserSquareRounded } from 'react-icons/tb';
 import { OnboardingLayout } from '@/components/onboard-layout';
+import { SplashScreen } from '@/components/splash-screen';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
 import { authClient } from '@/utils/auth';
@@ -11,6 +12,7 @@ import { trpc } from '@/utils/trpc';
 
 export const Route = createFileRoute('/onboarding/organization')({
   beforeLoad: requireOnboardingOrganization,
+  pendingComponent: SplashScreen,
   component: Page,
 });
 

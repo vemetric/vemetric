@@ -3,11 +3,13 @@ import { createFileRoute, Outlet } from '@tanstack/react-router';
 import { AnimatePresence } from 'motion/react';
 import { Logo } from '@/components/logo';
 import { AuthIllustration } from '@/components/pages/_auth/auth-illustration';
+import { SplashScreen } from '@/components/splash-screen';
 import { requireAnonymous } from '@/utils/auth-guards';
 import { getLandingPageUrl } from '@/utils/url';
 
 export const Route = createFileRoute('/_auth')({
   beforeLoad: requireAnonymous,
+  pendingComponent: SplashScreen,
   component: RouteComponent,
 });
 

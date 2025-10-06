@@ -22,6 +22,7 @@ import { TbPlus } from 'react-icons/tb';
 import { ResponsiveContainer, AreaChart as RechartsAreaChart, XAxis, YAxis, Area, CartesianGrid } from 'recharts';
 import { BaseLayout } from '@/components/base-layout';
 import { CreateProjectDialog } from '@/components/create-project-dialog';
+import { SplashScreen } from '@/components/splash-screen';
 import { Status } from '@/components/ui/status';
 import { requireOnboarding } from '@/utils/auth-guards';
 import { getFaviconUrl } from '@/utils/favicon';
@@ -173,6 +174,7 @@ const ProjectCard = (props: Props) => {
 
 export const Route = createFileRoute('/')({
   beforeLoad: requireOnboarding,
+  pendingComponent: SplashScreen,
   component: Page,
 });
 
@@ -206,7 +208,9 @@ function Page() {
               </>
             ) : (
               <>
-                {projects?.map((project) => <ProjectCard key={project.id} project={project} />)}
+                {projects?.map((project) => (
+                  <ProjectCard key={project.id} project={project} />
+                ))}
 
                 <CreateProjectDialog>
                   <Stack

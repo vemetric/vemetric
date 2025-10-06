@@ -50,7 +50,7 @@ export const EventCard = ({ event, lastPageViewDate }: Props) => {
   } else if (event.name === '$$outboundLink') {
     displayName = (event.customData?.href as string) ?? 'Outbound Link';
   }
-  console.log(event);
+
   return (
     <Card.Root key={event.id} overflow="hidden" data-event-card>
       <Tooltip

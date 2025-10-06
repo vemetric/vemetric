@@ -69,16 +69,19 @@ export const AuthIllustration = () => {
   return (
     <Box w="full" h="full" pos="relative" bg="linear-gradient(to top, #602fc4ff, #7157d1ff)" overflow="hidden" p={5}>
       <PageDotBackground dotColor="#9696be" />
-      <Center pos="relative" h="full" w="full" flexDir="column">
-        <Box
-          pos="relative"
-          transform={
-            animateTransform
-              ? 'translate3d(0px, 0px, 100vmin) scale(1) rotateX(calc(var(--x1, -13) * 1deg)) rotateY(calc(var(--y1, 22) * 1deg)) rotateX(calc(var(--x2, 36) * 1deg))'
-              : undefined
-          }
-          transition="all 1s ease-in-out"
-        >
+      <Center
+        pos="relative"
+        h="full"
+        w="full"
+        flexDir="column"
+        transform={
+          animateTransform
+            ? 'translate3d(0px, 0px, 100vmin) scale(1) rotateX(calc(var(--x1, -13) * 1deg)) rotateY(calc(var(--y1, 22) * 1deg)) rotateX(calc(var(--x2, 36) * 1deg))'
+            : undefined
+        }
+        transition="all 1s ease-in-out"
+      >
+        <Box pos="relative">
           <Box
             pos="absolute"
             inset="0"
@@ -367,13 +370,7 @@ export const AuthIllustration = () => {
           </Box>
         </Box>
         <Flex justifyContent="center" pos="relative" w="full">
-          <Box
-            color={{ base: 'white', _dark: 'gray.200' }}
-            pos="absolute"
-            w="max-content"
-            mt={8}
-            transform="translate3d(60px, 0px, 100vmin) scale(1) rotateX(calc(var(--x1, -13) * 1deg)) rotateY(calc(var(--y1, 22) * 1deg)) rotateX(calc(var(--x2, 36) * 1deg))"
-          >
+          <Box color={{ base: 'white', _dark: 'gray.200' }} pos="absolute" w="max-content" mt={8}>
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0, transition: { duration: 0.6, delay: 3.7 } }}

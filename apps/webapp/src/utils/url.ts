@@ -30,3 +30,12 @@ export function getBackendUrl() {
 export function getHubUrl() {
   return getUrl('hub');
 }
+
+export function formatQueryParams(params: Record<string, any>): string {
+  const entries = Object.entries(params);
+  if (entries.length === 0) return '';
+  const queryString = entries
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+    .join('&');
+  return `?${queryString}`;
+}

@@ -9,6 +9,7 @@ import { OsIcon } from '@/components/os-icon';
 import { Tooltip } from '@/components/ui/tooltip';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import { RenderAttributeValue } from './render-attribute-value';
+import { formatQueryParams } from '@/utils/url';
 
 interface Props {
   event: {
@@ -19,6 +20,7 @@ interface Props {
     urlHash?: string;
     createdAt: string;
     customData: Record<string, any>;
+    queryParams?: Record<string, any>;
     clientName?: string;
     clientVersion?: string;
     osName?: string;
@@ -48,7 +50,7 @@ export const EventCard = ({ event, lastPageViewDate }: Props) => {
   } else if (event.name === '$$outboundLink') {
     displayName = (event.customData?.href as string) ?? 'Outbound Link';
   }
-
+  console.log(event);
   return (
     <Card.Root key={event.id} overflow="hidden" data-event-card>
       <Tooltip
@@ -98,16 +100,45 @@ export const EventCard = ({ event, lastPageViewDate }: Props) => {
               </Box>
               {isPageView && (
                 <Fragment>
+                  {/* URL section */}
                   <Box fontWeight="semibold" opacity={0.6}>
                     URL
                   </Box>
                   <Box fontWeight="medium" textAlign="right" truncate>
                     <RenderAttributeValue
-                      value={(event.origin ?? '') + (event.pathname ?? '') + (event.urlHash ?? '')}
+                      value={
+                        (event.origin ?? '') +
+                        (event.pathname ?? '') +
+                        formatQueryParams(event.queryParams ?? {}) +
+                        (event.urlHash ?? '')
+                      }
                     />
                   </Box>
+
+                  {/* Params section (same query string in blue small text) */}
+                  {event.queryParams && Object.keys(event.queryParams).length > 0 && (
+                    <Fragment>
+                      <Box fontWeight="semibold" opacity={0.6} mt={2}>
+                        Params
+                      </Box>
+                      <Box fontWeight="medium" textAlign="right" truncate>
+                        <Text
+                          as="span"
+                          fontSize="sm"
+                          color="blue.600"
+                          fontFamily="mono"
+                          whiteSpace="nowrap"
+                          overflow="hidden"
+                          textOverflow="ellipsis"
+                        >
+                          {formatQueryParams(event.queryParams)}
+                        </Text>
+                      </Box>
+                    </Fragment>
+                  )}
                 </Fragment>
               )}
+
               {Object.entries(event.customData)
                 .sort((a, b) => a[0].localeCompare(b[0]))
                 .map(([key, value]) => (

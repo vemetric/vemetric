@@ -1,4 +1,4 @@
-import { Box, Text, Flex, Card, SimpleGrid, useBreakpointValue, Span } from '@chakra-ui/react';
+import { Box, Text, Flex, Card, SimpleGrid, useBreakpointValue, Span, Tag } from '@chakra-ui/react';
 import { isEntityUnknown } from '@vemetric/common/event';
 import { motion } from 'motion/react';
 import { Fragment, useState } from 'react';
@@ -115,25 +115,40 @@ export const EventCard = ({ event, lastPageViewDate }: Props) => {
                     />
                   </Box>
 
-                  {/* Params section (same query string in blue small text) */}
+                  {/* Params section */}
                   {event.queryParams && Object.keys(event.queryParams).length > 0 && (
                     <Fragment>
-                      <Box fontWeight="semibold" opacity={0.6} mt={2}>
+                      <Box fontWeight="semibold" opacity={0.6}>
                         Params
                       </Box>
-                      <Box fontWeight="medium" textAlign="right" truncate>
-                        <Text
-                          as="span"
-                          fontSize="sm"
-                          color="blue.600"
-                          fontFamily="mono"
-                          whiteSpace="nowrap"
-                          overflow="hidden"
-                          textOverflow="ellipsis"
-                        >
-                          {formatQueryParams(event.queryParams)}
-                        </Text>
-                      </Box>
+                      <Flex direction="column" align="flex-end" gap={1.5} mt={1}>
+                        {Object.entries(event.queryParams).map(([key, value]) => (
+                          <Tag.Root
+                            key={key}
+                            colorPalette="blue"
+                            size="sm"
+                            borderRadius="md"
+                            fontFamily="mono"
+                            px={2}
+                            py={0.5}
+                            maxW="100%"
+                            overflow="hidden"
+                            whiteSpace="nowrap"
+                            textOverflow="ellipsis"
+                          >
+                            <Tag.Label
+                              truncate
+                              whiteSpace="nowrap"
+                              textOverflow="ellipsis"
+                              overflow="hidden"
+                              display="block"
+                              title={`${key} = ${String(value)}`}
+                            >
+                              {key} = {String(value)}
+                            </Tag.Label>
+                          </Tag.Root>
+                        ))}
+                      </Flex>
                     </Fragment>
                   )}
                 </Fragment>

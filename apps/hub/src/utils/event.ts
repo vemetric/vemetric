@@ -59,10 +59,24 @@ export function validateSpecialEvents(context: HonoContext, body: EventSchema) {
   }
 }
 
+function ignoreEvent(url?: string) {
+  if (url?.startsWith('https://gtm-msr.appspot.com')) {
+    // special case for Google Tag Manager, we ignore these events
+    return true;
+  }
+
+  return false;
+}
+
 export const trackEvent = async (context: HonoContext, body: EventSchema) => {
   const { req } = context;
   const contextId = body.contextId;
   const { projectId, allowCookies, ipAddress } = context.var;
+  const { customData, name, url } = body;
+
+  if (ignoreEvent(url)) {
+    return;
+  }
 
   let userId = await getUserIdFromRequest(context);
 
@@ -79,8 +93,6 @@ export const trackEvent = async (context: HonoContext, body: EventSchema) => {
     sessionId = generateSessionId();
   }
   await increaseRedisSessionDuration(projectId, userId, sessionId);
-
-  const { customData, name, url } = body;
 
   const headers = req.header();
   delete headers['cookie'];

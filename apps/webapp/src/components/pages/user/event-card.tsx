@@ -1,4 +1,4 @@
-import { Box, Text, Flex, Card, SimpleGrid, useBreakpointValue, Span, Tag } from '@chakra-ui/react';
+import { Box, Text, Flex, Card, SimpleGrid, useBreakpointValue, Span, Tag, Grid } from '@chakra-ui/react';
 import { isEntityUnknown } from '@vemetric/common/event';
 import { motion } from 'motion/react';
 import { Fragment, useState } from 'react';
@@ -8,8 +8,8 @@ import { EventIconButton } from '@/components/event-icon-button';
 import { OsIcon } from '@/components/os-icon';
 import { Tooltip } from '@/components/ui/tooltip';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
-import { RenderAttributeValue } from './render-attribute-value';
 import { formatQueryParams } from '@/utils/url';
+import { RenderAttributeValue } from './render-attribute-value';
 
 interface Props {
   event: {
@@ -119,36 +119,34 @@ export const EventCard = ({ event, lastPageViewDate }: Props) => {
                   {event.queryParams && Object.keys(event.queryParams).length > 0 && (
                     <Fragment>
                       <Box fontWeight="semibold" opacity={0.6}>
-                        Params
+                        Query Params
                       </Box>
-                      <Flex direction="column" align="flex-end" gap={1.5} mt={1}>
+                      <Grid
+                        gridTemplateColumns="1fr max-content minmax(0, max-content)"
+                        gap="1"
+                        fontFamily="mono"
+                        overflow="hidden"
+                      >
                         {Object.entries(event.queryParams).map(([key, value]) => (
-                          <Tag.Root
-                            key={key}
-                            colorPalette="blue"
-                            size="sm"
-                            borderRadius="md"
-                            fontFamily="mono"
-                            px={2}
-                            py={0.5}
-                            maxW="100%"
-                            overflow="hidden"
-                            whiteSpace="nowrap"
-                            textOverflow="ellipsis"
-                          >
-                            <Tag.Label
-                              truncate
-                              whiteSpace="nowrap"
-                              textOverflow="ellipsis"
-                              overflow="hidden"
-                              display="block"
-                              title={`${key} = ${String(value)}`}
-                            >
-                              {key} = {String(value)}
-                            </Tag.Label>
-                          </Tag.Root>
+                          <Fragment key={key}>
+                            <Flex justify="flex-end">
+                              <Tag.Root size="sm">
+                                <Tag.Label truncate display="block" title={key}>
+                                  {key}
+                                </Tag.Label>
+                              </Tag.Root>
+                            </Flex>
+                            <Span fontSize="xs">=</Span>
+                            <Flex>
+                              <Tag.Root colorPalette="blue" size="sm">
+                                <Tag.Label truncate display="block" title={String(value)}>
+                                  {String(value)}
+                                </Tag.Label>
+                              </Tag.Root>
+                            </Flex>
+                          </Fragment>
                         ))}
-                      </Flex>
+                      </Grid>
                     </Fragment>
                   )}
                 </Fragment>

@@ -1,4 +1,4 @@
-import { Box, Text, Flex, Card, SimpleGrid, useBreakpointValue, Span } from '@chakra-ui/react';
+import { Box, Text, Flex, Card, SimpleGrid, useBreakpointValue, Span, Tag } from '@chakra-ui/react';
 import { isEntityUnknown } from '@vemetric/common/event';
 import { motion } from 'motion/react';
 import { Fragment, useState } from 'react';
@@ -9,6 +9,7 @@ import { OsIcon } from '@/components/os-icon';
 import { Tooltip } from '@/components/ui/tooltip';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import { RenderAttributeValue } from './render-attribute-value';
+import { formatQueryParams } from '@/utils/url';
 
 interface Props {
   event: {
@@ -19,6 +20,7 @@ interface Props {
     urlHash?: string;
     createdAt: string;
     customData: Record<string, any>;
+    queryParams?: Record<string, any>;
     clientName?: string;
     clientVersion?: string;
     osName?: string;
@@ -98,16 +100,60 @@ export const EventCard = ({ event, lastPageViewDate }: Props) => {
               </Box>
               {isPageView && (
                 <Fragment>
+                  {/* URL section */}
                   <Box fontWeight="semibold" opacity={0.6}>
                     URL
                   </Box>
                   <Box fontWeight="medium" textAlign="right" truncate>
                     <RenderAttributeValue
-                      value={(event.origin ?? '') + (event.pathname ?? '') + (event.urlHash ?? '')}
+                      value={
+                        (event.origin ?? '') +
+                        (event.pathname ?? '') +
+                        formatQueryParams(event.queryParams ?? {}) +
+                        (event.urlHash ?? '')
+                      }
                     />
                   </Box>
+
+                  {/* Params section */}
+                  {event.queryParams && Object.keys(event.queryParams).length > 0 && (
+                    <Fragment>
+                      <Box fontWeight="semibold" opacity={0.6}>
+                        Params
+                      </Box>
+                      <Flex direction="column" align="flex-end" gap={1.5} mt={1}>
+                        {Object.entries(event.queryParams).map(([key, value]) => (
+                          <Tag.Root
+                            key={key}
+                            colorPalette="blue"
+                            size="sm"
+                            borderRadius="md"
+                            fontFamily="mono"
+                            px={2}
+                            py={0.5}
+                            maxW="100%"
+                            overflow="hidden"
+                            whiteSpace="nowrap"
+                            textOverflow="ellipsis"
+                          >
+                            <Tag.Label
+                              truncate
+                              whiteSpace="nowrap"
+                              textOverflow="ellipsis"
+                              overflow="hidden"
+                              display="block"
+                              title={`${key} = ${String(value)}`}
+                            >
+                              {key} = {String(value)}
+                            </Tag.Label>
+                          </Tag.Root>
+                        ))}
+                      </Flex>
+                    </Fragment>
+                  )}
                 </Fragment>
               )}
+
               {Object.entries(event.customData)
                 .sort((a, b) => a[0].localeCompare(b[0]))
                 .map(([key, value]) => (

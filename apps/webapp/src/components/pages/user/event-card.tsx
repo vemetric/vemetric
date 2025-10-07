@@ -126,20 +126,21 @@ export const EventCard = ({ event, lastPageViewDate }: Props) => {
                         gap="1"
                         fontFamily="mono"
                         overflow="hidden"
+                        alignItems="center"
                       >
                         {Object.entries(event.queryParams).map(([key, value]) => (
                           <Fragment key={key}>
                             <Flex justify="flex-end">
-                              <Tag.Root size="sm">
-                                <Tag.Label truncate display="block" title={key}>
+                              <Tag.Root size="md">
+                                <Tag.Label truncate title={key}>
                                   {key}
                                 </Tag.Label>
                               </Tag.Root>
                             </Flex>
                             <Span fontSize="xs">=</Span>
                             <Flex>
-                              <Tag.Root colorPalette="blue" size="sm">
-                                <Tag.Label truncate display="block" title={String(value)}>
+                              <Tag.Root colorPalette="blue" size="md">
+                                <Tag.Label truncate title={String(value)}>
                                   {String(value)}
                                 </Tag.Label>
                               </Tag.Root>

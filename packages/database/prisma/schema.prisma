@@ -194,6 +194,7 @@ model Funnel {
   name      String   @db.VarChar
   projectId String
   steps     Json
+  icon      String?  @db.VarChar
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

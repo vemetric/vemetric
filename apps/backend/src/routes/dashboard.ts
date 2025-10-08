@@ -67,8 +67,8 @@ export const dashboardRouter = router({
       );
       const bounceRate = bounceRateTimeSeriesData?.length
         ? (bounceRateTimeSeriesData.reduce((sum, ts) => sum + ts.bounces, 0) /
-            bounceRateTimeSeriesData.reduce((sum, ts) => sum + ts.totalSessions, 0)) *
-          100
+          bounceRateTimeSeriesData.reduce((sum, ts) => sum + ts.totalSessions, 0)) *
+        100
         : 0;
       const filledVisitDurationTimeSeries = fillTimeSeries(
         visitDurationTimeSeriesData,
@@ -78,7 +78,7 @@ export const dashboardRouter = router({
       );
       const visitDuration = visitDurationTimeSeriesData?.length
         ? visitDurationTimeSeriesData.reduce((sum, ts) => sum + ts.count * ts.sessionCount, 0) /
-          visitDurationTimeSeriesData.reduce((sum, ts) => sum + ts.sessionCount, 0)
+        visitDurationTimeSeriesData.reduce((sum, ts) => sum + ts.sessionCount, 0)
         : 0;
       const eventsTimeSeries = fillTimeSeries(eventsTimeSeriesData, startDate, timeSpanData.interval, endDate);
 
@@ -285,6 +285,7 @@ export const dashboardRouter = router({
           return {
             id: funnel.id,
             name: funnel.name,
+            icon: funnel.icon,
             steps,
             conversionRate,
             completedUsers: lastStepUsers,

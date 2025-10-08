@@ -33,7 +33,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import type { DashboardData } from '@/utils/trpc';
 
-const getTimespanInterval = (timespan: TimeSpan, _startDate?: string, _endDate?: string) => {
+export const getTimespanInterval = (timespan: TimeSpan, _startDate?: string, _endDate?: string) => {
   const timeSpanData = TIME_SPAN_DATA[timespan];
   if (timespan === 'custom' && _startDate) {
     const startDate = new Date(_startDate + 'T00:00:00Z');
@@ -43,8 +43,8 @@ const getTimespanInterval = (timespan: TimeSpan, _startDate?: string, _endDate?:
   return timeSpanData.interval;
 };
 
-const getYAxisDomain = (autoMinValue: boolean, minValue: number | undefined, maxValue: number | undefined) => {
-  const minDomain = autoMinValue ? 'auto' : minValue ?? 0;
+export const getYAxisDomain = (autoMinValue: boolean, minValue?: number | undefined, maxValue?: number | undefined) => {
+  const minDomain = autoMinValue ? 'auto' : (minValue ?? 0);
   const maxDomain = maxValue ?? 'auto';
   return [minDomain, maxDomain];
 };
@@ -101,7 +101,7 @@ export function transformChartSeries(
   });
 }
 
-type PayloadItem = {
+export type ChartPayloadItem = {
   categoryKey: string;
   value: number;
   color: string;
@@ -332,7 +332,7 @@ export const DashboardChart = (props: Props) => {
                     offset={20}
                     position={{ y: 0 }}
                     content={({ active, payload, label }) => {
-                      const cleanPayload: Array<PayloadItem> = payload
+                      const cleanPayload: Array<ChartPayloadItem> = payload
                         ? payload.map((item: any) => ({
                             categoryKey: item.dataKey,
                             value: item.value,

@@ -2,6 +2,7 @@ import { Button, Input, Field, Stack, Span, HStack, Text } from '@chakra-ui/reac
 import { createFileRoute } from '@tanstack/react-router';
 import { TbNetwork, TbDashboard } from 'react-icons/tb';
 import { OnboardingLayout } from '@/components/onboard-layout';
+import { SplashScreen } from '@/components/splash-screen';
 import { InputGroup } from '@/components/ui/input-group';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useCreateProject } from '@/hooks/use-create-project';
@@ -9,6 +10,7 @@ import { requireOnboardingProject } from '@/utils/auth-guards';
 
 export const Route = createFileRoute('/onboarding/project')({
   beforeLoad: requireOnboardingProject,
+  pendingComponent: SplashScreen,
   component: Page,
 });
 

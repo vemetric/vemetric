@@ -5,6 +5,7 @@ import { requireOnboarding } from '@/utils/auth-guards';
 
 export const Route = createFileRoute('/billing')({
   beforeLoad: requireOnboarding,
+  pendingComponent: SplashScreen,
   component: RouteComponent,
 });
 

@@ -9,7 +9,8 @@
     "build": "tsc --noEmit --skipLibCheck",
     "start": "bun run src/index.ts",
     "lint": "eslint . --max-warnings 0",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@axiomhq/pino": "^1.3.1",

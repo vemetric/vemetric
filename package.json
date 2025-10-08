@@ -7,6 +7,7 @@
     "dev": "turbo run dev --filter=!./apps/health-check",
     "lint": "turbo run lint",
     "test": "turbo run test",
+    "test:watch": "turbo run test:watch",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "turbo": "turbo"
   },

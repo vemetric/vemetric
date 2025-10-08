@@ -41,7 +41,7 @@ We aren't sure yet which features will be available in the Community Edition, bu
 
 ## FAQs
 
-Please checkout [the FAQs](https://vemetric.com/docs/frequently-asked-questions) on the Vemetric Docs.
+Please check out the [FAQs](https://vemetric.com/docs/frequently-asked-questions) on the Vemetric Docs.
 
 ## License
 
@@ -54,7 +54,7 @@ If you incorporate any portion of Vemetric into software that you distribute or 
 
 ## Security
 
-Make sure to checkout our [Security Policy](SECURITY.md).
+Make sure to check out our [Security Policy](SECURITY.md).
 
 ## Support
 

@@ -14,7 +14,8 @@
     "migrate-user-identifications": "bun ./src/migrations/migrate-user-identifications.ts",
     "data-import-pirsch": "bun ./src/migrations/pirsch-data-import.ts",
     "queue-email-drips": "bun ./src/migrations/queue-email-drips.ts",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@axiomhq/pino": "^1.3.1",

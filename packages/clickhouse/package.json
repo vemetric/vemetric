@@ -9,7 +9,8 @@
     "migrate-local": "dotenv -e ../../.env -- clickhouse-migrations migrate --migrations-home=./migrations",
     "migrate-prod": "clickhouse-migrations migrate --migrations-home=./migrations",
     "lint": "eslint . --max-warnings 0",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@clickhouse/client": "^1.11.0",

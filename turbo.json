@@ -7,6 +7,7 @@
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "test": {},
+    "test:watch": {},
     "lint": {},
     "dev": {
       "dependsOn": ["^db:generate"],

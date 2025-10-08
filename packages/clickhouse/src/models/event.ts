@@ -286,12 +286,12 @@ export const clickhouseEvent = {
                     max(createdAt) as eventCreatedAt
                   FROM ${TABLE_NAME}
                   WHERE projectId=${escape(projectId)}
-                    ${userFilterQueries ? `AND (${userFilterQueries})` : ''}
-                    ${filterQueries || ''}
                     ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
                   GROUP BY id
                   HAVING sum(sign) > 0
                 )
+                WHERE 1=1 ${filterQueries || ''}
+                  ${userFilterQueries ? `AND (${userFilterQueries})` : ''}
                 GROUP BY userId
               ) u
               ${joinClause}

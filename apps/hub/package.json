@@ -10,7 +10,8 @@
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "fetch-bots": "bun fetch-bots.ts",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@axiomhq/pino": "^1.3.1",

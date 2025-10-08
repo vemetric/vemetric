@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { TbChevronRight } from 'react-icons/tb';
 import { OnboardingLayout } from '@/components/onboard-layout';
 import { PricingSlider } from '@/components/pages/settings/billing/pricing-slider';
+import { SplashScreen } from '@/components/splash-screen';
 import { toaster } from '@/components/ui/toaster';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useOpenCrispChat } from '@/stores/crisp-chat-store';
@@ -20,6 +21,7 @@ const PricingCard = (props: CardRootProps) => {
 
 export const Route = createFileRoute('/onboarding/pricing')({
   beforeLoad: requireOnboardingPricing,
+  pendingComponent: SplashScreen,
   component: Page,
 });
 

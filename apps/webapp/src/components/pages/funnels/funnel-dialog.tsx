@@ -1,7 +1,7 @@
 import { Button, Field, Input, Stack, Spinner, Box } from '@chakra-ui/react';
 import { useState } from 'react';
-import { TbChartFunnel } from 'react-icons/tb';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { FunnelIconButton } from '@/components/funnel-icon-button';
 import {
   DialogActionTrigger,
   DialogBody,
@@ -32,6 +32,8 @@ export const FunnelDialog = ({ funnelId, children }: FunnelDialogProps) => {
     isSubmitting,
     funnelName,
     setFunnelName,
+    funnelIcon,
+    setFunnelIcon,
     steps,
     setSteps,
     onSubmit,
@@ -87,7 +89,17 @@ export const FunnelDialog = ({ funnelId, children }: FunnelDialogProps) => {
           <Stack pos="relative" gap={{ base: '6', md: '8' }}>
             <Field.Root>
               <Field.Label>Funnel Name</Field.Label>
-              <InputGroup startElement={<TbChartFunnel />} width="full">
+              <InputGroup
+                startElement={
+                  <FunnelIconButton
+                    icon={funnelIcon}
+                    onIconChange={setFunnelIcon}
+                    onIconRemove={() => setFunnelIcon(null)}
+                    size="md"
+                  />
+                }
+                width="full"
+              >
                 <Input
                   placeholder="Enter funnel name..."
                   value={funnelName}

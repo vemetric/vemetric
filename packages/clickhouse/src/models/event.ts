@@ -226,8 +226,11 @@ export const clickhouseEvent = {
     cursor?: string;
     startDate?: Date;
     date?: string; // YYYY-MM-DD format
+    filterConfig?: IFilterConfig;
   }): Promise<Array<ClickhouseEvent & { isOnline: boolean }>> => {
-    const { projectId, userId, limit = EVENT_LIMIT, cursor, startDate, date } = props;
+    const { projectId, userId, limit = EVENT_LIMIT, cursor, startDate, date, filterConfig } = props;
+
+    const eventFilterQueries = filterConfig?.operator === 'and' ? buildEventFilterQueries(filterConfig) : '';
 
     const cursorClause = cursor ? ` AND createdAt < ${escape(cursor)}` : '';
     const dateClause = date ? ` AND toDate(createdAt) = '${date}'` : '';
@@ -241,8 +244,10 @@ export const clickhouseEvent = {
         WHERE projectId = ${escape(projectId)} 
         AND userId = ${escape(userId)}${cursorClause}${dateClause}
         ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+        ${eventFilterQueries ? `AND ${eventFilterQueries}` : ''}
         GROUP BY id 
         HAVING sum(sign) > 0 
+
         ORDER BY eventTime DESC 
         LIMIT ${escape(limit)}`,
       format: 'JSONEachRow',

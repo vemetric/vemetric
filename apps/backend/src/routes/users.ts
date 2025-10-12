@@ -72,51 +72,55 @@ export const usersRouter = router({
 
     return { userId: user?.id };
   }),
-  single: projectProcedure.input(z.object({ userId: z.string() })).query(async (opts) => {
-    const {
-      input,
-      ctx: { projectId },
-    } = opts;
+  single: projectProcedure
+    .input(z.object({ userId: z.string(), filterConfig: filterConfigSchema }))
+    .query(async (opts) => {
+      const {
+        input,
+        ctx: { projectId },
+      } = opts;
 
-    const userId = BigInt(input.userId);
+      const userId = BigInt(input.userId);
+      const filterConfig = input.filterConfig;
 
-    const [latestEvents, user] = await Promise.all([
-      clickhouseEvent.getLatestEventsByUserId({ projectId, userId, limit: 1 }),
-      clickhouseUser.findById(projectId, userId, true),
-    ]);
+      const [latestEvents, user] = await Promise.all([
+        clickhouseEvent.getLatestEventsByUserId({ projectId, userId, limit: 1, filterConfig: filterConfig }),
+        clickhouseUser.findById(projectId, userId, true),
+      ]);
 
-    const latestEvent: (ClickhouseEvent & { isOnline: boolean }) | null = latestEvents[0] ?? null;
+      const latestEvent: (ClickhouseEvent & { isOnline: boolean }) | null = latestEvents[0] ?? null;
 
-    const deviceData = {
-      clientName: isEntityUnknown(latestEvent?.clientName)
-        ? user?.device?.clientName || 'Unknown'
-        : latestEvent?.clientName || 'Unknown',
-      clientVersion: isEntityUnknown(latestEvent?.clientVersion)
-        ? user?.device?.clientVersion || 'Unknown'
-        : latestEvent?.clientVersion || 'Unknown',
-      osName: isEntityUnknown(latestEvent?.osName)
-        ? user?.device?.osName || 'Unknown'
-        : latestEvent?.osName || 'Unknown',
-      osVersion: isEntityUnknown(latestEvent?.osVersion)
-        ? user?.device?.osVersion || 'Unknown'
-        : latestEvent?.osVersion || 'Unknown',
-      deviceType: isEntityUnknown(latestEvent?.deviceType)
-        ? user?.device?.deviceType || 'unknown'
-        : latestEvent?.deviceType || 'unknown',
-    };
+      const deviceData = {
+        clientName: isEntityUnknown(latestEvent?.clientName)
+          ? user?.device?.clientName || 'Unknown'
+          : latestEvent?.clientName || 'Unknown',
+        clientVersion: isEntityUnknown(latestEvent?.clientVersion)
+          ? user?.device?.clientVersion || 'Unknown'
+          : latestEvent?.clientVersion || 'Unknown',
+        osName: isEntityUnknown(latestEvent?.osName)
+          ? user?.device?.osName || 'Unknown'
+          : latestEvent?.osName || 'Unknown',
+        osVersion: isEntityUnknown(latestEvent?.osVersion)
+          ? user?.device?.osVersion || 'Unknown'
+          : latestEvent?.osVersion || 'Unknown',
+        deviceType: isEntityUnknown(latestEvent?.deviceType)
+          ? user?.device?.deviceType || 'unknown'
+          : latestEvent?.deviceType || 'unknown',
+      };
 
-    return {
-      latestEvent,
-      user: user ? { ...user, id: String(user.id) } : null,
-      deviceData,
-    };
-  }),
+      return {
+        latestEvent,
+        user: user ? { ...user, id: String(user.id) } : null,
+        deviceData,
+      };
+    }),
   events: projectProcedure
     .input(
       z.object({
         userId: z.string(),
         cursor: z.string().optional(), // ISO timestamp string
         date: z.string().optional(), // YYYY-MM-DD format
+        filterConfig: filterConfigSchema,
       }),
     )
     .query(async (opts) => {
@@ -138,6 +142,7 @@ export const usersRouter = router({
         cursor: input.cursor,
         startDate,
         date: input.date,
+        filterConfig: input.filterConfig,
       });
 
       const hasMore = events.length > EVENTS_PER_PAGE;

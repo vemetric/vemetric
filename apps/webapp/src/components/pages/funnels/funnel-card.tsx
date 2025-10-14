@@ -5,6 +5,7 @@ import { formatNumber, formatPercentage } from '@vemetric/common/math';
 import { motion } from 'motion/react';
 import { TbEdit, TbEye, TbTrash, TbUserSquareRounded, TbUsers } from 'react-icons/tb';
 import { DeletePopover } from '@/components/delete-popover';
+import { FunnelIconButton } from '@/components/funnel-icon-button';
 import { Tooltip } from '@/components/ui/tooltip';
 import { trpc, type FunnelData } from '@/utils/trpc';
 import { FunnelDialog } from './funnel-dialog';
@@ -54,9 +55,12 @@ export const FunnelCard = ({ projectId, funnel, activeUsersVisible, filterConfig
     >
       <Card.Header pos="relative" py={1.5} borderBottom="1px solid" borderColor="gray.emphasized/50">
         <Flex justify="space-between" align="center" gap={2}>
-          <Text fontSize="sm" fontWeight="semibold" flexShrink={1} truncate>
-            {funnel.name}
-          </Text>
+          <Flex align="center" gap={2} flexShrink={1} minW={0}>
+            <FunnelIconButton icon={funnel.icon} readOnly size="xs" />
+            <Text fontSize="sm" fontWeight="semibold" truncate>
+              {funnel.name}
+            </Text>
+          </Flex>
           <Tooltip
             content={`${formatPercentage(completedPercentage)} of ${
               activeUsersVisible ? 'all active users' : 'users that entered this funnel, also'

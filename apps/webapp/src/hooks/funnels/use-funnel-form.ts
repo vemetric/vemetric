@@ -40,6 +40,12 @@ export function useFunnelForm({ isDialogOpen, funnelId, onSuccess }: UseFunnelPr
     _setFunnelName(name);
   };
 
+  const [funnelIcon, _setFunnelIcon] = useState<string | null>(null);
+  const setFunnelIcon = (icon: string | null) => {
+    hasChanges.current = true;
+    _setFunnelIcon(icon);
+  };
+
   const [steps, _setSteps] = useState<FunnelStep[]>(() => [{ ...clone(DEFAULT_STEP), id: nanoid() }]);
   const setSteps = (steps: FunnelStep[]) => {
     hasChanges.current = true;
@@ -55,6 +61,7 @@ export function useFunnelForm({ isDialogOpen, funnelId, onSuccess }: UseFunnelPr
   // Initialize form data only once when data first loads (edit mode only)
   if (isDialogOpen && isEditMode && funnelData?.funnel && !isInitialized.current) {
     _setFunnelName(funnelData.funnel.name);
+    _setFunnelIcon(funnelData.funnel.icon ?? null);
     _setSteps(funnelData.funnel.steps as FunnelStep[]);
     isInitialized.current = true;
   }
@@ -112,6 +119,7 @@ export function useFunnelForm({ isDialogOpen, funnelId, onSuccess }: UseFunnelPr
       projectId: projectId!,
       name: funnelName.trim(),
       steps,
+      icon: funnelIcon ?? undefined,
     });
   };
 
@@ -121,6 +129,7 @@ export function useFunnelForm({ isDialogOpen, funnelId, onSuccess }: UseFunnelPr
       hasChanges.current = false;
       isInitialized.current = false;
       _setFunnelName('');
+      _setFunnelIcon(null);
       _setSteps([{ ...clone(DEFAULT_STEP), id: nanoid() }]);
     }
   }, [isDialogOpen]);
@@ -129,6 +138,8 @@ export function useFunnelForm({ isDialogOpen, funnelId, onSuccess }: UseFunnelPr
     hasChanges,
     funnelName,
     setFunnelName,
+    funnelIcon,
+    setFunnelIcon,
     steps,
     setSteps,
     onSubmit,

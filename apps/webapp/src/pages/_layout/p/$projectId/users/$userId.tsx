@@ -191,26 +191,28 @@ function Page() {
             origins: [],
             eventNames: filterableData?.eventNames ?? [],
             countryCodes: [],
-            referrers: [],
-            referrerUrls: [],
-            utmCampaigns: [],
-            utmContents: [],
-            utmMediums: [],
-            utmSources: [],
-            utmTerms: [],
+            referrers: filterableData?.referrers ?? [],
+            referrerUrls: filterableData?.referrerUrls ?? [],
+            utmCampaigns: filterableData?.utmCampaigns ?? [],
+            utmContents: filterableData?.utmContents ?? [],
+            utmMediums: filterableData?.utmMediums ?? [],
+            utmSources: filterableData?.utmSources ?? [],
+            utmTerms: filterableData?.utmTerms ?? [],
             browserNames: filterableData?.browserNames ?? [],
             deviceTypes: filterableData?.deviceTypes ?? [],
             osNames: filterableData?.osNames ?? [],
 
-            disabledFilters: ['funnel', 'utmTags', 'referrerType', 'referrerUrl', 'referrer', 'location', 'user'],
+            disabledFilters: ['funnel', 'location', 'user'],
             funnels: [],
           }}
         >
-          <FilterContainer filterConfig={filterConfig} from="/p/$projectId/users/$userId" />
-          <Flex flexGrow={1} gap={2.5} justify="flex-end">
-            <AddFilterButton from="/p/$projectId/users/$userId" filterConfig={filterConfig} />
-          </Flex>
           <Flex order={{ base: 1, md: 0 }} flexDir="column" gap={8}>
+            <Flex flexDir="column" gap={3}>
+              <FilterContainer filterConfig={filterConfig} from="/p/$projectId/users/$userId" />
+              <Flex flexGrow={1} gap={2.5} justify="flex-end">
+                <AddFilterButton from="/p/$projectId/users/$userId" filterConfig={filterConfig} />
+              </Flex>
+            </Flex>
             {isEventsLoading ? (
               <>
                 <DateSeparator>

@@ -290,6 +290,15 @@ export const getEventFilterQueries = (props: { filterConfig: IFilterConfig }) =>
         eventFilterQueries.push(filterQuery);
         break;
       }
+      case 'page': {
+        const filterQuery = buildPageFilterQuery(filter);
+        if (!filterQuery) {
+          return;
+        }
+
+        eventFilterQueries.push(filterQuery);
+        break;
+      }
       case 'user': {
         const filterQuery = buildUserFilterQuery(filter);
         if (!filterQuery) {
@@ -335,10 +344,49 @@ export const getEventFilterQueries = (props: { filterConfig: IFilterConfig }) =>
         eventFilterQueries.push(filterQuery);
         break;
       }
+      case 'referrer': {
+        const filterQuery = buildReferrerFilterQuery(filter);
+        if (!filterQuery) {
+          return;
+        }
+
+        eventFilterQueries.push(filterQuery);
+        break;
+      }
+      case 'referrerUrl': {
+        const filterQuery = buildReferrerUrlFilterQuery(filter);
+        if (!filterQuery) {
+          return;
+        }
+
+        eventFilterQueries.push(filterQuery);
+        break;
+      }
+      case 'referrerType': {
+        const filterQuery = buildReferrerTypeFilterQuery(filter);
+        if (!filterQuery) {
+          return;
+        }
+
+        eventFilterQueries.push(filterQuery);
+        break;
+      }
+      case 'utmTags': {
+        const filterQuery = buildUtmTagsFilterQuery(filter);
+        if (!filterQuery) {
+          return;
+        }
+
+        eventFilterQueries.push(filterQuery);
+        break;
+      }
     }
   });
 
   return {
-    filterQueries: 'AND (' + eventFilterQueries.join(` ${filterConfig.operator === 'and' ? 'AND' : 'OR'} `) + ')',
+    filterQueries:
+      eventFilterQueries.length > 0
+        ? '(' + eventFilterQueries.join(` ${filterConfig.operator === 'and' ? 'AND' : 'OR'} `) + ')'
+        : '',
   };
 };

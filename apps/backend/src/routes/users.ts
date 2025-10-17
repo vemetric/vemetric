@@ -81,10 +81,9 @@ export const usersRouter = router({
       } = opts;
 
       const userId = BigInt(input.userId);
-      const filterConfig = input.filterConfig;
 
       const [latestEvents, user] = await Promise.all([
-        clickhouseEvent.getLatestEventsByUserId({ projectId, userId, limit: 1, filterConfig: filterConfig }),
+        clickhouseEvent.getLatestEventsByUserId({ projectId, userId, limit: 1 }),
         clickhouseUser.findById(projectId, userId, true),
       ]);
 

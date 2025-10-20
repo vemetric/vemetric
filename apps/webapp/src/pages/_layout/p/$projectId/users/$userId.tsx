@@ -44,6 +44,7 @@ import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import { observeResize } from '@/utils/dom';
 import { getFaviconUrl } from '@/utils/favicon';
 import { trpc } from '@/utils/trpc';
+import { formatQueryParams } from '@/utils/url';
 import { getUserName } from '@/utils/user';
 
 const userSearchSchema = z.object({
@@ -549,10 +550,23 @@ function Page() {
                             <Box fontWeight="semibold" opacity={0.6}>
                               URL
                             </Box>
-                            <Box fontWeight="medium" textAlign="right" truncate>
-                              {user.origin}
-                              {user.pathname}
-                            </Box>
+                            <Tooltip
+                              content={
+                                '' +
+                                user.origin +
+                                user.pathname +
+                                formatQueryParams(user.queryParams ?? {}) +
+                                user.urlHash
+                              }
+                              positioning={{ placement: 'bottom-end' }}
+                            >
+                              <Box fontWeight="medium" textAlign="right" truncate>
+                                {user.origin}
+                                {user.pathname}
+                                {formatQueryParams(user.queryParams ?? {})}
+                                {user.urlHash}
+                              </Box>
+                            </Tooltip>
                             {user.referrer && (
                               <>
                                 <Box fontWeight="semibold" opacity={0.6}>

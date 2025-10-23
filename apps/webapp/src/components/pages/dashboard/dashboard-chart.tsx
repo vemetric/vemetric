@@ -5,7 +5,6 @@ import type { ChartInterval, TimeSpan } from '@vemetric/common/charts/timespans'
 import { getCustomDateRangeInterval, TIME_SPAN_DATA } from '@vemetric/common/charts/timespans';
 import { formatNumber } from '@vemetric/common/math';
 import React, { useState } from 'react';
-import { TbActivity } from 'react-icons/tb';
 import {
   Area,
   Dot,
@@ -26,12 +25,12 @@ import {
   ChartCategoryCard,
 } from '@/components/pages/dashboard/chart-category-card';
 import { DashboardCardHeader } from '@/components/pages/dashboard/dashboard-card-header';
-import { EmptyState } from '@/components/ui/empty-state';
 import { MenuContent, MenuRoot, MenuTrigger, MenuItem } from '@/components/ui/menu';
 import { Status } from '@/components/ui/status';
 import { Tooltip } from '@/components/ui/tooltip';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import type { DashboardData } from '@/utils/trpc';
+import { DashboardChartDataMissing } from './charts/dashboard-chart-missing-data';
 
 export const getTimespanInterval = (timespan: TimeSpan, _startDate?: string, _endDate?: string) => {
   const timeSpanData = TIME_SPAN_DATA[timespan];
@@ -478,13 +477,7 @@ export const DashboardChart = (props: Props) => {
               </ResponsiveContainer>
             </Box>
           ) : (
-            <Flex pos="absolute" inset={0} justify="center" align="center">
-              <EmptyState
-                size={{ base: 'sm', md: 'md' }}
-                icon={<TbActivity />}
-                title="No data available in the selected timeframe"
-              />
-            </Flex>
+            <DashboardChartDataMissing></DashboardChartDataMissing>
           )}
         </AspectRatio>
       </Card.Body>

@@ -15,6 +15,7 @@ import {
   YAxis,
   CartesianGrid,
   Bar,
+  // ReferenceLine,
 } from 'recharts';
 import type { AxisDomain } from 'recharts/types/util/types';
 import { DeleteIconButton } from '@/components/delete-icon-button';
@@ -32,6 +33,37 @@ import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import type { DashboardData } from '@/utils/trpc';
 import { DashboardChartDataMissing } from './charts/dashboard-chart-missing-data';
 
+// ========================================================= //
+// ======================= Types =========================== //
+// ========================================================= //
+export type ChartPayloadItem = {
+  categoryKey: string;
+  value: number;
+  color: string;
+  type?: string;
+  payload: any;
+};
+
+// ========================================================= //
+// ======================= Props =========================== //
+// ========================================================= //
+interface Props extends CardRootProps {
+  timespan: TimeSpan;
+  timespanStartDate?: string;
+  timespanEndDate?: string;
+  data: DashboardData;
+  autoMinValue?: boolean;
+  minValue?: number;
+  maxValue?: number;
+  allowDecimals?: boolean;
+  tickGap?: number;
+  connectNulls?: boolean;
+  publicDashboard?: boolean;
+}
+
+// ========================================================== //
+// ==================== Helper Functions ==================== //
+// ========================================================== //
 export const getTimespanInterval = (timespan: TimeSpan, _startDate?: string, _endDate?: string) => {
   const timeSpanData = TIME_SPAN_DATA[timespan];
   if (timespan === 'custom' && _startDate) {
@@ -43,7 +75,7 @@ export const getTimespanInterval = (timespan: TimeSpan, _startDate?: string, _en
 };
 
 export const getYAxisDomain = (autoMinValue: boolean, minValue?: number | undefined, maxValue?: number | undefined) => {
-  const minDomain = autoMinValue ? 'auto' : (minValue ?? 0);
+  const minDomain = autoMinValue ? 'auto' : minValue ?? 0;
   const maxDomain = maxValue ?? 'auto';
   return [minDomain, maxDomain];
 };
@@ -100,28 +132,9 @@ export function transformChartSeries(
   });
 }
 
-export type ChartPayloadItem = {
-  categoryKey: string;
-  value: number;
-  color: string;
-  type?: string;
-  payload: any;
-};
-
-interface Props extends CardRootProps {
-  timespan: TimeSpan;
-  timespanStartDate?: string;
-  timespanEndDate?: string;
-  data: DashboardData;
-  autoMinValue?: boolean;
-  minValue?: number;
-  maxValue?: number;
-  allowDecimals?: boolean;
-  tickGap?: number;
-  connectNulls?: boolean;
-  publicDashboard?: boolean;
-}
-
+// ========================================================= //
+// ==================== Main Component ===================== //
+// ========================================================= //
 export const DashboardChart = (props: Props) => {
   const {
     data,
@@ -149,6 +162,9 @@ export const DashboardChart = (props: Props) => {
   const [activeMobileCategory, setActiveMobileCategory] = useState<ChartCategoryKey>('users');
   const [activeCategoryKeys, setActiveCategoryKeys] = useState<Array<ChartCategoryKey>>(['users', 'pageViews']);
 
+  // ========================================================= //
+  // ======================= Handlers ========================= //
+  // ========================================================= //
   const toggleCategory = (category: ChartCategoryKey) => {
     if (isMobile) {
       return;
@@ -174,6 +190,11 @@ export const DashboardChart = (props: Props) => {
   );
   const onlineUsers = formatNumber(data?.currentActiveUsers ?? 0, true);
 
+  console.log('data', data);
+
+  // ========================================================= //
+  // ======================= Render ========================== //
+  // ========================================================= //
   return (
     <Card.Root {...cardProps}>
       <DashboardCardHeader p={1.5} pb={1.5}>
@@ -258,6 +279,7 @@ export const DashboardChart = (props: Props) => {
             />
           </Flex>
         )}
+
         <AspectRatio
           pos="relative"
           w="100%"
@@ -277,6 +299,7 @@ export const DashboardChart = (props: Props) => {
                     dataKey="startDate"
                     interval="preserveStartEnd"
                     tick={{ transform: 'translate(0, 6)' }}
+                    padding={{ left: 10, right: 90 }}
                     fill=""
                     stroke=""
                     tickLine={false}
@@ -284,6 +307,7 @@ export const DashboardChart = (props: Props) => {
                     minTickGap={15}
                     scale="point"
                   />
+
                   <YAxis
                     yAxisId="other"
                     type="number"
@@ -322,6 +346,15 @@ export const DashboardChart = (props: Props) => {
                     strokeWidth={0.8}
                     strokeDasharray="10 5"
                   />
+
+                  {/* <ReferenceLine
+                    yAxisId="events"
+                    x="endDate"
+                    stroke="red"
+                    label="End Date"
+                    strokeWidth={1.5}
+                    strokeOpacity={0.65}
+                  /> */}
 
                   <RechartsTooltip
                     wrapperStyle={{ outline: 'none', zIndex: '10' }}
@@ -477,7 +510,7 @@ export const DashboardChart = (props: Props) => {
               </ResponsiveContainer>
             </Box>
           ) : (
-            <DashboardChartDataMissing></DashboardChartDataMissing>
+            <DashboardChartDataMissing />
           )}
         </AspectRatio>
       </Card.Body>

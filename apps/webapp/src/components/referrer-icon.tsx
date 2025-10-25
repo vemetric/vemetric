@@ -23,7 +23,7 @@ export const ReferrerIcon = ({ source = 'referrer', referrer, referrerUrl, refer
         {isDirect ? (
           <TbDirectionSign />
         ) : (
-          <LoadingImage src={getFaviconUrl(referrerUrl)} alt={referrer + ' Favicon'} boxSize="16px" />
+          <LoadingImage src={getFaviconUrl(referrerUrl || referrer || '')} alt={referrer + ' Favicon'} boxSize="16px" />
         )}
       </>
     );

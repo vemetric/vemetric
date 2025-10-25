@@ -1,12 +1,9 @@
 export const getFaviconUrl = (url: string, size = 64) => {
   let hostname = url;
-  if (!hostname.startsWith('http://') && !hostname.startsWith('https://')) {
-    hostname = 'https://' + hostname;
-  }
 
   try {
     const urlObj = new URL(url);
-    hostname = 'https://' + urlObj.hostname;
+    hostname = urlObj.hostname;
   } catch {
     // empty
   }

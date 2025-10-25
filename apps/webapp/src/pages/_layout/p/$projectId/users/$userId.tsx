@@ -7,7 +7,6 @@ import {
   SimpleGrid,
   Text,
   Tag,
-  Image,
   Link as ChakraLink,
   LinkOverlay,
   Skeleton,
@@ -29,6 +28,7 @@ import { BrowserIcon } from '@/components/browser-icon';
 import { CardIcon } from '@/components/card-icon';
 import { CountryFlag } from '@/components/country-flag';
 import { DeviceIcon } from '@/components/device-icon';
+import { LoadingImage } from '@/components/loading-image';
 import { OsIcon } from '@/components/os-icon';
 import { ActivityHeatmap } from '@/components/pages/user/activity-heatmap';
 import { DateSeparator } from '@/components/pages/user/date-separator';
@@ -370,7 +370,7 @@ function Page() {
                                       overflow="hidden"
                                     >
                                       {session.referrer && session.referrerUrl ? (
-                                        <Image
+                                        <LoadingImage
                                           src={getFaviconUrl(session.referrerUrl)}
                                           alt={session.referrer + ' Favicon'}
                                           boxSize="16px"
@@ -588,7 +588,7 @@ function Page() {
                                         overflow="hidden"
                                       >
                                         {user.referrer && user.referrerUrl ? (
-                                          <Image
+                                          <LoadingImage
                                             src={getFaviconUrl(user.referrerUrl)}
                                             alt={user.referrer + ' Favicon'}
                                             boxSize="16px"

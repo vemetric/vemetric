@@ -1,7 +1,7 @@
-import { Image } from '@chakra-ui/react';
 import type { ISources } from '@vemetric/common/sources';
 import { TbQuestionMark, TbDirectionSign, TbSearch, TbSocial, TbAi, TbAd, TbMail } from 'react-icons/tb';
 import { getFaviconUrl } from '@/utils/favicon';
+import { LoadingImage } from './loading-image';
 
 interface Props {
   source: ISources;
@@ -23,7 +23,7 @@ export const ReferrerIcon = ({ source = 'referrer', referrer, referrerUrl, refer
         {isDirect ? (
           <TbDirectionSign />
         ) : (
-          <Image src={getFaviconUrl(referrerUrl)} alt={referrer + ' Favicon'} boxSize="16px" />
+          <LoadingImage src={getFaviconUrl(referrerUrl)} alt={referrer + ' Favicon'} boxSize="16px" />
         )}
       </>
     );

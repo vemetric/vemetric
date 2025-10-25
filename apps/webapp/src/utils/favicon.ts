@@ -11,5 +11,5 @@ export const getFaviconUrl = (url: string, size = 64) => {
     // empty
   }
 
-  return `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&size=${size}&url=${hostname}`;
+  return `https://favicon.vemetric.com/${hostname}?size=${size}`;
 };

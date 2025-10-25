@@ -12,17 +12,20 @@ import {
   Link,
   AbsoluteCenter,
   Spinner,
+  Icon,
 } from '@chakra-ui/react';
 import { Link as RouterLink, Navigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { TbDashboard, TbNetwork, TbSettings, TbBrowserShare, TbLockX, TbFlagCode, TbKey } from 'react-icons/tb';
+import { TbDashboard, TbSettings, TbBrowserShare, TbLockX, TbFlagCode, TbKey, TbWorldQuestion } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import { CodeBox } from '@/components/code-box';
 import { IntegrationGuides } from '@/components/integration-guides';
+import { LoadingImage } from '@/components/loading-image';
 import { ExcludedIpsCard } from '@/components/pages/settings/excluded-ips-card';
 import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
+import { getFaviconUrl } from '@/utils/favicon';
 import { trpc } from '@/utils/trpc';
 
 interface Props {
@@ -154,7 +157,16 @@ export const GeneralTab = (props: Props) => {
             </Field.Root>
             <Field.Root>
               <Field.Label>Domain</Field.Label>
-              <InputGroup startElement={<TbNetwork />} width="full">
+              <InputGroup
+                startElement={
+                  projectSettings.domain.length > 3 ? (
+                    <LoadingImage boxSize="16px" src={getFaviconUrl(projectSettings.domain)} />
+                  ) : (
+                    <Icon as={TbWorldQuestion} boxSize="16px" color="#838383" />
+                  )
+                }
+                width="full"
+              >
                 <Input placeholder="example.com" value={projectSettings.domain} disabled />
               </InputGroup>
             </Field.Root>

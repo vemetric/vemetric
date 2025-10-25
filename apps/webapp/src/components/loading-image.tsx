@@ -1,5 +1,5 @@
 import type { ImageProps } from '@chakra-ui/react';
-import { Box, Center, Image, Skeleton } from '@chakra-ui/react';
+import { Box, Center, Image, Skeleton, Icon } from '@chakra-ui/react';
 import { useEffect, useState } from 'react';
 import { TbWorldQuestion } from 'react-icons/tb';
 
@@ -17,7 +17,7 @@ export const LoadingImage = (props: Props) => {
     <Box position="relative" flexShrink="0">
       {(loading || error) && (
         <Center pos="absolute" inset="0">
-          {error ? <TbWorldQuestion /> : <Skeleton boxSize="90%" />}
+          {error ? <Icon as={TbWorldQuestion} boxSize="100%" color="#838383" /> : <Skeleton boxSize="90%" />}
         </Center>
       )}
       <Image

@@ -7,7 +7,6 @@ import {
   SimpleGrid,
   Text,
   Tag,
-  Image,
   Link as ChakraLink,
   LinkOverlay,
   Skeleton,
@@ -29,6 +28,7 @@ import { BrowserIcon } from '@/components/browser-icon';
 import { CardIcon } from '@/components/card-icon';
 import { CountryFlag } from '@/components/country-flag';
 import { DeviceIcon } from '@/components/device-icon';
+import { LoadingImage } from '@/components/loading-image';
 import { OsIcon } from '@/components/os-icon';
 import { ActivityHeatmap } from '@/components/pages/user/activity-heatmap';
 import { DateSeparator } from '@/components/pages/user/date-separator';
@@ -44,6 +44,7 @@ import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import { observeResize } from '@/utils/dom';
 import { getFaviconUrl } from '@/utils/favicon';
 import { trpc } from '@/utils/trpc';
+import { formatQueryParams } from '@/utils/url';
 import { getUserName } from '@/utils/user';
 
 const userSearchSchema = z.object({
@@ -369,7 +370,7 @@ function Page() {
                                       overflow="hidden"
                                     >
                                       {session.referrer && session.referrerUrl ? (
-                                        <Image
+                                        <LoadingImage
                                           src={getFaviconUrl(session.referrerUrl)}
                                           alt={session.referrer + ' Favicon'}
                                           boxSize="16px"
@@ -549,10 +550,23 @@ function Page() {
                             <Box fontWeight="semibold" opacity={0.6}>
                               URL
                             </Box>
-                            <Box fontWeight="medium" textAlign="right" truncate>
-                              {user.origin}
-                              {user.pathname}
-                            </Box>
+                            <Tooltip
+                              content={
+                                '' +
+                                user.origin +
+                                user.pathname +
+                                formatQueryParams(user.queryParams ?? {}) +
+                                user.urlHash
+                              }
+                              positioning={{ placement: 'bottom-end' }}
+                            >
+                              <Box fontWeight="medium" textAlign="right" truncate>
+                                {user.origin}
+                                {user.pathname}
+                                {formatQueryParams(user.queryParams ?? {})}
+                                {user.urlHash}
+                              </Box>
+                            </Tooltip>
                             {user.referrer && (
                               <>
                                 <Box fontWeight="semibold" opacity={0.6}>
@@ -574,7 +588,7 @@ function Page() {
                                         overflow="hidden"
                                       >
                                         {user.referrer && user.referrerUrl ? (
-                                          <Image
+                                          <LoadingImage
                                             src={getFaviconUrl(user.referrerUrl)}
                                             alt={user.referrer + ' Favicon'}
                                             boxSize="16px"

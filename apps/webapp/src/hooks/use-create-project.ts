@@ -1,5 +1,5 @@
 import { useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toaster } from '@/components/ui/toaster';
 import { authClient } from '@/utils/auth';
 import { trpc } from '@/utils/trpc';
@@ -12,6 +12,18 @@ export function useCreateProject({ onSuccess }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [domain, setDomain] = useState('');
+  const [debouncedDomain, setDebouncedDomain] = useState(domain);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedDomain(domain);
+    }, 300);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [domain]);
+
   const navigate = useNavigate();
   const { data: session, refetch: refetchAuth } = authClient.useSession();
   const { mutate } = trpc.projects.create.useMutation({
@@ -56,6 +68,7 @@ export function useCreateProject({ onSuccess }: Props) {
     isLoading,
     projectName,
     setProjectName,
+    debouncedDomain,
     domain,
     setDomain,
     onSubmit,

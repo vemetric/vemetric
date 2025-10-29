@@ -1,8 +1,9 @@
-import { Box, Span, Text, HStack, Progress, FormatNumber, Flex, SimpleGrid, Image } from '@chakra-ui/react';
+import { Box, Span, Text, HStack, Progress, FormatNumber, Flex, SimpleGrid } from '@chakra-ui/react';
 import type { UsageStats } from '@vemetric/common/usage';
 import { Fragment } from 'react';
 import { Tooltip } from '@/components/ui/tooltip';
 import { getFaviconUrl } from '@/utils/favicon';
+import { LoadingImage } from './loading-image';
 
 interface Props {
   usageStats?: UsageStats;
@@ -21,14 +22,7 @@ export const UsageStatsProgress = ({ usageStats, eventsIncluded }: Props) => {
           {usageStats?.perProject.map(({ name, domain, events }) => (
             <Fragment key={domain}>
               <Flex align="center" gap={1.5}>
-                <Image
-                  src={getFaviconUrl('https://' + domain)}
-                  alt={name}
-                  boxSize="18px"
-                  flexShrink={0}
-                  rounded="xs"
-                  overflow="hidden"
-                />
+                <LoadingImage src={getFaviconUrl(domain)} alt={name} boxSize="18px" rounded="xs" overflow="hidden" />
                 <Text>{name}</Text>
               </Flex>
               <Text textAlign="right">

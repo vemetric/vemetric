@@ -22,9 +22,9 @@ export const IntegrationGuides = () => {
       />
       <DocsCard
         icon={TbBrandNpm}
-        title="NPM Package"
+        title="JavaScript SDK"
         description="For web applications, with proper TypeScript support."
-        href="https://vemetric.com/docs/sdks/web-browser"
+        href="https://vemetric.com/docs/sdks/javascript"
       />
       <DocsCard
         icon={TbBrandGoogleFilled}
@@ -40,7 +40,7 @@ export const IntegrationGuides = () => {
       />
       <DocsCard
         icon={TbBrandAstro}
-        title="Astro"
+        title="Astro SDK"
         description="Integrate Vemetric into your Astro application"
         href="https://vemetric.com/docs/sdks/astro"
       />
@@ -58,7 +58,7 @@ export const IntegrationGuides = () => {
       />
       <DocsCard
         icon={TbBrandReact}
-        title="React"
+        title="React SDK"
         description="Integrate Vemetric into your React application"
         href="https://vemetric.com/docs/sdks/react"
       />

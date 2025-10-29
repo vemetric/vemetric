@@ -1,12 +1,14 @@
-import { Button, Input, Field, Stack, Span, HStack, Text } from '@chakra-ui/react';
+import { Button, Input, Field, Stack, Span, HStack, Text, Icon } from '@chakra-ui/react';
 import { createFileRoute } from '@tanstack/react-router';
-import { TbNetwork, TbDashboard } from 'react-icons/tb';
+import { TbDashboard, TbWorldQuestion } from 'react-icons/tb';
+import { LoadingImage } from '@/components/loading-image';
 import { OnboardingLayout } from '@/components/onboard-layout';
 import { SplashScreen } from '@/components/splash-screen';
 import { InputGroup } from '@/components/ui/input-group';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useCreateProject } from '@/hooks/use-create-project';
 import { requireOnboardingProject } from '@/utils/auth-guards';
+import { getFaviconUrl } from '@/utils/favicon';
 
 export const Route = createFileRoute('/onboarding/project')({
   beforeLoad: requireOnboardingProject,
@@ -15,7 +17,7 @@ export const Route = createFileRoute('/onboarding/project')({
 });
 
 function Page() {
-  const { isLoading, projectName, setProjectName, domain, setDomain, onSubmit } = useCreateProject({});
+  const { isLoading, projectName, setProjectName, debouncedDomain, domain, setDomain, onSubmit } = useCreateProject({});
 
   return (
     <OnboardingLayout
@@ -51,7 +53,16 @@ function Page() {
               </>
             }
           >
-            <InputGroup startElement={<TbNetwork />} width="full">
+            <InputGroup
+              startElement={
+                debouncedDomain.length > 3 ? (
+                  <LoadingImage boxSize="16px" src={getFaviconUrl(debouncedDomain)} />
+                ) : (
+                  <Icon as={TbWorldQuestion} boxSize="16px" color="#838383" />
+                )
+              }
+              width="full"
+            >
               <Input
                 placeholder="example.com"
                 value={domain}

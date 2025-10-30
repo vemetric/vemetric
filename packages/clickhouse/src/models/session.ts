@@ -272,7 +272,7 @@ export const clickhouseSession = {
 
     const selectColumns = [
       transformColumn('referrer'),
-      transformColumn('referrerUrl'),
+      source === 'referrerUrl' ? 'referrerUrl' : `anyIf(referrerUrl, referrerUrl <> '') as referrerUrl`,
       transformColumn('referrerType'),
       transformColumn('utmCampaign'),
       transformColumn('utmContent'),

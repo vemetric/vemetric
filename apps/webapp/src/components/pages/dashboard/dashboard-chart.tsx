@@ -147,6 +147,7 @@ export const DashboardChart = (props: Props) => {
     );
   };
 
+  // Updated bar visuals to render completed / dashed events separately:
   const _BarChartVisuals = () => {
     return (
       <>
@@ -162,7 +163,22 @@ export const DashboardChart = (props: Props) => {
             <stop offset="5%" stopColor="currentColor" stopOpacity={1} />
             <stop offset="95%" stopColor="currentColor" stopOpacity={0.4} />
           </linearGradient>
+
+          {/* dashed/future events gradient */}
+          <linearGradient
+            style={{ color: `var(--chakra-colors-${eventCategoryColor}-400)` }}
+            id="events-dashed"
+            x1="0"
+            y1="0"
+            x2="0"
+            y2="1"
+          >
+            <stop offset="5%" stopColor="currentColor" stopOpacity={0.6} />
+            <stop offset="95%" stopColor="currentColor" stopOpacity={0} />
+          </linearGradient>
         </defs>
+
+        {/* solid/completed events */}
         <Bar
           style={{ stroke: `var(--chakra-colors-${eventCategoryColor}-500)` }}
           name="events"
@@ -178,70 +194,37 @@ export const DashboardChart = (props: Props) => {
           radius={[3, 3, 0, 0]}
           fill={`url(#events)`}
         />
+
+        {/* dashed/future events: separate bar series using the __dashed key */}
+        <Bar
+          style={{ stroke: `var(--chakra-colors-${eventCategoryColor}-500)` }}
+          name="events__dashed"
+          type="linear"
+          yAxisId="events"
+          dataKey="events__dashed"
+          stroke=""
+          strokeOpacity={0.6}
+          strokeWidth={1}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          isAnimationActive={false}
+          radius={[3, 3, 0, 0]}
+          fill={`url(#events-dashed)`}
+        />
       </>
     );
   };
 
   // const _AreaChartVisuals = () => {};
 
-  const _xAxisSetup = () => {
-    <XAxis
-      dataKey="startDate"
-      interval="preserveStartEnd"
-      tick={{ transform: 'translate(0, 6)' }}
-      padding={{ left: 10, right: 90 }}
-      fill=""
-      stroke=""
-      tickLine={false}
-      axisLine={true}
-      minTickGap={15}
-      scale="point"
-    />;
-  };
+  // const _xAxisSetup = () => {};
+  // const _yAxisSetup = () => {};
 
-  const _yAxisSetup = () => {
-    return (
-      <>
-        <YAxis
-          yAxisId="other"
-          type="number"
-          domain={yAxisDomain as AxisDomain}
-          allowDecimals={allowDecimals}
-          axisLine={false}
-          tickLine={false}
-          width={40}
-          tickFormatter={(value) => formatNumber(value, true)}
-          hide={isMobile}
-        />
-        <YAxis
-          yAxisId="bounceRate"
-          hide
-          type="number"
-          domain={yAxisDomain as AxisDomain}
-          allowDecimals={allowDecimals}
-        />
-        <YAxis
-          yAxisId="visitDuration"
-          hide
-          type="number"
-          domain={yAxisDomain as AxisDomain}
-          allowDecimals={allowDecimals}
-        />
-        <YAxis yAxisId="events" hide type="number" domain={yAxisDomain as AxisDomain} allowDecimals={allowDecimals} />
-      </>
-    );
-  };
+  // const _AxisAndCartesianGridSetup = () => {
+  //   <>
 
-  const _AxisAndCartesianGridSetup = () => {
-    _xAxisSetup();
-    _yAxisSetup();
-    <CartesianGrid
-      vertical={false}
-      stroke="var(--chakra-colors-gray-emphasized)"
-      strokeWidth={0.8}
-      strokeDasharray="10 5"
-    />;
-  };
+  //   </>;
+  // };
 
   // ========================================================= //
   // ======================= Render ========================== //
@@ -323,8 +306,59 @@ export const DashboardChart = (props: Props) => {
             <Box pos="absolute" inset={0}>
               <ResponsiveContainer>
                 <RechartsComposedChart data={chartData} margin={{ top: showEvents ? 40 : 15 }} maxBarSize={15}>
-                  {_AxisAndCartesianGridSetup()}
-
+                  {/* {_AxisAndCartesianGridSetup()} */}
+                  <XAxis
+                    dataKey="startDate"
+                    interval="preserveStartEnd"
+                    tick={{ transform: 'translate(0, 6)' }}
+                    padding={{ left: 10, right: 90 }}
+                    fill=""
+                    stroke=""
+                    tickLine={false}
+                    axisLine={true}
+                    minTickGap={15}
+                    scale="point"
+                  />
+                  ;
+                  <YAxis
+                    yAxisId="other"
+                    type="number"
+                    domain={yAxisDomain as AxisDomain}
+                    allowDecimals={allowDecimals}
+                    axisLine={false}
+                    tickLine={false}
+                    width={40}
+                    tickFormatter={(value) => formatNumber(value, true)}
+                    hide={isMobile}
+                  />
+                  <YAxis
+                    yAxisId="bounceRate"
+                    hide
+                    type="number"
+                    domain={yAxisDomain as AxisDomain}
+                    allowDecimals={allowDecimals}
+                  />
+                  <YAxis
+                    yAxisId="visitDuration"
+                    hide
+                    type="number"
+                    domain={yAxisDomain as AxisDomain}
+                    allowDecimals={allowDecimals}
+                  />
+                  <YAxis
+                    yAxisId="events"
+                    hide
+                    type="number"
+                    domain={yAxisDomain as AxisDomain}
+                    allowDecimals={allowDecimals}
+                  />
+                  <CartesianGrid
+                    vertical={false}
+                    stroke="var(--chakra-colors-gray-emphasized)"
+                    strokeWidth={0.8}
+                    strokeDasharray="10 5"
+                  />
+                  {/* // --- Tooltip content replacement: normalize dashed keys so tooltip shows a sensible label */}
                   <RechartsTooltip
                     wrapperStyle={{ outline: 'none', zIndex: '10' }}
                     isAnimationActive={true}
@@ -333,14 +367,20 @@ export const DashboardChart = (props: Props) => {
                     offset={20}
                     position={{ y: 0 }}
                     content={({ active, payload, label }) => {
-                      const cleanPayload: Array<ChartPayloadItem> = payload
-                        ? payload.map((item: any) => ({
-                            categoryKey: item.dataKey,
-                            value: item.value,
-                            color: CHART_CATEGORY_MAP[item.dataKey as ChartCategoryKey]?.color ?? 'blue',
-                            type: item.type,
-                            payload: item.payload,
-                          }))
+                      const cleanPayload: Array<any> = payload
+                        ? payload.map((item: any) => {
+                            const rawKey = String(item.dataKey);
+                            const isDashed = rawKey.endsWith('__dashed');
+                            const baseKey = rawKey.replace(/__dashed$/, '');
+                            return {
+                              rawKey,
+                              categoryKey: baseKey,
+                              value: item.value,
+                              color: CHART_CATEGORY_MAP[baseKey as ChartCategoryKey]?.color ?? 'blue',
+                              isDashed,
+                              payload: item.payload,
+                            };
+                          })
                         : [];
 
                       return active ? (
@@ -363,14 +403,20 @@ export const DashboardChart = (props: Props) => {
                           >
                             {label} {showEndDate && `- ${payload?.[0]?.payload?.endDate}`}
                           </Box>
-                          {cleanPayload.map(({ categoryKey, value }) => {
+                          {cleanPayload.map(({ rawKey, categoryKey, value, isDashed }) => {
                             const category = CHART_CATEGORY_MAP[categoryKey as ChartCategoryKey];
                             return (
-                              <Flex key={categoryKey} align="center" px={3} py={2} gap={5} justify="space-between">
+                              <Flex key={rawKey} align="center" px={3} py={2} gap={5} justify="space-between">
                                 <Flex align="center" gap={2}>
                                   <Icon as={category?.icon} color={category?.color + '.500'} />
                                   <Text textTransform="capitalize" fontWeight="semibold">
-                                    {category?.label}
+                                    {category?.label}{' '}
+                                    {isDashed ? (
+                                      <Text as="span" fontWeight="normal">
+                                        {' '}
+                                        (partial)
+                                      </Text>
+                                    ) : null}
                                   </Text>
                                 </Flex>
                                 {category?.valueFormatter ? category?.valueFormatter?.(value) : formatNumber(value)}
@@ -381,16 +427,17 @@ export const DashboardChart = (props: Props) => {
                       ) : null;
                     }}
                   />
-
-                  {/* Background Area Chart */}
+                  {/* --- Replace the Area rendering loop with this: it renders a solid series and a dashed series per category */}
                   {activeCategories.map(([category, { color, yAxisId = 'other' }]) => {
-                    const categoryId = `${areaId}-${category.replace(/[^a-zA-Z0-9]/g, '')}`;
+                    const categorySafe = category.replace(/[^a-zA-Z0-9]/g, '');
+                    const categoryId = `${areaId}-${categorySafe}`;
+                    const dashedId = `${categoryId}-dashed`;
 
                     return (
                       <React.Fragment key={category}>
                         <defs key={category}>
                           <linearGradient
-                            key={category}
+                            key={`${category}-grad`}
                             style={{ color: `var(--chakra-colors-${color}-500)` }}
                             id={categoryId}
                             x1="0"
@@ -401,12 +448,26 @@ export const DashboardChart = (props: Props) => {
                             <stop offset="5%" stopColor="currentColor" stopOpacity={0.7} />
                             <stop offset="95%" stopColor="currentColor" stopOpacity={0} />
                           </linearGradient>
+
+                          <linearGradient
+                            key={`${category}-grad-dashed`}
+                            style={{ color: `var(--chakra-colors-${color}-500)` }}
+                            id={dashedId}
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                          >
+                            <stop offset="5%" stopColor="currentColor" stopOpacity={0.35} />
+                            <stop offset="95%" stopColor="currentColor" stopOpacity={0} />
+                          </linearGradient>
                         </defs>
 
+                        {/* Solid / completed series */}
                         <Area
                           style={{ stroke: `var(--chakra-colors-${color}-500)` }}
                           strokeOpacity={1}
-                          key={category}
+                          key={`${category}-solid`}
                           name={category}
                           type="linear"
                           yAxisId={yAxisId}
@@ -441,6 +502,25 @@ export const DashboardChart = (props: Props) => {
                               />
                             );
                           }}
+                        />
+
+                        {/* Dashed / incomplete series (same metric but routed to <metric>__dashed) */}
+                        <Area
+                          style={{ stroke: `var(--chakra-colors-${color}-500)` }}
+                          strokeOpacity={1}
+                          key={`${category}-dashed`}
+                          name={`${category}-dashed`}
+                          type="linear"
+                          yAxisId={yAxisId}
+                          dataKey={`${category}__dashed`}
+                          stroke={`var(--chakra-colors-${color}-500)`}
+                          strokeWidth={2}
+                          strokeLinejoin="round"
+                          strokeLinecap="round"
+                          strokeDasharray="6 6"
+                          isAnimationActive={false}
+                          connectNulls={connectNulls}
+                          fill={`url(#${dashedId})`}
                         />
                       </React.Fragment>
                     );

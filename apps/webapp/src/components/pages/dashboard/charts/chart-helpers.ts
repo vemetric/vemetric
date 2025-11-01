@@ -27,6 +27,12 @@ export function transformChartSeries(
   interval: ChartInterval,
   timespan: TimeSpan,
 ) {
+  // Simple "split into two series" approach:
+  // For each metric we create two keys:
+  //   - <metric>           => holds the value for completed intervals (solid line)
+  //   - <metric>__dashed   => holds the value for incomplete/future intervals (dashed line)
+  // This keeps the original time buckets but splits values so the chart can render a
+  // solid and a dashed series independently.
   return data?.map((entry) => {
     const startDate = new Date(entry.date);
     const endDate = new Date(startDate);
@@ -62,14 +68,57 @@ export function transformChartSeries(
       }
     }
 
-    return {
+    // Determine whether this interval is "complete" (in the past) or still running / future.
+    // We treat the interval as complete only when its end date is <= now.
+    const now = new Date();
+    const isComplete = endDate.getTime() <= now.getTime();
+
+    // Ensure we always have numbers (fallback to 0)
+    const users = entry.users ?? 0;
+    const pageViews = entry.pageViews ?? 0;
+    const bounceRate = entry.bounceRate ?? 0;
+    const visitDuration = entry.visitDuration ?? 0;
+    const events = entry.events ?? 0;
+
+    const base = {
       startDate: dateTimeFormatter[formatMethod](startDate),
       endDate: dateTimeFormatter[formatMethod](endDate),
-      users: entry.users,
-      pageViews: entry.pageViews,
-      bounceRate: entry.bounceRate,
-      visitDuration: entry.visitDuration,
-      events: entry.events,
-    };
+    } as any;
+
+    // For each metric place value either in the solid key (complete intervals)
+    // or in the dashed key (incomplete / future intervals).
+    if (isComplete) {
+      base.users = users;
+      base.users__dashed = 0;
+
+      base.pageViews = pageViews;
+      base.pageViews__dashed = 0;
+
+      base.bounceRate = bounceRate;
+      base.bounceRate__dashed = 0;
+
+      base.visitDuration = visitDuration;
+      base.visitDuration__dashed = 0;
+
+      base.events = events;
+      base.events__dashed = 0;
+    } else {
+      base.users = 0;
+      base.users__dashed = users;
+
+      base.pageViews = 0;
+      base.pageViews__dashed = pageViews;
+
+      base.bounceRate = 0;
+      base.bounceRate__dashed = bounceRate;
+
+      base.visitDuration = 0;
+      base.visitDuration__dashed = visitDuration;
+
+      base.events = 0;
+      base.events__dashed = events;
+    }
+
+    return base;
   });
 }

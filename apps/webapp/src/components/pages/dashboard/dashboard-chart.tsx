@@ -1,8 +1,7 @@
 import type { CardRootProps } from '@chakra-ui/react';
 import { Card, Icon, AspectRatio, Box, Flex, SimpleGrid, Text, useBreakpointValue } from '@chakra-ui/react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import type { ChartInterval, TimeSpan } from '@vemetric/common/charts/timespans';
-import { getCustomDateRangeInterval, TIME_SPAN_DATA } from '@vemetric/common/charts/timespans';
+import type { TimeSpan } from '@vemetric/common/charts/timespans';
 import { formatNumber } from '@vemetric/common/math';
 import React, { useState } from 'react';
 import {
@@ -15,10 +14,8 @@ import {
   YAxis,
   CartesianGrid,
   Bar,
-  // ReferenceLine,
 } from 'recharts';
 import type { AxisDomain } from 'recharts/types/util/types';
-import { DeleteIconButton } from '@/components/delete-icon-button';
 import type { ChartCategoryKey } from '@/components/pages/dashboard/chart-category-card';
 import {
   CHART_CATEGORIES,
@@ -29,12 +26,14 @@ import { DashboardCardHeader } from '@/components/pages/dashboard/dashboard-card
 import { MenuContent, MenuRoot, MenuTrigger, MenuItem } from '@/components/ui/menu';
 import { Status } from '@/components/ui/status';
 import { Tooltip } from '@/components/ui/tooltip';
-import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import type { DashboardData } from '@/utils/trpc';
-import { DashboardChartDataMissing } from './charts/dashboard-chart-missing-data';
+import { DashboardChartDataMissing } from './charts/chart-missing-data';
+import { getTimespanInterval, getYAxisDomain, transformChartSeries } from './charts/chart-helpers';
+// import { DashboardChartEventCounter } from './charts/chart-event-counter';
+import { DeleteIconButton } from '@/components/delete-icon-button';
 
 // ========================================================= //
-// ======================= Types =========================== //
+// ================= Props / Types ========================= //
 // ========================================================= //
 export type ChartPayloadItem = {
   categoryKey: string;
@@ -44,9 +43,6 @@ export type ChartPayloadItem = {
   payload: any;
 };
 
-// ========================================================= //
-// ======================= Props =========================== //
-// ========================================================= //
 interface Props extends CardRootProps {
   timespan: TimeSpan;
   timespanStartDate?: string;
@@ -59,77 +55,6 @@ interface Props extends CardRootProps {
   tickGap?: number;
   connectNulls?: boolean;
   publicDashboard?: boolean;
-}
-
-// ========================================================== //
-// ==================== Helper Functions ==================== //
-// ========================================================== //
-export const getTimespanInterval = (timespan: TimeSpan, _startDate?: string, _endDate?: string) => {
-  const timeSpanData = TIME_SPAN_DATA[timespan];
-  if (timespan === 'custom' && _startDate) {
-    const startDate = new Date(_startDate + 'T00:00:00Z');
-    const endDate = _endDate ? new Date(_endDate + 'T23:59:59Z') : new Date(_startDate + 'T23:59:59Z');
-    return getCustomDateRangeInterval(startDate, endDate);
-  }
-  return timeSpanData.interval;
-};
-
-export const getYAxisDomain = (autoMinValue: boolean, minValue?: number | undefined, maxValue?: number | undefined) => {
-  const minDomain = autoMinValue ? 'auto' : minValue ?? 0;
-  const maxDomain = maxValue ?? 'auto';
-  return [minDomain, maxDomain];
-};
-
-export function transformChartSeries(
-  data: DashboardData['chartTimeSeries'] | null | undefined,
-  interval: ChartInterval,
-  timespan: TimeSpan,
-) {
-  return data?.map((entry) => {
-    const startDate = new Date(entry.date);
-    const endDate = new Date(startDate);
-
-    let formatMethod: keyof typeof dateTimeFormatter = 'formatTime';
-    switch (interval) {
-      case 'thirty_seconds':
-        formatMethod = 'formatTimeWithSeconds';
-        endDate.setSeconds(startDate.getSeconds() + 29);
-        break;
-      case 'ten_minutes':
-        endDate.setMinutes(startDate.getMinutes() + 9);
-        break;
-      case 'hourly':
-        endDate.setMinutes(startDate.getMinutes() + 59);
-        break;
-      case 'daily':
-        formatMethod = 'formatDate';
-        endDate.setHours(startDate.getHours() + 23);
-        break;
-      case 'weekly':
-        formatMethod = 'formatWeek';
-        endDate.setDate(startDate.getDate() + 6);
-        break;
-      case 'monthly': {
-        if (timespan === '1year') {
-          formatMethod = 'formatMonthYear';
-        } else {
-          formatMethod = 'formatMonth';
-        }
-        endDate.setDate(startDate.getDate() + 30);
-        break;
-      }
-    }
-
-    return {
-      startDate: dateTimeFormatter[formatMethod](startDate),
-      endDate: dateTimeFormatter[formatMethod](endDate),
-      users: entry.users,
-      pageViews: entry.pageViews,
-      bounceRate: entry.bounceRate,
-      visitDuration: entry.visitDuration,
-      events: entry.events,
-    };
-  });
 }
 
 // ========================================================= //
@@ -149,48 +74,174 @@ export const DashboardChart = (props: Props) => {
     publicDashboard = false,
     ...cardProps
   } = props;
-  const yAxisDomain = getYAxisDomain(autoMinValue, minValue, maxValue);
   const areaId = React.useId();
-  const isMobile = useBreakpointValue({ base: true, md: false });
+
   const { e: showEvents } = useSearch({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
   const navigate = useNavigate({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
-
-  const timeSpanInterval = getTimespanInterval(timespan, timespanStartDate, timespanEndDate);
-  const showEndDate = timeSpanInterval === 'ten_minutes' || timeSpanInterval === 'hourly';
-  const chartData = transformChartSeries(data.chartTimeSeries ?? [], timeSpanInterval, timespan);
-
-  const [activeMobileCategory, setActiveMobileCategory] = useState<ChartCategoryKey>('users');
-  const [activeCategoryKeys, setActiveCategoryKeys] = useState<Array<ChartCategoryKey>>(['users', 'pageViews']);
-
-  // ========================================================= //
-  // ======================= Handlers ========================= //
-  // ========================================================= //
-  const toggleCategory = (category: ChartCategoryKey) => {
-    if (isMobile) {
-      return;
-    }
-
-    setActiveCategoryKeys((prev) => {
-      if (prev.length === 1 && prev[0] === category) {
-        return prev;
-      }
-
-      return prev.includes(category) ? prev.filter((c) => c !== category) : [...prev, category];
-    });
-  };
 
   const handleLiveClick = (event: React.MouseEvent<HTMLDivElement>) => {
     event.stopPropagation();
     navigate({ search: (prev) => ({ ...prev, t: 'live' }) });
   };
 
+  const handleClearEventCounter = () => {
+    navigate({ search: (prev) => ({ ...prev, e: undefined }), resetScroll: false });
+  };
+
+  const yAxisDomain = getYAxisDomain(autoMinValue, minValue, maxValue);
+  const timeSpanInterval = getTimespanInterval(timespan, timespanStartDate, timespanEndDate);
+  const chartData = transformChartSeries(data.chartTimeSeries ?? [], timeSpanInterval, timespan);
+  const showEndDate = timeSpanInterval === 'ten_minutes' || timeSpanInterval === 'hourly';
+
+  const isMobile = useBreakpointValue({ base: true, md: false });
+  const [activeMobileCategory, setActiveMobileCategory] = useState<ChartCategoryKey>('users');
+  const [activeCategoryKeys, setActiveCategoryKeys] = useState<Array<ChartCategoryKey>>(['users', 'pageViews']);
+
+  // ========================================================= //
+  // ======================= Handlers ======================== //
+  // ========================================================= //
+  const toggleCategory = (category: ChartCategoryKey) => {
+    if (isMobile) return;
+
+    setActiveCategoryKeys((prev) => {
+      if (prev.length === 1 && prev[0] === category) return prev;
+
+      return prev.includes(category) ? prev.filter((c) => c !== category) : [...prev, category];
+    });
+  };
+
   const eventCategory = CHART_CATEGORY_MAP.events;
+  const eventCategoryColor = eventCategory.color;
+  const eventCount = data?.events.reduce((acc, curr) => acc + curr.count, 0) || 0;
+  const onlineUsers = formatNumber(data?.currentActiveUsers ?? 0, true);
+
   const activeCategories = CHART_CATEGORIES.filter(([key]) =>
     isMobile ? activeMobileCategory === key : activeCategoryKeys.includes(key as ChartCategoryKey),
   );
-  const onlineUsers = formatNumber(data?.currentActiveUsers ?? 0, true);
 
-  console.log('data', data);
+  // ========================================================= //
+  // =================== Sub-Components ====================== //
+  // ========================================================= //
+  const _eventCounterDisplay = () => {
+    return (
+      <Flex
+        className="group"
+        align="center"
+        pos="absolute"
+        right="2.5"
+        top="2.5"
+        bg="bg.card"
+        borderColor="gray.emphasized"
+        borderWidth={1}
+        borderRadius="md"
+        p={1}
+        gap={1}
+        zIndex="1"
+      >
+        <Box w={2} h={2} bg={`${eventCategoryColor}.500`} rounded="full" />
+        <Text fontSize="xs" fontWeight="semibold">
+          {eventCount} Events
+        </Text>
+        <DeleteIconButton onClick={handleClearEventCounter} />
+      </Flex>
+    );
+  };
+
+  const _BarChartVisuals = () => {
+    return (
+      <>
+        <defs>
+          <linearGradient
+            style={{ color: `var(--chakra-colors-${eventCategoryColor}-400)` }}
+            id="events"
+            x1="0"
+            y1="0"
+            x2="0"
+            y2="1"
+          >
+            <stop offset="5%" stopColor="currentColor" stopOpacity={1} />
+            <stop offset="95%" stopColor="currentColor" stopOpacity={0.4} />
+          </linearGradient>
+        </defs>
+        <Bar
+          style={{ stroke: `var(--chakra-colors-${eventCategoryColor}-500)` }}
+          name="events"
+          type="linear"
+          yAxisId="events"
+          dataKey="events"
+          stroke=""
+          strokeOpacity={0.6}
+          strokeWidth={1}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          isAnimationActive={true}
+          radius={[3, 3, 0, 0]}
+          fill={`url(#events)`}
+        />
+      </>
+    );
+  };
+
+  // const _AreaChartVisuals = () => {};
+
+  const _xAxisSetup = () => {
+    <XAxis
+      dataKey="startDate"
+      interval="preserveStartEnd"
+      tick={{ transform: 'translate(0, 6)' }}
+      padding={{ left: 10, right: 90 }}
+      fill=""
+      stroke=""
+      tickLine={false}
+      axisLine={true}
+      minTickGap={15}
+      scale="point"
+    />;
+  };
+
+  const _yAxisSetup = () => {
+    return (
+      <>
+        <YAxis
+          yAxisId="other"
+          type="number"
+          domain={yAxisDomain as AxisDomain}
+          allowDecimals={allowDecimals}
+          axisLine={false}
+          tickLine={false}
+          width={40}
+          tickFormatter={(value) => formatNumber(value, true)}
+          hide={isMobile}
+        />
+        <YAxis
+          yAxisId="bounceRate"
+          hide
+          type="number"
+          domain={yAxisDomain as AxisDomain}
+          allowDecimals={allowDecimals}
+        />
+        <YAxis
+          yAxisId="visitDuration"
+          hide
+          type="number"
+          domain={yAxisDomain as AxisDomain}
+          allowDecimals={allowDecimals}
+        />
+        <YAxis yAxisId="events" hide type="number" domain={yAxisDomain as AxisDomain} allowDecimals={allowDecimals} />
+      </>
+    );
+  };
+
+  const _AxisAndCartesianGridSetup = () => {
+    _xAxisSetup();
+    _yAxisSetup();
+    <CartesianGrid
+      vertical={false}
+      stroke="var(--chakra-colors-gray-emphasized)"
+      strokeWidth={0.8}
+      strokeDasharray="10 5"
+    />;
+  };
 
   // ========================================================= //
   // ======================= Render ========================== //
@@ -253,32 +304,7 @@ export const DashboardChart = (props: Props) => {
         </MenuRoot>
       </DashboardCardHeader>
       <Card.Body p="2.5" pos="relative">
-        {showEvents && (
-          <Flex
-            className="group"
-            align="center"
-            pos="absolute"
-            right="2.5"
-            top="2.5"
-            bg="bg.card"
-            borderColor="gray.emphasized"
-            borderWidth={1}
-            borderRadius="md"
-            p={1}
-            gap={1}
-            zIndex="1"
-          >
-            <Box w={2} h={2} bg={`${eventCategory.color}.500`} rounded="full" />
-            <Text fontSize="xs" fontWeight="semibold">
-              {data?.events.reduce((acc, curr) => acc + curr.count, 0) || 0} Events
-            </Text>
-            <DeleteIconButton
-              onClick={() => {
-                navigate({ search: (prev) => ({ ...prev, e: undefined }), resetScroll: false });
-              }}
-            />
-          </Flex>
-        )}
+        {showEvents && _eventCounterDisplay()}
 
         <AspectRatio
           pos="relative"
@@ -291,70 +317,13 @@ export const DashboardChart = (props: Props) => {
             },
           }}
         >
-          {data.chartTimeSeries.length > 0 ? (
+          {data.chartTimeSeries.length == 0 ? (
+            <DashboardChartDataMissing />
+          ) : (
             <Box pos="absolute" inset={0}>
               <ResponsiveContainer>
                 <RechartsComposedChart data={chartData} margin={{ top: showEvents ? 40 : 15 }} maxBarSize={15}>
-                  <XAxis
-                    dataKey="startDate"
-                    interval="preserveStartEnd"
-                    tick={{ transform: 'translate(0, 6)' }}
-                    padding={{ left: 10, right: 90 }}
-                    fill=""
-                    stroke=""
-                    tickLine={false}
-                    axisLine={true}
-                    minTickGap={15}
-                    scale="point"
-                  />
-
-                  <YAxis
-                    yAxisId="other"
-                    type="number"
-                    domain={yAxisDomain as AxisDomain}
-                    allowDecimals={allowDecimals}
-                    axisLine={false}
-                    tickLine={false}
-                    width={40}
-                    tickFormatter={(value) => formatNumber(value, true)}
-                    hide={isMobile}
-                  />
-                  <YAxis
-                    yAxisId="bounceRate"
-                    hide
-                    type="number"
-                    domain={yAxisDomain as AxisDomain}
-                    allowDecimals={allowDecimals}
-                  />
-                  <YAxis
-                    yAxisId="visitDuration"
-                    hide
-                    type="number"
-                    domain={yAxisDomain as AxisDomain}
-                    allowDecimals={allowDecimals}
-                  />
-                  <YAxis
-                    yAxisId="events"
-                    hide
-                    type="number"
-                    domain={yAxisDomain as AxisDomain}
-                    allowDecimals={allowDecimals}
-                  />
-                  <CartesianGrid
-                    vertical={false}
-                    stroke="var(--chakra-colors-gray-emphasized)"
-                    strokeWidth={0.8}
-                    strokeDasharray="10 5"
-                  />
-
-                  {/* <ReferenceLine
-                    yAxisId="events"
-                    x="endDate"
-                    stroke="red"
-                    label="End Date"
-                    strokeWidth={1.5}
-                    strokeOpacity={0.65}
-                  /> */}
+                  {_AxisAndCartesianGridSetup()}
 
                   <RechartsTooltip
                     wrapperStyle={{ outline: 'none', zIndex: '10' }}
@@ -413,8 +382,10 @@ export const DashboardChart = (props: Props) => {
                     }}
                   />
 
+                  {/* Background Area Chart */}
                   {activeCategories.map(([category, { color, yAxisId = 'other' }]) => {
                     const categoryId = `${areaId}-${category.replace(/[^a-zA-Z0-9]/g, '')}`;
+
                     return (
                       <React.Fragment key={category}>
                         <defs key={category}>
@@ -431,9 +402,22 @@ export const DashboardChart = (props: Props) => {
                             <stop offset="95%" stopColor="currentColor" stopOpacity={0} />
                           </linearGradient>
                         </defs>
+
                         <Area
                           style={{ stroke: `var(--chakra-colors-${color}-500)` }}
                           strokeOpacity={1}
+                          key={category}
+                          name={category}
+                          type="linear"
+                          yAxisId={yAxisId}
+                          dataKey={category}
+                          stroke=""
+                          strokeWidth={2}
+                          strokeLinejoin="round"
+                          strokeLinecap="round"
+                          isAnimationActive={timespan === 'live'}
+                          connectNulls={connectNulls}
+                          fill={`url(#${categoryId})`}
                           activeDot={(props: any) => {
                             const {
                               cx: cxCoord,
@@ -457,60 +441,14 @@ export const DashboardChart = (props: Props) => {
                               />
                             );
                           }}
-                          key={category}
-                          name={category}
-                          type="linear"
-                          yAxisId={yAxisId}
-                          dataKey={category}
-                          stroke=""
-                          strokeWidth={2}
-                          strokeLinejoin="round"
-                          strokeLinecap="round"
-                          isAnimationActive={timespan === 'live'}
-                          connectNulls={connectNulls}
-                          fill={`url(#${categoryId})`}
                         />
                       </React.Fragment>
                     );
                   })}
-
-                  {showEvents && (
-                    <>
-                      <defs>
-                        <linearGradient
-                          style={{ color: `var(--chakra-colors-${eventCategory.color}-400)` }}
-                          id="events"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop offset="5%" stopColor="currentColor" stopOpacity={1} />
-                          <stop offset="95%" stopColor="currentColor" stopOpacity={0.4} />
-                        </linearGradient>
-                      </defs>
-                      <Bar
-                        style={{ stroke: `var(--chakra-colors-${eventCategory.color}-500)` }}
-                        name="events"
-                        type="linear"
-                        yAxisId="events"
-                        dataKey="events"
-                        stroke=""
-                        strokeOpacity={0.6}
-                        strokeWidth={1}
-                        strokeLinejoin="round"
-                        strokeLinecap="round"
-                        isAnimationActive={true}
-                        radius={[3, 3, 0, 0]}
-                        fill={`url(#events)`}
-                      />
-                    </>
-                  )}
+                  {showEvents && _BarChartVisuals()}
                 </RechartsComposedChart>
               </ResponsiveContainer>
             </Box>
-          ) : (
-            <DashboardChartDataMissing />
           )}
         </AspectRatio>
       </Card.Body>

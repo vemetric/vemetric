@@ -1,8 +1,8 @@
 import { Box } from '@chakra-ui/react';
-import type { PropsWithChildren } from 'react';
+import type { PropsWithChildren, ReactNode } from 'react';
 
 interface Props {
-  label: string;
+  label: ReactNode;
 }
 
 export const ChartTooltip = ({ label, children }: PropsWithChildren<Props>) => {

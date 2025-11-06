@@ -4,6 +4,7 @@ import { formatNumber } from '@vemetric/common/math';
 import { memo, useState } from 'react';
 import { TbUserSquareRounded } from 'react-icons/tb';
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from 'react-simple-maps';
+import { CountryFlag } from '@/components/country-flag';
 import { ChartTooltip } from './chart-tooltip';
 
 const geoUrl = 'https://assets.vemetric.com/topo.json';
@@ -109,7 +110,14 @@ export const CountriesWorldMap = memo(({ data, onCountryClick }: Props) => {
       </ComposableMap>
       {hoveredCountryCode ? (
         <Center pos="absolute" bottom="2" w="100%" pointerEvents="none">
-          <ChartTooltip label={COUNTRIES[hoveredCountryCode as keyof typeof COUNTRIES]}>
+          <ChartTooltip
+            label={
+              <Flex gap={2.5} align="center">
+                <CountryFlag countryCode={hoveredCountryCode} />
+                {COUNTRIES[hoveredCountryCode as keyof typeof COUNTRIES]}
+              </Flex>
+            }
+          >
             <Flex align="center" px={3} py={2} gap={5} justify="space-between">
               <Flex align="center" gap={2}>
                 <Icon as={TbUserSquareRounded} color={'blue.500'} />

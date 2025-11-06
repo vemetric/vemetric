@@ -33,7 +33,8 @@ const dashboardSearchSchema = z.object({
   ...timespanSearchSchema.shape,
   f: filterConfigSchema,
   s: sourcesSchema,
-  u: z.enum(['countries', 'browsers', 'devices', 'os']).optional(),
+  c: z.enum(['map', 'list']).optional(),
+  u: z.enum(['browsers', 'devices', 'os']).optional(),
   e: z.boolean().optional(),
   se: z.string().optional(), // selected event to show properties for
   ep: z.string().optional(), // selected event property to show values for

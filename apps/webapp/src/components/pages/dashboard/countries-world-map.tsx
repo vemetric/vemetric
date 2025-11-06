@@ -78,7 +78,7 @@ export const CountriesWorldMap = memo(({ data, onCountryClick }: Props) => {
                       stroke="var(--chakra-colors-border-muted)"
                       strokeWidth={0.5}
                       style={{
-                        default: { outline: 'none' },
+                        default: { outline: 'none', transition: 'all 0.1s ease-in-out' },
                         hover: {
                           fill: users ? 'var(--chakra-colors-purple-500)' : 'var(--geo-hover-color)',
                           outline: 'none',

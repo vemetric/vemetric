@@ -1,16 +1,17 @@
-import { Text, Card, Flex, Box, Button, Grid, Icon, Skeleton, SegmentGroup } from '@chakra-ui/react';
-import { useParams, Link } from '@tanstack/react-router';
+import { Text, Card, Flex, Box, Button, Grid, Icon, Skeleton } from '@chakra-ui/react';
+import { useParams, Link, useSearch, useNavigate } from '@tanstack/react-router';
 import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import { COUNTRIES } from '@vemetric/common/countries';
 import type { IFilterConfig, ILocationFilter } from '@vemetric/common/filters';
 import { formatNumber } from '@vemetric/common/math';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { TbFilter, TbFilterOff, TbMap2, TbUsers, TbList, TbWorld } from 'react-icons/tb';
 import { isDeepEqual } from 'remeda';
 import { CardIcon } from '@/components/card-icon';
 import { CountryFlag } from '@/components/country-flag';
 import { NumberCounter } from '@/components/number-counter';
 import { EmptyState } from '@/components/ui/empty-state';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useFilters } from '@/hooks/use-filters';
 import { useTimespanParam } from '@/hooks/use-timespan-param';
@@ -27,10 +28,12 @@ interface Props {
 
 export const CountriesCard = ({ filterConfig, publicDashboard }: Props) => {
   const params = useParams({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
+  const { c: viewMode = 'map' } = useSearch({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
   const { timespan, startDate, endDate } = useTimespanParam({
     from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
   });
   const { toggleFilter } = useFilters({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
+  const navigate = useNavigate({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
 
   const activeFilters = filterConfig?.filters.filter((f) => f.type === 'location') ?? [];
 
@@ -45,28 +48,13 @@ export const CountriesCard = ({ filterConfig, publicDashboard }: Props) => {
 
   const mostVisitedLocation = data?.countryCodes?.[0];
   const [page, setPage] = useState(1);
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
-  // Ref to measure list container height
-  const listContainerRef = useRef<HTMLDivElement>(null);
-  const [listHeight, setListHeight] = useState<number>(350); // Default height
-
-  // Measure list height when it renders or changes
-  useEffect(() => {
-    if (listContainerRef.current && viewMode === 'list') {
-      // Use setTimeout to ensure the DOM has fully rendered with flexbox calculations
-      const timer = setTimeout(() => {
-        if (listContainerRef.current) {
-          const height = listContainerRef.current.offsetHeight;
-          if (height > 0) {
-            setListHeight(height);
-          }
-        }
-      }, 100);
-
-      return () => clearTimeout(timer);
-    }
-  }, [viewMode, data?.countryCodes, page]);
+  const setViewMode = (newViewMode: 'list' | 'map') => {
+    navigate({
+      search: (prev) => ({ ...prev, c: newViewMode === 'map' ? undefined : newViewMode }),
+      resetScroll: false,
+    });
+  };
 
   const handleCountryClick = (countryCode: string) => {
     const newFilter = {
@@ -93,47 +81,45 @@ export const CountriesCard = ({ filterConfig, publicDashboard }: Props) => {
             </Text>
           </Flex>
           <Flex flexGrow={1} justify="flex-end">
-            <SegmentGroup.Root
+            <SegmentedControl
               size="xs"
               value={viewMode}
-              onValueChange={({ value }) => {
-                setViewMode(value as 'list' | 'map');
-              }}
-            >
-              <SegmentGroup.Indicator />
-              <SegmentGroup.Item value="list">
-                <SegmentGroup.ItemText>
-                  <Flex align="center" gap={1}>
-                    <Icon as={TbList} />
-                    <Box hideBelow="md">List</Box>
-                  </Flex>
-                </SegmentGroup.ItemText>
-                <SegmentGroup.ItemHiddenInput />
-              </SegmentGroup.Item>
-              <SegmentGroup.Item value="map">
-                <SegmentGroup.ItemText>
-                  <Flex align="center" gap={1}>
-                    <Icon as={TbWorld} />
-                    <Box hideBelow="md">Map</Box>
-                  </Flex>
-                </SegmentGroup.ItemText>
-                <SegmentGroup.ItemHiddenInput />
-              </SegmentGroup.Item>
-            </SegmentGroup.Root>
+              onValueChange={(e) => setViewMode(e.value as 'list' | 'map')}
+              items={[
+                {
+                  value: 'map',
+                  label: (
+                    <Flex align="center" gap={1}>
+                      <Icon as={TbWorld} />
+                      <Box hideBelow="md">Map</Box>
+                    </Flex>
+                  ),
+                },
+                {
+                  value: 'list',
+                  label: (
+                    <Flex align="center" gap={1}>
+                      <Icon as={TbList} />
+                      <Box hideBelow="md">List</Box>
+                    </Flex>
+                  ),
+                },
+              ]}
+            />
           </Flex>
         </Flex>
       </DashboardCardHeader>
-      <Card.Body overflow="hidden" transition="height 0.3s ease-in-out" display="flex" flexDir="column">
+      <Card.Body
+        overflow="hidden"
+        transition="height 0.3s ease-in-out"
+        display="flex"
+        flexDir="column"
+        p={viewMode === 'map' ? 0 : undefined}
+      >
         {viewMode === 'map' ? (
-          <Box h={`${listHeight}px`} overflow="hidden" flexShrink={0}>
-            {data?.countryCodes && data.countryCodes.length > 0 ? (
-              <CountriesWorldMap data={data.countryCodes} onCountryClick={handleCountryClick} />
-            ) : (
-              <EmptyState icon={<TbMap2 />} title="No countries available in the selected timeframe" />
-            )}
-          </Box>
+          <CountriesWorldMap data={data?.countryCodes ?? []} onCountryClick={handleCountryClick} />
         ) : (
-          <Box ref={listContainerRef} display="flex" flexDir="column" flexGrow={1}>
+          <Box display="flex" flexDir="column" flexGrow={1}>
             <ListCard
               list={data?.countryCodes}
               page={page}

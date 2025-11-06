@@ -44,7 +44,10 @@ export async function getUserIdFromRequest(context: HonoContext, useBodyIdentifi
       }
 
       // Auto-identify the user from backend if no user found with the given identifier
-      logger.info({ 'req.path': req.path, projectId, userIdentifier }, 'Auto-identifying user from backend.');
+      logger.info(
+        { 'req.path': req.path, projectId: String(projectId), userIdentifier },
+        'Auto-identifying user from backend.',
+      );
 
       const userId = generateUserId();
       await identifyUser(

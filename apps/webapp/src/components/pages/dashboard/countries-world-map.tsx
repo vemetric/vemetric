@@ -1,4 +1,4 @@
-import { Box, Center, Flex, Icon, Text } from '@chakra-ui/react';
+import { Box, Center, Flex, Icon, Text, useBreakpointValue } from '@chakra-ui/react';
 import { COUNTRIES } from '@vemetric/common/countries';
 import { formatNumber } from '@vemetric/common/math';
 import { memo, useState } from 'react';
@@ -21,6 +21,7 @@ interface Props {
 
 export const CountriesWorldMap = memo(({ data, onCountryClick }: Props) => {
   const [hoveredCountryCode, setHoveredCountryCode] = useState<string | null>(null);
+  const isTouch = useBreakpointValue({ base: true, md: true, lg: false });
   const maxUsers = Math.max(...data.map((d) => d.users), 1);
   const countryDataMap = new Map(data.map((d) => [d.countryCode, d.users]));
   const hoveredCountryUsers = hoveredCountryCode ? (countryDataMap.get(hoveredCountryCode) ?? 0) : 0;
@@ -88,6 +89,8 @@ export const CountriesWorldMap = memo(({ data, onCountryClick }: Props) => {
                         pressed: { outline: 'none' },
                       }}
                       onClick={() => {
+                        if (isTouch) return;
+
                         if (countryCode && users && onCountryClick) {
                           onCountryClick(countryCode);
                         }

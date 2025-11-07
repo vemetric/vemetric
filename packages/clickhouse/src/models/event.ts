@@ -270,9 +270,9 @@ export const clickhouseEvent = {
       const { joinClause, orderByClause, sortSelect, isSortByEvent } = buildUserSortQueries(sortConfig, projectId);
 
       const resultSet = await clickhouseClient.query({
-        query: `SELECT u.userId, u.identifier, u.displayName, u.countryCode, u.maxCreatedAt, u.isOnline${sortSelect}
+        query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.maxCreatedAt as maxCreatedAt, u.isOnline as isOnline, usr.avatarUrl as avatarUrl${sortSelect}
               FROM (
-                SELECT userId, 
+                SELECT userId,
                   argMax(userIdentifier, eventCreatedAt) as identifier,
                   argMax(userDisplayName, eventCreatedAt) as displayName,
                   argMax(countryCode, eventCreatedAt) as countryCode,
@@ -294,6 +294,13 @@ export const clickhouseEvent = {
                   ${userFilterQueries ? `AND (${userFilterQueries})` : ''}
                 GROUP BY userId
               ) u
+              LEFT JOIN (
+                SELECT id, argMax(avatarUrl, updatedAt) as avatarUrl
+                FROM user
+                WHERE projectId=${escape(projectId)}
+                GROUP BY id
+                HAVING argMax(deleted, updatedAt) = 0
+              ) usr ON u.userId = usr.id
               ${joinClause}
               ${orderByClause}
               LIMIT ${escape(pagination.limit)} OFFSET ${escape(pagination.offset)}`,
@@ -308,6 +315,7 @@ export const clickhouseEvent = {
           countryCode: row.countryCode as string,
           lastSeenAt: row[isSortByEvent ? 'lastEventFiredAt' : 'maxCreatedAt'] as string,
           isOnline: Boolean(row.isOnline),
+          avatarUrl: row.avatarUrl as string,
         };
       });
     },
@@ -821,8 +829,15 @@ export const clickhouseEvent = {
 
       const resultSet = await clickhouseClient.query({
         query: `
-          SELECT ${EVENT_KEY_SELECTOR}, max(createdAt) as eventTime
+          SELECT ${EVENT_KEY_SELECTOR}, max(createdAt) as eventTime, any(usr.avatarUrl) as avatarUrl
           FROM ${TABLE_NAME} 
+          LEFT JOIN (
+            SELECT id, argMax(avatarUrl, updatedAt) as avatarUrl
+            FROM user
+            WHERE projectId=${escape(projectId)}
+            GROUP BY id
+            HAVING argMax(deleted, updatedAt) = 0
+          ) usr ON userId = usr.id
           WHERE projectId = ${escape(projectId)}${cursorClause}
           ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
           AND isPageView <> 1
@@ -835,7 +850,7 @@ export const clickhouseEvent = {
       });
 
       const rows = (await resultSet.json()) as Array<any>;
-      return rows.map(mapRowToEvent);
+      return rows.map((event) => ({ ...mapRowToEvent(event), userAvatarUrl: event.avatarUrl }));
     },
   ),
 

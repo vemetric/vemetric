@@ -476,7 +476,12 @@ function Page() {
                           <Flex flexDir="column" gap={1} flexGrow={1} minW={0}>
                             <Flex align="center" gap={2}>
                               <Flex align="center" gap={2} minW={0}>
-                                <UserAvatar id={userId} displayName={user?.displayName} identifier={user?.identifier} />
+                                <UserAvatar
+                                  id={userId}
+                                  displayName={user?.displayName}
+                                  avatarUrl={user?.avatarUrl}
+                                  identifier={user?.identifier}
+                                />
                                 <Heading size="lg" truncate maxW="100%">
                                   {userName}
                                 </Heading>

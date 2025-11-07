@@ -26,7 +26,7 @@
     "@trpc/react-query": "^10.45.2",
     "@trpc/server": "^10.45.2",
     "@vemetric/common": "workspace:*",
-    "@vemetric/react": "0.4.1",
+    "@vemetric/react": "0.6.1",
     "backend": "workspace:*",
     "better-auth": "^1.3.16",
     "date-fns": "^4.1.0",

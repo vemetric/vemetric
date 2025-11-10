@@ -49,8 +49,8 @@ export const CountriesWorldMap = memo(({ data, onCountryClick }: Props) => {
           minZoom={1}
           maxZoom={4}
           translateExtent={[
-            [-70, -150],
-            [880, 750],
+            [-70, -260],
+            [880, 680],
           ]}
         >
           <Geographies geography={geoUrl}>

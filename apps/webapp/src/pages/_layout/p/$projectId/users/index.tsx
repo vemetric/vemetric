@@ -146,7 +146,7 @@ function Page() {
             </Box>
           ) : (
             <>
-              {users.map(({ id, identifier, displayName, countryCode, lastSeenAt, isOnline }) => {
+              {users.map(({ id, identifier, avatarUrl, displayName, countryCode, lastSeenAt, isOnline }) => {
                 return (
                   <Box
                     key={id}
@@ -186,7 +186,7 @@ function Page() {
                       </Box>
                       <Box pl={{ base: 2, md: 1 }} maxW={['60vw', 'none']}>
                         <Flex align="center" gap={2}>
-                          <UserAvatar id={id} displayName={displayName} identifier={identifier} />
+                          <UserAvatar id={id} avatarUrl={avatarUrl} displayName={displayName} identifier={identifier} />
                           <LinkOverlay asChild zIndex="4" truncate _before={{ zIndex: 4 }}>
                             <Link to="/p/$projectId/users/$userId" params={{ projectId, userId: String(id) }}>
                               {getUserName(displayName, identifier)}

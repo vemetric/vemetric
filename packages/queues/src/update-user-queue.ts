@@ -15,6 +15,7 @@ export interface UpdateUserQueueProps {
   userId: string;
   updatedAt: string;
   displayName?: string;
+  avatarUrl?: string;
   data?: UpdateUserDataModel;
 }
 

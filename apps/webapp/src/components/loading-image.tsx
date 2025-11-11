@@ -10,6 +10,7 @@ export const LoadingImage = (props: Props) => {
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    setError(false);
     setLoading(true);
   }, [props.src]);
 

@@ -41,16 +41,16 @@ export const CountriesWorldMap = memo(({ data, onCountryClick }: Props) => {
   };
 
   return (
-    <Box position="relative" boxSize="100%">
+    <Box position="relative" boxSize="100%" minHeight="335px" overflow="hidden" rounded="md">
       <ComposableMap projection="geoMercator" height={400} style={{ width: '100%', height: '100%' }}>
         <ZoomableGroup
-          center={[0, 30]}
-          zoom={1.5}
-          minZoom={1}
+          center={[0, 40]}
+          zoom={0.85}
+          minZoom={0.85}
           maxZoom={4}
           translateExtent={[
-            [-70, -260],
-            [880, 680],
+            [-70, -240],
+            [880, 630],
           ]}
         >
           <Geographies geography={geoUrl}>

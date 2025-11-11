@@ -22,7 +22,7 @@ export async function initUpdateUserWorker() {
       let hasChanged = false;
       if (displayName && displayName !== user.displayName) {
         hasChanged = true;
-      } else if (avatarUrl && avatarUrl !== user.avatarUrl) {
+      } else if (typeof avatarUrl === 'string' && avatarUrl !== user.avatarUrl) {
         hasChanged = true;
       } else if (data && !isDeepEqual(user.customData, updatedUserData)) {
         hasChanged = true;
@@ -36,7 +36,7 @@ export async function initUpdateUserWorker() {
       if (displayName) {
         updatedUser.displayName = displayName;
       }
-      if (avatarUrl) {
+      if (typeof avatarUrl === 'string') {
         updatedUser.avatarUrl = avatarUrl;
       }
       await clickhouseUser.insert([updatedUser]);

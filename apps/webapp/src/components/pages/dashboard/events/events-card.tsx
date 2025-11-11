@@ -46,11 +46,9 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
   const { timespan, startDate, endDate } = useTimespanParam({
     from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
   });
-  const {
-    e: showEvents,
-    se: selectedEvent,
-    ep: selectedProperty,
-  } = useSearch({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
+  const { e: showEvents, me: selectedEvent } = useSearch({
+    from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
+  });
   const [page, setPage] = useState(1);
   const { toggleFilter } = useFilters({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
   const navigate = useNavigate({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
@@ -58,7 +56,7 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
 
   const selectEvent = (eventName: string | null, property?: string | null) => {
     navigate({
-      search: (prev) => ({ ...prev, se: eventName ?? undefined, ep: property ?? undefined }),
+      search: (prev) => ({ ...prev, me: eventName ? { n: eventName, p: property ?? undefined } : undefined }),
       resetScroll: false,
     });
   };
@@ -267,23 +265,23 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
             </motion.div>
           ) : (
             <motion.div key="event" {...getMotionViewProps(false)}>
-              {selectedProperty === undefined ? (
+              {selectedEvent.p === undefined ? (
                 <EventPropertiesView
                   publicDashboard={publicDashboard}
-                  eventName={selectedEvent}
+                  eventName={selectedEvent.n}
                   onBack={() => selectEvent(null)}
-                  onSelectProperty={(property) => selectEvent(selectedEvent, property)}
+                  onSelectProperty={(property) => selectEvent(selectedEvent.n, property)}
                 />
               ) : (
                 <PropertyView
                   publicDashboard={publicDashboard}
-                  eventName={selectedEvent}
-                  property={selectedProperty}
+                  eventName={selectedEvent.n}
+                  property={selectedEvent.p}
                   onBack={(to) => {
                     if (to === 'list') {
                       selectEvent(null);
                     } else {
-                      selectEvent(selectedEvent, null);
+                      selectEvent(selectedEvent.n, null);
                     }
                   }}
                 />

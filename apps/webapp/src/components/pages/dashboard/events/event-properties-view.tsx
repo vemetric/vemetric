@@ -48,7 +48,7 @@ export const EventPropertiesView = ({ publicDashboard, eventName, onBack, onSele
     return (
       <Navigate
         from={publicDashboard ? '/public/$domain' : '/p/$projectId'}
-        search={(prev) => ({ ...prev, ep: data?.properties?.[0].name })}
+        search={(prev) => ({ ...prev, me: { n: eventName, p: data?.properties?.[0].name } })}
         resetScroll={false}
         replace
       />

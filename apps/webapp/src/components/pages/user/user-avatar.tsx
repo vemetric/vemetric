@@ -28,6 +28,8 @@ export const UserAvatar = ({ displayName, avatarUrl, identifier, id, ...props }:
       <Image
         src={avatarUrl || `https://api.dicebear.com/9.x/glass/svg?seed=${encodeURIComponent(id.trim())}`}
         alt={displayName || identifier}
+        boxSize="100%"
+        objectFit="cover"
       />
       {!avatarUrl && (
         <Flex pos="absolute" inset={0} bg="blackAlpha.400" justify="center" align="center">

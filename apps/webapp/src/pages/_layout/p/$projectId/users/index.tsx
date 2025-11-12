@@ -14,8 +14,10 @@ import { FilterSkeletons } from '@/components/filter/filter-skeletons';
 import { UserAvatar } from '@/components/pages/user/user-avatar';
 import { UserSortPopover } from '@/components/pages/user/user-sort-popover';
 import { ProjectInitCard } from '@/components/project-init-card';
+import { SearchButtonInput } from '@/components/search-button-input';
 import { Status } from '@/components/ui/status';
 import { Tooltip } from '@/components/ui/tooltip';
+import { useDebouncedState } from '@/hooks/use-debounced-state';
 import { useSetBreadcrumbs, useSetDocsLink } from '@/stores/header-store';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import { trpc } from '@/utils/trpc';
@@ -25,6 +27,7 @@ const usersSearchSchema = z.object({
   p: z.number().min(1).optional().catch(1),
   f: filterConfigSchema,
   s: userSortConfigSchema,
+  q: z.string().optional(),
 });
 
 export const Route = createFileRoute('/_layout/p/$projectId/users/')({
@@ -34,8 +37,12 @@ export const Route = createFileRoute('/_layout/p/$projectId/users/')({
 
 function Page() {
   const { projectId } = Route.useParams();
-  const { p: page = 1, f: filterConfig, s: sortConfig } = Route.useSearch();
+  const { p: page = 1, f: filterConfig, s: sortConfig, q } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
+  const [search, setSearch, debouncedSearch] = useDebouncedState({
+    defaultValue: q ?? '',
+    onUpdate: (value) => navigate({ search: (prev) => ({ ...prev, q: value || undefined, p: undefined }) }),
+  });
 
   const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery({
     projectId,
@@ -48,6 +55,7 @@ function Page() {
       page,
       filterConfig,
       sortConfig,
+      search: debouncedSearch,
     },
     { keepPreviousData: true },
   );
@@ -100,7 +108,8 @@ function Page() {
         <Box mt={-3} pos="sticky" top={{ base: '44px', md: '122px', lg: '52px' }} zIndex="dropdown">
           <Flex pt={3} bg="bg.content" flexWrap="wrap" w="100%" columnGap={8} rowGap={4} align="center">
             <FilterContainer filterConfig={filterConfig} from="/p/$projectId/users" />
-            <Flex flexGrow={1} gap={2.5} justify="flex-end">
+            <Flex flexGrow={1} gap={2.5} justify="flex-end" align="center">
+              <SearchButtonInput value={search} onChange={setSearch} />
               <AddFilterButton from="/p/$projectId/users" filterConfig={filterConfig} />
             </Flex>
           </Flex>

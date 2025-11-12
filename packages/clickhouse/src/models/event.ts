@@ -265,9 +265,11 @@ export const clickhouseEvent = {
       filterConfig: IFilterConfig,
       sortConfig: IUserSortConfig,
       startDate?: Date,
+      search?: string,
     ) => {
       const userFilterQueries = filterConfig?.operator === 'and' ? buildUserFilterQueries(filterConfig) : '';
       const { joinClause, orderByClause, sortSelect, isSortByEvent } = buildUserSortQueries(sortConfig, projectId);
+      const searchQuery = search ? `AND displayName ILIKE ${escape('%' + search + '%')}` : '';
 
       const resultSet = await clickhouseClient.query({
         query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.maxCreatedAt as maxCreatedAt, u.isOnline as isOnline, usr.avatarUrl as avatarUrl${sortSelect}
@@ -302,6 +304,8 @@ export const clickhouseEvent = {
                 HAVING argMax(deleted, updatedAt) = 0
               ) usr ON u.userId = usr.id
               ${joinClause}
+              WHERE 1=1
+              ${searchQuery}
               ${orderByClause}
               LIMIT ${escape(pagination.limit)} OFFSET ${escape(pagination.offset)}`,
         format: 'JSONEachRow',

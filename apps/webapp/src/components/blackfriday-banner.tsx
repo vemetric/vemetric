@@ -9,11 +9,11 @@ export const BlackFridayBanner = () => {
   const { organizationId } = useOrganizationId(projectId);
   const { copied, copy } = useClipboard({ value: 'BF2025' });
 
-  const { data: billingStatus, isFetching } = trpc.billing.billingStatus.useQuery({
+  const { data: billingStatus } = trpc.billing.billingStatus.useQuery({
     organizationId,
   });
 
-  if (isFetching || !billingStatus?.isActive) {
+  if (!billingStatus || !billingStatus?.isActive) {
     return null;
   }
 

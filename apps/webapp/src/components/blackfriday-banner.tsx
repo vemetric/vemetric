@@ -35,7 +35,7 @@ export const BlackFridayBanner = () => {
         px={2.5}
         opacity="0"
         transform="translateX(-50px)"
-        transition="all 0.3s ease-in-out"
+        transition="all 0.2s ease-in-out"
         _groupHover={{ opacity: '1', transform: 'translateX(0)' }}
       >
         Use the code <strong>BF2025</strong> at checkout! <Icon as={TbArrowRight} />

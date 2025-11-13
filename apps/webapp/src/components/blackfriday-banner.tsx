@@ -8,11 +8,11 @@ export const BlackFridayBanner = () => {
   const { projectId } = useParams({ strict: false });
   const { organizationId } = useOrganizationId(projectId);
 
-  const { data: billingStatus, isLoading } = trpc.billing.billingStatus.useQuery({
+  const { data: billingStatus, isFetching } = trpc.billing.billingStatus.useQuery({
     organizationId,
   });
 
-  if (isLoading || billingStatus?.isActive) {
+  if (isFetching || billingStatus?.isActive) {
     return null;
   }
 

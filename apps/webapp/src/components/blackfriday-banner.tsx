@@ -13,7 +13,7 @@ export const BlackFridayBanner = () => {
     organizationId,
   });
 
-  if (!billingStatus || !billingStatus?.isActive) {
+  if (!billingStatus || billingStatus?.isActive) {
     return null;
   }
 

@@ -14,6 +14,7 @@ const upsertFunnelSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, 'Funnel name is required'),
   steps: z.array(funnelStepSchema).min(1, 'At least one step is required'),
+  icon: z.string().optional(),
 });
 
 export const funnelsRouter = router({
@@ -84,13 +85,13 @@ export const funnelsRouter = router({
 
   upsert: projectProcedure.input(upsertFunnelSchema).mutation(async (opts) => {
     const {
-      input: { id, name, steps },
+      input: { id, name, steps, icon },
       ctx: { user, project },
     } = opts;
 
     if (id) {
       // Update existing funnel
-      const funnel = await dbFunnel.update(id, { name, steps });
+      const funnel = await dbFunnel.update(id, { name, steps, icon });
 
       try {
         await vemetric.trackEvent('FunnelUpdated', {
@@ -114,6 +115,7 @@ export const funnelsRouter = router({
         name,
         projectId: project.id,
         steps,
+        icon,
       });
 
       try {

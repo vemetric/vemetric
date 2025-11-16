@@ -8,6 +8,7 @@ import React, { useState } from 'react';
 import { TbChartFunnel, TbEye, TbFilter, TbFilterOff, TbUserSquareRounded, TbUsers } from 'react-icons/tb';
 import { isDeepEqual } from 'remeda';
 import { CardIcon } from '@/components/card-icon';
+import { FunnelIconButton } from '@/components/funnel-icon-button';
 import { NumberCounter } from '@/components/number-counter';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -197,19 +198,7 @@ export const FunnelsCard = ({ filterConfig, publicDashboard, activeUsers }: Prop
                         <Box className="group" pos="relative" truncate>
                           <CardBar value={conversionRate} maxValue={getTopConversionRate()} />
                           <Flex align="center" px={2} py={0.5} pos="relative" gap={1.5}>
-                            <Flex
-                              align="center"
-                              justify="center"
-                              flexShrink={0}
-                              boxSize="18px"
-                              bg="gray.subtle"
-                              rounded="4px"
-                              color="gray.fg"
-                              overflow="hidden"
-                              fontSize="sm"
-                            >
-                              <TbChartFunnel />
-                            </Flex>
+                            <FunnelIconButton icon={funnel.icon} readOnly size="xs" />
                             <Box truncate>{funnel.name}</Box>
                           </Flex>
                           <Flex

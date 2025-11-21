@@ -106,7 +106,7 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
           </Button>
         </Flex>
       </DashboardCardHeader>
-      <Card.Body pos="relative" overflow="hidden">
+      <Card.Body pos="relative" overflow="hidden" css={{ '& > div': { h: '100%' } }}>
         <AnimatePresence initial={false} mode="popLayout">
           {selectedEvent === undefined ? (
             <motion.div key="list" {...getMotionViewProps(true)}>
@@ -117,7 +117,7 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
                 error={error}
                 emptyState={
                   <EmptyState icon={<TbBolt />} title="No custom events fired in the selected timeframe">
-                    <Button asChild mt={4} _hover={{ textDecoration: 'none' }}>
+                    <Button size="sm" asChild mt={2} _hover={{ textDecoration: 'none' }}>
                       <ChakraLink
                         href="https://vemetric.com/docs/product-analytics/tracking-custom-events"
                         target="_blank"

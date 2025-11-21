@@ -435,6 +435,7 @@ function Page() {
                 }
               >
                 <Button
+                  size="sm"
                   onClick={() => navigate({ resetScroll: false, search: (prev) => ({ ...prev, date: undefined }) })}
                 >
                   See all events

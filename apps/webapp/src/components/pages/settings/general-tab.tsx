@@ -21,6 +21,7 @@ import { CardIcon } from '@/components/card-icon';
 import { CodeBox } from '@/components/code-box';
 import { IntegrationGuides } from '@/components/integration-guides';
 import { LoadingImage } from '@/components/loading-image';
+import { ExcludedCountriesCard } from '@/components/pages/settings/excluded-countries-card';
 import { ExcludedIpsCard } from '@/components/pages/settings/excluded-ips-card';
 import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import { InputGroup } from '@/components/ui/input-group';
@@ -231,6 +232,10 @@ export const GeneralTab = (props: Props) => {
         projectId={projectId}
         currentIp={projectSettings.currentIp}
         initialExcludedIps={projectSettings.excludedIps}
+      />
+      <ExcludedCountriesCard
+        projectId={projectId}
+        initialExcludedCountries={projectSettings.excludedCountries}
       />
       <Card.Root>
         <Card.Header>

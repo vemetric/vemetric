@@ -13,6 +13,7 @@ import type { HonoContextVars } from './types';
 import { isBot } from './utils/bots';
 import { deleteUserIdCookie, setUserIdCookie } from './utils/cookie';
 import { eventSchema, trackEvent, validateSpecialEvents } from './utils/event';
+import { getCountryFromIPCached } from './utils/geo-cache';
 import { logger } from './utils/logger';
 import { handlePageLeave } from './utils/page-leave';
 import { getProjectByToken } from './utils/project';
@@ -99,6 +100,18 @@ app.use('*', async (context, next) => {
       // Use comma-wrapped check to avoid array allocation on every request
       if (`,${project.excludedIps},`.includes(`,${ipAddress},`)) {
         // Silently ignore requests from excluded IPs
+        return context.text('', 200);
+      }
+    }
+
+    if (project.excludedCountries && ipAddress) {
+      const countryCode = await getCountryFromIPCached(ipAddress);
+
+      if (countryCode && `,${project.excludedCountries},`.includes(`,${countryCode},`)) {
+        logger.trace(
+          { projectId: String(project.id), ipAddress, countryCode },
+          'Request blocked by excluded country',
+        );
         return context.text('', 200);
       }
     }

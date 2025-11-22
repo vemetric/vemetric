@@ -126,6 +126,7 @@ export const projectsRouter = router({
       token: project.token,
       publicDashboard: project.publicDashboard,
       excludedIps: project.excludedIps ? project.excludedIps.split(',') : [],
+      excludedCountries: project.excludedCountries ? project.excludedCountries.split(',') : [],
       currentIp: ipAddress,
     };
   }),
@@ -279,4 +280,52 @@ export const projectsRouter = router({
 
     return { excludedIps: updatedIps };
   }),
+
+  addExcludedCountry: projectProcedure
+    .input(z.object({ countryCode: z.string().length(2).regex(/^[A-Z]{2}$/) }))
+    .mutation(async (opts) => {
+      const {
+        input: { countryCode },
+        ctx: { project },
+      } = opts;
+
+      const currentCountries = project.excludedCountries ? project.excludedCountries.split(',') : [];
+
+      if (currentCountries.includes(countryCode)) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'This country is already excluded',
+        });
+      }
+
+      if (currentCountries.length >= 50) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Maximum 50 countries can be excluded',
+        });
+      }
+
+      currentCountries.push(countryCode);
+      const excludedCountriesString = currentCountries.join(',');
+      await dbProject.update(project.id, { excludedCountries: excludedCountriesString });
+
+      return { excludedCountries: currentCountries };
+    }),
+
+  removeExcludedCountry: projectProcedure
+    .input(z.object({ countryCode: z.string() }))
+    .mutation(async (opts) => {
+      const {
+        input: { countryCode },
+        ctx: { project },
+      } = opts;
+
+      const currentCountries = project.excludedCountries ? project.excludedCountries.split(',') : [];
+      const updatedCountries = currentCountries.filter((existing: string) => existing !== countryCode);
+      const excludedCountriesString = updatedCountries.length > 0 ? updatedCountries.join(',') : null;
+
+      await dbProject.update(project.id, { excludedCountries: excludedCountriesString });
+
+      return { excludedCountries: updatedCountries };
+    }),
 });

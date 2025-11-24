@@ -332,6 +332,14 @@ export const clickhouseEvent = {
     const result = (await resultSet.json()) as Array<any>;
     return result.length > 0 ? Number(result[0]['count()']) : 0;
   }),
+  getActiveProjectsCountSince: withSpan('getActiveProjectsCountSince', async (sinceDate: Date) => {
+    const resultSet = await clickhouseClient.query({
+      query: `SELECT count(distinct projectId) as projects FROM ${TABLE_NAME} WHERE createdAt >= '${formatClickhouseDate(sinceDate)}'`,
+      format: 'JSONEachRow',
+    });
+    const result = (await resultSet.json()) as Array<any>;
+    return result.length > 0 ? Number(result[0]['projects']) : 0;
+  }),
   getEventsCountAcrossAllProjects: withSpan('getEventsCountAcrossAllProjects', async () => {
     const resultSet = await clickhouseClient.query({
       query: `SELECT count(id) FROM ${TABLE_NAME} WHERE createdAt >= NOW() - INTERVAL 24 HOUR`,

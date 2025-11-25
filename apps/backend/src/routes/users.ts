@@ -119,6 +119,7 @@ export const usersRouter = router({
         userId: z.string(),
         cursor: z.string().optional(), // ISO timestamp string
         date: z.string().optional(), // YYYY-MM-DD format
+        filterConfig: filterConfigSchema,
       }),
     )
     .query(async (opts) => {
@@ -140,6 +141,7 @@ export const usersRouter = router({
         cursor: input.cursor,
         startDate,
         date: input.date,
+        filterConfig: input.filterConfig,
       });
 
       const hasMore = events.length > EVENTS_PER_PAGE;

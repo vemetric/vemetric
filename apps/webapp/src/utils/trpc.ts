@@ -27,3 +27,5 @@ type RouterOutput = inferRouterOutputs<AppRouter>;
 
 export type DashboardData = RouterOutput['dashboard']['getData'];
 export type FunnelData = RouterOutput['funnels']['list']['funnels'][0];
+export type SessionData = RouterOutput['users']['events']['sessions'][0];
+export type EventData = RouterOutput['users']['events']['events'][0];

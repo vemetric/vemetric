@@ -175,22 +175,22 @@ function Page() {
     <FilterContextProvider
       value={{
         pagePaths: filterableData?.pagePaths ?? [],
-        origins: [],
+        origins: filterableData?.origins ?? [],
         eventNames: filterableData?.eventNames ?? [],
-        countryCodes: [],
-        referrers: filterableData?.referrers ?? [],
-        referrerUrls: filterableData?.referrerUrls ?? [],
-        utmCampaigns: filterableData?.utmCampaigns ?? [],
-        utmContents: filterableData?.utmContents ?? [],
-        utmMediums: filterableData?.utmMediums ?? [],
-        utmSources: filterableData?.utmSources ?? [],
-        utmTerms: filterableData?.utmTerms ?? [],
         browserNames: filterableData?.browserNames ?? [],
         deviceTypes: filterableData?.deviceTypes ?? [],
         osNames: filterableData?.osNames ?? [],
 
-        disabledFilters: ['funnel', 'location', 'user'],
+        disabledFilters: ['funnel', 'referrer', 'referrerUrl', 'referrerType', 'utmTags', 'location', 'user'],
+        countryCodes: [],
         funnels: [],
+        referrers: [],
+        referrerUrls: [],
+        utmCampaigns: [],
+        utmContents: [],
+        utmMediums: [],
+        utmSources: [],
+        utmTerms: [],
       }}
     >
       <Box
@@ -466,19 +466,25 @@ function Page() {
                 icon={<TbActivity />}
                 title="No events found"
                 description={
-                  date
-                    ? startDate && new Date(date) < startDate
-                      ? 'Upgrade to the Professional plan for longer data retention'
-                      : 'There are no events for this user on the selected date.'
-                    : 'There are no events for this user yet.'
+                  filterConfig
+                    ? `No events match the selected filters${date ? ' on the selected date' : ''}.`
+                    : date
+                      ? startDate && new Date(date) < startDate
+                        ? 'Upgrade to the Professional plan for longer data retention.'
+                        : 'There are no events for this user on the selected date.'
+                      : 'There are no events for this user yet.'
                 }
               >
-                <Button
-                  size="sm"
-                  onClick={() => navigate({ resetScroll: false, search: (prev) => ({ ...prev, date: undefined }) })}
-                >
-                  See all events
-                </Button>
+                {(date || filterConfig) && (
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      navigate({ resetScroll: false, search: (prev) => ({ ...prev, date: undefined, f: undefined }) })
+                    }
+                  >
+                    See all events
+                  </Button>
+                )}
               </EmptyState>
             </Card.Root>
           )}

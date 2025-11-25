@@ -344,49 +344,13 @@ export const getEventFilterQueries = (props: { filterConfig: IFilterConfig }) =>
         eventFilterQueries.push(filterQuery);
         break;
       }
-      case 'referrer': {
-        const filterQuery = buildReferrerFilterQuery(filter);
-        if (!filterQuery) {
-          return;
-        }
-
-        eventFilterQueries.push(filterQuery);
-        break;
-      }
-      case 'referrerUrl': {
-        const filterQuery = buildReferrerUrlFilterQuery(filter);
-        if (!filterQuery) {
-          return;
-        }
-
-        eventFilterQueries.push(filterQuery);
-        break;
-      }
-      case 'referrerType': {
-        const filterQuery = buildReferrerTypeFilterQuery(filter);
-        if (!filterQuery) {
-          return;
-        }
-
-        eventFilterQueries.push(filterQuery);
-        break;
-      }
-      case 'utmTags': {
-        const filterQuery = buildUtmTagsFilterQuery(filter);
-        if (!filterQuery) {
-          return;
-        }
-
-        eventFilterQueries.push(filterQuery);
-        break;
-      }
     }
   });
 
   return {
     filterQueries:
       eventFilterQueries.length > 0
-        ? '(' + eventFilterQueries.join(` ${filterConfig.operator === 'and' ? 'AND' : 'OR'} `) + ')'
+        ? 'AND (' + eventFilterQueries.join(` ${filterConfig.operator === 'and' ? 'AND' : 'OR'} `) + ')'
         : '',
   };
 };

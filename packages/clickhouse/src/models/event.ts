@@ -249,7 +249,7 @@ export const clickhouseEvent = {
         WHERE projectId = ${escape(projectId)} 
         AND userId = ${escape(userId)}${cursorClause}${dateClause}
         ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
-        ${filterQueries ? `AND ${filterQueries}` : ''}
+        ${filterQueries || ''}
         GROUP BY id 
         HAVING sum(sign) > 0 
         ORDER BY eventTime DESC 
@@ -862,7 +862,7 @@ export const clickhouseEvent = {
           WHERE projectId = ${escape(projectId)}${cursorClause}
           ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
           AND isPageView <> 1
-          ${filterQueries ? `AND ${filterQueries}` : ''}
+          ${filterQueries || ''}
           GROUP BY id 
           HAVING sum(sign) > 0 
           ORDER BY eventTime DESC 

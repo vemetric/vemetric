@@ -103,7 +103,6 @@ function Page() {
   const { data: userData, isLoading: _isUserLoading } = trpc.users.single.useQuery({
     projectId,
     userId,
-    filterConfig: filterConfig,
   });
 
   // Query for paginated events

@@ -12,17 +12,19 @@ interface Props {
 export const FilterContainer = ({ filterConfig, from }: Props) => {
   const { removeAllFilters, setFilters } = useFilters({ from });
 
+  if (!filterConfig || filterConfig.filters.length === 0) {
+    return null;
+  }
+
   return (
     <Box maxH={{ base: '70px', md: '105px' }} overflowY="auto" overflowX="hidden" mr={-2} pr={2}>
       <Flex align="center" gap={2}>
-        {filterConfig && (
-          <FilterGroup
-            group={{ type: 'group', ...filterConfig }}
-            onChange={setFilters}
-            onDelete={removeAllFilters}
-            nested={false}
-          />
-        )}
+        <FilterGroup
+          group={{ type: 'group', ...filterConfig }}
+          onChange={setFilters}
+          onDelete={removeAllFilters}
+          nested={false}
+        />
       </Flex>
     </Box>
   );

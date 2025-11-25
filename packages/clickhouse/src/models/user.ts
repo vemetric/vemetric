@@ -14,6 +14,7 @@ export type ClickhouseUser = UrlData &
     id: bigint;
     identifier: string;
     displayName?: string;
+    avatarUrl?: string;
 
     createdAt: string;
     firstSeenAt: string;
@@ -32,6 +33,7 @@ const EXAMPLE_USER: Required<ClickhouseUser> = {
   id: BigInt(1),
   identifier: '',
   displayName: '',
+  avatarUrl: '',
   createdAt: '',
   firstSeenAt: '',
   updatedAt: '',

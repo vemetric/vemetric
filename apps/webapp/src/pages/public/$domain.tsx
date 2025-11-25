@@ -1,4 +1,4 @@
-import { Text, AspectRatio, Button, Box, Flex, SimpleGrid, Link, HStack, LinkOverlay, Image } from '@chakra-ui/react';
+import { Text, AspectRatio, Button, Box, Flex, SimpleGrid, Link, HStack, LinkOverlay } from '@chakra-ui/react';
 import { createFileRoute, Navigate } from '@tanstack/react-router';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
@@ -9,6 +9,7 @@ import { AddFilterButton } from '@/components/filter/add-filter/add-filter-butto
 import { FilterContainer } from '@/components/filter/filter-container';
 import { FilterContextProvider } from '@/components/filter/filter-context';
 import { FilterSkeletons } from '@/components/filter/filter-skeletons';
+import { LoadingImage } from '@/components/loading-image';
 import { Logo } from '@/components/logo';
 import { PageWrapper } from '@/components/page-wrapper';
 import { BrowsersCard } from '@/components/pages/dashboard/browsers-card';
@@ -32,10 +33,15 @@ const dashboardSearchSchema = z.object({
   ...timespanSearchSchema.shape,
   f: filterConfigSchema,
   s: sourcesSchema,
-  u: z.enum(['countries', 'browsers', 'devices', 'os']).optional(),
+  c: z.enum(['map', 'list']).optional(),
+  u: z.enum(['browsers', 'devices', 'os']).optional(),
   e: z.boolean().optional(),
-  se: z.string().optional(), // selected event to show properties for
-  ep: z.string().optional(), // selected event property to show values for
+  me: z // selected event in the dashboard events card
+    .object({
+      n: z.string(), // event name
+      p: z.string().optional(), // selected event property to show values for
+    })
+    .optional(),
   sf: z.string().optional(), // selected funnel to show steps for
   fu: z.boolean().optional(), // show active users in funnels (vs first step users)
 });
@@ -129,9 +135,8 @@ function Page() {
                     flexDir={filterConfig ? 'column' : 'row'}
                   >
                     <HStack gap={{ base: 1.5, md: 2 }} pos="relative">
-                      <Image
-                        flexShrink={0}
-                        src={getFaviconUrl('https://' + domain, 256)}
+                      <LoadingImage
+                        src={getFaviconUrl(domain, 256)}
                         boxSize={{ base: 6, md: 8 }}
                         overflow="hidden"
                         rounded="md"

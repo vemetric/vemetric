@@ -9,6 +9,7 @@ export interface CreateUserQueueProps {
   ipAddress: string;
   identifier: string;
   displayName: string;
+  avatarUrl?: string;
   data: Record<string, any>;
 }
 

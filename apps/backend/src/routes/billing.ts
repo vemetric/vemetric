@@ -145,22 +145,15 @@ export const billingRouter = router({
         ],
       });
 
-      if (
-        !preview.updateSummary ||
-        !preview.nextBilledAt ||
-        isNaN(Number(preview.updateSummary.result.amount)) ||
-        isNaN(Number(preview.updateSummary.charge.amount))
-      ) {
+      if (!preview.updateSummary || !preview.nextBilledAt || isNaN(Number(preview.updateSummary.result.amount))) {
         logger.error({ organizationId, newPriceId, preview }, 'Failed to retrieve preview update');
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to retrieve preview update' });
       }
 
       const immediateCharge = Number(preview.updateSummary.result.amount) / 100;
-      const nextCharge = Number(preview.updateSummary.charge.amount) / 100;
 
       return {
         immediateCharge,
-        nextCharge,
         nextBillingDate: preview.nextBilledAt,
       };
     }),

@@ -23,11 +23,12 @@ export const usersRouter = router({
         page: z.number().min(1).default(1),
         filterConfig: filterConfigSchema,
         sortConfig: userSortConfigSchema,
+        search: z.string().optional(),
       }),
     )
     .query(async (opts) => {
       const {
-        input: { page, filterConfig, sortConfig },
+        input: { page, filterConfig, sortConfig, search },
         ctx: { projectId, project, subscriptionStatus },
       } = opts;
 
@@ -48,6 +49,7 @@ export const usersRouter = router({
           filterConfig,
           sortConfig,
           startDate,
+          search,
         ),
       ]);
 
@@ -117,6 +119,7 @@ export const usersRouter = router({
         userId: z.string(),
         cursor: z.string().optional(), // ISO timestamp string
         date: z.string().optional(), // YYYY-MM-DD format
+        filterConfig: filterConfigSchema,
       }),
     )
     .query(async (opts) => {
@@ -138,6 +141,7 @@ export const usersRouter = router({
         cursor: input.cursor,
         startDate,
         date: input.date,
+        filterConfig: input.filterConfig,
       });
 
       const hasMore = events.length > EVENTS_PER_PAGE;

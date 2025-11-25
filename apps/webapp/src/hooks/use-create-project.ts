@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { toaster } from '@/components/ui/toaster';
 import { authClient } from '@/utils/auth';
 import { trpc } from '@/utils/trpc';
+import { useDebouncedState } from './use-debounced-state';
 
 interface Props {
   onSuccess?: (projectId: string) => void;
@@ -11,7 +12,8 @@ interface Props {
 export function useCreateProject({ onSuccess }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [projectName, setProjectName] = useState('');
-  const [domain, setDomain] = useState('');
+  const [domain, setDomain, debouncedDomain] = useDebouncedState({ defaultValue: '' });
+
   const navigate = useNavigate();
   const { data: session, refetch: refetchAuth } = authClient.useSession();
   const { mutate } = trpc.projects.create.useMutation({
@@ -56,6 +58,7 @@ export function useCreateProject({ onSuccess }: Props) {
     isLoading,
     projectName,
     setProjectName,
+    debouncedDomain,
     domain,
     setDomain,
     onSubmit,

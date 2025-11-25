@@ -1,5 +1,4 @@
 import {
-  Image,
   HStack,
   Stack,
   Text,
@@ -22,6 +21,7 @@ import { TbPlus } from 'react-icons/tb';
 import { ResponsiveContainer, AreaChart as RechartsAreaChart, XAxis, YAxis, Area, CartesianGrid } from 'recharts';
 import { BaseLayout } from '@/components/base-layout';
 import { CreateProjectDialog } from '@/components/create-project-dialog';
+import { LoadingImage } from '@/components/loading-image';
 import { SplashScreen } from '@/components/splash-screen';
 import { Status } from '@/components/ui/status';
 import { requireOnboarding } from '@/utils/auth-guards';
@@ -148,10 +148,9 @@ const ProjectCard = (props: Props) => {
 
       <Flex align="center" justify="space-between" gap={1.5}>
         <HStack gap="2">
-          <Image
-            flexShrink={0}
+          <LoadingImage
             src={getFaviconUrl('https://' + project.domain, 256)}
-            boxSize={[5, 8]}
+            boxSize={[5, 7]}
             overflow="hidden"
             rounded="md"
           />

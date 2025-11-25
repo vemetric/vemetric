@@ -32,6 +32,7 @@ import { Status } from '@/components/ui/status';
 import { Tooltip } from '@/components/ui/tooltip';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import type { DashboardData } from '@/utils/trpc';
+import { ChartTooltip } from './chart-tooltip';
 
 export const getTimespanInterval = (timespan: TimeSpan, _startDate?: string, _endDate?: string) => {
   const timeSpanData = TIME_SPAN_DATA[timespan];
@@ -343,25 +344,7 @@ export const DashboardChart = (props: Props) => {
                         : [];
 
                       return active ? (
-                        <Box
-                          border="1px solid"
-                          borderColor="purple.emphasized"
-                          rounded="lg"
-                          bg="bg"
-                          minW="140px"
-                          overflow="hidden"
-                          boxShadow="sm"
-                        >
-                          <Box
-                            px={3}
-                            py={2}
-                            borderBottom="1px solid"
-                            borderColor="purple.muted"
-                            fontWeight="semibold"
-                            bg="purple.subtle"
-                          >
-                            {label} {showEndDate && `- ${payload?.[0]?.payload?.endDate}`}
-                          </Box>
+                        <ChartTooltip label={`${label}${showEndDate ? ` - ${payload?.[0]?.payload?.endDate}` : ''}`}>
                           {cleanPayload.map(({ categoryKey, value }) => {
                             const category = CHART_CATEGORY_MAP[categoryKey as ChartCategoryKey];
                             return (
@@ -376,7 +359,7 @@ export const DashboardChart = (props: Props) => {
                               </Flex>
                             );
                           })}
-                        </Box>
+                        </ChartTooltip>
                       ) : null;
                     }}
                   />

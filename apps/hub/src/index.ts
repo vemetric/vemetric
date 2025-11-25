@@ -167,7 +167,9 @@ app.post(
 );
 
 const updateUserDataSchema = z.object({
-  data: updateUserDataModel,
+  data: updateUserDataModel.optional(),
+  displayName: z.string().optional(),
+  avatarUrl: z.string().optional(),
 });
 
 app.post(
@@ -195,6 +197,8 @@ app.post(
         userId: String(userId),
         updatedAt: formatClickhouseDate(new Date()),
         data: body.data,
+        displayName: body.displayName,
+        avatarUrl: body.avatarUrl,
       },
       {
         delay: 2000, // we delay this a bit so that identification is done first

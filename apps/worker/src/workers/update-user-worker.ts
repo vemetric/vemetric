@@ -9,7 +9,7 @@ export async function initUpdateUserWorker() {
   return new Worker<UpdateUserQueueProps>(
     updateUserQueueName,
     async (job) => {
-      const { projectId: _projectId, userId: _userId, updatedAt, displayName, data } = job.data;
+      const { projectId: _projectId, userId: _userId, updatedAt, displayName, avatarUrl, data } = job.data;
       const projectId = BigInt(_projectId);
       const userId = BigInt(_userId);
 
@@ -22,6 +22,8 @@ export async function initUpdateUserWorker() {
       let hasChanged = false;
       if (displayName && displayName !== user.displayName) {
         hasChanged = true;
+      } else if (typeof avatarUrl === 'string' && avatarUrl !== user.avatarUrl) {
+        hasChanged = true;
       } else if (data && !isDeepEqual(user.customData, updatedUserData)) {
         hasChanged = true;
       }
@@ -33,6 +35,9 @@ export async function initUpdateUserWorker() {
       const updatedUser = { ...user, customData: updatedUserData, updatedAt };
       if (displayName) {
         updatedUser.displayName = displayName;
+      }
+      if (typeof avatarUrl === 'string') {
+        updatedUser.avatarUrl = avatarUrl;
       }
       await clickhouseUser.insert([updatedUser]);
     },

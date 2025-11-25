@@ -290,6 +290,15 @@ export const getEventFilterQueries = (props: { filterConfig: IFilterConfig }) =>
         eventFilterQueries.push(filterQuery);
         break;
       }
+      case 'page': {
+        const filterQuery = buildPageFilterQuery(filter);
+        if (!filterQuery) {
+          return;
+        }
+
+        eventFilterQueries.push(filterQuery);
+        break;
+      }
       case 'user': {
         const filterQuery = buildUserFilterQuery(filter);
         if (!filterQuery) {
@@ -339,6 +348,9 @@ export const getEventFilterQueries = (props: { filterConfig: IFilterConfig }) =>
   });
 
   return {
-    filterQueries: 'AND (' + eventFilterQueries.join(` ${filterConfig.operator === 'and' ? 'AND' : 'OR'} `) + ')',
+    filterQueries:
+      eventFilterQueries.length > 0
+        ? 'AND (' + eventFilterQueries.join(` ${filterConfig.operator === 'and' ? 'AND' : 'OR'} `) + ')'
+        : '',
   };
 };

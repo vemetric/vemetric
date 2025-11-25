@@ -22,7 +22,7 @@ export const buildUserSortQueries = (sortConfig: IUserSortConfig, projectId: big
           AND isPageView <> 1
         GROUP BY userId
       ) e ON e.userId = u.userId`;
-    sortSelect = ', e.lastEventFiredAt';
+    sortSelect = ', e.lastEventFiredAt as lastEventFiredAt';
     orderByClause = 'ORDER BY e.lastEventFiredAt DESC NULLS LAST';
   } else {
     orderByClause = `ORDER BY u.maxCreatedAt DESC`;

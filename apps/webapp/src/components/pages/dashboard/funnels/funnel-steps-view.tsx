@@ -63,6 +63,7 @@ export const FunnelStepsView = ({
         <IconButton size="2xs" variant="surface" colorScheme="gray" onClick={onBack}>
           <Icon as={TbChevronLeft} />
         </IconButton>
+        {funnel?.icon}
         <Text fontWeight="medium" whiteSpace="nowrap" truncate>
           {funnel?.name || 'Loading...'}
         </Text>

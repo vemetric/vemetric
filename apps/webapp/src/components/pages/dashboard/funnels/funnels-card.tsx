@@ -192,6 +192,15 @@ export const FunnelsCard = ({ filterConfig, publicDashboard, activeUsers }: Prop
                     } as const;
                     const isFiltered = activeFilters.some((f) => isDeepEqual(f, newFilter));
 
+                    let icon = <TbChartFunnel />;
+                    if (funnel.icon) {
+                      icon = (
+                        <Box transform="scale(0.8)" filter="grayscale(0.3)" opacity={0.9}>
+                          {funnel.icon}
+                        </Box>
+                      );
+                    }
+
                     return (
                       <React.Fragment key={funnel.id}>
                         <Box className="group" pos="relative" truncate>
@@ -208,7 +217,7 @@ export const FunnelsCard = ({ filterConfig, publicDashboard, activeUsers }: Prop
                               overflow="hidden"
                               fontSize="sm"
                             >
-                              <TbChartFunnel />
+                              {icon}
                             </Flex>
                             <Box truncate>{funnel.name}</Box>
                           </Flex>

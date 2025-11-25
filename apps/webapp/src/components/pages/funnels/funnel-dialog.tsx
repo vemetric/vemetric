@@ -1,7 +1,7 @@
-import { Button, Field, Input, Stack, Spinner, Box } from '@chakra-ui/react';
+import { Button, Field, Input, Stack, Spinner, Box, Flex } from '@chakra-ui/react';
 import { useState } from 'react';
-import { TbChartFunnel } from 'react-icons/tb';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { FunnelIconButton } from '@/components/funnel-icon-button';
 import {
   DialogActionTrigger,
   DialogBody,
@@ -16,7 +16,6 @@ import {
 } from '@/components/ui/dialog';
 import { useFunnelForm } from '@/hooks/funnels/use-funnel-form';
 import { FunnelStepBuilder } from './funnel-step-builder';
-import { InputGroup } from '../../ui/input-group';
 
 interface FunnelDialogProps {
   funnelId?: string;
@@ -32,6 +31,8 @@ export const FunnelDialog = ({ funnelId, children }: FunnelDialogProps) => {
     isSubmitting,
     funnelName,
     setFunnelName,
+    funnelIcon,
+    setFunnelIcon,
     steps,
     setSteps,
     onSubmit,
@@ -86,15 +87,17 @@ export const FunnelDialog = ({ funnelId, children }: FunnelDialogProps) => {
         <DialogBody px="6">
           <Stack pos="relative" gap={{ base: '6', md: '8' }}>
             <Field.Root>
-              <Field.Label>Funnel Name</Field.Label>
-              <InputGroup startElement={<TbChartFunnel />} width="full">
+              <Field.Label>Funnel Name & Icon</Field.Label>
+              <Flex w="full" gap="2">
+                <FunnelIconButton icon={funnelIcon} onIconChange={setFunnelIcon} />
                 <Input
+                  size="sm"
                   placeholder="Enter funnel name..."
                   value={funnelName}
                   onChange={(e) => setFunnelName(e.target.value)}
                   disabled={isSubmitting || isLoadingFunnel}
                 />
-              </InputGroup>
+              </Flex>
             </Field.Root>
 
             <FunnelStepBuilder steps={steps} onChange={setSteps} disabled={isSubmitting || isLoadingFunnel} />

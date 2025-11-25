@@ -30,10 +30,15 @@ const dashboardSearchSchema = z.object({
   ...timespanSearchSchema.shape,
   f: filterConfigSchema,
   s: sourcesSchema,
-  u: z.enum(['countries', 'browsers', 'devices', 'os']).optional(),
+  c: z.enum(['map', 'list']).optional(),
+  u: z.enum(['browsers', 'devices', 'os']).optional(),
   e: z.boolean().optional(), // show events in the chart
-  se: z.string().optional(), // selected event to show properties for
-  ep: z.string().optional(), // selected event property to show values for
+  me: z // selected event in the dashboard events card
+    .object({
+      n: z.string(), // event name
+      p: z.string().optional(), // selected event property to show values for
+    })
+    .optional(),
   sf: z.string().optional(), // selected funnel to show steps for
   fu: z.boolean().optional(), // show active users in funnels (vs first step users)
 });

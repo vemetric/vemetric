@@ -58,7 +58,7 @@ export function UserFunnelProgress({ projectId, userId }: UserFunnelProgressProp
             title="No funnels available"
             description="Create your first funnel to start tracking conversions."
           >
-            <Button asChild>
+            <Button asChild size="sm">
               <Link to="/p/$projectId/funnels" params={{ projectId }}>
                 Create Funnel
               </Link>

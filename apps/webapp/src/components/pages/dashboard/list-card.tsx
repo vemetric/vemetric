@@ -45,7 +45,7 @@ export const ListCard = ({ list, page, setPage, children, emptyState, error }: P
 
   if (list.length === 0) {
     return (
-      <Flex boxSize="100%" justify="center" align="center">
+      <Flex boxSize="100%" justify="center" align="center" minH="200px">
         {emptyState}
       </Flex>
     );

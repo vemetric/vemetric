@@ -75,7 +75,7 @@ export const FunnelStepsView = ({
         error={error}
         emptyState={
           <EmptyState icon={<TbChartFunnel />} title="No funnel steps found">
-            <Button onClick={onBack} mt={4}>
+            <Button size="sm" onClick={onBack} mt={2}>
               <Icon as={TbArrowLeft} />
               Back to funnels
             </Button>

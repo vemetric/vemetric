@@ -1,6 +1,6 @@
-import { Button, Field, Input, Stack, Text } from '@chakra-ui/react';
+import { Button, Field, Icon, Input, Stack, Text } from '@chakra-ui/react';
 import { useState } from 'react';
-import { TbNetwork, TbDashboard } from 'react-icons/tb';
+import { TbDashboard, TbWorldQuestion } from 'react-icons/tb';
 import {
   DialogActionTrigger,
   DialogBody,
@@ -14,6 +14,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { useCreateProject } from '@/hooks/use-create-project';
+import { getFaviconUrl } from '@/utils/favicon';
+import { LoadingImage } from './loading-image';
 import { InputGroup } from './ui/input-group';
 import { Tooltip } from './ui/tooltip';
 
@@ -25,7 +27,7 @@ interface CreateProjectDialogProps {
 
 export const CreateProjectDialog = ({ children, open: _open, setOpen: _setOpen }: CreateProjectDialogProps) => {
   const [open, setOpen] = useState(false);
-  const { isLoading, projectName, setProjectName, domain, setDomain, onSubmit } = useCreateProject({
+  const { isLoading, projectName, setProjectName, debouncedDomain, domain, setDomain, onSubmit } = useCreateProject({
     onSuccess: () => {
       (_setOpen ?? setOpen)(false);
       setProjectName('');
@@ -81,7 +83,16 @@ export const CreateProjectDialog = ({ children, open: _open, setOpen: _setOpen }
                     </>
                   }
                 >
-                  <InputGroup startElement={<TbNetwork />} width="full">
+                  <InputGroup
+                    startElement={
+                      debouncedDomain.length > 3 ? (
+                        <LoadingImage boxSize="16px" src={getFaviconUrl(debouncedDomain)} />
+                      ) : (
+                        <Icon as={TbWorldQuestion} boxSize="16px" color="#838383" />
+                      )
+                    }
+                    width="full"
+                  >
                     <Input
                       placeholder="example.com"
                       value={domain}

@@ -12,7 +12,16 @@ export async function initCreateUserWorker() {
   return new Worker<CreateUserQueueProps>(
     createUserQueueName,
     async (job) => {
-      const { projectId: _projectId, userId: _userId, createdAt, identifier, displayName, ipAddress, data } = job.data;
+      const {
+        projectId: _projectId,
+        userId: _userId,
+        createdAt,
+        identifier,
+        displayName,
+        ipAddress,
+        avatarUrl,
+        data,
+      } = job.data;
       const projectId = BigInt(_projectId);
       const userId = BigInt(_userId);
 
@@ -37,6 +46,7 @@ export async function initCreateUserWorker() {
         id: userId,
         identifier,
         displayName,
+        avatarUrl: avatarUrl || '',
         createdAt,
         firstSeenAt: createdAt,
         updatedAt: createdAt,

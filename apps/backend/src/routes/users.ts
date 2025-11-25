@@ -23,11 +23,12 @@ export const usersRouter = router({
         page: z.number().min(1).default(1),
         filterConfig: filterConfigSchema,
         sortConfig: userSortConfigSchema,
+        search: z.string().optional(),
       }),
     )
     .query(async (opts) => {
       const {
-        input: { page, filterConfig, sortConfig },
+        input: { page, filterConfig, sortConfig, search },
         ctx: { projectId, project, subscriptionStatus },
       } = opts;
 
@@ -48,6 +49,7 @@ export const usersRouter = router({
           filterConfig,
           sortConfig,
           startDate,
+          search,
         ),
       ]);
 

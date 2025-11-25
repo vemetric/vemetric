@@ -1,5 +1,5 @@
 import { clickhouseEvent } from 'clickhouse';
-import { dbProject } from 'database';
+import { addDays } from 'date-fns';
 import type { Hono } from 'hono';
 import type { HonoContextVars } from '../types';
 
@@ -10,8 +10,10 @@ let lastMetrics = {
 let lastMetricsTimestamp: number | null = null;
 
 async function updateMetrics() {
+  const date30DaysAgo = addDays(new Date(), -30);
+
   lastMetrics = {
-    activeProjects: await dbProject.countActive(),
+    activeProjects: await clickhouseEvent.getActiveProjectsCountSince(date30DaysAgo),
     eventsLast24h: await clickhouseEvent.getEventsCountAcrossAllProjects(),
   };
   lastMetricsTimestamp = Date.now();

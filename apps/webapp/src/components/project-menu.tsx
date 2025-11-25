@@ -1,10 +1,11 @@
-import { Button, Flex, Image, Text } from '@chakra-ui/react';
+import { Button, Flex, Text } from '@chakra-ui/react';
 import { Link, useMatches, useParams } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { TbChevronDown, TbDashboard } from 'react-icons/tb';
 import { authClient } from '@/utils/auth';
 import { getFaviconUrl } from '@/utils/favicon';
 import { CreateProjectDialog } from './create-project-dialog';
+import { LoadingImage } from './loading-image';
 import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from './ui/menu';
 
 const OPEN_PROJECT_OVERVIEW = 'open-project-overview';
@@ -43,13 +44,11 @@ export const ProjectMenu = () => {
             mr={-3}
           >
             {project ? (
-              <Flex w="100%" align="center">
-                <Image
-                  src={getFaviconUrl('https://' + project.domain)}
+              <Flex w="100%" align="center" gap="1.5">
+                <LoadingImage
+                  src={getFaviconUrl(project.domain)}
                   alt={project.name}
                   boxSize="18px"
-                  mr={1.5}
-                  flexShrink={0}
                   rounded="xs"
                   overflow="hidden"
                 />
@@ -87,13 +86,11 @@ export const ProjectMenu = () => {
             return (
               <MenuItem asChild value={project.id} key={project.id}>
                 <Link to={route} params={{ projectId: project.id }}>
-                  <Flex as="span" w="100%" align="center">
-                    <Image
-                      src={getFaviconUrl('https://' + project.domain)}
+                  <Flex as="span" w="100%" align="center" gap="10px">
+                    <LoadingImage
+                      src={getFaviconUrl(project.domain)}
                       alt={project.name}
                       boxSize="18px"
-                      mr="10px"
-                      flexShrink={0}
                       rounded="xs"
                       overflow="hidden"
                     />

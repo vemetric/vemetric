@@ -141,7 +141,7 @@ export const FunnelsCard = ({ filterConfig, publicDashboard, activeUsers }: Prop
           </Flex>
         </Flex>
       </DashboardCardHeader>
-      <Card.Body pos="relative" overflow={isAnimating ? 'hidden' : 'visible'}>
+      <Card.Body pos="relative" overflow={isAnimating ? 'hidden' : 'visible'} css={{ '& > div': { h: '100%' } }}>
         <AnimatePresence initial={false} mode="popLayout">
           {selectedFunnel === undefined ? (
             <motion.div key="list" {...getMotionViewProps(true)}>
@@ -157,7 +157,7 @@ export const FunnelsCard = ({ filterConfig, publicDashboard, activeUsers }: Prop
                     description="Create your first funnel to start tracking conversions."
                   >
                     {'projectId' in params && (
-                      <Button asChild mt={4}>
+                      <Button asChild mt={2} size="sm">
                         <Link to="/p/$projectId/funnels" params={{ projectId: params.projectId }}>
                           Create your first funnel
                         </Link>

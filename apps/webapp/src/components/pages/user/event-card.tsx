@@ -39,14 +39,16 @@ export const EventCard = ({ event, lastPageViewDate }: Props) => {
 
   let tooltipContent = 'Custom Event';
   if (isPageView) {
-    tooltipContent = `Pageview: ${event.origin}${event.pathname}${event.urlHash}`;
+    tooltipContent = `Pageview: ${event.origin}${event.pathname}${formatQueryParams(event.queryParams ?? {})}${event.urlHash}`;
   } else if (event.name === '$$outboundLink') {
     tooltipContent = 'Outbound Link Click';
   }
 
   let displayName = event.name;
   if (isPageView) {
-    displayName = event.pathname ? event.pathname + event.urlHash : 'Page View';
+    displayName = event.pathname
+      ? event.pathname + formatQueryParams(event.queryParams ?? {}) + event.urlHash
+      : 'Page View';
   } else if (event.name === '$$outboundLink') {
     displayName = (event.customData?.href as string) ?? 'Outbound Link';
   }

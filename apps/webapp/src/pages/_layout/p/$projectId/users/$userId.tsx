@@ -171,6 +171,11 @@ function Page() {
   ]);
   useSetDocsLink('https://vemetric.com/docs/product-analytics/user-journeys');
 
+  const serializedFilters = JSON.stringify(filterConfig);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [serializedFilters]);
+
   return (
     <FilterContextProvider
       value={{
@@ -205,289 +210,293 @@ function Page() {
         zIndex="3"
       />
       <SimpleGrid columns={{ base: 1, md: 2 }} gap={{ base: 12, md: 6 }} p={1} pt={0}>
-        <Flex order={{ base: 1, md: 0 }} flexDir="column" gap={8}>
-          <Flex flexDir="column" gap={3}>
-            <FilterContainer filterConfig={filterConfig} from="/p/$projectId/users/$userId" />
-            <Flex flexGrow={1} gap={2.5} justify="flex-end">
+        <Flex order={{ base: 1, md: 0 }} flexDir="column" pos="relative">
+          <FilterContainer filterConfig={filterConfig} from="/p/$projectId/users/$userId" />
+          <Flex pos="sticky" top={{ base: '56px', md: '126px', lg: '56px' }} zIndex="5">
+            <Flex flexGrow={1} gap={2.5} justify="flex-end" pos="absolute" top={4} right={0}>
               <AddFilterButton from="/p/$projectId/users/$userId" filterConfig={filterConfig} />
             </Flex>
           </Flex>
-          {isEventsLoading ? (
-            <>
-              <DateSeparator>
-                <Spinner size="xs" borderWidth="1.5px" mx={4} />
-              </DateSeparator>
-              <Skeleton h="90px" w="100%" rounded="xl" />
-              <Box
-                h="1px"
-                bg="linear-gradient(to right, rgba(0,0,0,0) 0%, var(--chakra-colors-gray-emphasized) 50%, rgba(0,0,0,0) 100%)"
-                opacity={0.3}
-              />
-              <Skeleton h="90px" w="100%" rounded="xl" />
-            </>
-          ) : events.length > 0 ? (
-            <>
-              {groupedEvents.map(([sessionId, events], index) => {
-                const session = sessions.find((s) => s.id === sessionId);
-                const isLastSession = index === groupedEvents.length - 1;
-                const isCompleteSession = !isLastSession || !isNextEventSameSession;
+          <Flex flexDir="column" gap={8} mt={4}>
+            {isEventsLoading ? (
+              <>
+                <DateSeparator>
+                  <Spinner size="xs" borderWidth="1.5px" mx={4} />
+                </DateSeparator>
+                <Skeleton h="90px" w="100%" rounded="xl" />
+                <Box
+                  h="1px"
+                  bg="linear-gradient(to right, rgba(0,0,0,0) 0%, var(--chakra-colors-gray-emphasized) 50%, rgba(0,0,0,0) 100%)"
+                  opacity={0.3}
+                />
+                <Skeleton h="90px" w="100%" rounded="xl" />
+              </>
+            ) : events.length > 0 ? (
+              <>
+                {groupedEvents.map(([sessionId, events], index) => {
+                  const session = sessions.find((s) => s.id === sessionId);
+                  const isLastSession = index === groupedEvents.length - 1;
+                  const isCompleteSession = !isLastSession || !isNextEventSameSession;
 
-                let renderDate = false;
-                const lastDateWasNull = lastDate === null;
-                if (session) {
-                  renderDate = session.date !== lastDate;
-                  lastDate = session.date;
-                }
+                  let renderDate = false;
+                  const lastDateWasNull = lastDate === null;
+                  if (session) {
+                    renderDate = session.date !== lastDate;
+                    lastDate = session.date;
+                  }
 
-                let lastPageViewDate: string | null = null;
+                  let lastPageViewDate: string | null = null;
 
-                return (
-                  <Fragment key={sessionId}>
-                    {index > 0 && !renderDate && (
-                      <Box
-                        h="1px"
-                        bg="linear-gradient(to right, rgba(0,0,0,0) 0%, var(--chakra-colors-gray-emphasized) 50%, rgba(0,0,0,0) 100%)"
-                        opacity={0.3}
-                      />
-                    )}
-                    {renderDate && (
-                      <>
+                  return (
+                    <Fragment key={sessionId}>
+                      {index > 0 && !renderDate && (
                         <Box
-                          pos="sticky"
-                          top={{ base: '70px', md: '140px', lg: '70px' }}
-                          zIndex="4"
-                          mt={lastDateWasNull ? 0 : 6}
-                          mb={-3}
-                          pb={3}
-                        >
-                          <Box
-                            pos="absolute"
-                            left={0}
-                            right={0}
-                            top={-3}
-                            h={3}
-                            bg="linear-gradient(to top, var(--chakra-colors-bg-content), rgba(255,255,255,0))"
-                          />
-                          <DateSeparator>{session?.date === nowDate ? 'Today' : session?.date}</DateSeparator>
-                          <Box
-                            pos="absolute"
-                            left={0}
-                            right={0}
-                            bottom={0}
-                            h={3}
-                            bg="linear-gradient(to bottom, var(--chakra-colors-bg-content), rgba(255,255,255,0))"
-                          />
-                        </Box>
-                      </>
-                    )}
-                    <Flex flexDir="column" className="group">
-                      {session && (
-                        <Flex justify="space-between" px={2.5}>
-                          <Flex align="flex-end">
-                            {isOnline && latestEvent?.sessionId === sessionId && (
-                              <>
-                                <Box
-                                  height="16px"
-                                  width="10px"
-                                  borderColor="green.500"
-                                  opacity={0.5}
-                                  borderLeftWidth="1.5px"
-                                  borderTopWidth="1.5px"
-                                  roundedTopLeft="md"
-                                />
-                                <Tooltip content="This session is currently active">
-                                  <Tag.Root mb={1} size="lg" rounded="md" colorPalette="green" fontWeight="medium">
-                                    <Tag.Label>Online</Tag.Label>
-                                  </Tag.Root>
-                                </Tooltip>
-                              </>
-                            )}
-                          </Flex>
-                          <Tooltip
-                            content={
-                              <>
-                                <Text>Session ended at {dateTimeFormatter.formatDateTime(session?.endedAt ?? '')}</Text>
-                                <Text mt={2}>
-                                  Session took{' '}
-                                  {session.startedAt !== session.endedAt
-                                    ? dateTimeFormatter.formatDistance(session.startedAt, session.endedAt)
-                                    : 'less than a minute'}
-                                </Text>
-                              </>
-                            }
-                          >
-                            <Text textStyle="sm" opacity={0.5} my={1}>
-                              {dateTimeFormatter.formatTime(session?.endedAt ?? '')}
-                            </Text>
-                          </Tooltip>
-                        </Flex>
+                          h="1px"
+                          bg="linear-gradient(to right, rgba(0,0,0,0) 0%, var(--chakra-colors-gray-emphasized) 50%, rgba(0,0,0,0) 100%)"
+                          opacity={0.3}
+                        />
                       )}
-                      <Box pos="relative">
-                        <Flex
-                          flexDir="column"
-                          rounded="xl"
-                          css={{
-                            '& > div': {
-                              rounded: 'none',
-                              borderBottomWidth: '0px',
-                              _first: { roundedTop: 'xl' },
-                              _last: isCompleteSession ? { borderBottomWidth: '1px', roundedBottom: 'xl' } : {},
-                            },
-                          }}
-                        >
-                          {events.map((event) => {
-                            const eventCard = (
-                              <EventCard
-                                key={event.id}
-                                event={event}
-                                lastPageViewDate={lastPageViewDate ?? session?.endedAt}
-                              />
-                            );
-
-                            if (event.name === '$$pageView') {
-                              lastPageViewDate = event.createdAt;
-                            }
-
-                            return eventCard;
-                          })}
-                          {!isCompleteSession && (
+                      {renderDate && (
+                        <>
+                          <Box
+                            pos="sticky"
+                            top={{ base: '70px', md: '140px', lg: '70px' }}
+                            zIndex="4"
+                            mt={lastDateWasNull ? 0 : 6}
+                            mb={-3}
+                            pb={3}
+                          >
                             <Box
-                              borderTop="1px solid"
-                              borderColor="gray.emphasized"
-                              roundedTop="xl"
-                              w="100%"
-                              h="40px"
-                              bg="linear-gradient(to bottom, var(--chakra-colors-bg-card), rgba(255,255,255,0))"
-                              pos="relative"
-                            >
-                              <Box
-                                pos="absolute"
-                                left="0"
-                                w="1px"
-                                h="100%"
-                                bg="linear-gradient(to bottom, var(--chakra-colors-gray-emphasized), rgba(0,0,0,0))"
-                              />
-                              <Box
-                                pos="absolute"
-                                right="0"
-                                w="1px"
-                                h="100%"
-                                bg="linear-gradient(to bottom, var(--chakra-colors-gray-emphasized), rgba(0,0,0,0))"
-                              />
-                            </Box>
-                          )}
-                        </Flex>
-                        {isPreviousData && <Skeleton rounded="xl" pos="absolute" inset={0} />}
-                      </Box>
-                      {session ? (
-                        isCompleteSession ? (
+                              pos="absolute"
+                              left={0}
+                              right={0}
+                              top={-3}
+                              h={3}
+                              bg="linear-gradient(to top, var(--chakra-colors-bg-content), rgba(255,255,255,0))"
+                            />
+                            <DateSeparator>{session?.date === nowDate ? 'Today' : session?.date}</DateSeparator>
+                            <Box
+                              pos="absolute"
+                              left={0}
+                              right={0}
+                              bottom={0}
+                              h={3}
+                              bg="linear-gradient(to bottom, var(--chakra-colors-bg-content), rgba(255,255,255,0))"
+                            />
+                          </Box>
+                        </>
+                      )}
+                      <Flex flexDir="column" className="group">
+                        {session && (
                           <Flex justify="space-between" px={2.5}>
-                            <Flex align="flex-start">
-                              <Box
-                                height="16px"
-                                width="10px"
-                                borderColor="gray.emphasized"
-                                borderLeftWidth="1.5px"
-                                borderBottomWidth="1.5px"
-                                roundedBottomLeft="md"
-                              />
-                              <Tooltip
-                                content={
-                                  session.referrer ? `Referred via ${session.referrerUrl}` : `Direct page visit.`
-                                }
-                              >
-                                <Tag.Root mt={1} size="lg" rounded="md" colorPalette="gray" px={1} pr={1.5}>
-                                  <Tag.Label display="flex" alignItems="center" gap={1}>
-                                    <Flex
-                                      align="center"
-                                      justify="center"
-                                      flexShrink={0}
-                                      boxSize="18px"
-                                      bg="gray.subtle"
-                                      rounded="4px"
-                                      color="gray.fg"
-                                      overflow="hidden"
-                                    >
-                                      {session.referrer && session.referrerUrl ? (
-                                        <LoadingImage
-                                          src={getFaviconUrl(session.referrerUrl)}
-                                          alt={session.referrer + ' Favicon'}
-                                          boxSize="16px"
-                                        />
-                                      ) : (
-                                        <TbDirectionSign />
-                                      )}
-                                    </Flex>
-                                    {session.referrer || 'Direct'}
-                                  </Tag.Label>
-                                </Tag.Root>
-                              </Tooltip>
+                            <Flex align="flex-end">
+                              {isOnline && latestEvent?.sessionId === sessionId && (
+                                <>
+                                  <Box
+                                    height="16px"
+                                    width="10px"
+                                    borderColor="green.500"
+                                    opacity={0.5}
+                                    borderLeftWidth="1.5px"
+                                    borderTopWidth="1.5px"
+                                    roundedTopLeft="md"
+                                  />
+                                  <Tooltip content="This session is currently active">
+                                    <Tag.Root mb={1} size="lg" rounded="md" colorPalette="green" fontWeight="medium">
+                                      <Tag.Label>Online</Tag.Label>
+                                    </Tag.Root>
+                                  </Tooltip>
+                                </>
+                              )}
                             </Flex>
                             <Tooltip
-                              content={`Session started at ${dateTimeFormatter.formatDateTime(
-                                session?.startedAt ?? '',
-                              )}`}
+                              content={
+                                <>
+                                  <Text>
+                                    Session ended at {dateTimeFormatter.formatDateTime(session?.endedAt ?? '')}
+                                  </Text>
+                                  <Text mt={2}>
+                                    Session took{' '}
+                                    {session.startedAt !== session.endedAt
+                                      ? dateTimeFormatter.formatDistance(session.startedAt, session.endedAt)
+                                      : 'less than a minute'}
+                                  </Text>
+                                </>
+                              }
                             >
-                              <Text textStyle="sm" opacity={0.5} mt={1}>
-                                {dateTimeFormatter.formatTime(session?.startedAt ?? '')}
+                              <Text textStyle="sm" opacity={0.5} my={1}>
+                                {dateTimeFormatter.formatTime(session?.endedAt ?? '')}
                               </Text>
                             </Tooltip>
                           </Flex>
-                        ) : null
-                      ) : (
-                        <Text color="fg.error" textStyle="sm">
-                          Unkown Session
-                        </Text>
-                      )}
-                    </Flex>
-                  </Fragment>
-                );
-              })}
-              {hasNextPage && (
-                <Flex justify="center" mt={-4}>
-                  <Button
-                    onClick={() => fetchNextPage()}
-                    loading={isFetchingNextPage}
-                    variant="surface"
-                    size="md"
-                    rounded="xl"
-                  >
-                    <Icon boxSize={4.5} asChild>
-                      <TbArrowDown />
-                    </Icon>
-                    Load More
-                  </Button>
-                </Flex>
-              )}
-            </>
-          ) : (
-            <Card.Root rounded="xl">
-              <EmptyState
-                icon={<TbActivity />}
-                title="No events found"
-                description={
-                  filterConfig
-                    ? `No events match the selected filters${date ? ' on the selected date' : ''}.`
-                    : date
-                      ? startDate && new Date(date) < startDate
-                        ? 'Upgrade to the Professional plan for longer data retention.'
-                        : 'There are no events for this user on the selected date.'
-                      : 'There are no events for this user yet.'
-                }
-              >
-                {(date || filterConfig) && (
-                  <Button
-                    size="sm"
-                    onClick={() =>
-                      navigate({ resetScroll: false, search: (prev) => ({ ...prev, date: undefined, f: undefined }) })
-                    }
-                  >
-                    See all events
-                  </Button>
+                        )}
+                        <Box pos="relative">
+                          <Flex
+                            flexDir="column"
+                            rounded="xl"
+                            css={{
+                              '& > div': {
+                                rounded: 'none',
+                                borderBottomWidth: '0px',
+                                _first: { roundedTop: 'xl' },
+                                _last: isCompleteSession ? { borderBottomWidth: '1px', roundedBottom: 'xl' } : {},
+                              },
+                            }}
+                          >
+                            {events.map((event) => {
+                              const eventCard = (
+                                <EventCard
+                                  key={event.id}
+                                  event={event}
+                                  lastPageViewDate={lastPageViewDate ?? session?.endedAt}
+                                />
+                              );
+
+                              if (event.name === '$$pageView') {
+                                lastPageViewDate = event.createdAt;
+                              }
+
+                              return eventCard;
+                            })}
+                            {!isCompleteSession && (
+                              <Box
+                                borderTop="1px solid"
+                                borderColor="gray.emphasized"
+                                roundedTop="xl"
+                                w="100%"
+                                h="40px"
+                                bg="linear-gradient(to bottom, var(--chakra-colors-bg-card), rgba(255,255,255,0))"
+                                pos="relative"
+                              >
+                                <Box
+                                  pos="absolute"
+                                  left="0"
+                                  w="1px"
+                                  h="100%"
+                                  bg="linear-gradient(to bottom, var(--chakra-colors-gray-emphasized), rgba(0,0,0,0))"
+                                />
+                                <Box
+                                  pos="absolute"
+                                  right="0"
+                                  w="1px"
+                                  h="100%"
+                                  bg="linear-gradient(to bottom, var(--chakra-colors-gray-emphasized), rgba(0,0,0,0))"
+                                />
+                              </Box>
+                            )}
+                          </Flex>
+                          {isPreviousData && <Skeleton rounded="xl" pos="absolute" inset={0} />}
+                        </Box>
+                        {session ? (
+                          isCompleteSession ? (
+                            <Flex justify="space-between" px={2.5}>
+                              <Flex align="flex-start">
+                                <Box
+                                  height="16px"
+                                  width="10px"
+                                  borderColor="gray.emphasized"
+                                  borderLeftWidth="1.5px"
+                                  borderBottomWidth="1.5px"
+                                  roundedBottomLeft="md"
+                                />
+                                <Tooltip
+                                  content={
+                                    session.referrer ? `Referred via ${session.referrerUrl}` : `Direct page visit.`
+                                  }
+                                >
+                                  <Tag.Root mt={1} size="lg" rounded="md" colorPalette="gray" px={1} pr={1.5}>
+                                    <Tag.Label display="flex" alignItems="center" gap={1}>
+                                      <Flex
+                                        align="center"
+                                        justify="center"
+                                        flexShrink={0}
+                                        boxSize="18px"
+                                        bg="gray.subtle"
+                                        rounded="4px"
+                                        color="gray.fg"
+                                        overflow="hidden"
+                                      >
+                                        {session.referrer && session.referrerUrl ? (
+                                          <LoadingImage
+                                            src={getFaviconUrl(session.referrerUrl)}
+                                            alt={session.referrer + ' Favicon'}
+                                            boxSize="16px"
+                                          />
+                                        ) : (
+                                          <TbDirectionSign />
+                                        )}
+                                      </Flex>
+                                      {session.referrer || 'Direct'}
+                                    </Tag.Label>
+                                  </Tag.Root>
+                                </Tooltip>
+                              </Flex>
+                              <Tooltip
+                                content={`Session started at ${dateTimeFormatter.formatDateTime(
+                                  session?.startedAt ?? '',
+                                )}`}
+                              >
+                                <Text textStyle="sm" opacity={0.5} mt={1}>
+                                  {dateTimeFormatter.formatTime(session?.startedAt ?? '')}
+                                </Text>
+                              </Tooltip>
+                            </Flex>
+                          ) : null
+                        ) : (
+                          <Text color="fg.error" textStyle="sm">
+                            Unkown Session
+                          </Text>
+                        )}
+                      </Flex>
+                    </Fragment>
+                  );
+                })}
+                {hasNextPage && (
+                  <Flex justify="center" mt={-4}>
+                    <Button
+                      onClick={() => fetchNextPage()}
+                      loading={isFetchingNextPage}
+                      variant="surface"
+                      size="md"
+                      rounded="xl"
+                    >
+                      <Icon boxSize={4.5} asChild>
+                        <TbArrowDown />
+                      </Icon>
+                      Load More
+                    </Button>
+                  </Flex>
                 )}
-              </EmptyState>
-            </Card.Root>
-          )}
+              </>
+            ) : (
+              <Card.Root rounded="xl">
+                <EmptyState
+                  icon={<TbActivity />}
+                  title="No events found"
+                  description={
+                    filterConfig
+                      ? `No events match the selected filters${date ? ' on the selected date' : ''}.`
+                      : date
+                        ? startDate && new Date(date) < startDate
+                          ? 'Upgrade to the Professional plan for longer data retention.'
+                          : 'There are no events for this user on the selected date.'
+                        : 'There are no events for this user yet.'
+                  }
+                >
+                  {(date || filterConfig) && (
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        navigate({ resetScroll: false, search: (prev) => ({ ...prev, date: undefined, f: undefined }) })
+                      }
+                    >
+                      See all events
+                    </Button>
+                  )}
+                </EmptyState>
+              </Card.Root>
+            )}
+          </Flex>
         </Flex>
         <Box>
           <Box

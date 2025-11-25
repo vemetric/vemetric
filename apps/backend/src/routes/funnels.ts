@@ -14,7 +14,7 @@ const upsertFunnelSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, 'Funnel name is required'),
   steps: z.array(funnelStepSchema).min(1, 'At least one step is required'),
-  icon: z.string().optional(),
+  icon: z.string().nullable(),
 });
 
 export const funnelsRouter = router({

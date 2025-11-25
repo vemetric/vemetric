@@ -2,7 +2,8 @@ import { prismaClient } from '../client';
 export { type Funnel } from '@prisma/client';
 
 export const dbFunnel = {
-  create: (data: { name: string; projectId: string; steps: any; icon?: string }) => prismaClient.funnel.create({ data }),
+  create: (data: { name: string; projectId: string; steps: any; icon: string | null }) =>
+    prismaClient.funnel.create({ data }),
 
   findByProjectId: (projectId: string) =>
     prismaClient.funnel.findMany({
@@ -15,7 +16,7 @@ export const dbFunnel = {
       where: { id },
     }),
 
-  update: (id: string, data: Partial<{ name: string; steps: any; icon?: string }>) =>
+  update: (id: string, data: Partial<{ name: string; steps: any; icon: string | null }>) =>
     prismaClient.funnel.update({
       where: { id },
       data,

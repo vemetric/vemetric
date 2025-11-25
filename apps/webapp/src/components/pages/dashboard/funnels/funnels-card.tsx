@@ -8,7 +8,6 @@ import React, { useState } from 'react';
 import { TbChartFunnel, TbEye, TbFilter, TbFilterOff, TbUserSquareRounded, TbUsers } from 'react-icons/tb';
 import { isDeepEqual } from 'remeda';
 import { CardIcon } from '@/components/card-icon';
-import { FunnelIconButton } from '@/components/funnel-icon-button';
 import { NumberCounter } from '@/components/number-counter';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -193,12 +192,33 @@ export const FunnelsCard = ({ filterConfig, publicDashboard, activeUsers }: Prop
                     } as const;
                     const isFiltered = activeFilters.some((f) => isDeepEqual(f, newFilter));
 
+                    let icon = <TbChartFunnel />;
+                    if (funnel.icon) {
+                      icon = (
+                        <Box transform="scale(0.8)" filter="grayscale(0.3)" opacity={0.9}>
+                          {funnel.icon}
+                        </Box>
+                      );
+                    }
+
                     return (
                       <React.Fragment key={funnel.id}>
                         <Box className="group" pos="relative" truncate>
                           <CardBar value={conversionRate} maxValue={getTopConversionRate()} />
                           <Flex align="center" px={2} py={0.5} pos="relative" gap={1.5}>
-                            <FunnelIconButton icon={funnel.icon} readOnly size="xs" />
+                            <Flex
+                              align="center"
+                              justify="center"
+                              flexShrink={0}
+                              boxSize="18px"
+                              bg="gray.subtle"
+                              rounded="4px"
+                              color="gray.fg"
+                              overflow="hidden"
+                              fontSize="sm"
+                            >
+                              {icon}
+                            </Flex>
                             <Box truncate>{funnel.name}</Box>
                           </Flex>
                           <Flex

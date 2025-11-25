@@ -61,7 +61,7 @@ export function useFunnelForm({ isDialogOpen, funnelId, onSuccess }: UseFunnelPr
   // Initialize form data only once when data first loads (edit mode only)
   if (isDialogOpen && isEditMode && funnelData?.funnel && !isInitialized.current) {
     _setFunnelName(funnelData.funnel.name);
-    _setFunnelIcon(funnelData.funnel.icon ?? null);
+    _setFunnelIcon(funnelData.funnel.icon);
     _setSteps(funnelData.funnel.steps as FunnelStep[]);
     isInitialized.current = true;
   }
@@ -119,7 +119,7 @@ export function useFunnelForm({ isDialogOpen, funnelId, onSuccess }: UseFunnelPr
       projectId: projectId!,
       name: funnelName.trim(),
       steps,
-      icon: funnelIcon ?? undefined,
+      icon: funnelIcon,
     });
   };
 

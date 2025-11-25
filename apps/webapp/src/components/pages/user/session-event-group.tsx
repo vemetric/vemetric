@@ -20,7 +20,7 @@ interface Props {
   events: EventData[];
 }
 
-export const SessionGroup = (props: Props) => {
+export const SessionEventGroup = (props: Props) => {
   const {
     index,
     session,

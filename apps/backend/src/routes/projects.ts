@@ -1,5 +1,6 @@
 import { TRPCError } from '@trpc/server';
 import { TIME_SPAN_DATA } from '@vemetric/common/charts/timespans';
+import { MAX_EXCLUDED_COUNTRIES } from '@vemetric/common/countries';
 import { getNormalizedDomain } from '@vemetric/common/url';
 import { getDripSequence, getStepDelay } from '@vemetric/email/email-drip-sequences';
 import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
@@ -281,51 +282,51 @@ export const projectsRouter = router({
     return { excludedIps: updatedIps };
   }),
 
-  addExcludedCountry: projectProcedure
-    .input(z.object({ countryCode: z.string().length(2).regex(/^[A-Z]{2}$/) }))
+  addExcludedCountries: projectProcedure
+    .input(
+      z.object({
+        countryCodes: z.array(
+          z
+            .string()
+            .length(2)
+            .regex(/^[A-Z]{2}$/),
+        ),
+      }),
+    )
     .mutation(async (opts) => {
       const {
-        input: { countryCode },
+        input: { countryCodes },
         ctx: { project },
       } = opts;
 
       const currentCountries = project.excludedCountries ? project.excludedCountries.split(',') : [];
+      const newCountries = Array.from(new Set([...currentCountries, ...countryCodes]));
 
-      if (currentCountries.includes(countryCode)) {
+      if (newCountries.length > MAX_EXCLUDED_COUNTRIES) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
-          message: 'This country is already excluded',
+          message: `Maximum ${MAX_EXCLUDED_COUNTRIES} countries can be excluded`,
         });
       }
 
-      if (currentCountries.length >= 50) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'Maximum 50 countries can be excluded',
-        });
-      }
-
-      currentCountries.push(countryCode);
-      const excludedCountriesString = currentCountries.join(',');
+      const excludedCountriesString = newCountries.join(',');
       await dbProject.update(project.id, { excludedCountries: excludedCountriesString });
 
-      return { excludedCountries: currentCountries };
+      return { excludedCountries: newCountries };
     }),
 
-  removeExcludedCountry: projectProcedure
-    .input(z.object({ countryCode: z.string() }))
-    .mutation(async (opts) => {
-      const {
-        input: { countryCode },
-        ctx: { project },
-      } = opts;
+  removeExcludedCountry: projectProcedure.input(z.object({ countryCode: z.string() })).mutation(async (opts) => {
+    const {
+      input: { countryCode },
+      ctx: { project },
+    } = opts;
 
-      const currentCountries = project.excludedCountries ? project.excludedCountries.split(',') : [];
-      const updatedCountries = currentCountries.filter((existing: string) => existing !== countryCode);
-      const excludedCountriesString = updatedCountries.length > 0 ? updatedCountries.join(',') : null;
+    const currentCountries = project.excludedCountries ? project.excludedCountries.split(',') : [];
+    const updatedCountries = currentCountries.filter((existing: string) => existing !== countryCode);
+    const excludedCountriesString = updatedCountries.length > 0 ? updatedCountries.join(',') : null;
 
-      await dbProject.update(project.id, { excludedCountries: excludedCountriesString });
+    await dbProject.update(project.id, { excludedCountries: excludedCountriesString });
 
-      return { excludedCountries: updatedCountries };
-    }),
+    return { excludedCountries: updatedCountries };
+  }),
 });

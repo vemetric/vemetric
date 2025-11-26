@@ -1,6 +1,20 @@
-import { Card, Button, Field, Flex, Stack, Text, Badge, HStack, Icon, Spinner, Select, createListCollection } from '@chakra-ui/react';
-import { COUNTRIES } from '@vemetric/common/countries';
-import { useState, useEffect, useMemo } from 'react';
+import {
+  Card,
+  Button,
+  Field,
+  Flex,
+  Stack,
+  Text,
+  Badge,
+  HStack,
+  Icon,
+  Spinner,
+  Select,
+  createListCollection,
+  Span,
+} from '@chakra-ui/react';
+import { COUNTRIES, MAX_EXCLUDED_COUNTRIES } from '@vemetric/common/countries';
+import { useState, useEffect, useMemo, Fragment } from 'react';
 import { TbWorld, TbX } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import { CountryFlag } from '@/components/country-flag';
@@ -14,7 +28,7 @@ interface Props {
 
 export const ExcludedCountriesCard = (props: Props) => {
   const { projectId, initialExcludedCountries = [] } = props;
-  const [selectedCountry, setSelectedCountry] = useState<string[]>([]);
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
   const [removedCountry, setRemovedCountry] = useState('');
   const [excludedCountries, setExcludedCountries] = useState<string[]>(initialExcludedCountries);
 
@@ -32,7 +46,7 @@ export const ExcludedCountriesCard = (props: Props) => {
         label: (
           <Flex gap={1.5} align="center">
             <CountryFlag countryCode={code} />
-            <Text>{name}</Text>
+            <Text className="value-hidden">{name}</Text>
           </Flex>
         ),
         value: code,
@@ -50,10 +64,10 @@ export const ExcludedCountriesCard = (props: Props) => {
     });
   }, [excludedCountries]);
 
-  const { mutate: addExcludedCountry, isLoading: isAddingCountry } = trpc.projects.addExcludedCountry.useMutation({
+  const { mutate: addExcludedCountries, isLoading: isAddingCountry } = trpc.projects.addExcludedCountries.useMutation({
     onSuccess: (data) => {
       setExcludedCountries(data.excludedCountries);
-      setSelectedCountry([]);
+      setSelectedCountries([]);
       toaster.create({
         title: 'Country excluded successfully',
         type: 'success',
@@ -69,43 +83,28 @@ export const ExcludedCountriesCard = (props: Props) => {
     },
   });
 
-  const { mutate: removeExcludedCountry, isLoading: isRemovingCountry } = trpc.projects.removeExcludedCountry.useMutation({
-    onSuccess: (data) => {
-      setExcludedCountries(data.excludedCountries);
-      utils.projects.settings.invalidate({ projectId });
-    },
-    onError: (error) => {
-      toaster.create({
-        title: 'Error',
-        description: error.message,
-        type: 'error',
-      });
-    },
-    onSettled: () => {
-      setRemovedCountry('');
-    },
-  });
+  const { mutate: removeExcludedCountry, isLoading: isRemovingCountry } =
+    trpc.projects.removeExcludedCountry.useMutation({
+      onSuccess: (data) => {
+        setExcludedCountries(data.excludedCountries);
+        utils.projects.settings.invalidate({ projectId });
+      },
+      onError: (error) => {
+        toaster.create({
+          title: 'Error',
+          description: error.message,
+          type: 'error',
+        });
+      },
+      onSettled: () => {
+        setRemovedCountry('');
+      },
+    });
 
   const handleAddCountry = async () => {
-    if (selectedCountry.length === 0) return;
+    if (selectedCountries.length === 0) return;
 
-    // Add countries sequentially to handle validation properly
-    for (const countryCode of selectedCountry) {
-      try {
-        await new Promise<void>((resolve, reject) => {
-          addExcludedCountry(
-            { projectId, countryCode },
-            {
-              onSuccess: () => resolve(),
-              onError: () => reject(),
-            },
-          );
-        });
-      } catch {
-        // Error already handled by mutation's onError
-        break;
-      }
-    }
+    addExcludedCountries({ projectId, countryCodes: selectedCountries });
   };
 
   const removeCountry = (countryCode: string) => {
@@ -162,14 +161,31 @@ export const ExcludedCountriesCard = (props: Props) => {
                 collection={availableCountries}
                 size="sm"
                 multiple
-                value={selectedCountry}
-                onValueChange={({ value }) => setSelectedCountry(value)}
-                disabled={isAddingCountry || excludedCountries.length >= 50}
+                value={selectedCountries}
+                onValueChange={({ value }) => setSelectedCountries(value)}
+                disabled={isAddingCountry}
               >
                 <Select.HiddenSelect />
                 <Select.Control flex={1}>
                   <Select.Trigger>
-                    <Select.ValueText placeholder="Select countries to exclude" />
+                    <Select.ValueText placeholder="Select countries to exclude">
+                      <Flex
+                        align="center"
+                        flexWrap="wrap"
+                        rowGap={1}
+                        css={{ '& .value-hidden': { display: 'none' } }}
+                        py={1}
+                      >
+                        {selectedCountries.map((value, index) => (
+                          <Fragment key={value}>
+                            {index > 0 && <Span>,&nbsp;</Span>}
+                            <Span className={value === 'any' ? 'value-hidden' : ''}>
+                              {availableCountries.items.find((item) => item.value === value)?.label}
+                            </Span>
+                          </Fragment>
+                        ))}
+                      </Flex>
+                    </Select.ValueText>
                   </Select.Trigger>
                   <Select.IndicatorGroup>
                     <Select.Indicator />
@@ -190,14 +206,14 @@ export const ExcludedCountriesCard = (props: Props) => {
                 size="sm"
                 onClick={handleAddCountry}
                 loading={isAddingCountry}
-                disabled={selectedCountry.length === 0 || excludedCountries.length >= 50}
+                disabled={selectedCountries.length === 0}
               >
-                Exclude {selectedCountry.length > 0 && `(${selectedCountry.length})`}
+                Exclude {selectedCountries.length > 0 && `(${selectedCountries.length})`}
               </Button>
             </Flex>
-            {excludedCountries.length >= 50 && (
+            {excludedCountries.length >= MAX_EXCLUDED_COUNTRIES && (
               <Text fontSize="xs" color="orange.500" mt={1}>
-                Maximum limit of 50 countries reached
+                Maximum limit of {MAX_EXCLUDED_COUNTRIES} countries reached
               </Text>
             )}
           </Field.Root>

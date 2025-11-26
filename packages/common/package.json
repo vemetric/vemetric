@@ -14,6 +14,7 @@
   "dependencies": {
     "hono": "^4.6.13",
     "nanoid": "^5.0.4",
+    "pino": "^9.6.0",
     "siphash": "^1.1.0",
     "zod": "3.23.6"
   },

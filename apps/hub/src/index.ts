@@ -1,4 +1,5 @@
 import { formatClickhouseDate } from '@vemetric/common/date';
+import { EMPTY_GEO_DATA, getGeoDataFromIp } from '@vemetric/common/geo';
 import { getClientIp } from '@vemetric/common/request-ip';
 import { addToQueue } from '@vemetric/queues/queue-utils';
 import { updateUserDataModel, updateUserQueue } from '@vemetric/queues/update-user-queue';
@@ -13,7 +14,6 @@ import type { HonoContextVars } from './types';
 import { isBot } from './utils/bots';
 import { deleteUserIdCookie, setUserIdCookie } from './utils/cookie';
 import { eventSchema, trackEvent, validateSpecialEvents } from './utils/event';
-import { getCountryFromIPCached } from './utils/geo-cache';
 import { logger } from './utils/logger';
 import { handlePageLeave } from './utils/page-leave';
 import { getProjectByToken } from './utils/project';
@@ -87,52 +87,55 @@ app.use('*', async (context, next) => {
 
   // TODO: let users specify allowed origins for their project
   const middleware = cors({ credentials: true, origin: req.header('origin') ?? '*' });
+  const bodyData = await req.json();
 
-  if (req.method !== 'OPTIONS' && req.path !== '/up') {
-    const project = await getProjectByToken(context);
-    context.set('project', project);
-    context.set('projectId', BigInt(project.id));
-
-    const ipAddress = getClientIp(context) ?? '';
-    context.set('ipAddress', ipAddress);
-
-    if (project.excludedIps && ipAddress) {
-      // Use comma-wrapped check to avoid array allocation on every request
-      if (`,${project.excludedIps},`.includes(`,${ipAddress},`)) {
-        // Silently ignore requests from excluded IPs
-        return context.text('', 200);
-      }
-    }
-
-    if (project.excludedCountries && ipAddress) {
-      const countryCode = await getCountryFromIPCached(ipAddress);
-
-      if (countryCode && `,${project.excludedCountries},`.includes(`,${countryCode},`)) {
-        logger.trace(
-          { projectId: String(project.id), ipAddress, countryCode },
-          'Request blocked by excluded country',
-        );
-        return context.text('', 200);
-      }
-    }
-
-    let allowCookies = false;
-    const allowCookiesHeader = req.header('allow-cookies');
-    if (allowCookiesHeader === undefined) {
-      try {
-        // we're falling back to reading it from the body because of beacon requests where we can't send it via the header
-        const body = await req.json();
-        allowCookies = body['Allow-Cookies'] === 'true';
-      } catch (err) {
-        logger.error({ err, 'req.path': req.path }, 'Failed to get allowCookies from body.');
-      }
-    } else {
-      allowCookies = allowCookiesHeader === 'true';
-    }
-    context.set('allowCookies', allowCookies);
-
-    context.set('proxyHost', req.header('V-Host'));
+  if (req.method === 'OPTIONS' || req.path === '/up') {
+    return middleware(context, next);
   }
+
+  const project = await getProjectByToken(context, bodyData);
+  context.set('project', project);
+  context.set('projectId', BigInt(project.id));
+
+  const isBackendRequest = typeof bodyData.userIdentifier === 'string';
+  context.set('isBackendRequest', isBackendRequest);
+
+  const ipAddress = getClientIp(context) ?? '';
+  context.set('ipAddress', ipAddress);
+
+  if (project.excludedIps && ipAddress) {
+    // Use comma-wrapped check to avoid array allocation on every request
+    if (`,${project.excludedIps},`.includes(`,${ipAddress},`)) {
+      // Silently ignore requests from excluded IPs
+      return context.text('', 200);
+    }
+  }
+
+  const geoData = isBackendRequest ? EMPTY_GEO_DATA : await getGeoDataFromIp(ipAddress, logger);
+  context.set('geoData', geoData);
+
+  if (project.excludedCountries && geoData.countryCode) {
+    if (`,${project.excludedCountries},`.includes(`,${geoData.countryCode},`)) {
+      // Silently ignore requests from excluded countries
+      return context.text('', 200);
+    }
+  }
+
+  let allowCookies = false;
+  const allowCookiesHeader = req.header('allow-cookies');
+  if (allowCookiesHeader === undefined) {
+    try {
+      // we're falling back to reading it from the body because of beacon requests where we can't send it via the header
+      allowCookies = bodyData['Allow-Cookies'] === 'true';
+    } catch (err) {
+      logger.error({ err, 'req.path': req.path }, 'Failed to get allowCookies from body.');
+    }
+  } else {
+    allowCookies = allowCookiesHeader === 'true';
+  }
+  context.set('allowCookies', allowCookies);
+
+  context.set('proxyHost', req.header('V-Host'));
 
   return middleware(context, next);
 });

@@ -1,6 +1,6 @@
-import type { ClickhouseSession, ClickhouseUser, DeviceData } from 'clickhouse';
+import { EMPTY_GEO_DATA } from '@vemetric/common/geo';
+import type { ClickhouseSession, ClickhouseUser, DeviceData, GeoData } from 'clickhouse';
 import { clickhouseSession } from 'clickhouse';
-import { getGeoData } from './geo';
 
 export async function increaseClickhouseSessionDuration(session: ClickhouseSession, now: string) {
   const duration = Math.round((new Date(now).getTime() - new Date(session.startedAt).getTime()) / 1000);
@@ -15,8 +15,12 @@ export async function increaseClickhouseSessionDuration(session: ClickhouseSessi
   }
 }
 
-export async function getSessionData(ipAddress: string, user: ClickhouseUser | null, deviceData: DeviceData) {
-  let { countryCode, city, latitude, longitude } = await getGeoData(ipAddress);
+export async function getSessionData(
+  geoData: GeoData | undefined,
+  user: ClickhouseUser | null,
+  deviceData: DeviceData,
+) {
+  let { countryCode, city, latitude, longitude } = geoData || EMPTY_GEO_DATA;
 
   // TODO: this logic might has to be adjusted once we allow smartphone apps to ingest events
   if (deviceData.clientType === 'server' && user) {

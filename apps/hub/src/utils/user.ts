@@ -38,7 +38,7 @@ export async function identifyUser(
   projectId: bigint,
   userId: bigint | null,
 ) {
-  const { allowCookies, ipAddress } = context.var;
+  const { allowCookies, geoData } = context.var;
 
   const { identifier, displayName, avatarUrl } = body;
   logInfo({ projectId: String(projectId), userId: String(userId), identifier, avatarUrl }, 'start identifying user');
@@ -99,7 +99,7 @@ export async function identifyUser(
         projectId: String(projectId),
         userId: String(userId),
         createdAt: now,
-        ipAddress,
+        geoData,
         identifier,
         displayName: displayName ?? '',
         avatarUrl: avatarUrl || '',

@@ -1,3 +1,4 @@
+import { EMPTY_GEO_DATA, getGeoDataFromIp } from '@vemetric/common/geo';
 import type { CreateUserQueueProps } from '@vemetric/queues/create-user-queue';
 import { createUserQueueName } from '@vemetric/queues/queue-names';
 import { addToQueue } from '@vemetric/queues/queue-utils';
@@ -5,7 +6,7 @@ import { updateUserQueue } from '@vemetric/queues/update-user-queue';
 import { Worker } from 'bullmq';
 import type { ClickhouseUser } from 'clickhouse';
 import { clickhouseEvent, clickhouseUser } from 'clickhouse';
-import { getGeoData } from '../utils/geo';
+import { logger } from '../utils/logger';
 import { getUserFirstPageViewData } from '../utils/user';
 
 export async function initCreateUserWorker() {
@@ -19,6 +20,7 @@ export async function initCreateUserWorker() {
         identifier,
         displayName,
         ipAddress,
+        geoData,
         avatarUrl,
         data,
       } = job.data;
@@ -39,7 +41,6 @@ export async function initCreateUserWorker() {
         return;
       }
 
-      const geoData = await getGeoData(ipAddress);
       const firstPageView = await clickhouseEvent.getFirstPageViewByUserId(projectId, userId!);
       const user: ClickhouseUser = {
         projectId,
@@ -51,7 +52,7 @@ export async function initCreateUserWorker() {
         firstSeenAt: createdAt,
         updatedAt: createdAt,
         customData: data,
-        ...geoData,
+        ...(geoData || (ipAddress ? await getGeoDataFromIp(ipAddress, logger, 5000) : EMPTY_GEO_DATA)),
         ...getUserFirstPageViewData(firstPageView),
       };
       await clickhouseUser.insert([user]);

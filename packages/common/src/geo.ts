@@ -1,44 +1,54 @@
-interface GeoApiResponse {
-  country?: string;
-  countryCode?: string;
-  [key: string]: unknown;
+import type { GeoData } from 'clickhouse';
+import type { Logger } from 'pino';
+
+interface GeoDataResponse {
+  country: string;
+  stateprov: string;
+  stateprovCode: string;
+  city: string;
+  latitude: string;
+  longitude: string;
+  timezone: string;
+  continent: string;
+  accuracyRadius: number;
+  asn: number;
+  asnOrganization: string;
+  asnNetwork: string;
 }
 
-export async function getCountryFromIP(ipAddress: string): Promise<string | null> {
-  if (!process.env.GEO_API || !ipAddress) {
-    return null;
+export const EMPTY_GEO_DATA: GeoData = {
+  countryCode: '',
+  city: '',
+  latitude: null,
+  longitude: null,
+};
+
+export async function getGeoDataFromIp(ipAddress: string, logger: Logger, timeout = 2000): Promise<GeoData> {
+  if (!process.env.GEO_API) {
+    return EMPTY_GEO_DATA;
   }
 
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 500);
+    const result = (await fetch(`${process.env.GEO_API}/${ipAddress}`, { signal: AbortSignal.timeout(timeout) }).then(
+      (res) => res.json(),
+    )) as GeoDataResponse | null;
 
-    try {
-      const response = await fetch(`${process.env.GEO_API}/${ipAddress}`, {
-        signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        return null;
-      }
-
-      const result = (await response.json()) as GeoApiResponse | null;
-
-      if (!result) {
-        return null;
-      }
-
-      const countryCode = result.countryCode || result.country;
-
-      if (!countryCode || typeof countryCode !== 'string') {
-        return null;
-      }
-
-      return countryCode.toUpperCase().substring(0, 2);
-    } finally {
-      clearTimeout(timeoutId);
+    if (!result) {
+      logger.info({ ipAddress }, 'No geo data found for ip address');
+      return EMPTY_GEO_DATA;
     }
-  } catch {
-    return null;
+
+    const convertedLatitude = Number(result.latitude);
+    const convertedLongitude = Number(result.longitude);
+
+    return {
+      countryCode: result.country,
+      city: result.city,
+      latitude: isNaN(convertedLatitude) ? null : convertedLatitude,
+      longitude: isNaN(convertedLongitude) ? null : convertedLongitude,
+    };
+  } catch (err) {
+    logger.error({ err }, 'Error getting geo data');
+    return EMPTY_GEO_DATA;
   }
 }

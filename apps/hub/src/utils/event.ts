@@ -71,7 +71,7 @@ function ignoreEvent(url?: string) {
 export const trackEvent = async (context: HonoContext, body: EventSchema) => {
   const { req } = context;
   const contextId = body.contextId;
-  const { projectId, allowCookies, ipAddress } = context.var;
+  const { projectId, allowCookies, geoData } = context.var;
   const { customData, name, url } = body;
 
   if (ignoreEvent(url)) {
@@ -113,7 +113,7 @@ export const trackEvent = async (context: HonoContext, body: EventSchema) => {
     userId: String(userId),
     sessionId,
     createdAt: formatClickhouseDate(new Date()),
-    ipAddress,
+    geoData,
     headers,
     url,
     reqIdentifier: body?.identifier,
@@ -131,7 +131,7 @@ export const trackEvent = async (context: HonoContext, body: EventSchema) => {
     headers,
     customData,
     url,
-    ipAddress,
+    geoData,
     reqIdentifier: body?.identifier,
     reqDisplayName: body?.displayName,
   };

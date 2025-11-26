@@ -16,10 +16,9 @@ import {
 } from '@chakra-ui/react';
 import { Link as RouterLink, Navigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { TbDashboard, TbSettings, TbBrowserShare, TbLockX, TbFlagCode, TbKey, TbWorldQuestion } from 'react-icons/tb';
+import { TbDashboard, TbSettings, TbBrowserShare, TbLockX, TbKey, TbWorldQuestion } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import { CodeBox } from '@/components/code-box';
-import { IntegrationGuides } from '@/components/integration-guides';
 import { LoadingImage } from '@/components/loading-image';
 import { ExcludedCountriesCard } from '@/components/pages/settings/excluded-countries-card';
 import { ExcludedIpsCard } from '@/components/pages/settings/excluded-ips-card';
@@ -28,6 +27,7 @@ import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
 import { getFaviconUrl } from '@/utils/favicon';
 import { trpc } from '@/utils/trpc';
+import { InstallationCard } from './installation-card';
 
 interface Props {
   projectId: string;
@@ -185,6 +185,7 @@ export const GeneralTab = (props: Props) => {
           </Stack>
         </Card.Body>
       </Card.Root>
+      {!projectSettings.isActive && <InstallationCard />}
       <Card.Root>
         <Card.Header>
           <Flex align="center" gap={2}>
@@ -233,40 +234,8 @@ export const GeneralTab = (props: Props) => {
         currentIp={projectSettings.currentIp}
         initialExcludedIps={projectSettings.excludedIps}
       />
-      <ExcludedCountriesCard
-        projectId={projectId}
-        initialExcludedCountries={projectSettings.excludedCountries}
-      />
-      <Card.Root>
-        <Card.Header>
-          <Flex align="center" gap={2}>
-            <CardIcon>
-              <TbFlagCode />
-            </CardIcon>
-            <Text fontWeight="semibold">Installation</Text>
-          </Flex>
-        </Card.Header>
-        <Card.Body p={4} pb={3}>
-          <Text mb={3} opacity={0.9}>
-            We&apos;ve prepared the following guides to help you integrate Vemetric:
-          </Text>
-          <IntegrationGuides />
-          <Text opacity={0.85} mt={4} fontSize="sm" pl="1">
-            Checkout the{' '}
-            <Link color="purple.fg" fontWeight="medium" href="https://vemetric.com/docs/installation">
-              installation docs
-            </Link>{' '}
-            for more information.
-          </Text>
-          <Text opacity={0.85} mt={1.5} fontSize="sm" pl="1">
-            Hint: we recommend{' '}
-            <Link color="purple.fg" fontWeight="medium" href="https://vemetric.com/docs/advanced-guides/using-a-proxy">
-              using a proxy
-            </Link>{' '}
-            to send events via your own domain.
-          </Text>
-        </Card.Body>
-      </Card.Root>
+      <ExcludedCountriesCard projectId={projectId} initialExcludedCountries={projectSettings.excludedCountries} />
+      {projectSettings.isActive && <InstallationCard />}
     </Flex>
   );
 };

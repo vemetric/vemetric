@@ -15,7 +15,7 @@ import {
 } from '@chakra-ui/react';
 import { COUNTRIES, MAX_EXCLUDED_COUNTRIES } from '@vemetric/common/countries';
 import { useState, useEffect, useMemo, Fragment } from 'react';
-import { TbWorld, TbX } from 'react-icons/tb';
+import { TbWorldX, TbX } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import { CountryFlag } from '@/components/country-flag';
 import { toaster } from '@/components/ui/toaster';
@@ -122,7 +122,7 @@ export const ExcludedCountriesCard = (props: Props) => {
       <Card.Header>
         <Flex align="center" gap={2}>
           <CardIcon>
-            <TbWorld />
+            <TbWorldX />
           </CardIcon>
           <Text fontWeight="semibold">Excluded Countries</Text>
         </Flex>
@@ -169,22 +169,24 @@ export const ExcludedCountriesCard = (props: Props) => {
                 <Select.Control flex={1}>
                   <Select.Trigger>
                     <Select.ValueText placeholder="Select countries to exclude">
-                      <Flex
-                        align="center"
-                        flexWrap="wrap"
-                        rowGap={1}
-                        css={{ '& .value-hidden': { display: 'none' } }}
-                        py={1}
-                      >
-                        {selectedCountries.map((value, index) => (
-                          <Fragment key={value}>
-                            {index > 0 && <Span>,&nbsp;</Span>}
-                            <Span className={value === 'any' ? 'value-hidden' : ''}>
-                              {availableCountries.items.find((item) => item.value === value)?.label}
-                            </Span>
-                          </Fragment>
-                        ))}
-                      </Flex>
+                      {selectedCountries.length > 0 && (
+                        <Flex
+                          align="center"
+                          flexWrap="wrap"
+                          rowGap={1}
+                          css={{ '& .value-hidden': { display: 'none' } }}
+                          py={1}
+                        >
+                          {selectedCountries.map((value, index) => (
+                            <Fragment key={value}>
+                              {index > 0 && <Span>,&nbsp;</Span>}
+                              <Span className={value === 'any' ? 'value-hidden' : ''}>
+                                {availableCountries.items.find((item) => item.value === value)?.label}
+                              </Span>
+                            </Fragment>
+                          ))}
+                        </Flex>
+                      )}
                     </Select.ValueText>
                   </Select.Trigger>
                   <Select.IndicatorGroup>

@@ -125,6 +125,7 @@ export const projectsRouter = router({
       name: project.name,
       domain: project.domain,
       token: project.token,
+      isActive: project.firstEventAt !== null,
       publicDashboard: project.publicDashboard,
       excludedIps: project.excludedIps ? project.excludedIps.split(',') : [],
       excludedCountries: project.excludedCountries ? project.excludedCountries.split(',') : [],

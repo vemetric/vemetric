@@ -6,6 +6,7 @@ import { useFilterContext } from '@/components/filter/filter-context';
 export type RoutesWithFiltering =
   | '/p/$projectId'
   | '/p/$projectId/users'
+  | '/p/$projectId/users/$userId'
   | '/p/$projectId/events'
   | '/public/$domain'
   | '/p/$projectId/events'

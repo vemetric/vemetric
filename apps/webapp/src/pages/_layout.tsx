@@ -128,7 +128,7 @@ function LayoutComponent() {
           <BackgroundSvg />
         </Box>
       </Box>
-      <PageWrapper px={{ base: 0, md: 3 }} pt={{ base: 0, lg: 1 }} pb={{ base: 0, md: 8 }} pos="relative">
+      <PageWrapper px={{ base: 0, md: 3 }} pt={{ base: 0, lg: 1 }} pb={{ base: 0, md: '12px' }} pos="relative">
         <Grid gap={4} templateColumns={{ base: '1fr', lg: '190px 1fr' }} w="100%">
           <Flex
             display={{ base: 'none', lg: 'flex' }}

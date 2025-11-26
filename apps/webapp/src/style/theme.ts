@@ -256,8 +256,14 @@ export const vemetricTheme = createSystem(defaultConfig, {
         variants: {
           size: {
             sm: {
+              root: {
+                py: 3,
+              },
               indicator: {
-                fontSize: '60px',
+                fontSize: '40px',
+              },
+              title: {
+                fontSize: 'md',
               },
             },
             md: {

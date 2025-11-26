@@ -11,7 +11,6 @@ export const dbProject = {
   addUser: (projectId: string, userId: string, role: ProjectRole) =>
     prismaClient.userProject.create({ data: { projectId, userId, role } }),
   findAll: () => prismaClient.project.findMany(),
-  countActive: () => prismaClient.project.count({ where: { firstEventAt: { not: null } } }),
   findByUserId: (userId: string) =>
     prismaClient.userProject.findMany({
       where: { userId },

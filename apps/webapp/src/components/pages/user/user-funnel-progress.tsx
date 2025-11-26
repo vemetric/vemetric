@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { TbChartFunnel } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
+import { CustomIconStyle } from '@/components/custom-icon-style';
 import { EmptyState } from '@/components/ui/empty-state';
 import { trpc } from '@/utils/trpc';
 
@@ -58,7 +59,7 @@ export function UserFunnelProgress({ projectId, userId }: UserFunnelProgressProp
             title="No funnels available"
             description="Create your first funnel to start tracking conversions."
           >
-            <Button asChild>
+            <Button asChild size="sm">
               <Link to="/p/$projectId/funnels" params={{ projectId }}>
                 Create Funnel
               </Link>
@@ -108,13 +109,19 @@ export function UserFunnelProgress({ projectId, userId }: UserFunnelProgressProp
                   <Card.Body p={3} overflow="hidden">
                     <Box minW={0} flex="1">
                       <Flex align="center" justify="space-between" gap={2} mb={2}>
-                        <LinkOverlay asChild>
-                          <Link to="/p/$projectId/funnels/$funnelId" params={{ projectId, funnelId: funnel.funnelId }}>
-                            <Text fontWeight="medium" flexShrink={1} truncate>
-                              {funnel.funnelName}
-                            </Text>
-                          </Link>
-                        </LinkOverlay>
+                        <Flex gap="1.5">
+                          {funnel.funnelIcon && <CustomIconStyle>{funnel.funnelIcon}</CustomIconStyle>}
+                          <LinkOverlay asChild>
+                            <Link
+                              to="/p/$projectId/funnels/$funnelId"
+                              params={{ projectId, funnelId: funnel.funnelId }}
+                            >
+                              <Text fontWeight="medium" flexShrink={1} truncate>
+                                {funnel.funnelName}
+                              </Text>
+                            </Link>
+                          </LinkOverlay>
+                        </Flex>
                         {hasStarted ? (
                           <Text textStyle="sm" fontWeight="medium" color={isCompleted ? 'green.fg' : 'purple.fg'}>
                             {Math.round(progressPercentage)}%

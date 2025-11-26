@@ -17,6 +17,7 @@ import {
 } from 'react-icons/tb';
 import { isDeepEqual } from 'remeda';
 import { CardIcon } from '@/components/card-icon';
+import { CustomIconStyle } from '@/components/custom-icon-style';
 import { NumberCounter } from '@/components/number-counter';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -106,7 +107,7 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
           </Button>
         </Flex>
       </DashboardCardHeader>
-      <Card.Body pos="relative" overflow="hidden">
+      <Card.Body pos="relative" overflow="hidden" css={{ '& > div': { h: '100%' } }}>
         <AnimatePresence initial={false} mode="popLayout">
           {selectedEvent === undefined ? (
             <motion.div key="list" {...getMotionViewProps(true)}>
@@ -117,7 +118,7 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
                 error={error}
                 emptyState={
                   <EmptyState icon={<TbBolt />} title="No custom events fired in the selected timeframe">
-                    <Button asChild mt={4} _hover={{ textDecoration: 'none' }}>
+                    <Button size="sm" asChild mt={2} _hover={{ textDecoration: 'none' }}>
                       <ChakraLink
                         href="https://vemetric.com/docs/product-analytics/tracking-custom-events"
                         target="_blank"
@@ -153,11 +154,7 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
                     if (event.name === '$$outboundLink') {
                       icon = <TbExternalLink />;
                     } else if (eventIcons[event.name]) {
-                      icon = (
-                        <Box transform="scale(0.8)" filter="grayscale(0.3)" opacity={0.9}>
-                          {eventIcons[event.name]}
-                        </Box>
-                      );
+                      icon = <CustomIconStyle transform="scale(0.8)">{eventIcons[event.name]}</CustomIconStyle>;
                     }
 
                     return (

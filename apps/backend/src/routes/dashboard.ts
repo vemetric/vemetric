@@ -285,6 +285,7 @@ export const dashboardRouter = router({
           return {
             id: funnel.id,
             name: funnel.name,
+            icon: funnel.icon,
             steps,
             conversionRate,
             completedUsers: lastStepUsers,
@@ -337,6 +338,7 @@ export const dashboardRouter = router({
         funnel: {
           id: funnel.id,
           name: funnel.name,
+          icon: funnel.icon,
           steps,
         },
         stepResults,

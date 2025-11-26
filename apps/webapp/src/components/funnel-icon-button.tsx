@@ -1,9 +1,10 @@
-import { Box, Popover } from '@chakra-ui/react';
+import { Popover } from '@chakra-ui/react';
 import EmojiPicker, { Theme } from 'emoji-picker-react';
 import { useState } from 'react';
 import { TbChartFunnel } from 'react-icons/tb';
 import type { CardIconProps } from './card-icon';
 import { CardIcon } from './card-icon';
+import { CustomIconStyle } from './custom-icon-style';
 import { useColorMode } from './ui/color-mode';
 import { MenuContent, MenuContextTrigger, MenuItem, MenuRoot } from './ui/menu';
 
@@ -19,11 +20,7 @@ export const FunnelIconButton = ({ icon, onIconChange, ...props }: Props) => {
   let displayIcon: React.ReactNode = null;
 
   if (icon) {
-    displayIcon = (
-      <Box transform="scale(0.85)" filter="grayscale(0.3)" opacity={0.9}>
-        {icon}
-      </Box>
-    );
+    displayIcon = <CustomIconStyle transform="scale(0.85)">{icon}</CustomIconStyle>;
   } else {
     displayIcon = <TbChartFunnel />;
   }

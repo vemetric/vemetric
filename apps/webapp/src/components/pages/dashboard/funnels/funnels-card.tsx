@@ -8,6 +8,7 @@ import React, { useState } from 'react';
 import { TbChartFunnel, TbEye, TbFilter, TbFilterOff, TbUserSquareRounded, TbUsers } from 'react-icons/tb';
 import { isDeepEqual } from 'remeda';
 import { CardIcon } from '@/components/card-icon';
+import { CustomIconStyle } from '@/components/custom-icon-style';
 import { NumberCounter } from '@/components/number-counter';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -194,11 +195,7 @@ export const FunnelsCard = ({ filterConfig, publicDashboard, activeUsers }: Prop
 
                     let icon = <TbChartFunnel />;
                     if (funnel.icon) {
-                      icon = (
-                        <Box transform="scale(0.8)" filter="grayscale(0.3)" opacity={0.9}>
-                          {funnel.icon}
-                        </Box>
-                      );
+                      icon = <CustomIconStyle transform="scale(0.8)">{funnel.icon}</CustomIconStyle>;
                     }
 
                     return (

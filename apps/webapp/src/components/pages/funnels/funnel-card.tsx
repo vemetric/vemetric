@@ -4,6 +4,7 @@ import type { IFilterConfig } from '@vemetric/common/filters';
 import { formatNumber, formatPercentage } from '@vemetric/common/math';
 import { motion } from 'motion/react';
 import { TbChartFunnel, TbEdit, TbEye, TbTrash, TbUserSquareRounded, TbUsers } from 'react-icons/tb';
+import { CustomIconStyle } from '@/components/custom-icon-style';
 import { DeletePopover } from '@/components/delete-popover';
 import { Tooltip } from '@/components/ui/tooltip';
 import { trpc, type FunnelData } from '@/utils/trpc';
@@ -46,11 +47,7 @@ export const FunnelCard = ({ projectId, funnel, activeUsersVisible, filterConfig
 
   let icon = <TbChartFunnel />;
   if (funnel.icon) {
-    icon = (
-      <Box transform="scale(0.8)" filter="grayscale(0.3)" opacity={0.9}>
-        {funnel.icon}
-      </Box>
-    );
+    icon = <CustomIconStyle transform="scale(0.8)">{funnel.icon}</CustomIconStyle>;
   }
 
   return (

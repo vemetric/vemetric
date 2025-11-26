@@ -6,6 +6,7 @@ import { formatNumber, formatPercentage } from '@vemetric/common/math';
 import React, { useState } from 'react';
 import { TbArrowLeft, TbChartFunnel, TbChevronLeft, TbFilter, TbFilterOff, TbUsers } from 'react-icons/tb';
 import { isDeepEqual } from 'remeda';
+import { CustomIconStyle } from '@/components/custom-icon-style';
 import { CardBar } from '@/components/pages/dashboard/card-bar';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -63,7 +64,7 @@ export const FunnelStepsView = ({
         <IconButton size="2xs" variant="surface" colorScheme="gray" onClick={onBack}>
           <Icon as={TbChevronLeft} />
         </IconButton>
-        {funnel?.icon}
+        {funnel?.icon && <CustomIconStyle>{funnel?.icon}</CustomIconStyle>}
         <Text fontWeight="medium" whiteSpace="nowrap" truncate>
           {funnel?.name || 'Loading...'}
         </Text>

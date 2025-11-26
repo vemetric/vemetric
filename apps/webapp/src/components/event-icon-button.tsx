@@ -1,10 +1,11 @@
-import { Box, Popover, Portal } from '@chakra-ui/react';
+import { Popover, Portal } from '@chakra-ui/react';
 import EmojiPicker, { Theme } from 'emoji-picker-react';
 import { useState } from 'react';
 import { TbBolt, TbEye, TbExternalLink } from 'react-icons/tb';
 import { useProjectContext } from '@/contexts/project-context';
 import type { CardIconProps } from './card-icon';
 import { CardIcon } from './card-icon';
+import { CustomIconStyle } from './custom-icon-style';
 import { useColorMode } from './ui/color-mode';
 import { MenuContent, MenuContextTrigger, MenuItem, MenuRoot } from './ui/menu';
 
@@ -34,11 +35,7 @@ export const EventIconButton = ({ name, ...props }: Props) => {
   }
 
   if (contextEmoji) {
-    icon = (
-      <Box transform="scale(0.85)" filter="grayscale(0.3)" opacity={0.9}>
-        {contextEmoji}
-      </Box>
-    );
+    icon = <CustomIconStyle transform="scale(0.85)">{contextEmoji}</CustomIconStyle>;
   } else {
     icon = <TbBolt />;
   }

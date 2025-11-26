@@ -219,6 +219,7 @@ export const usersRouter = router({
         return {
           funnelId: funnel.id,
           funnelName: funnel.name,
+          funnelIcon: funnel.icon,
           completedStep: progress?.completedStep || 0,
           totalSteps: (funnel.steps as FunnelStep[]).length,
         };

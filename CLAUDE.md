@@ -30,7 +30,7 @@ Vemetric is an open-source web and product analytics platform built as a monorep
 bun dev
 
 # Build all applications and check for typescript issues
-bun build
+bun run build
 
 # Lint all applications
 bun lint

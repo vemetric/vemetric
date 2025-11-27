@@ -53,7 +53,7 @@ jobs:
         run: cd apps/webapp && bun test
 
       - name: Build Frontend
-        run: cd apps/webapp && bun build
+        run: cd apps/webapp && bun run build
 
       - name: Deploy Frontend
         uses: cloudflare/pages-action@v1

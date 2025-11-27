@@ -115,7 +115,7 @@ Now Vemetric will track itself and you should see data flowing in on your Dashbo
    ```
 6. **Build the project** - Ensure it builds without errors:
    ```bash
-   bun build
+   bun run build
    ```
 7. **Commit your changes** - Use clear, descriptive commit messages
 8. **Push to your fork** - Push your branch to GitHub

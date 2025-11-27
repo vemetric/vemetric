@@ -17,26 +17,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install PNPM
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9.1.3
-
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.3.3
 
       - name: Install dependencies
-        run: pnpm i && bun i --frozen-lockfile
+        run: bun install --frozen-lockfile
 
       - name: Fetch bots data (hub)
         working-directory: ./apps/hub
-        run: pnpm fetch-bots && pnpm format
+        run: bun fetch-bots && bun format
 
       - name: Fetch referrers data (worker)
         working-directory: ./apps/worker
-        run: pnpm fetch-referrers && pnpm format
+        run: bun fetch-referrers && bun format
 
       - name: Check for changes
         id: check_changes

@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint . --max-warnings 0",
     "preview": "vite preview",
-    "postinstall": "pnpm run chakra:build",
+    "postinstall": "bun run chakra:build",
     "chakra:build": "chakra typegen src/style/theme.ts --strict",
     "test": "vitest run",
     "test:watch": "vitest",

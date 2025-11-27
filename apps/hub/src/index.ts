@@ -87,10 +87,16 @@ app.use('*', async (context, next) => {
 
   // TODO: let users specify allowed origins for their project
   const middleware = cors({ credentials: true, origin: req.header('origin') ?? '*' });
-  const bodyData = await req.json();
 
   if (req.method === 'OPTIONS' || req.path === '/up') {
     return middleware(context, next);
+  }
+
+  let bodyData: any = {};
+  try {
+    bodyData = await req.json();
+  } catch {
+    // ignore json parse errors here
   }
 
   const project = await getProjectByToken(context, bodyData);

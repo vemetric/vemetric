@@ -54,12 +54,6 @@ app.use(
 );
 
 app.use('*', async (context, next) => {
-  const { req, text } = context;
-
-  if (isBot(req)) {
-    return text('', 200);
-  }
-
   let content = '';
   let url = '';
   try {
@@ -99,15 +93,24 @@ app.use('*', async (context, next) => {
     // ignore json parse errors here
   }
 
-  const project = await getProjectByToken(context, bodyData);
-  context.set('project', project);
-  context.set('projectId', BigInt(project.id));
-
   const isBackendRequest = typeof bodyData.userIdentifier === 'string';
   context.set('isBackendRequest', isBackendRequest);
 
   const ipAddress = getClientIp(context) ?? '';
   context.set('ipAddress', ipAddress);
+
+  // for backend requests, we're defaulting to Empty Geo Data because we don't want to use the servers country in our analytics data
+  // in a later point we try to use the users Geo Data, but as default it should be Empty = Unknown
+  const geoData = isBackendRequest ? EMPTY_GEO_DATA : await getGeoDataFromIp(ipAddress, logger);
+  context.set('geoData', geoData);
+
+  if (isBot(context)) {
+    return context.text('', 200);
+  }
+
+  const project = await getProjectByToken(context, bodyData);
+  context.set('project', project);
+  context.set('projectId', BigInt(project.id));
 
   if (project.excludedIps && ipAddress) {
     // Use comma-wrapped check to avoid array allocation on every request
@@ -116,11 +119,6 @@ app.use('*', async (context, next) => {
       return context.text('', 200);
     }
   }
-
-  // for backend requests, we're defaulting to Empty Geo Data because we don't want to use the servers country in our analytics data
-  // in a later point we try to use the users Geo Data, but as default it should be Empty = Unknown
-  const geoData = isBackendRequest ? EMPTY_GEO_DATA : await getGeoDataFromIp(ipAddress, logger);
-  context.set('geoData', geoData);
 
   if (project.excludedCountries && geoData.countryCode) {
     if (`,${project.excludedCountries},`.includes(`,${geoData.countryCode},`)) {

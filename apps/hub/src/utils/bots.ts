@@ -1,14 +1,28 @@
-import type { HonoRequest } from 'hono';
 import { logger } from './logger';
 import { bots } from '../consts/bots';
+import type { HonoContext } from '../types';
 
-export function isBot(req: HonoRequest) {
+const suspiciousSingaporeUserAgent =
+  'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.6478.114 Safari/537.36';
+
+export function isBot(context: HonoContext) {
+  const {
+    req,
+    var: { geoData },
+  } = context;
+
+  const userAgent = req.header('user-agent') ?? '';
+
+  if (geoData.countryCode === 'SG' && userAgent === suspiciousSingaporeUserAgent) {
+    // this is suspicious bot traffic from Singapore with rotating IP Addresses
+    return true;
+  }
+
   const isCloudflareVerifiedBot = req.header('cf-verified-bot') === 'true';
   if (isCloudflareVerifiedBot) {
     return true;
   }
 
-  const userAgent = req.header('user-agent') ?? '';
   for (const bot of bots) {
     try {
       if (new RegExp(bot.regex).test(userAgent)) {

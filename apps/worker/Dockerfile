@@ -8,20 +8,21 @@ FROM base AS install
 WORKDIR /usr/src/app
 
 COPY package.json bun.lock .npmrc ./
-COPY apps/hub/package.json ./apps/hub/
 COPY apps/backend/package.json ./apps/backend/
-COPY apps/worker/package.json ./apps/worker/
 COPY apps/bullboard/package.json ./apps/bullboard/
-COPY apps/health-check/package.json ./apps/health-check/
 COPY apps/dev-proxy/package.json ./apps/dev-proxy/
+COPY apps/health-check/package.json ./apps/health-check/
+COPY apps/hub/package.json ./apps/hub/
+COPY apps/webapp/package.json ./apps/webapp/
+COPY apps/worker/package.json ./apps/worker/
 COPY packages/clickhouse/package.json ./packages/clickhouse/
 COPY packages/common/package.json ./packages/common/
 COPY packages/database/package.json ./packages/database/
-COPY packages/eslint-config/package.json ./packages/eslint-config/
 COPY packages/email/package.json ./packages/email/
+COPY packages/eslint-config/package.json ./packages/eslint-config/
+COPY packages/logger/package.json ./packages/logger/
 COPY packages/queues/package.json ./packages/queues/
 COPY packages/tsconfig/package.json ./packages/tsconfig/
-COPY packages/logger/package.json ./packages/logger/
 
 RUN bun install --ignore-scripts --frozen-lockfile
 

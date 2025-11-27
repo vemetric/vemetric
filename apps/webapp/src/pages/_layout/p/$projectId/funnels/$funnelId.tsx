@@ -1,4 +1,15 @@
-import { Box, Button, Card, Flex, Icon, IconButton, LinkOverlay, Skeleton, useBreakpointValue } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Card,
+  Flex,
+  Icon,
+  IconButton,
+  LinkOverlay,
+  Skeleton,
+  useBreakpointValue,
+  Text,
+} from '@chakra-ui/react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { filterConfigSchema } from '@vemetric/common/filters';
@@ -6,6 +17,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import React, { useState } from 'react';
 import { TbChartBarPopular, TbEdit, TbTrash } from 'react-icons/tb';
 import { z } from 'zod';
+import { CustomIconStyle } from '@/components/custom-icon-style';
 import { DeletePopover } from '@/components/delete-popover';
 import { AddFilterButton } from '@/components/filter/add-filter/add-filter-button';
 import { FilterContainer } from '@/components/filter/filter-container';
@@ -149,7 +161,10 @@ function RouteComponent() {
     isFunnelLoading ? (
       <Skeleton key="funnel-name" w="100px" h="20px" rounded="md" />
     ) : (
-      funnelData?.funnel?.name || funnelId
+      <Flex gap="1.5">
+        {funnelData?.funnel?.icon && <CustomIconStyle>{funnelData?.funnel?.icon}</CustomIconStyle>}
+        <Text>{funnelData?.funnel?.name || funnelId}</Text>
+      </Flex>
     ),
   ]);
   useSetDocsLink('https://vemetric.com/docs/product-analytics/funnels');

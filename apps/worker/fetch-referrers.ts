@@ -44,6 +44,7 @@ const customReferrers = {
   'old.reddit.com': { name: 'Reddit', type: 'social' },
   'com.reddit.frontpage': { name: 'Reddit', type: 'social' },
   'l.threads.com': { name: 'Threads', type: 'social' },
+  'copilot.microsoft.com': { name: 'Microsoft Copilot', type: 'llm' },
 };
 
 function transformReferrerData(originalData: OriginalReferrerData): {

@@ -2,6 +2,7 @@
   "name": "vemetric",
   "description": "Simple, yet powerful web- and product analytics.",
   "private": true,
+  "author": "Vemetric <info@vemetric.com> (https://vemetric.com/)",
   "scripts": {
     "build": "turbo run build --filter=!./apps/dev-proxy",
     "dev": "turbo run dev --filter=!./apps/health-check",

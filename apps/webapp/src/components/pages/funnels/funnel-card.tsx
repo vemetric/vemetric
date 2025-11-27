@@ -3,7 +3,8 @@ import { Link } from '@tanstack/react-router';
 import type { IFilterConfig } from '@vemetric/common/filters';
 import { formatNumber, formatPercentage } from '@vemetric/common/math';
 import { motion } from 'motion/react';
-import { TbEdit, TbEye, TbTrash, TbUserSquareRounded, TbUsers } from 'react-icons/tb';
+import { TbChartFunnel, TbEdit, TbEye, TbTrash, TbUserSquareRounded, TbUsers } from 'react-icons/tb';
+import { CustomIconStyle } from '@/components/custom-icon-style';
 import { DeletePopover } from '@/components/delete-popover';
 import { Tooltip } from '@/components/ui/tooltip';
 import { trpc, type FunnelData } from '@/utils/trpc';
@@ -44,6 +45,11 @@ export const FunnelCard = ({ projectId, funnel, activeUsersVisible, filterConfig
     },
   });
 
+  let icon = <TbChartFunnel />;
+  if (funnel.icon) {
+    icon = <CustomIconStyle transform="scale(0.8)">{funnel.icon}</CustomIconStyle>;
+  }
+
   return (
     <Card.Root
       overflow="hidden"
@@ -52,11 +58,26 @@ export const FunnelCard = ({ projectId, funnel, activeUsersVisible, filterConfig
       _hover={{ borderColor: 'purple.500/50' }}
       className="group"
     >
-      <Card.Header pos="relative" py={1.5} borderBottom="1px solid" borderColor="gray.emphasized/50">
+      <Card.Header pos="relative" p={1.5} borderBottom="1px solid" borderColor="gray.emphasized/50">
         <Flex justify="space-between" align="center" gap={2}>
-          <Text fontSize="sm" fontWeight="semibold" flexShrink={1} truncate>
-            {funnel.name}
-          </Text>
+          <Flex align="center" gap={1.5} flexShrink={1} minW={0}>
+            <Flex
+              align="center"
+              justify="center"
+              flexShrink={0}
+              boxSize="18px"
+              bg="gray.subtle"
+              rounded="4px"
+              color="gray.fg"
+              overflow="hidden"
+              fontSize="sm"
+            >
+              {icon}
+            </Flex>
+            <Text fontSize="sm" fontWeight="semibold" truncate>
+              {funnel.name}
+            </Text>
+          </Flex>
           <Tooltip
             content={`${formatPercentage(completedPercentage)} of ${
               activeUsersVisible ? 'all active users' : 'users that entered this funnel, also'

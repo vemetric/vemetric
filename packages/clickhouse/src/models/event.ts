@@ -226,8 +226,16 @@ export const clickhouseEvent = {
     cursor?: string;
     startDate?: Date;
     date?: string; // YYYY-MM-DD format
+    filterConfig?: IFilterConfig;
   }): Promise<Array<ClickhouseEvent & { isOnline: boolean }>> => {
-    const { projectId, userId, limit = EVENT_LIMIT, cursor, startDate, date } = props;
+    const { projectId, userId, limit = EVENT_LIMIT, cursor, startDate, date, filterConfig } = props;
+
+    // Build filter queries using the existing filter system
+    const { filterQueries } = filterConfig
+      ? getEventFilterQueries({
+          filterConfig,
+        })
+      : { filterQueries: '' };
 
     const cursorClause = cursor ? ` AND createdAt < ${escape(cursor)}` : '';
     const dateClause = date ? ` AND toDate(createdAt) = '${date}'` : '';
@@ -241,6 +249,7 @@ export const clickhouseEvent = {
         WHERE projectId = ${escape(projectId)} 
         AND userId = ${escape(userId)}${cursorClause}${dateClause}
         ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+        ${filterQueries || ''}
         GROUP BY id 
         HAVING sum(sign) > 0 
         ORDER BY eventTime DESC 
@@ -265,14 +274,16 @@ export const clickhouseEvent = {
       filterConfig: IFilterConfig,
       sortConfig: IUserSortConfig,
       startDate?: Date,
+      search?: string,
     ) => {
       const userFilterQueries = filterConfig?.operator === 'and' ? buildUserFilterQueries(filterConfig) : '';
       const { joinClause, orderByClause, sortSelect, isSortByEvent } = buildUserSortQueries(sortConfig, projectId);
+      const searchQuery = search ? `AND displayName ILIKE ${escape('%' + search + '%')}` : '';
 
       const resultSet = await clickhouseClient.query({
-        query: `SELECT u.userId, u.identifier, u.displayName, u.countryCode, u.maxCreatedAt, u.isOnline${sortSelect}
+        query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.maxCreatedAt as maxCreatedAt, u.isOnline as isOnline, usr.avatarUrl as avatarUrl${sortSelect}
               FROM (
-                SELECT userId, 
+                SELECT userId,
                   argMax(userIdentifier, eventCreatedAt) as identifier,
                   argMax(userDisplayName, eventCreatedAt) as displayName,
                   argMax(countryCode, eventCreatedAt) as countryCode,
@@ -294,7 +305,16 @@ export const clickhouseEvent = {
                   ${userFilterQueries ? `AND (${userFilterQueries})` : ''}
                 GROUP BY userId
               ) u
+              LEFT JOIN (
+                SELECT id, argMax(avatarUrl, updatedAt) as avatarUrl
+                FROM user
+                WHERE projectId=${escape(projectId)}
+                GROUP BY id
+                HAVING argMax(deleted, updatedAt) = 0
+              ) usr ON u.userId = usr.id
               ${joinClause}
+              WHERE 1=1
+              ${searchQuery}
               ${orderByClause}
               LIMIT ${escape(pagination.limit)} OFFSET ${escape(pagination.offset)}`,
         format: 'JSONEachRow',
@@ -308,6 +328,7 @@ export const clickhouseEvent = {
           countryCode: row.countryCode as string,
           lastSeenAt: row[isSortByEvent ? 'lastEventFiredAt' : 'maxCreatedAt'] as string,
           isOnline: Boolean(row.isOnline),
+          avatarUrl: row.avatarUrl as string,
         };
       });
     },
@@ -319,6 +340,14 @@ export const clickhouseEvent = {
     });
     const result = (await resultSet.json()) as Array<any>;
     return result.length > 0 ? Number(result[0]['count()']) : 0;
+  }),
+  getActiveProjectsCountSince: withSpan('getActiveProjectsCountSince', async (sinceDate: Date) => {
+    const resultSet = await clickhouseClient.query({
+      query: `SELECT count(distinct projectId) as projects FROM ${TABLE_NAME} WHERE createdAt >= '${formatClickhouseDate(sinceDate)}'`,
+      format: 'JSONEachRow',
+    });
+    const result = (await resultSet.json()) as Array<any>;
+    return result.length > 0 ? Number(result[0]['projects']) : 0;
   }),
   getEventsCountAcrossAllProjects: withSpan('getEventsCountAcrossAllProjects', async () => {
     const resultSet = await clickhouseClient.query({
@@ -812,7 +841,7 @@ export const clickhouseEvent = {
 
       const cursorClause = cursor ? ` AND createdAt < ${escape(cursor)}` : '';
 
-      // Build filter queries using the existing filter system, excluding 'page' filters since events page doesn't show page views
+      // Build filter queries using the existing filter system
       const { filterQueries } = filterConfig
         ? getEventFilterQueries({
             filterConfig,
@@ -821,8 +850,15 @@ export const clickhouseEvent = {
 
       const resultSet = await clickhouseClient.query({
         query: `
-          SELECT ${EVENT_KEY_SELECTOR}, max(createdAt) as eventTime
+          SELECT ${EVENT_KEY_SELECTOR}, max(createdAt) as eventTime, any(usr.avatarUrl) as avatarUrl
           FROM ${TABLE_NAME} 
+          LEFT JOIN (
+            SELECT id, argMax(avatarUrl, updatedAt) as avatarUrl
+            FROM user
+            WHERE projectId=${escape(projectId)}
+            GROUP BY id
+            HAVING argMax(deleted, updatedAt) = 0
+          ) usr ON userId = usr.id
           WHERE projectId = ${escape(projectId)}${cursorClause}
           ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
           AND isPageView <> 1
@@ -835,7 +871,7 @@ export const clickhouseEvent = {
       });
 
       const rows = (await resultSet.json()) as Array<any>;
-      return rows.map(mapRowToEvent);
+      return rows.map((event) => ({ ...mapRowToEvent(event), userAvatarUrl: event.avatarUrl }));
     },
   ),
 

@@ -1,10 +1,12 @@
-import { Box, Popover, Portal } from '@chakra-ui/react';
-import EmojiPicker from 'emoji-picker-react';
+import { Popover, Portal } from '@chakra-ui/react';
+import EmojiPicker, { Theme } from 'emoji-picker-react';
 import { useState } from 'react';
 import { TbBolt, TbEye, TbExternalLink } from 'react-icons/tb';
 import { useProjectContext } from '@/contexts/project-context';
 import type { CardIconProps } from './card-icon';
 import { CardIcon } from './card-icon';
+import { CustomIconStyle } from './custom-icon-style';
+import { useColorMode } from './ui/color-mode';
 import { MenuContent, MenuContextTrigger, MenuItem, MenuRoot } from './ui/menu';
 
 interface Props extends CardIconProps {
@@ -12,6 +14,7 @@ interface Props extends CardIconProps {
 }
 
 export const EventIconButton = ({ name, ...props }: Props) => {
+  const { colorMode } = useColorMode();
   const { eventIcons, setEventIcon, removeEventIcon } = useProjectContext();
   const contextEmoji = eventIcons[name];
   const [emojiPopoverOpen, setEmojiPopoverOpen] = useState(false);
@@ -32,11 +35,7 @@ export const EventIconButton = ({ name, ...props }: Props) => {
   }
 
   if (contextEmoji) {
-    icon = (
-      <Box transform="scale(0.85)" filter="grayscale(0.3)" opacity={0.9}>
-        {contextEmoji}
-      </Box>
-    );
+    icon = <CustomIconStyle transform="scale(0.85)">{contextEmoji}</CustomIconStyle>;
   } else {
     icon = <TbBolt />;
   }
@@ -75,6 +74,7 @@ export const EventIconButton = ({ name, ...props }: Props) => {
           <Popover.Content onClick={(e) => e.stopPropagation()} rounded="lg">
             {emojiPopoverOpen && (
               <EmojiPicker
+                theme={colorMode === 'dark' ? Theme.DARK : Theme.LIGHT}
                 skinTonesDisabled
                 onEmojiClick={(emoji) => {
                   setEventIcon(name, emoji.emoji);

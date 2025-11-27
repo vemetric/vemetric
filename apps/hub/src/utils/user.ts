@@ -27,6 +27,7 @@ export function getRedisUserIdentifyKey(projectId: bigint, identifier: string) {
 export const identifySchema = z.object({
   identifier: z.string().min(1),
   displayName: z.string().optional(),
+  avatarUrl: z.string().optional(),
   data: updateUserDataModel.optional(),
 });
 export type IdentifySchema = z.infer<typeof identifySchema>;
@@ -37,10 +38,10 @@ export async function identifyUser(
   projectId: bigint,
   userId: bigint | null,
 ) {
-  const { allowCookies, ipAddress } = context.var;
+  const { allowCookies, geoData } = context.var;
 
-  const { identifier, displayName } = body;
-  logInfo({ projectId: String(projectId), userId: String(userId), identifier }, 'start identifying user');
+  const { identifier, displayName, avatarUrl } = body;
+  logInfo({ projectId: String(projectId), userId: String(userId), identifier, avatarUrl }, 'start identifying user');
 
   const { set, setOnce } = body.data ?? {};
   const now = formatClickhouseDate(new Date());
@@ -58,6 +59,7 @@ export async function identifyUser(
         userId: String(userId),
         updatedAt: now,
         displayName,
+        avatarUrl,
         data: body.data,
       });
 
@@ -97,9 +99,10 @@ export async function identifyUser(
         projectId: String(projectId),
         userId: String(userId),
         createdAt: now,
-        ipAddress,
+        geoData,
         identifier,
         displayName: displayName ?? '',
+        avatarUrl: avatarUrl || '',
         data: { ...set, ...setOnce },
       },
       {
@@ -118,6 +121,7 @@ export async function identifyUser(
       userId: String(newUserId),
       updatedAt: now,
       displayName,
+      avatarUrl,
       data: body.data,
     });
 

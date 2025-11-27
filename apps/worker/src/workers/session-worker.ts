@@ -1,9 +1,11 @@
+import { getGeoDataFromIp } from '@vemetric/common/geo';
 import { sessionQueueName } from '@vemetric/queues/queue-names';
 import type { SessionQueueProps } from '@vemetric/queues/session-queue';
 import { Worker } from 'bullmq';
 import type { ClickhouseUser } from 'clickhouse';
 import { clickhouseSession, clickhouseUser } from 'clickhouse';
 import { getDeviceDataFromHeaders } from '../utils/device';
+import { logger } from '../utils/logger';
 import { getReferrerFromRequest } from '../utils/referrer';
 import { getSessionData, increaseClickhouseSessionDuration } from '../utils/session';
 import { getUrlParams } from '../utils/url';
@@ -24,7 +26,7 @@ export async function initSessionWorker() {
           return;
         }
 
-        const { ipAddress, headers, url, reqIdentifier, reqDisplayName } = job.data;
+        const { ipAddress, geoData, headers, url, reqIdentifier, reqDisplayName } = job.data;
 
         const user: ClickhouseUser | null = await clickhouseUser.findById(projectId, userId);
         const userIdentifier = user?.identifier ?? reqIdentifier;
@@ -36,7 +38,11 @@ export async function initSessionWorker() {
 
         const deviceData = await getDeviceDataFromHeaders(headers);
 
-        const sessionData = await getSessionData(ipAddress, user, deviceData);
+        const sessionData = await getSessionData(
+          geoData || (ipAddress ? await getGeoDataFromIp(ipAddress, logger, 5000) : undefined),
+          user,
+          deviceData,
+        );
 
         await clickhouseSession.insert([
           {

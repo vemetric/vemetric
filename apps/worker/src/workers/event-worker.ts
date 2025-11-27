@@ -1,10 +1,12 @@
 import { EventNames } from '@vemetric/common/event';
+import { getGeoDataFromIp } from '@vemetric/common/geo';
 import type { EventQueueProps } from '@vemetric/queues/event-queue';
 import { eventQueueName } from '@vemetric/queues/queue-names';
 import { Worker } from 'bullmq';
 import type { ClickhouseUser } from 'clickhouse';
 import { clickhouseEvent, clickhouseUser, getDeviceId } from 'clickhouse';
 import { getDeviceDataFromHeaders } from '../utils/device';
+import { logger } from '../utils/logger';
 import { getReferrerFromRequest } from '../utils/referrer';
 import { getSessionData } from '../utils/session';
 import { getUrlParams } from '../utils/url';
@@ -22,6 +24,7 @@ export async function initEventWorker() {
         url,
         name,
         ipAddress,
+        geoData,
         reqIdentifier,
         reqDisplayName,
         headers,
@@ -42,7 +45,11 @@ export async function initEventWorker() {
 
       const deviceData = await getDeviceDataFromHeaders(headers);
 
-      const sessionData = await getSessionData(ipAddress, user, deviceData);
+      const sessionData = await getSessionData(
+        geoData || (ipAddress ? await getGeoDataFromIp(ipAddress, logger, 5000) : undefined),
+        user,
+        deviceData,
+      );
 
       // store device and event
       const deviceId = getDeviceId(projectId, userId, deviceData);

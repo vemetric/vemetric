@@ -16,6 +16,7 @@ import {
   Bar,
 } from 'recharts';
 import type { AxisDomain } from 'recharts/types/util/types';
+import { DeleteIconButton } from '@/components/delete-icon-button';
 import type { ChartCategoryKey } from '@/components/pages/dashboard/chart-category-card';
 import {
   CHART_CATEGORIES,
@@ -27,10 +28,10 @@ import { MenuContent, MenuRoot, MenuTrigger, MenuItem } from '@/components/ui/me
 import { Status } from '@/components/ui/status';
 import { Tooltip } from '@/components/ui/tooltip';
 import type { DashboardData } from '@/utils/trpc';
-import { DashboardChartDataMissing } from './charts/chart-missing-data';
+import { ChartTooltip } from './chart-tooltip';
 import { getTimespanInterval, getYAxisDomain, transformChartSeries } from './charts/chart-helpers';
+import { DashboardChartDataMissing } from './charts/chart-missing-data';
 // import { DashboardChartEventCounter } from './charts/chart-event-counter';
-import { DeleteIconButton } from '@/components/delete-icon-button';
 
 // ========================================================= //
 // ================= Props / Types ========================= //
@@ -384,25 +385,7 @@ export const DashboardChart = (props: Props) => {
                         : [];
 
                       return active ? (
-                        <Box
-                          border="1px solid"
-                          borderColor="purple.emphasized"
-                          rounded="lg"
-                          bg="bg"
-                          minW="140px"
-                          overflow="hidden"
-                          boxShadow="sm"
-                        >
-                          <Box
-                            px={3}
-                            py={2}
-                            borderBottom="1px solid"
-                            borderColor="purple.muted"
-                            fontWeight="semibold"
-                            bg="purple.subtle"
-                          >
-                            {label} {showEndDate && `- ${payload?.[0]?.payload?.endDate}`}
-                          </Box>
+                        <ChartTooltip label={`${label}${showEndDate ? ` - ${payload?.[0]?.payload?.endDate}` : ''}`}>
                           {cleanPayload.map(({ rawKey, categoryKey, value, isDashed }) => {
                             const category = CHART_CATEGORY_MAP[categoryKey as ChartCategoryKey];
                             return (
@@ -423,7 +406,7 @@ export const DashboardChart = (props: Props) => {
                               </Flex>
                             );
                           })}
-                        </Box>
+                        </ChartTooltip>
                       ) : null;
                     }}
                   />

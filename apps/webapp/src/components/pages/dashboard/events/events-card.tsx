@@ -17,6 +17,7 @@ import {
 } from 'react-icons/tb';
 import { isDeepEqual } from 'remeda';
 import { CardIcon } from '@/components/card-icon';
+import { CustomIconStyle } from '@/components/custom-icon-style';
 import { NumberCounter } from '@/components/number-counter';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -46,11 +47,9 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
   const { timespan, startDate, endDate } = useTimespanParam({
     from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
   });
-  const {
-    e: showEvents,
-    se: selectedEvent,
-    ep: selectedProperty,
-  } = useSearch({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
+  const { e: showEvents, me: selectedEvent } = useSearch({
+    from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
+  });
   const [page, setPage] = useState(1);
   const { toggleFilter } = useFilters({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
   const navigate = useNavigate({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
@@ -58,7 +57,7 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
 
   const selectEvent = (eventName: string | null, property?: string | null) => {
     navigate({
-      search: (prev) => ({ ...prev, se: eventName ?? undefined, ep: property ?? undefined }),
+      search: (prev) => ({ ...prev, me: eventName ? { n: eventName, p: property ?? undefined } : undefined }),
       resetScroll: false,
     });
   };
@@ -108,7 +107,7 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
           </Button>
         </Flex>
       </DashboardCardHeader>
-      <Card.Body pos="relative" overflow="hidden">
+      <Card.Body pos="relative" overflow="hidden" css={{ '& > div': { h: '100%' } }}>
         <AnimatePresence initial={false} mode="popLayout">
           {selectedEvent === undefined ? (
             <motion.div key="list" {...getMotionViewProps(true)}>
@@ -119,7 +118,7 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
                 error={error}
                 emptyState={
                   <EmptyState icon={<TbBolt />} title="No custom events fired in the selected timeframe">
-                    <Button asChild mt={4} _hover={{ textDecoration: 'none' }}>
+                    <Button size="sm" asChild mt={2} _hover={{ textDecoration: 'none' }}>
                       <ChakraLink
                         href="https://vemetric.com/docs/product-analytics/tracking-custom-events"
                         target="_blank"
@@ -155,11 +154,7 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
                     if (event.name === '$$outboundLink') {
                       icon = <TbExternalLink />;
                     } else if (eventIcons[event.name]) {
-                      icon = (
-                        <Box transform="scale(0.8)" filter="grayscale(0.3)" opacity={0.9}>
-                          {eventIcons[event.name]}
-                        </Box>
-                      );
+                      icon = <CustomIconStyle transform="scale(0.8)">{eventIcons[event.name]}</CustomIconStyle>;
                     }
 
                     return (
@@ -267,23 +262,23 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
             </motion.div>
           ) : (
             <motion.div key="event" {...getMotionViewProps(false)}>
-              {selectedProperty === undefined ? (
+              {selectedEvent.p === undefined ? (
                 <EventPropertiesView
                   publicDashboard={publicDashboard}
-                  eventName={selectedEvent}
+                  eventName={selectedEvent.n}
                   onBack={() => selectEvent(null)}
-                  onSelectProperty={(property) => selectEvent(selectedEvent, property)}
+                  onSelectProperty={(property) => selectEvent(selectedEvent.n, property)}
                 />
               ) : (
                 <PropertyView
                   publicDashboard={publicDashboard}
-                  eventName={selectedEvent}
-                  property={selectedProperty}
+                  eventName={selectedEvent.n}
+                  property={selectedEvent.p}
                   onBack={(to) => {
                     if (to === 'list') {
                       selectEvent(null);
                     } else {
-                      selectEvent(selectedEvent, null);
+                      selectEvent(selectedEvent.n, null);
                     }
                   }}
                 />

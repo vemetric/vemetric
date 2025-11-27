@@ -4,11 +4,12 @@ import { getUserInitials } from '@/utils/avatar-colors';
 
 interface Props extends FlexProps {
   displayName?: string;
+  avatarUrl?: string;
   identifier?: string;
   id: string;
 }
 
-export const UserAvatar = ({ displayName, identifier, id, ...props }: Props) => {
+export const UserAvatar = ({ displayName, avatarUrl, identifier, id, ...props }: Props) => {
   return (
     <Flex
       pos="relative"
@@ -25,12 +26,16 @@ export const UserAvatar = ({ displayName, identifier, id, ...props }: Props) => 
       {...props}
     >
       <Image
-        src={`https://api.dicebear.com/9.x/glass/svg?seed=${encodeURIComponent(id.trim())}`}
+        src={avatarUrl || `https://api.dicebear.com/9.x/glass/svg?seed=${encodeURIComponent(id.trim())}`}
         alt={displayName || identifier}
+        boxSize="100%"
+        objectFit="cover"
       />
-      <Flex pos="absolute" inset={0} bg="blackAlpha.400" justify="center" align="center">
-        {getUserInitials(displayName, identifier)}
-      </Flex>
+      {!avatarUrl && (
+        <Flex pos="absolute" inset={0} bg="blackAlpha.400" justify="center" align="center">
+          {getUserInitials(displayName, identifier)}
+        </Flex>
+      )}
     </Flex>
   );
 };

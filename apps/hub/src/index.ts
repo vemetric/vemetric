@@ -1,4 +1,5 @@
 import { formatClickhouseDate } from '@vemetric/common/date';
+import { EMPTY_GEO_DATA, getGeoDataFromIp } from '@vemetric/common/geo';
 import { getClientIp } from '@vemetric/common/request-ip';
 import { addToQueue } from '@vemetric/queues/queue-utils';
 import { updateUserDataModel, updateUserQueue } from '@vemetric/queues/update-user-queue';
@@ -53,12 +54,6 @@ app.use(
 );
 
 app.use('*', async (context, next) => {
-  const { req, text } = context;
-
-  if (isBot(req)) {
-    return text('', 200);
-  }
-
   let content = '';
   let url = '';
   try {
@@ -87,39 +82,66 @@ app.use('*', async (context, next) => {
   // TODO: let users specify allowed origins for their project
   const middleware = cors({ credentials: true, origin: req.header('origin') ?? '*' });
 
-  if (req.method !== 'OPTIONS' && req.path !== '/up') {
-    const project = await getProjectByToken(context);
-    context.set('project', project);
-    context.set('projectId', BigInt(project.id));
-
-    const ipAddress = getClientIp(context) ?? '';
-    context.set('ipAddress', ipAddress);
-
-    if (project.excludedIps && ipAddress) {
-      // Use comma-wrapped check to avoid array allocation on every request
-      if (`,${project.excludedIps},`.includes(`,${ipAddress},`)) {
-        // Silently ignore requests from excluded IPs
-        return context.text('', 200);
-      }
-    }
-
-    let allowCookies = false;
-    const allowCookiesHeader = req.header('allow-cookies');
-    if (allowCookiesHeader === undefined) {
-      try {
-        // we're falling back to reading it from the body because of beacon requests where we can't send it via the header
-        const body = await req.json();
-        allowCookies = body['Allow-Cookies'] === 'true';
-      } catch (err) {
-        logger.error({ err, 'req.path': req.path }, 'Failed to get allowCookies from body.');
-      }
-    } else {
-      allowCookies = allowCookiesHeader === 'true';
-    }
-    context.set('allowCookies', allowCookies);
-
-    context.set('proxyHost', req.header('V-Host'));
+  if (req.method === 'OPTIONS' || req.path === '/up') {
+    return middleware(context, next);
   }
+
+  let bodyData: any = {};
+  try {
+    bodyData = await req.json();
+  } catch {
+    // ignore json parse errors here
+  }
+
+  const isBackendRequest = typeof bodyData.userIdentifier === 'string';
+  context.set('isBackendRequest', isBackendRequest);
+
+  const ipAddress = getClientIp(context) ?? '';
+  context.set('ipAddress', ipAddress);
+
+  // for backend requests, we're defaulting to Empty Geo Data because we don't want to use the servers country in our analytics data
+  // in a later point we try to use the users Geo Data, but as default it should be Empty = Unknown
+  const geoData = isBackendRequest ? EMPTY_GEO_DATA : await getGeoDataFromIp(ipAddress, logger);
+  context.set('geoData', geoData);
+
+  if (isBot(context)) {
+    return context.text('', 200);
+  }
+
+  const project = await getProjectByToken(context, bodyData);
+  context.set('project', project);
+  context.set('projectId', BigInt(project.id));
+
+  if (project.excludedIps && ipAddress) {
+    // Use comma-wrapped check to avoid array allocation on every request
+    if (`,${project.excludedIps},`.includes(`,${ipAddress},`)) {
+      // Silently ignore requests from excluded IPs
+      return context.text('', 200);
+    }
+  }
+
+  if (project.excludedCountries && geoData.countryCode) {
+    if (`,${project.excludedCountries},`.includes(`,${geoData.countryCode},`)) {
+      // Silently ignore requests from excluded countries
+      return context.text('', 200);
+    }
+  }
+
+  let allowCookies = false;
+  const allowCookiesHeader = req.header('allow-cookies');
+  if (allowCookiesHeader === undefined) {
+    try {
+      // we're falling back to reading it from the body because of beacon requests where we can't send it via the header
+      allowCookies = bodyData['Allow-Cookies'] === 'true';
+    } catch (err) {
+      logger.error({ err, 'req.path': req.path }, 'Failed to get allowCookies from body.');
+    }
+  } else {
+    allowCookies = allowCookiesHeader === 'true';
+  }
+  context.set('allowCookies', allowCookies);
+
+  context.set('proxyHost', req.header('V-Host'));
 
   return middleware(context, next);
 });
@@ -167,7 +189,9 @@ app.post(
 );
 
 const updateUserDataSchema = z.object({
-  data: updateUserDataModel,
+  data: updateUserDataModel.optional(),
+  displayName: z.string().optional(),
+  avatarUrl: z.string().optional(),
 });
 
 app.post(
@@ -195,6 +219,8 @@ app.post(
         userId: String(userId),
         updatedAt: formatClickhouseDate(new Date()),
         data: body.data,
+        displayName: body.displayName,
+        avatarUrl: body.avatarUrl,
       },
       {
         delay: 2000, // we delay this a bit so that identification is done first

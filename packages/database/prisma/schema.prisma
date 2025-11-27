@@ -131,10 +131,11 @@ model Project {
   token           String    @unique @db.VarChar
   organizationId  String
   createdAt       DateTime  @default(now())
-  publicDashboard Boolean   @default(false)
-  eventIcons      Json      @default("{}")
-  firstEventAt    DateTime?
-  excludedIps     String?   @db.Text
+  publicDashboard   Boolean   @default(false)
+  eventIcons        Json      @default("{}")
+  firstEventAt      DateTime?
+  excludedIps       String?   @db.Text
+  excludedCountries String?   @db.Text
 
   users            UserProject[]
   organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -194,6 +195,7 @@ model Funnel {
   name      String   @db.VarChar
   projectId String
   steps     Json
+  icon      String?  @db.VarChar
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

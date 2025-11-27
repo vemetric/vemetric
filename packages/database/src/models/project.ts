@@ -11,7 +11,6 @@ export const dbProject = {
   addUser: (projectId: string, userId: string, role: ProjectRole) =>
     prismaClient.userProject.create({ data: { projectId, userId, role } }),
   findAll: () => prismaClient.project.findMany(),
-  countActive: () => prismaClient.project.count({ where: { firstEventAt: { not: null } } }),
   findByUserId: (userId: string) =>
     prismaClient.userProject.findMany({
       where: { userId },
@@ -36,7 +35,16 @@ export const dbProject = {
     prismaClient.project.findMany({
       where: { organizationId },
     }),
-  update: (id: string, data: Partial<{ name: string; publicDashboard: boolean; eventIcons: Record<string, string>; excludedIps: string | null }>) =>
+  update: (
+    id: string,
+    data: Partial<{
+      name: string;
+      publicDashboard: boolean;
+      eventIcons: Record<string, string>;
+      excludedIps: string | null;
+      excludedCountries: string | null;
+    }>,
+  ) =>
     prismaClient.project.update({
       where: { id },
       data,

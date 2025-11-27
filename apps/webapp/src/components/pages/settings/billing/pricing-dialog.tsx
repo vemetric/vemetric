@@ -29,7 +29,6 @@ export const PricingDialog = ({ open, onOpenChange, currentPlan, organizationId 
   const [sliderValue, setSliderValue] = useState(currentPlan?.pricingPlanIndex ?? 0);
   const [updatePreviewData, setUpdatePreviewData] = useState<{
     immediateCharge: number;
-    nextCharge: number;
     nextBillingDate: string;
   } | null>(null);
 
@@ -239,15 +238,15 @@ export const PricingDialog = ({ open, onOpenChange, currentPlan, organizationId 
               <Dialog.Body>
                 <p>
                   You&apos;ll be charged{' '}
-                  <Tooltip content="Includes VAT if applicable">
+                  <Tooltip content="Excluding VAT (if applicable)">
                     <Text as="strong" borderBottom="2px dashed" borderColor="fg.subtle">
                       ${updatePreviewData.immediateCharge}
                     </Text>
                   </Tooltip>{' '}
                   immediately and{' '}
-                  <Tooltip content="Includes VAT if applicable">
+                  <Tooltip content="Excluding VAT (if applicable)">
                     <Text as="strong" borderBottom="2px dashed" borderColor="fg.subtle">
-                      ${updatePreviewData.nextCharge}
+                      ${pricingPlan.price}
                     </Text>
                   </Tooltip>{' '}
                   every following <strong>{isYearly ? 'year' : 'month'}</strong>.

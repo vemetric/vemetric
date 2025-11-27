@@ -47,6 +47,7 @@ interface Props {
     userId: string;
     userIdentifier?: string;
     userDisplayName?: string;
+    userAvatarUrl?: string;
   };
   previousEventId?: string;
   nextEventId?: string;
@@ -127,6 +128,7 @@ export const EventCard = ({ event, previousEventId, nextEventId }: Props) => {
                         id={event.userId}
                         displayName={event.userDisplayName}
                         identifier={event.userIdentifier}
+                        avatarUrl={event.userAvatarUrl}
                         boxSize="10px"
                         rounded="full"
                         color="transparent"
@@ -162,6 +164,7 @@ export const EventCard = ({ event, previousEventId, nextEventId }: Props) => {
                       <UserAvatar
                         id={event.userId}
                         displayName={event.userDisplayName}
+                        avatarUrl={event.userAvatarUrl}
                         identifier={event.userIdentifier}
                         boxSize="20px"
                         fontSize="xs"

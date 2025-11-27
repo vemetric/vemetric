@@ -111,6 +111,8 @@ app.use('*', async (context, next) => {
     }
   }
 
+  // for backend requests, we're defaulting to Empty Geo Data because we don't want to use the servers country in our analytics data
+  // in a later point we try to use the users Geo Data, but as default it should be Empty = Unknown
   const geoData = isBackendRequest ? EMPTY_GEO_DATA : await getGeoDataFromIp(ipAddress, logger);
   context.set('geoData', geoData);
 

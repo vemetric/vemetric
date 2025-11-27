@@ -50,7 +50,7 @@ jobs:
         run: bun install --filter webapp
 
       - name: Run Tests
-        run: cd apps/webapp && bun test
+        run: cd apps/webapp && bun run test
 
       - name: Build Frontend
         run: cd apps/webapp && bun run build

@@ -36,7 +36,7 @@ bun run build
 bun lint
 
 # Run tests
-bun test
+bun run test
 ```
 
 ## Key Technologies
@@ -83,7 +83,7 @@ Database packages:
 
 - **Framework**: Vitest for all packages
 - **Frontend Testing**: React Testing Library + jsdom
-- **Run tests**: `bun test` (all) or `cd apps/[app] && bun test` (specific)
+- **Run tests**: `bun run test` (all) or `cd apps/[app] && bun run test` (specific)
 
 ## Build & Deployment
 

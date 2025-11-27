@@ -107,7 +107,7 @@ Now Vemetric will track itself and you should see data flowing in on your Dashbo
 3. **Make your changes** - Write your code following our conventions
 4. **Run tests** - Ensure all tests pass:
    ```bash
-   bun test
+   bun run test
    ```
 5. **Lint your code** - Check for linting issues:
    ```bash
@@ -175,7 +175,7 @@ vemetric/
 
 ```bash
 # Run all tests
-bun test
+bun run test
 
 # Run tests for specific package
 bun --filter webapp test

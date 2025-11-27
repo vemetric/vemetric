@@ -42,6 +42,7 @@ export const dbProject = {
       publicDashboard: boolean;
       eventIcons: Record<string, string>;
       excludedIps: string | null;
+      excludedCountries: string | null;
     }>,
   ) =>
     prismaClient.project.update({

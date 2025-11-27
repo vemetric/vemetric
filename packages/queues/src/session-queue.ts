@@ -1,4 +1,5 @@
 import { Queue } from 'bullmq';
+import type { GeoData } from 'clickhouse';
 import { sessionQueueName } from './queue-names';
 import { defaultQueueConnection } from './queue-utils';
 
@@ -11,7 +12,8 @@ interface BaseProps {
 
 interface CreateOrExtendProps extends BaseProps {
   type: 'createOrExtend';
-  ipAddress: string;
+  ipAddress?: string; // TODO: only here for backwards compatibility, remove later
+  geoData: GeoData | undefined;
   headers: Record<string, string>;
   url?: string;
   reqIdentifier?: string;

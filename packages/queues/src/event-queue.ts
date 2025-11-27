@@ -1,4 +1,5 @@
 import { Queue } from 'bullmq';
+import type { GeoData } from 'clickhouse';
 import { eventQueueName } from './queue-names';
 import { defaultQueueConnection } from './queue-utils';
 
@@ -15,7 +16,8 @@ export interface EventQueueProps {
   url?: string;
   reqIdentifier?: string;
   reqDisplayName?: string;
-  ipAddress: string;
+  ipAddress?: string; // TODO: only here for backwards compatibility, remove later
+  geoData: GeoData | undefined;
 }
 
 export const eventQueue = new Queue<EventQueueProps>(eventQueueName, {

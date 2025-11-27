@@ -1,3 +1,5 @@
+export const MAX_EXCLUDED_COUNTRIES = 25;
+
 export const COUNTRIES = {
   AF: 'Afghanistan',
   AX: 'Aland Islands',

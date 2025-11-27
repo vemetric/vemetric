@@ -1,5 +1,5 @@
 import type { GeoData } from 'clickhouse';
-import { logger } from './logger';
+import type { Logger } from 'pino';
 
 interface GeoDataResponse {
   country: string;
@@ -16,21 +16,21 @@ interface GeoDataResponse {
   asnNetwork: string;
 }
 
-const EMPTY_GEO_DATA: GeoData = {
+export const EMPTY_GEO_DATA: GeoData = {
   countryCode: '',
   city: '',
   latitude: null,
   longitude: null,
 };
 
-export async function getGeoData(ipAddress: string): Promise<GeoData> {
+export async function getGeoDataFromIp(ipAddress: string, logger: Logger, timeout = 2000): Promise<GeoData> {
   if (!process.env.GEO_API) {
     return EMPTY_GEO_DATA;
   }
 
   try {
-    const result = (await fetch(`${process.env.GEO_API}/${ipAddress}`).then((res) =>
-      res.json(),
+    const result = (await fetch(`${process.env.GEO_API}/${ipAddress}`, { signal: AbortSignal.timeout(timeout) }).then(
+      (res) => res.json(),
     )) as GeoDataResponse | null;
 
     if (!result) {

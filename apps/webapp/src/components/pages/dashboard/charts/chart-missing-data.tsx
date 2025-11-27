@@ -1,6 +1,6 @@
-import { EmptyState } from '@/components/ui/empty-state';
 import { Flex } from '@chakra-ui/react';
 import { TbActivity } from 'react-icons/tb';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export const DashboardChartDataMissing = () => {
   return (

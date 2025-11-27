@@ -41,7 +41,6 @@ This section will help you set up Vemetric for local development.
 Before you begin, ensure you have the following installed:
 
 - **[Bun](https://bun.sh/)** (v1.2.15 or higher) - JavaScript runtime and toolkit
-- **[pnpm](https://pnpm.io/)** (v9.11.0 or higher) - Fast, disk space efficient package manager
 - **[Docker](https://www.docker.com/)** and **Docker Compose** - For running local services
 - **[Node.js](https://nodejs.org/)** (v20 or higher) - Required for some tooling
 
@@ -55,7 +54,6 @@ git clone https://github.com/vemetric/vemetric.git
 cd vemetric
 
 # 2. Install dependencies
-pnpm install
 bun install
 
 # 3. Start Docker services for local Development (PostgreSQL, Redis, ClickHouse)
@@ -69,14 +67,14 @@ docker-compose ps
 cp .env.example .env
 
 # 6. Run PostgreSQL migrations
-pnpm --filter database db:generate
-pnpm --filter database db:deploy
+bun --filter database db:generate
+bun --filter database db:deploy
 
 # 7. Run ClickHouse migrations
-pnpm --filter clickhouse migrate-local
+bun --filter clickhouse migrate-local
 
 # 8. Start the development servers
-pnpm dev
+bun dev
 ```
 
 By default, Vemetric boots up a Proxy for local development that runs at port 4050. It ensures all services run under the same base domain with different subdomains.
@@ -95,7 +93,7 @@ Now that Vemetric is running, you should signup at `http://app.vemetric.localhos
 
 Afterwards you'll be prompted to create an organization and a project (use `vemetric.localhost:4050` as domain for the project). After creating a project, copy the token you'll see in the Dashboard of the newly created project.
 
-Paste the token in the `VEMETRIC_TOKEN` variable of your `.env` file and restart the dev script with `pnpm dev`.
+Paste the token in the `VEMETRIC_TOKEN` variable of your `.env` file and restart the dev script with `bun dev`.
 
 Now Vemetric will track itself and you should see data flowing in on your Dashboard while navigating around. Now you can test Vemetric and see local code changes being reflected in the application.
 
@@ -109,15 +107,15 @@ Now Vemetric will track itself and you should see data flowing in on your Dashbo
 3. **Make your changes** - Write your code following our conventions
 4. **Run tests** - Ensure all tests pass:
    ```bash
-   pnpm test
+   bun test
    ```
 5. **Lint your code** - Check for linting issues:
    ```bash
-   pnpm lint
+   bun lint
    ```
 6. **Build the project** - Ensure it builds without errors:
    ```bash
-   pnpm build
+   bun build
    ```
 7. **Commit your changes** - Use clear, descriptive commit messages
 8. **Push to your fork** - Push your branch to GitHub
@@ -177,13 +175,13 @@ vemetric/
 
 ```bash
 # Run all tests
-pnpm test
+bun test
 
 # Run tests for specific package
-pnpm --filter webapp test
+bun --filter webapp test
 
 # Run tests in watch mode
-pnpm --filter webapp test:watch
+bun --filter webapp test:watch
 ```
 
 ### Writing Tests

@@ -41,25 +41,19 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install PNPM
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9.1.3
-          run_install: false
-
       - name: Install Bun
         uses: oven-sh/setup-bun@v1
         with:
-          bun-version: 1.1.38
+          bun-version: 1.3.3
 
       - name: Install Dependencies
-        run: pnpm i --filter webapp
+        run: bun install --filter webapp
 
       - name: Run Tests
-        run: cd apps/webapp && pnpm test
+        run: cd apps/webapp && bun test
 
       - name: Build Frontend
-        run: cd apps/webapp && pnpm build
+        run: cd apps/webapp && bun build
 
       - name: Deploy Frontend
         uses: cloudflare/pages-action@v1

@@ -106,7 +106,7 @@ export async function identifyUser(
         data: { ...set, ...setOnce },
       },
       {
-        jobId: `${String(projectId)}:${String(userId)}`,
+        jobId: `${String(projectId)}-${String(userId)}`,
       },
     );
   } else {
@@ -141,7 +141,7 @@ export async function identifyUser(
           displayName,
         },
         {
-          jobId: `${String(projectId)}:${oldUserId}:${String(newUserId)}:${fiveSecondRoundedDate.toISOString()}`,
+          jobId: `${String(projectId)}-${oldUserId}-${String(newUserId)}-${fiveSecondRoundedDate.toISOString()}`,
           delay: 6000,
         },
       );
@@ -155,7 +155,7 @@ export async function identifyUser(
         userId: String(newUserId),
       },
       {
-        jobId: `${String(projectId)}:${String(newUserId)}:${fiveSecondRoundedDate.toISOString()}`,
+        jobId: `${String(projectId)}-${String(newUserId)}-${fiveSecondRoundedDate.toISOString()}`,
         delay: 10000, // Delay to ensure user is created/updated first
       },
     );

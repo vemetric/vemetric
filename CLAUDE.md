@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Vemetric is an open-source web and product analytics platform built as a monorepo using Turborepo and pnpm workspaces. It provides real-time analytics, behavior tracking, custom event tracking, and powerful filtering mechanisms.
+Vemetric is an open-source web and product analytics platform built as a monorepo using Turborepo and bun. It provides real-time analytics, behavior tracking, custom event tracking, and powerful filtering mechanisms.
 
 ## Architecture
 
@@ -27,16 +27,16 @@ Vemetric is an open-source web and product analytics platform built as a monorep
 
 ```bash
 # Development (starts all services except health-check)
-pnpm dev
+bun dev
 
 # Build all applications and check for typescript issues
-pnpm build
+bun run build
 
 # Lint all applications
-pnpm lint
+bun lint
 
 # Run tests
-pnpm test
+bun run test
 ```
 
 ## Key Technologies
@@ -83,12 +83,12 @@ Database packages:
 
 - **Framework**: Vitest for all packages
 - **Frontend Testing**: React Testing Library + jsdom
-- **Run tests**: `pnpm test` (all) or `cd apps/[app] && pnpm test` (specific)
+- **Run tests**: `bun run test` (all) or `cd apps/[app] && bun run test` (specific)
 
 ## Build & Deployment
 
 - **Build System**: Turborepo orchestrates builds across all packages
-- **Package Manager**: pnpm with workspace support
+- **Package Manager**: bun
 - **Containerization**: Docker support available
 - **Hot Reload**: Bun's `--hot` flag for backend development
 

@@ -32,13 +32,13 @@ export async function addToQueue<DataType>(queue: Queue<DataType>, data: DataTyp
       ...options,
     });
     hasBeenOnline = true;
-  } catch (error) {
-    logger.error({ error }, 'Error adding job');
+  } catch (err) {
+    logger.error({ err }, 'Error adding job');
     await prismaClient.failedQueueJob.create({
       data: {
         queueName: queue.name,
         data: JSON.stringify(data),
-        error: JSON.stringify(error),
+        error: JSON.stringify(err),
       },
     });
   }

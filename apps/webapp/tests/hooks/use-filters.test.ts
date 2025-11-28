@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { FilterContextProvider } from '../../src/components/filter/filter-context';
 import { useFilters } from '../../src/hooks/use-filters';
 
-// Mock the useNavigate hook
+// Mock useNavigate hook
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: vi.fn(),
 }));

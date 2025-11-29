@@ -26,6 +26,7 @@ export const UserCardSelect = ({ publicDashboard }: Props) => {
           search: (prev) => {
             return { ...prev, u: undefined };
           },
+          params: (prev) => prev,
         });
       }}
     >
@@ -51,6 +52,7 @@ export const UserCardSelect = ({ publicDashboard }: Props) => {
                 search: (prev) => {
                   return { ...prev, u: value as 'devices' | 'os' };
                 },
+                params: (prev) => prev,
               });
             }}
           >

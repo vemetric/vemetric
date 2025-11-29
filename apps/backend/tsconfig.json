@@ -2,9 +2,10 @@
   "compilerOptions": {
     "esModuleInterop": true,
     "strict": true,
-    "jsx": "react",
+    "jsx": "react-jsx",
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "types": ["bun"]
+    "types": ["bun"],
+    "skipLibCheck": true
   }
 }

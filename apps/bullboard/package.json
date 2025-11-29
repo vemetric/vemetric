@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "bun --env-file=../../.env --env-file=.env run --hot src/index.ts",
     "start": "bun run src/index.ts",
-    "lint": "eslint . --max-warnings 0"
+    "lint": "eslint . --max-warnings 0",
+    "tsc": "tsc --noEmit"
   },
   "dependencies": {
     "@bull-board/api": "^6.9.0",
@@ -20,7 +21,7 @@
     "redis": "^4.6.12"
   },
   "devDependencies": {
-    "@types/bun": "^1.2.0",
+    "@types/bun": "1.2.23",
     "@vemetric/eslint-config": "workspace:*",
     "typescript": "^5.7.3"
   }

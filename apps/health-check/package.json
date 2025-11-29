@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "start": "bun run src/index.ts",
-    "lint": "eslint . --max-warnings 0"
+    "lint": "eslint . --max-warnings 0",
+    "tsc": "tsc --noEmit"
   },
   "dependencies": {
     "@clickhouse/client": "^1.11.0",
@@ -15,7 +16,7 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "@types/bun": "^1.2.0",
+    "@types/bun": "1.2.23",
     "@vemetric/eslint-config": "workspace:*",
     "typescript": "^5.7.3"
   }

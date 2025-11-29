@@ -179,7 +179,7 @@ export const DashboardChart = (props: Props) => {
 
   const handleLiveClick = (event: React.MouseEvent<HTMLDivElement>) => {
     event.stopPropagation();
-    navigate({ search: (prev) => ({ ...prev, t: 'live' }) });
+    navigate({ search: (prev) => ({ ...prev, t: 'live' }), params: (prev) => prev });
   };
 
   const eventCategory = CHART_CATEGORY_MAP.events;
@@ -267,7 +267,7 @@ export const DashboardChart = (props: Props) => {
             </Text>
             <DeleteIconButton
               onClick={() => {
-                navigate({ search: (prev) => ({ ...prev, e: undefined }), resetScroll: false });
+                navigate({ search: (prev) => ({ ...prev, e: undefined }), params: (prev) => prev, resetScroll: false });
               }}
             />
           </Flex>

@@ -2,7 +2,6 @@ import { render } from '@react-email/render';
 import { Message } from 'postmark';
 import type { MessageSendingResponse } from 'postmark/dist/client/models';
 import type { ComponentProps } from 'react';
-import * as React from 'react';
 import { postmarkClient } from './postmark-client';
 import EmailVerificationMail from '../emails/email-verification';
 import PasswordResetMail from '../emails/password-reset';

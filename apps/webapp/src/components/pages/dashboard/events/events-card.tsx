@@ -58,6 +58,7 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
   const selectEvent = (eventName: string | null, property?: string | null) => {
     navigate({
       search: (prev) => ({ ...prev, me: eventName ? { n: eventName, p: property ?? undefined } : undefined }),
+      params: (prev) => prev,
       resetScroll: false,
     });
   };
@@ -98,6 +99,7 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
             onClick={() =>
               navigate({
                 search: (prev) => ({ ...prev, e: showEvents ? undefined : true }),
+                params: (prev) => prev,
                 resetScroll: false,
               })
             }

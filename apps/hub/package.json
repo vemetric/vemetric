@@ -8,6 +8,7 @@
     "build": "tsc --noEmit --skipLibCheck",
     "start": "bun run src/index.ts",
     "lint": "eslint . --max-warnings 0",
+    "tsc": "tsc --noEmit",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "fetch-bots": "bun fetch-bots.ts",
     "test": "vitest run",
@@ -26,10 +27,10 @@
     "pino-pretty": "^13.0.0",
     "redis": "^4.6.12",
     "remeda": "^1.61.0",
-    "zod": "3.23.6"
+    "zod": "3.24.2"
   },
   "devDependencies": {
-    "@types/bun": "^1.2.0",
+    "@types/bun": "1.2.23",
     "@types/js-yaml": "^4.0.9",
     "@vemetric/eslint-config": "workspace:*",
     "js-yaml": "^4.1.0",

@@ -14,7 +14,7 @@
     "bullmq": "^5.41.5",
     "database": "workspace:*",
     "ioredis": "^5.6.1",
-    "zod": "3.23.6"
+    "zod": "3.24.2"
   },
   "devDependencies": {
     "@vemetric/eslint-config": "workspace:*"

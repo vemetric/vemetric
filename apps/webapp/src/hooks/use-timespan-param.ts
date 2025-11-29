@@ -22,10 +22,12 @@ export const useTimespanParam = ({ from }: Props) => {
     sd?: string;
     ed?: string;
   };
+  const hasAnyParam = Boolean(t || sd || ed);
+
   const storedTimeSpanData = getStoredTimespanData();
   const timespan = t ?? storedTimeSpanData.timespan ?? '24hrs';
-  const startDate = sd ?? storedTimeSpanData.startDate;
-  const endDate = ed ?? storedTimeSpanData.endDate;
+  const startDate = sd ?? (hasAnyParam ? undefined : storedTimeSpanData.startDate);
+  const endDate = ed ?? (hasAnyParam ? undefined : storedTimeSpanData.endDate);
 
   useEffect(() => {
     if (t !== timespan || sd !== startDate || ed !== endDate) {

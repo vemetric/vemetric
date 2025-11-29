@@ -30,6 +30,7 @@ const LOCALE = 'de-DE';
 class DateTimeFormatter {
   private _monthFormatter?: Intl.DateTimeFormat;
   private _monthYearFormatter?: Intl.DateTimeFormat;
+  private _dateTimeShortFormatter?: Intl.DateTimeFormat;
   private _dateTimeFormatter?: Intl.DateTimeFormat;
   private _dateFormatter?: Intl.DateTimeFormat;
   private _timeFormatter?: Intl.DateTimeFormat;
@@ -38,6 +39,7 @@ class DateTimeFormatter {
   constructor() {
     this.formatMonth = this.formatMonth.bind(this);
     this.formatMonthYear = this.formatMonthYear.bind(this);
+    this.formatDateTimeShort = this.formatDateTimeShort.bind(this);
     this.formatDateTime = this.formatDateTime.bind(this);
     this.formatDate = this.formatDate.bind(this);
     this.formatTime = this.formatTime.bind(this);
@@ -75,6 +77,19 @@ class DateTimeFormatter {
     }
 
     return this._dateTimeFormatter;
+  }
+
+  private get dateTimeShortFormatter() {
+    if (!this._dateTimeShortFormatter) {
+      this._dateTimeShortFormatter = new Intl.DateTimeFormat(LOCALE, {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    }
+    return this._dateTimeShortFormatter;
   }
 
   private get dateFormatter() {
@@ -118,6 +133,12 @@ class DateTimeFormatter {
     const date = this.prepareDate(value);
 
     return this.dateTimeFormatter.format(date);
+  }
+
+  formatDateTimeShort(value: string | Date) {
+    const date = this.prepareDate(value);
+
+    return this.dateTimeShortFormatter.format(date);
   }
 
   formatDate(value: string | Date) {

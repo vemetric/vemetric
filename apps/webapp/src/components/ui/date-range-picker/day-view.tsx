@@ -52,6 +52,10 @@ export const DayView = (props: Props) => {
                         bg: 'gray.emphasized/70',
                       }}
                       css={{
+                        '&[data-today]': {
+                          border: '1px solid',
+                          borderColor: 'gray.muted',
+                        },
                         '&[data-in-hover-range], &[data-in-range]': {
                           bg: 'gray.muted/40',
                           rounded: 'none',

@@ -4,6 +4,7 @@ import { useNavigate, useSearch } from '@tanstack/react-router';
 import type { ChartInterval, TimeSpan } from '@vemetric/common/charts/timespans';
 import { getCustomDateRangeInterval, TIME_SPAN_DATA } from '@vemetric/common/charts/timespans';
 import { formatNumber } from '@vemetric/common/math';
+import { isSameDay } from 'date-fns';
 import React, { useState } from 'react';
 import { TbActivity } from 'react-icons/tb';
 import {
@@ -45,7 +46,7 @@ export const getTimespanInterval = (timespan: TimeSpan, _startDate?: string, _en
 };
 
 export const getYAxisDomain = (autoMinValue: boolean, minValue?: number | undefined, maxValue?: number | undefined) => {
-  const minDomain = autoMinValue ? 'auto' : (minValue ?? 0);
+  const minDomain = autoMinValue ? 'auto' : minValue ?? 0;
   const maxDomain = maxValue ?? 'auto';
   return [minDomain, maxDomain];
 };
@@ -55,7 +56,14 @@ export function transformChartSeries(
   interval: ChartInterval,
   timespan: TimeSpan,
 ) {
-  return data?.map((entry) => {
+  if (!data || data.length === 0) {
+    return [];
+  }
+
+  const firstStartTime = new Date(data[0].date);
+  const lastStartTime = new Date(data[data.length - 1].date);
+
+  return data.map((entry) => {
     const startDate = new Date(entry.date);
     const endDate = new Date(startDate);
 
@@ -69,6 +77,10 @@ export function transformChartSeries(
         endDate.setMinutes(startDate.getMinutes() + 9);
         break;
       case 'hourly':
+        if (!isSameDay(firstStartTime, lastStartTime)) {
+          formatMethod = 'formatDateTimeShort';
+        }
+
         endDate.setMinutes(startDate.getMinutes() + 59);
         break;
       case 'daily':

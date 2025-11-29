@@ -1,7 +1,7 @@
 FROM node:20.9.0-slim AS base
 # OpenSSL required for prisma
 RUN apt-get update && apt-get install -y openssl curl
-RUN npm i -g bun@1.3.3
+RUN npm i -g bun@1.2.23
 
 
 FROM base AS install

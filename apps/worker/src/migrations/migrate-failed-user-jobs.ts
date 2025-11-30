@@ -1,13 +1,13 @@
-/* eslint-disable no-console */
 import { createUserQueue, type CreateUserQueueProps } from '@vemetric/queues/create-user-queue';
 import type { EnrichUserQueueProps } from '@vemetric/queues/enrich-user-queue';
 import { enrichUserQueue } from '@vemetric/queues/enrich-user-queue';
 import { mergeUserQueue, type MergeUserQueueProps } from '@vemetric/queues/merge-user-queue';
 import { addToQueue } from '@vemetric/queues/queue-utils';
 import { prismaClient } from 'database';
+import { logger } from '../utils/logger';
 
 async function migrateCreateUserJobs() {
-  console.log('Starting migration of failed create user jobs...');
+  logger.info('Starting migration of failed create user jobs...');
 
   const failedJobs = await prismaClient.failedQueueJob.findMany({
     where: {
@@ -17,7 +17,7 @@ async function migrateCreateUserJobs() {
   });
   const migratedJobIds = new Set<string>();
 
-  console.log('Found ' + failedJobs.length + ' failed create-user jobs.');
+  logger.info('Found ' + failedJobs.length + ' failed create-user jobs.');
   for (const job of failedJobs) {
     try {
       const jobData: CreateUserQueueProps | null = typeof job.data === 'string' ? JSON.parse(job.data) : null;
@@ -29,23 +29,23 @@ async function migrateCreateUserJobs() {
       if (migratedJobIds.has(jobId)) {
         continue;
       }
-      console.log('Re-queuing create-user job', { projectId: jobData.projectId, userId: jobData.userId });
+      logger.info({ projectId: jobData.projectId, userId: jobData.userId }, 'Re-queuing create-user job');
       migratedJobIds.add(jobId);
 
       await addToQueue(createUserQueue, jobData, {
         jobId: `${jobId}-${new Date().toISOString()}`,
       });
-      console.log('Successfully re-queued create-user job', { projectId: jobData.projectId, userId: jobData.userId });
+      logger.info({ projectId: jobData.projectId, userId: jobData.userId }, 'Successfully re-queued create-user job');
     } catch (err) {
-      console.error('Failed to re-queue create-user job', { jobId: job.id, err });
+      logger.error({ jobId: job.id, err }, 'Failed to re-queue create-user job');
     }
   }
 
-  console.log(`Create user job migration completed, migrated ${migratedJobIds.size} jobs.`);
+  logger.info(`Create user job migration completed, migrated ${migratedJobIds.size} jobs.`);
 }
 
 async function migrateMergeUserJobs() {
-  console.log('Starting migration of failed merge user jobs...');
+  logger.info('Starting migration of failed merge user jobs...');
 
   const failedJobs = await prismaClient.failedQueueJob.findMany({
     where: {
@@ -55,7 +55,7 @@ async function migrateMergeUserJobs() {
   });
   const migratedJobIds = new Set<string>();
 
-  console.log('Found ' + failedJobs.length + ' failed create-user jobs.');
+  logger.info('Found ' + failedJobs.length + ' failed create-user jobs.');
   for (const job of failedJobs) {
     try {
       const jobData: MergeUserQueueProps | null = typeof job.data === 'string' ? JSON.parse(job.data) : null;
@@ -67,31 +67,29 @@ async function migrateMergeUserJobs() {
       if (migratedJobIds.has(jobId)) {
         continue;
       }
-      console.log('Re-queuing merge-user job', {
-        projectId: jobData.projectId,
-        oldUserId: jobData.oldUserId,
-        newUserId: jobData.newUserId,
-      });
+      logger.info(
+        { projectId: jobData.projectId, oldUserId: jobData.oldUserId, newUserId: jobData.newUserId },
+        'Re-queuing merge-user job',
+      );
       migratedJobIds.add(jobId);
 
       await addToQueue(mergeUserQueue, jobData, {
         jobId: `${jobId}-${new Date().toISOString()}`,
       });
-      console.log('Successfully re-queued merge-user job', {
-        projectId: jobData.projectId,
-        oldUserId: jobData.oldUserId,
-        newUserId: jobData.newUserId,
-      });
+      logger.info(
+        { projectId: jobData.projectId, oldUserId: jobData.oldUserId, newUserId: jobData.newUserId },
+        'Successfully re-queued merge-user job',
+      );
     } catch (err) {
-      console.error('Failed to re-queue merge-user job', { jobId: job.id, err });
+      logger.error({ jobId: job.id, err }, 'Failed to re-queue merge-user job');
     }
   }
 
-  console.log(`Merge user job migration completed, migrated ${migratedJobIds.size} jobs.`);
+  logger.info(`Merge user job migration completed, migrated ${migratedJobIds.size} jobs.`);
 }
 
 async function migrateEnrichUserJobs() {
-  console.log('Starting migration of failed enrich user jobs...');
+  logger.info('Starting migration of failed enrich user jobs...');
 
   const failedJobs = await prismaClient.failedQueueJob.findMany({
     where: {
@@ -101,7 +99,7 @@ async function migrateEnrichUserJobs() {
   });
   const migratedJobIds = new Set<string>();
 
-  console.log('Found ' + failedJobs.length + ' failed enrich-user jobs.');
+  logger.info('Found ' + failedJobs.length + ' failed enrich-user jobs.');
   for (const job of failedJobs) {
     try {
       const jobData: EnrichUserQueueProps | null = typeof job.data === 'string' ? JSON.parse(job.data) : null;
@@ -113,32 +111,32 @@ async function migrateEnrichUserJobs() {
       if (migratedJobIds.has(jobId)) {
         continue;
       }
-      console.log('Re-queuing enrich-user job', { projectId: jobData.projectId, userId: jobData.userId });
+      logger.info({ projectId: jobData.projectId, userId: jobData.userId }, 'Re-queuing enrich-user job');
       migratedJobIds.add(jobId);
 
       await addToQueue(enrichUserQueue, jobData, {
         jobId: `${jobId}-${new Date().toISOString()}`,
       });
-      console.log('Successfully re-queued enrich-user job', { projectId: jobData.projectId, userId: jobData.userId });
+      logger.info({ projectId: jobData.projectId, userId: jobData.userId }, 'Successfully re-queued enrich-user job');
     } catch (err) {
-      console.error('Failed to re-queue enrich-user job', { jobId: job.id, err });
+      logger.error({ jobId: job.id, err }, 'Failed to re-queue enrich-user job');
     }
   }
 
-  console.log(`Enrich user job migration completed, migrated ${migratedJobIds.size} jobs.`);
+  logger.info(`Enrich user job migration completed, migrated ${migratedJobIds.size} jobs.`);
 }
 
 /*migrateCreateUserJobs().catch((err) => {
-  console.error({ err }, 'Create User Job Migration failed.');
+  logger.error({ err }, 'Create User Job Migration failed.');
   process.exit(1);
 });*/
 
 migrateMergeUserJobs().catch((err) => {
-  console.error({ err }, 'Merge User Job Migration failed.');
+  logger.error({ err }, 'Merge User Job Migration failed.');
   process.exit(1);
 });
 
 /*migrateEnrichUserJobs().catch((err) => {
-  console.error({ err }, 'Enrich User Job Migration failed.');
+  logger.error({ err }, 'Enrich User Job Migration failed.');
   process.exit(1);
 });*/

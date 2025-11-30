@@ -1,3 +1,4 @@
+/* eslint-disable unused-imports/no-unused-vars */
 import { createUserQueue, type CreateUserQueueProps } from '@vemetric/queues/create-user-queue';
 import type { EnrichUserQueueProps } from '@vemetric/queues/enrich-user-queue';
 import { enrichUserQueue } from '@vemetric/queues/enrich-user-queue';

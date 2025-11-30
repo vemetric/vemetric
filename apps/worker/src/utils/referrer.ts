@@ -39,12 +39,22 @@ export function getReferrer(
   }
 }
 
-export async function getReferrerFromRequest(projectId: bigint, headers: Record<string, string>, url?: string) {
+function getReferrerParamValue(url?: string) {
   let paramValue: string | undefined;
   if (url) {
     try {
       const urlObj = new URL(url);
       const searchParams = urlObj.searchParams;
+
+      if (
+        searchParams.get('utm_source') === 'ig' &&
+        searchParams.get('utm_medium') === 'social' &&
+        searchParams.get('utm_content') === 'link_in_bio'
+      ) {
+        // special case for Instagram and Threads, we already know the proper referrer here
+        return undefined;
+      }
+
       paramValue =
         searchParams.get('ref')?.trim() ||
         searchParams.get('via')?.trim() ||
@@ -53,8 +63,13 @@ export async function getReferrerFromRequest(projectId: bigint, headers: Record<
     } catch {
       // Invalid URL, continue with header fallback
     }
-  }
 
+    return paramValue;
+  }
+}
+
+export async function getReferrerFromRequest(projectId: bigint, headers: Record<string, string>, url?: string) {
+  const paramValue = getReferrerParamValue(url);
   const referrerHeader = headers['v-referrer'];
 
   const project = await dbProject.findById(String(projectId));

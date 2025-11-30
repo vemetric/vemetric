@@ -109,7 +109,9 @@ export const usersRouter = router({
 
     return {
       latestEvent,
-      user: user ? { ...user, id: String(user.id) } : null,
+      user: user
+        ? { ...user, id: String(user.id), displayName: user.displayName || latestEvent.userDisplayName }
+        : null,
       deviceData,
     };
   }),

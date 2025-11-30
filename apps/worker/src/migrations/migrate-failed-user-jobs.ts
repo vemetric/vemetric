@@ -131,12 +131,12 @@ async function migrateEnrichUserJobs() {
   process.exit(1);
 });*/
 
-migrateMergeUserJobs().catch((err) => {
+/*migrateMergeUserJobs().catch((err) => {
   logger.error({ err }, 'Merge User Job Migration failed.');
   process.exit(1);
-});
+});*/
 
-/*migrateEnrichUserJobs().catch((err) => {
+migrateEnrichUserJobs().catch((err) => {
   logger.error({ err }, 'Enrich User Job Migration failed.');
   process.exit(1);
-});*/
+});

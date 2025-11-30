@@ -10,7 +10,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 
 const COLUMN_WIDTH = 303;
 const BAR_HEIGHT = 380;
-const TRANSITION = { bounce: false, duration: 0.4, ease: 'easeInOut' };
+const TRANSITION = { bounce: 0, duration: 0.4, ease: 'easeInOut' } as const;
 
 interface Props {
   activeUsersVisible: boolean;

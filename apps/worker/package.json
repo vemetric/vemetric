@@ -7,6 +7,7 @@
     "dev": "bun --env-file=../../.env --env-file=.env run --hot src/index.ts",
     "start": "bun run src/index.ts",
     "lint": "eslint . --max-warnings 0",
+    "tsc": "tsc --noEmit",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "fetch-referrers": "bun fetch-referrers.ts",
     "migrate-referrers": "bun ./src/migrations/migrate-referrers.ts",
@@ -34,7 +35,7 @@
   },
   "devDependencies": {
     "@clickhouse/client": "^1.11.0",
-    "@types/bun": "^1.2.0",
+    "@types/bun": "1.2.23",
     "@vemetric/eslint-config": "workspace:*",
     "csv-parser": "^3.2.0",
     "nanoid": "^5.0.4",

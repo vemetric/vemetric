@@ -33,6 +33,7 @@ export const useTimespanParam = ({ from }: Props) => {
     if (t !== timespan || sd !== startDate || ed !== endDate) {
       navigate({
         search: (prev) => ({ ...prev, t: timespan, sd: startDate, ed: endDate }),
+        params: (prev) => prev,
         replace: true,
       });
     }

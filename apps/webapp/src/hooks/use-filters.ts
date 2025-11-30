@@ -34,6 +34,7 @@ export const useFilters = ({ from }: Props) => {
 
         return { ...prev, p: undefined, f: newFilters, e: addedEventFilter ? true : 'e' in prev ? prev.e : undefined };
       },
+      params: (prev) => prev,
       resetScroll: false,
     });
   };
@@ -46,6 +47,7 @@ export const useFilters = ({ from }: Props) => {
           f: undefined,
         };
       },
+      params: (prev) => prev,
       resetScroll: false,
     });
   };

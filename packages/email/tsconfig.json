@@ -4,7 +4,8 @@
     "strict": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "jsx": "react"
+    "jsx": "react-jsx",
+    "skipLibCheck": true
   },
   "include": ["."],
   "exclude": ["dist", "build", "node_modules"]

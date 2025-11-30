@@ -8,6 +8,7 @@
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
+    "tsc": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -16,7 +17,7 @@
     "nanoid": "^5.0.4",
     "pino": "^9.6.0",
     "siphash": "^1.1.0",
-    "zod": "3.23.6"
+    "zod": "3.24.2"
   },
   "devDependencies": {
     "@vemetric/eslint-config": "workspace:*",

@@ -45,7 +45,9 @@ export const TimespanSelect = ({ from, excludeLive = false }: Props) => {
   const { data, isLoading } = trpc.billing.subscriptionActive.useQuery({ domain, projectId });
 
   if (excludeLive && timespan === 'live') {
-    return <Navigate from={router.routesById[route.id].fullPath} search={{ t: '24hrs' }} replace />;
+    return (
+      <Navigate from={router.routesById[route.id].fullPath} params={(prev) => prev} search={{ t: '24hrs' }} replace />
+    );
   }
 
   let isAllowed = isTimespanAllowed(timespan, Boolean(data?.isSubscriptionActive));
@@ -56,7 +58,9 @@ export const TimespanSelect = ({ from, excludeLive = false }: Props) => {
   }
 
   if (!isLoading && !isAllowed) {
-    return <Navigate from={router.routesById[route.id].fullPath} search={{ t: '30days' }} replace />;
+    return (
+      <Navigate from={router.routesById[route.id].fullPath} params={(prev) => prev} search={{ t: '30days' }} replace />
+    );
   }
 
   const timeSpanData = TIME_SPAN_DATA[timespan];
@@ -107,6 +111,7 @@ export const TimespanSelect = ({ from, excludeLive = false }: Props) => {
                           sd: formatTimeSpanDateValue(start),
                           ed: sd !== ed ? ed : undefined,
                         }),
+                        params: (prev) => prev,
                       });
                       setOpen(false);
                     }}
@@ -129,6 +134,7 @@ export const TimespanSelect = ({ from, excludeLive = false }: Props) => {
                     navigate({
                       resetScroll: false,
                       search: (prev) => ({ ...prev, t: String(value) as TimeSpan, sd: undefined, ed: undefined }),
+                      params: (prev) => prev,
                     });
                   }}
                 >

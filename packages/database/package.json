@@ -9,7 +9,8 @@
     "db:generate": "dotenv -e ../../.env -- prisma generate",
     "db:migrate": "dotenv -e ../../.env -- prisma migrate dev --create-only",
     "db:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
-    "lint": "eslint . --max-warnings 0"
+    "lint": "eslint . --max-warnings 0",
+    "tsc": "tsc --noEmit"
   },
   "dependencies": {
     "@prisma/client": "^5.4.2",

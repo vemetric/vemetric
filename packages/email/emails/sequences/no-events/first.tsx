@@ -1,5 +1,4 @@
 import { Button, Section, Text } from '@react-email/components';
-import * as React from 'react';
 import { BaseTemplate, buttonStyle, textStyle, anchorStyle } from '../../base-template';
 
 interface Props {

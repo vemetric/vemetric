@@ -103,6 +103,7 @@ export const TopSourcesCard = ({ filterConfig, publicDashboard }: Props) => {
                       s: newValue === 'referrer' ? undefined : newValue,
                     };
                   },
+                  params: (prev) => prev,
                 });
               }}
             />

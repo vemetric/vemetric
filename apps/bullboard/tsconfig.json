@@ -6,6 +6,7 @@
     "jsxImportSource": "hono/jsx",
     "types": ["bun"],
     "module": "ESNext",
-    "moduleResolution": "Bundler"
+    "moduleResolution": "Bundler",
+    "skipLibCheck": true
   }
 }

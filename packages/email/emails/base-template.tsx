@@ -1,5 +1,4 @@
 import { Body, Column, Container, Head, Html, Img, Link, Preview, Row, Section, Text } from '@react-email/components';
-import * as React from 'react';
 
 export const baseUrl = 'https://vemetric.com';
 

@@ -52,6 +52,7 @@ export const CountriesCard = ({ filterConfig, publicDashboard }: Props) => {
   const setViewMode = (newViewMode: 'list' | 'map') => {
     navigate({
       search: (prev) => ({ ...prev, c: newViewMode === 'map' ? undefined : newViewMode }),
+      params: (prev) => prev,
       resetScroll: false,
     });
   };

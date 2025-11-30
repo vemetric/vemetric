@@ -9,6 +9,7 @@
     "build": "tsc --noEmit --skipLibCheck",
     "start": "bun run src/index.ts",
     "lint": "eslint . --max-warnings 0",
+    "tsc": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -31,10 +32,10 @@
     "pino": "^9.6.0",
     "pino-pretty": "^13.0.0",
     "superjson": "^2.0.0",
-    "zod": "3.23.6"
+    "zod": "3.24.2"
   },
   "devDependencies": {
-    "@types/bun": "^1.2.0",
+    "@types/bun": "1.2.23",
     "@types/cors": "^2.8.15",
     "@vemetric/eslint-config": "workspace:*",
     "clickhouse": "workspace:*",

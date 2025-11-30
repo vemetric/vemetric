@@ -81,6 +81,7 @@ describe('useFilters', () => {
     // Assert: Verify navigate was called with the correct arguments
     expect(mockNavigate).toHaveBeenCalledWith({
       search: expect.any(Function),
+      params: expect.any(Function),
       resetScroll: false,
     });
 
@@ -105,6 +106,7 @@ describe('useFilters', () => {
     // Assert: Verify navigate was called with the correct arguments
     expect(mockNavigate).toHaveBeenCalledWith({
       search: expect.any(Function),
+      params: expect.any(Function),
       resetScroll: false,
     });
 

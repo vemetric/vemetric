@@ -9,6 +9,7 @@
     "migrate-local": "dotenv -e ../../.env -- clickhouse-migrations migrate --migrations-home=./migrations",
     "migrate-prod": "clickhouse-migrations migrate --migrations-home=./migrations",
     "lint": "eslint . --max-warnings 0",
+    "tsc": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -19,7 +20,7 @@
     "@vemetric/logger": "workspace:*",
     "nanoid": "^5.0.4",
     "sqlstring": "^2.3.3",
-    "zod": "3.23.6"
+    "zod": "3.24.2"
   },
   "devDependencies": {
     "@types/node": "^22.13.10",

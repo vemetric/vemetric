@@ -51,6 +51,7 @@ export const FunnelsCard = ({ filterConfig, publicDashboard, activeUsers }: Prop
     setTimeout(() => {
       navigate({
         search: (prev) => ({ ...prev, sf: funnelId ?? undefined }),
+        params: (prev) => prev,
         resetScroll: false,
       });
       setTimeout(() => setIsAnimating(false), 300);
@@ -114,6 +115,7 @@ export const FunnelsCard = ({ filterConfig, publicDashboard, activeUsers }: Prop
                 onClick={() =>
                   navigate({
                     search: (prev) => ({ ...prev, fu: !activeUsersVisible || undefined }),
+                    params: (prev) => prev,
                     resetScroll: false,
                   })
                 }

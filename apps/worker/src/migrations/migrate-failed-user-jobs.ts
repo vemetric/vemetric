@@ -25,7 +25,7 @@ async function migrateCreateUserJobs() {
         continue;
       }
 
-      const jobId = `${jobData.projectId}-${jobData.userId}-migrate-${new Date().toISOString()}`;
+      const jobId = `${jobData.projectId}-${jobData.userId}-migrate`;
       if (migratedJobIds.has(jobId)) {
         continue;
       }
@@ -33,7 +33,7 @@ async function migrateCreateUserJobs() {
       migratedJobIds.add(jobId);
 
       await addToQueue(createUserQueue, jobData, {
-        jobId,
+        jobId: `${jobId}-${new Date().toISOString()}`,
       });
       logger.info({ projectId: jobData.projectId, userId: jobData.userId }, 'Successfully re-queued create-user job');
     } catch (err) {
@@ -61,9 +61,7 @@ async function migrateMergeUserJobs() {
         continue;
       }
 
-      const jobId = `${String(jobData.projectId)}-${jobData.oldUserId}-${String(
-        jobData.newUserId,
-      )}-migrate-${new Date().toISOString()}`;
+      const jobId = `${String(jobData.projectId)}-${jobData.oldUserId}-${String(jobData.newUserId)}-migrate`;
       if (migratedJobIds.has(jobId)) {
         continue;
       }
@@ -74,7 +72,7 @@ async function migrateMergeUserJobs() {
       migratedJobIds.add(jobId);
 
       await addToQueue(mergeUserQueue, jobData, {
-        jobId,
+        jobId: `${jobId}-${new Date().toISOString()}`,
       });
       logger.info(
         { projectId: jobData.projectId, oldUserId: jobData.oldUserId, newUserId: jobData.newUserId },
@@ -105,7 +103,7 @@ async function migrateEnrichUserJobs() {
         continue;
       }
 
-      const jobId = `${jobData.projectId}-${jobData.userId}-migrate-${new Date().toISOString()}`;
+      const jobId = `${jobData.projectId}-${jobData.userId}-migrate`;
       if (migratedJobIds.has(jobId)) {
         continue;
       }
@@ -113,7 +111,7 @@ async function migrateEnrichUserJobs() {
       migratedJobIds.add(jobId);
 
       await addToQueue(enrichUserQueue, jobData, {
-        jobId,
+        jobId: `${jobId}-${new Date().toISOString()}`,
       });
       logger.info({ projectId: jobData.projectId, userId: jobData.userId }, 'Successfully re-queued enrich-user job');
     } catch (err) {

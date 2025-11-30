@@ -40,6 +40,8 @@ async function migrateCreateUserJobs() {
       logger.error({ jobId: job.id, err }, 'Failed to re-queue create-user job');
     }
   }
+
+  logger.info(`Create user job migration completed, migrated ${migratedJobIds.size} jobs.`);
 }
 
 async function migrateMergeUserJobs() {
@@ -82,6 +84,8 @@ async function migrateMergeUserJobs() {
       logger.error({ jobId: job.id, err }, 'Failed to re-queue merge-user job');
     }
   }
+
+  logger.info(`Merge user job migration completed, migrated ${migratedJobIds.size} jobs.`);
 }
 
 async function migrateEnrichUserJobs() {
@@ -118,6 +122,8 @@ async function migrateEnrichUserJobs() {
       logger.error({ jobId: job.id, err }, 'Failed to re-queue enrich-user job');
     }
   }
+
+  logger.info(`Enrich user job migration completed, migrated ${migratedJobIds.size} jobs.`);
 }
 
 migrateCreateUserJobs().catch((err) => {

@@ -4,6 +4,7 @@ import { HonoAdapter } from '@bull-board/hono';
 import { createDeviceQueue } from '@vemetric/queues/create-device-queue';
 import { createUserQueue } from '@vemetric/queues/create-user-queue';
 import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
+import { enrichUserQueue } from '@vemetric/queues/enrich-user-queue';
 import { eventQueue } from '@vemetric/queues/event-queue';
 import { mergeUserQueue } from '@vemetric/queues/merge-user-queue';
 import { sessionQueue } from '@vemetric/queues/session-queue';
@@ -44,6 +45,7 @@ createBullBoard({
     new BullMQAdapter(createUserQueue),
     new BullMQAdapter(updateUserQueue),
     new BullMQAdapter(mergeUserQueue),
+    new BullMQAdapter(enrichUserQueue),
     new BullMQAdapter(createDeviceQueue),
     new BullMQAdapter(eventQueue),
     new BullMQAdapter(sessionQueue),

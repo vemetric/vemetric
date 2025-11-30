@@ -43,6 +43,7 @@ const customReferrers = {
   'out.reddit.com': { name: 'Reddit', type: 'social' },
   'old.reddit.com': { name: 'Reddit', type: 'social' },
   'com.reddit.frontpage': { name: 'Reddit', type: 'social' },
+  'threads.com': { name: 'Threads', type: 'social' },
   'l.threads.com': { name: 'Threads', type: 'social' },
   'copilot.microsoft.com': { name: 'Microsoft Copilot', type: 'llm' },
   'discord.com': { name: 'Discord', type: 'social' },

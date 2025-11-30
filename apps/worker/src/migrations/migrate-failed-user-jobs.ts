@@ -126,17 +126,17 @@ async function migrateEnrichUserJobs() {
   logger.info(`Enrich user job migration completed, migrated ${migratedJobIds.size} jobs.`);
 }
 
-/*migrateCreateUserJobs().catch((err) => {
+migrateCreateUserJobs().catch((err) => {
   logger.error({ err }, 'Create User Job Migration failed.');
   process.exit(1);
-});*/
+});
 
 /*migrateMergeUserJobs().catch((err) => {
   logger.error({ err }, 'Merge User Job Migration failed.');
   process.exit(1);
 });*/
 
-migrateEnrichUserJobs().catch((err) => {
+/*migrateEnrichUserJobs().catch((err) => {
   logger.error({ err }, 'Enrich User Job Migration failed.');
   process.exit(1);
-});
+});*/

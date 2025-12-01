@@ -27,11 +27,11 @@ jobs:
 
       - name: Fetch bots data (hub)
         working-directory: ./apps/hub
-        run: bun fetch-bots && bun format
+        run: bun fetch-bots
 
       - name: Fetch referrers data (worker)
         working-directory: ./apps/worker
-        run: bun fetch-referrers && bun format
+        run: bun fetch-referrers
 
       - name: Check for changes
         id: check_changes

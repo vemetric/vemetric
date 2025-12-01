@@ -10,7 +10,7 @@
     "lint": "eslint . --max-warnings 0",
     "tsc": "tsc --noEmit",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "fetch-bots": "bun fetch-bots.ts",
+    "fetch-bots": "bun fetch-bots.ts && bun run format",
     "test": "vitest run",
     "test:watch": "vitest"
   },

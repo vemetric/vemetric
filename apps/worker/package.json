@@ -9,7 +9,7 @@
     "lint": "eslint . --max-warnings 0",
     "tsc": "tsc --noEmit",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "fetch-referrers": "bun fetch-referrers.ts",
+    "fetch-referrers": "bun fetch-referrers.ts && bun run format",
     "migrate-referrers": "bun ./src/migrations/migrate-referrers.ts",
     "migrate-devices": "bun ./src/migrations/migrate-devices.ts",
     "migrate-user-identifications": "bun ./src/migrations/migrate-user-identifications.ts",

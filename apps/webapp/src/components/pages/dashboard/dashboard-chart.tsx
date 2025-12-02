@@ -77,7 +77,7 @@ export function transformChartSeries(
         endDate.setMinutes(startDate.getMinutes() + 9);
         break;
       case 'hourly':
-        if (!isSameDay(firstStartTime, lastStartTime)) {
+        if (timespan === 'custom' && !isSameDay(firstStartTime, lastStartTime)) {
           formatMethod = 'formatDateTimeShort';
         }
 

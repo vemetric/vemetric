@@ -1,7 +1,7 @@
 import {
   parseTimeSpanDateValue,
   TIME_SPANS,
-  timeSpanRangeMax,
+  getTimeSpanRangeMax,
   timeSpanRangeMin,
 } from '@vemetric/common/charts/timespans';
 import { format, isAfter, isBefore, isSameDay } from 'date-fns';
@@ -94,6 +94,7 @@ export const timeSpanSearchMiddleware = ({
       return newSearch;
     }
 
+    const timeSpanRangeMax = getTimeSpanRangeMax();
     const startDate = parseTimeSpanDateValue(sd);
     const startDateObj = new Date(startDate.year, startDate.month - 1, startDate.day);
     if (

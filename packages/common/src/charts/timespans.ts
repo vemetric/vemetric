@@ -62,4 +62,4 @@ export const getCustomDateRangeInterval = (startDate: Date, endDate: Date): Char
 
 export const timeSpanRangeMin = new Date(2010, 0, 1); // January 1, 2010
 const now = new Date();
-export const timeSpanRangeMax = new Date(now.getFullYear(), now.getMonth() + 1, 0); // End of current month
+export const getTimeSpanRangeMax = () => new Date(now.getFullYear(), now.getMonth() + 1, 0); // End of current month

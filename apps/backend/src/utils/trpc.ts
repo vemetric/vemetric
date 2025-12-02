@@ -5,7 +5,7 @@ import {
   isTimespanAllowed,
   TIME_SPAN_DATA,
   TIME_SPANS,
-  timeSpanRangeMax,
+  getTimeSpanRangeMax,
   timeSpanRangeMin,
 } from '@vemetric/common/charts/timespans';
 import { dbOrganization, dbProject, OrganizationRole } from 'database';
@@ -266,6 +266,7 @@ export const timespanProcedure = projectOrPublicProcedure
           message: `Start date cannot be before ${format(timeSpanRangeMin, 'yyyy-MM-dd')}`,
         });
       }
+      const timeSpanRangeMax = getTimeSpanRangeMax();
       if (isAfter(endDate, addDays(timeSpanRangeMax, 2))) {
         throw new TRPCError({
           code: 'BAD_REQUEST',

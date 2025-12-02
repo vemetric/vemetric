@@ -1,6 +1,6 @@
 import { DatePicker, parseDate } from '@ark-ui/react/date-picker';
 import { Box } from '@chakra-ui/react';
-import { timeSpanRangeMax, timeSpanRangeMin } from '@vemetric/common/charts/timespans';
+import { getTimeSpanRangeMax, timeSpanRangeMin } from '@vemetric/common/charts/timespans';
 import { getDaysInMonth } from 'date-fns';
 import { DayView } from './day-view';
 import { DatePickerContent } from '../date-picker';
@@ -39,7 +39,7 @@ export const DateRangePicker = ({
       selectionMode="range"
       numOfMonths={1}
       min={parseDate(minDate)}
-      max={parseDate(timeSpanRangeMax)}
+      max={parseDate(getTimeSpanRangeMax())}
       defaultValue={
         value
           ? [

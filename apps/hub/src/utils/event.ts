@@ -12,6 +12,7 @@ import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 import type { HonoContext } from '../types';
 import { setUserIdCookie } from './cookie';
+import { sanitizeHeaders } from './headers';
 import { getUserIdFromRequest } from './request';
 import { getSessionId, increaseRedisSessionDuration } from './session';
 
@@ -94,8 +95,7 @@ export const trackEvent = async (context: HonoContext, body: EventSchema) => {
   }
   await increaseRedisSessionDuration(projectId, userId, sessionId);
 
-  const headers = req.header();
-  delete headers['cookie'];
+  const headers = sanitizeHeaders(req.header());
 
   const eventId = generateEventId();
 

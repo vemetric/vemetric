@@ -83,6 +83,7 @@ describe('getUserIdFromRequest', () => {
       userId: '456',
       identifier: 'api-user-123',
       projectId: '123',
+      createdAt: new Date(),
     });
 
     const result = await getUserIdFromRequest(mockContext);
@@ -117,6 +118,7 @@ describe('getUserIdFromRequest', () => {
       userId: '789',
       identifier: 'browser-user-123',
       projectId: '123',
+      createdAt: new Date(),
     });
 
     const result = await getUserIdFromRequest(mockContext);

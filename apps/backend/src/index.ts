@@ -64,8 +64,14 @@ app.use(
       },
       onResLevel: (c) => {
         if (c.error) {
-          if (c.error instanceof HTTPException && c.error.status === 200) {
-            return 'trace';
+          if (c.error instanceof HTTPException) {
+            if (c.error.status === 200) {
+              return 'trace';
+            }
+            // Client errors (4xx) are expected - log at warn level, not error
+            if (c.error.status >= 400 && c.error.status < 500) {
+              return 'warn';
+            }
           }
           return 'error';
         }
@@ -90,6 +96,10 @@ app.use('*', async (context, next) => {
   await next();
 
   if (context.error) {
+    // Skip logging for expected client errors (4xx)
+    if (context.error instanceof HTTPException && context.error.status >= 400 && context.error.status < 500) {
+      return;
+    }
     logger.error({ url, err: context.error, reqContent: content }, 'An error occured');
   }
 });
@@ -139,6 +149,11 @@ app.use(
       },
     }),
     onError: ({ error, path, input }) => {
+      // Only log actual server errors, not expected client errors (UNAUTHORIZED, FORBIDDEN, NOT_FOUND, BAD_REQUEST)
+      const clientErrorCodes = ['UNAUTHORIZED', 'FORBIDDEN', 'NOT_FOUND', 'BAD_REQUEST'];
+      if (clientErrorCodes.includes(error.code)) {
+        return;
+      }
       logger.error({ err: error, path, input }, 'An error occured');
     },
   }),

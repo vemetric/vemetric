@@ -41,8 +41,14 @@ app.use(
       },
       onResLevel: (c) => {
         if (c.error) {
-          if (c.error instanceof HTTPException && c.error.status === 200) {
-            return 'trace';
+          if (c.error instanceof HTTPException) {
+            if (c.error.status === 200) {
+              return 'trace';
+            }
+            // Client errors (4xx) are expected - log at warn level, not error
+            if (c.error.status >= 400 && c.error.status < 500) {
+              return 'warn';
+            }
           }
           return 'error';
         }
@@ -68,7 +74,8 @@ app.use('*', async (context, next) => {
 
   if (context.error) {
     if (context.error instanceof HTTPException) {
-      if (context.error.status === 200) {
+      // Skip logging for silently filtered events (200) and expected client errors (4xx)
+      if (context.error.status === 200 || (context.error.status >= 400 && context.error.status < 500)) {
         return;
       }
     }

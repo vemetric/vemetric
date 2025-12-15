@@ -153,7 +153,9 @@ export const DashboardChart = (props: Props) => {
   const yAxisDomain = getYAxisDomain(autoMinValue, minValue, maxValue);
   const areaId = React.useId();
   const isMobile = useBreakpointValue({ base: true, md: false });
-  const { e: showEvents } = useSearch({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
+  const { e: showEvents, ch: chartToggles } = useSearch({
+    from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
+  });
   const navigate = useNavigate({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
 
   const timeSpanInterval = getTimespanInterval(timespan, timespanStartDate, timespanEndDate);
@@ -161,19 +163,42 @@ export const DashboardChart = (props: Props) => {
   const chartData = transformChartSeries(data.chartTimeSeries ?? [], timeSpanInterval, timespan);
 
   const [activeMobileCategory, setActiveMobileCategory] = useState<ChartCategoryKey>('users');
-  const [activeCategoryKeys, setActiveCategoryKeys] = useState<Array<ChartCategoryKey>>(['users', 'pageViews']);
+
+  const defaultChartToggles: Array<Exclude<ChartCategoryKey, 'events'>> = ['users', 'pageViews'];
+  const activeCategoryKeys = chartToggles ?? defaultChartToggles;
+
+  const isDefaultChartToggles = (toggles: Array<Exclude<ChartCategoryKey, 'events'>>) => {
+    return (
+      toggles.length === defaultChartToggles.length &&
+      defaultChartToggles.every((key) => toggles.includes(key))
+    );
+  };
 
   const toggleCategory = (category: ChartCategoryKey) => {
-    if (isMobile) {
+    if (isMobile || category === 'events') {
       return;
     }
 
-    setActiveCategoryKeys((prev) => {
-      if (prev.length === 1 && prev[0] === category) {
-        return prev;
-      }
+    const categoryKey = category as Exclude<ChartCategoryKey, 'events'>;
+    let newToggles: Array<Exclude<ChartCategoryKey, 'events'>>;
 
-      return prev.includes(category) ? prev.filter((c) => c !== category) : [...prev, category];
+    if (activeCategoryKeys.length === 1 && activeCategoryKeys[0] === categoryKey) {
+      return;
+    }
+
+    if (activeCategoryKeys.includes(categoryKey)) {
+      newToggles = activeCategoryKeys.filter((c) => c !== categoryKey);
+    } else {
+      newToggles = [...activeCategoryKeys, categoryKey];
+    }
+
+    navigate({
+      search: (prev) => ({
+        ...prev,
+        ch: isDefaultChartToggles(newToggles) ? undefined : newToggles,
+      }),
+      params: (prev) => prev,
+      resetScroll: false,
     });
   };
 

@@ -26,6 +26,11 @@ import { useSetBreadcrumbs, useSetDocsLink } from '@/stores/header-store';
 import { timeSpanSearchMiddleware, timespanSearchSchema } from '@/utils/timespans';
 import { trpc } from '@/utils/trpc';
 
+export const chartTogglesSchema = z
+  .array(z.enum(['users', 'pageViews', 'bounceRate', 'visitDuration']))
+  .min(1)
+  .optional();
+
 const dashboardSearchSchema = z.object({
   ...timespanSearchSchema.shape,
   f: filterConfigSchema,
@@ -33,6 +38,7 @@ const dashboardSearchSchema = z.object({
   c: z.enum(['map', 'list']).optional(),
   u: z.enum(['browsers', 'devices', 'os']).optional(),
   e: z.boolean().optional(), // show events in the chart
+  ch: chartTogglesSchema, // visible chart categories (default: ['users', 'pageViews'])
   me: z // selected event in the dashboard events card
     .object({
       n: z.string(), // event name

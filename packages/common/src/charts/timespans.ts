@@ -63,3 +63,54 @@ export const getCustomDateRangeInterval = (startDate: Date, endDate: Date): Char
 export const timeSpanRangeMin = new Date(2010, 0, 1); // January 1, 2010
 const now = new Date();
 export const getTimeSpanRangeMax = () => new Date(now.getFullYear(), now.getMonth() + 1, 0); // End of current month
+
+/**
+ * Determines if a given date period is "incomplete" (current period that hasn't finished yet).
+ * For example, today's data in a "last 7 days" view is incomplete because the day isn't over.
+ */
+export function isIncompletePeriod(date: Date, interval: ChartInterval): boolean {
+  const now = new Date();
+
+  switch (interval) {
+    case 'thirty_seconds': {
+      // Current 30-second window
+      const currentWindowStart = new Date(now);
+      currentWindowStart.setSeconds(now.getSeconds() - (now.getSeconds() % 30), 0);
+      return date >= currentWindowStart;
+    }
+    case 'ten_minutes': {
+      // Current 10-minute window
+      const currentWindowStart = new Date(now);
+      currentWindowStart.setMinutes(now.getMinutes() - (now.getMinutes() % 10), 0, 0);
+      return date >= currentWindowStart;
+    }
+    case 'hourly': {
+      // Current hour
+      const currentHourStart = new Date(now);
+      currentHourStart.setMinutes(0, 0, 0);
+      return date >= currentHourStart;
+    }
+    case 'daily': {
+      // Current day (in UTC to match backend)
+      const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+      const dateDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+      return dateDay >= todayStart;
+    }
+    case 'weekly': {
+      // Current week (Monday-based)
+      const dayOfWeek = now.getUTCDay();
+      const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      const weekStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysToSubtract));
+      const dateWeekStart = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+      return dateWeekStart >= weekStart;
+    }
+    case 'monthly': {
+      // Current month
+      const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+      const dateMonthStart = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+      return dateMonthStart >= monthStart;
+    }
+    default:
+      return false;
+  }
+}

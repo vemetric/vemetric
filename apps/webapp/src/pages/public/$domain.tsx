@@ -25,8 +25,8 @@ import { ThemeSwitch } from '@/components/theme-switch';
 import { TimespanSelect } from '@/components/timespan-select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProjectProvider } from '@/contexts/project-context';
-import { getFaviconUrl } from '@/utils/favicon';
 import { chartTogglesSchema } from '@/hooks/use-chart-toggles';
+import { getFaviconUrl } from '@/utils/favicon';
 import { timeSpanSearchMiddleware, timespanSearchSchema } from '@/utils/timespans';
 import { trpc } from '@/utils/trpc';
 

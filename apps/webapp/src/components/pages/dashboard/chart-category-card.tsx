@@ -8,8 +8,6 @@ import type { ChartCategoryKey } from '@/hooks/use-chart-toggles';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import { NumberCounter } from '../../number-counter';
 
-export type { ChartCategoryKey };
-
 export interface ChartCategory {
   label: string;
   icon: IconType;

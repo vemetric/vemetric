@@ -8,22 +8,16 @@ export const chartTogglesSchema = z.array(z.enum(CHART_CATEGORY_KEYS)).min(1).op
 
 const DEFAULT_CHART_TOGGLES: ChartCategoryKey[] = ['users', 'pageViews'];
 
-export type ChartTogglesRoute = '/public/$domain' | '/_layout/p/$projectId/';
-
 interface Props {
-  from: ChartTogglesRoute;
   publicDashboard?: boolean;
 }
 
 const isDefaultChartToggles = (toggles: ChartCategoryKey[]) => {
-  return (
-    toggles.length === DEFAULT_CHART_TOGGLES.length &&
-    DEFAULT_CHART_TOGGLES.every((key) => toggles.includes(key))
-  );
+  return toggles.length === DEFAULT_CHART_TOGGLES.length && DEFAULT_CHART_TOGGLES.every((key) => toggles.includes(key));
 };
 
-export const useChartToggles = ({ from, publicDashboard }: Props) => {
-  const route = getRouteApi(from);
+export const useChartToggles = ({ publicDashboard }: Props) => {
+  const route = getRouteApi(publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/');
   const navigate = route.useNavigate();
   const { ch: chartToggles } = route.useSearch() as { ch?: ChartCategoryKey[] };
 

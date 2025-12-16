@@ -52,7 +52,6 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
     from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
   });
   const { showEvents, toggleCategory } = useChartToggles({
-    from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
     publicDashboard,
   });
   const [page, setPage] = useState(1);
@@ -96,13 +95,7 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
               <NumberCounter value={data?.events.length ?? 0} /> event{data?.events.length !== 1 ? 's' : ''} fired
             </Text>
           </Flex>
-          <Button
-            size="2xs"
-            variant="surface"
-            colorScheme="gray"
-            rounded="sm"
-            onClick={() => toggleCategory('events')}
-          >
+          <Button size="2xs" variant="surface" colorScheme="gray" rounded="sm" onClick={() => toggleCategory('events')}>
             <Icon as={showEvents ? TbChartBarOff : TbChartBar} />
             {showEvents ? 'Hide from Chart' : 'Show in Chart'}
           </Button>

@@ -25,12 +25,12 @@ import {
   CHART_CATEGORY_MAP,
   ChartCategoryCard,
 } from '@/components/pages/dashboard/chart-category-card';
-import type { ChartCategoryKey } from '@/components/pages/dashboard/chart-category-card';
 import { DashboardCardHeader } from '@/components/pages/dashboard/dashboard-card-header';
 import { EmptyState } from '@/components/ui/empty-state';
 import { MenuContent, MenuRoot, MenuTrigger, MenuItem } from '@/components/ui/menu';
 import { Status } from '@/components/ui/status';
 import { Tooltip } from '@/components/ui/tooltip';
+import type { ChartCategoryKey } from '@/hooks/use-chart-toggles';
 import { useChartToggles } from '@/hooks/use-chart-toggles';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import type { DashboardData } from '@/utils/trpc';
@@ -156,7 +156,6 @@ export const DashboardChart = (props: Props) => {
   const isMobile = useBreakpointValue({ base: true, md: false });
   const navigate = useNavigate({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
   const { activeCategoryKeys, showEvents, toggleCategory } = useChartToggles({
-    from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
     publicDashboard,
   });
 

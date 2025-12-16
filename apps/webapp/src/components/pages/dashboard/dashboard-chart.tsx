@@ -2,7 +2,7 @@ import type { CardRootProps } from '@chakra-ui/react';
 import { Card, Icon, AspectRatio, Box, Flex, SimpleGrid, Text, useBreakpointValue } from '@chakra-ui/react';
 import { useNavigate } from '@tanstack/react-router';
 import type { ChartInterval, TimeSpan } from '@vemetric/common/charts/timespans';
-import { getCustomDateRangeInterval, TIME_SPAN_DATA } from '@vemetric/common/charts/timespans';
+import { getCustomDateRangeInterval, isIncompletePeriod, TIME_SPAN_DATA } from '@vemetric/common/charts/timespans';
 import { formatNumber } from '@vemetric/common/math';
 import { isSameDay } from 'date-fns';
 import React, { useState } from 'react';
@@ -64,7 +64,16 @@ export function transformChartSeries(
   const firstStartTime = new Date(data[0].date);
   const lastStartTime = new Date(data[data.length - 1].date);
 
-  return data.map((entry) => {
+  // Find the index where incomplete data starts
+  let incompleteStartIndex = -1;
+  for (let i = 0; i < data.length; i++) {
+    if (isIncompletePeriod(new Date(data[i].date), interval)) {
+      incompleteStartIndex = i;
+      break;
+    }
+  }
+
+  return data.map((entry, index) => {
     const startDate = new Date(entry.date);
     const endDate = new Date(startDate);
 
@@ -103,14 +112,32 @@ export function transformChartSeries(
       }
     }
 
+    const isIncomplete = incompleteStartIndex !== -1 && index >= incompleteStartIndex;
+    // The transition point is the last complete data point - it appears in both solid and dashed series
+    const isTransitionPoint = incompleteStartIndex !== -1 && index === incompleteStartIndex - 1;
+
     return {
       startDate: dateTimeFormatter[formatMethod](startDate),
       endDate: dateTimeFormatter[formatMethod](endDate),
-      users: entry.users,
-      pageViews: entry.pageViews,
-      bounceRate: entry.bounceRate,
-      visitDuration: entry.visitDuration,
       events: entry.events,
+
+      // Full values: always present, used for background gradient area (consistent scaling)
+      usersFull: entry.users,
+      pageViewsFull: entry.pageViews,
+      bounceRateFull: entry.bounceRate,
+      visitDurationFull: entry.visitDuration,
+
+      // Solid values: show for complete data and transition point
+      users: !isIncomplete || isTransitionPoint ? entry.users : null,
+      pageViews: !isIncomplete || isTransitionPoint ? entry.pageViews : null,
+      bounceRate: !isIncomplete || isTransitionPoint ? entry.bounceRate : null,
+      visitDuration: !isIncomplete || isTransitionPoint ? entry.visitDuration : null,
+
+      // Dashed values: show for incomplete data and transition point (for visual continuity)
+      usersDashed: isIncomplete || isTransitionPoint ? entry.users : null,
+      pageViewsDashed: isIncomplete || isTransitionPoint ? entry.pageViews : null,
+      bounceRateDashed: isIncomplete || isTransitionPoint ? entry.bounceRate : null,
+      visitDurationDashed: isIncomplete || isTransitionPoint ? entry.visitDuration : null,
     };
   });
 }
@@ -133,7 +160,6 @@ interface Props extends CardRootProps {
   maxValue?: number;
   allowDecimals?: boolean;
   tickGap?: number;
-  connectNulls?: boolean;
   publicDashboard?: boolean;
 }
 
@@ -147,7 +173,6 @@ export const DashboardChart = (props: Props) => {
     minValue,
     maxValue,
     allowDecimals = true,
-    connectNulls = false,
     publicDashboard = false,
     ...cardProps
   } = props;
@@ -324,8 +349,8 @@ export const DashboardChart = (props: Props) => {
                   <CartesianGrid
                     vertical={false}
                     stroke="var(--chakra-colors-gray-emphasized)"
-                    strokeWidth={0.8}
-                    strokeDasharray="10 5"
+                    strokeWidth={0.6}
+                    strokeDasharray="12 6"
                   />
 
                   <RechartsTooltip
@@ -336,15 +361,27 @@ export const DashboardChart = (props: Props) => {
                     offset={20}
                     position={{ y: 0 }}
                     content={({ active, payload, label }) => {
-                      const cleanPayload: Array<ChartPayloadItem> = payload
-                        ? payload.map((item: any) => ({
-                            categoryKey: item.dataKey,
-                            value: item.value,
-                            color: CHART_CATEGORY_MAP[item.dataKey as ChartCategoryKey]?.color ?? 'blue',
-                            type: item.type,
-                            payload: item.payload,
-                          }))
-                        : [];
+                      // Merge solid, dashed, and full values for the same category
+                      const mergedPayload = new Map<string, ChartPayloadItem>();
+                      if (payload) {
+                        for (const item of payload) {
+                          // Get the base category key (strip 'Dashed' or 'Full' suffix if present)
+                          const baseKey = (item.dataKey as string).replace(/(Dashed|Full)$/, '');
+                          const existing = mergedPayload.get(baseKey);
+                          // Use the non-null value (either from solid, dashed, or full)
+                          const value = (item.value as number) ?? existing?.value ?? null;
+                          if (value !== null) {
+                            mergedPayload.set(baseKey, {
+                              categoryKey: baseKey,
+                              value,
+                              color: CHART_CATEGORY_MAP[baseKey as ChartCategoryKey]?.color ?? 'blue',
+                              type: item.type,
+                              payload: item.payload,
+                            });
+                          }
+                        }
+                      }
+                      const cleanPayload = Array.from(mergedPayload.values());
 
                       return active ? (
                         <ChartTooltip label={`${label}${showEndDate ? ` - ${payload?.[0]?.payload?.endDate}` : ''}`}>
@@ -369,6 +406,8 @@ export const DashboardChart = (props: Props) => {
 
                   {activeCategories.map(([category, { color, yAxisId = 'other' }]) => {
                     const categoryId = `${areaId}-${category.replace(/[^a-zA-Z0-9]/g, '')}`;
+                    const fullDataKey = `${category}Full`;
+                    const dashedDataKey = `${category}Dashed`;
                     return (
                       <React.Fragment key={category}>
                         <defs key={category}>
@@ -385,6 +424,21 @@ export const DashboardChart = (props: Props) => {
                             <stop offset="95%" stopColor="currentColor" stopOpacity={0} />
                           </linearGradient>
                         </defs>
+                        {/* Background area with gradient - uses full data for consistent scaling */}
+                        <Area
+                          key={`${category}-bg`}
+                          type="linear"
+                          yAxisId={yAxisId}
+                          dataKey={fullDataKey}
+                          stroke="transparent"
+                          strokeWidth={0}
+                          isAnimationActive={timespan === 'live'}
+                          fill={`url(#${categoryId})`}
+                          activeDot={false}
+                          dot={false}
+                          connectNulls={false}
+                        />
+                        {/* Solid line for complete data */}
                         <Area
                           style={{ stroke: `var(--chakra-colors-${color}-500)` }}
                           strokeOpacity={1}
@@ -421,8 +475,49 @@ export const DashboardChart = (props: Props) => {
                           strokeLinejoin="round"
                           strokeLinecap="round"
                           isAnimationActive={timespan === 'live'}
-                          connectNulls={connectNulls}
-                          fill={`url(#${categoryId})`}
+                          connectNulls={false}
+                          fill="transparent"
+                        />
+                        {/* Dashed line for incomplete/current period data */}
+                        <Area
+                          style={{ stroke: `var(--chakra-colors-${color}-500)` }}
+                          strokeOpacity={1}
+                          strokeDasharray="5 5"
+                          activeDot={(props: any) => {
+                            const {
+                              cx: cxCoord,
+                              cy: cyCoord,
+                              stroke,
+                              strokeLinecap,
+                              strokeLinejoin,
+                              strokeWidth,
+                            } = props;
+                            return (
+                              <Dot
+                                style={{ fill: `var(--chakra-colors-${color}-500)` }}
+                                cx={cxCoord}
+                                cy={cyCoord}
+                                r={5}
+                                fill=""
+                                stroke={stroke}
+                                strokeLinecap={strokeLinecap}
+                                strokeLinejoin={strokeLinejoin}
+                                strokeWidth={strokeWidth}
+                              />
+                            );
+                          }}
+                          key={`${category}-dashed`}
+                          name={category}
+                          type="linear"
+                          yAxisId={yAxisId}
+                          dataKey={dashedDataKey}
+                          stroke=""
+                          strokeWidth={2}
+                          strokeLinejoin="round"
+                          strokeLinecap="round"
+                          isAnimationActive={timespan === 'live'}
+                          connectNulls={false}
+                          fill="transparent"
                         />
                       </React.Fragment>
                     );

@@ -22,6 +22,7 @@ import { NumberCounter } from '@/components/number-counter';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useProjectContext } from '@/contexts/project-context';
+import { useChartToggles } from '@/hooks/use-chart-toggles';
 import { useFilters } from '@/hooks/use-filters';
 import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { trpc } from '@/utils/trpc';
@@ -47,8 +48,11 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
   const { timespan, startDate, endDate } = useTimespanParam({
     from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
   });
-  const { e: showEvents, me: selectedEvent } = useSearch({
+  const { me: selectedEvent } = useSearch({
     from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
+  });
+  const { showEvents, toggleCategory } = useChartToggles({
+    publicDashboard,
   });
   const [page, setPage] = useState(1);
   const { toggleFilter } = useFilters({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
@@ -91,19 +95,7 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
               <NumberCounter value={data?.events.length ?? 0} /> event{data?.events.length !== 1 ? 's' : ''} fired
             </Text>
           </Flex>
-          <Button
-            size="2xs"
-            variant="surface"
-            colorScheme="gray"
-            rounded="sm"
-            onClick={() =>
-              navigate({
-                search: (prev) => ({ ...prev, e: showEvents ? undefined : true }),
-                params: (prev) => prev,
-                resetScroll: false,
-              })
-            }
-          >
+          <Button size="2xs" variant="surface" colorScheme="gray" rounded="sm" onClick={() => toggleCategory('events')}>
             <Icon as={showEvents ? TbChartBarOff : TbChartBar} />
             {showEvents ? 'Hide from Chart' : 'Show in Chart'}
           </Button>

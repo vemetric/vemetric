@@ -21,6 +21,7 @@ import { TopSourcesCard } from '@/components/pages/dashboard/top-sources-card';
 import { ProjectInitCard } from '@/components/project-init-card';
 import { TimespanSelect } from '@/components/timespan-select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { chartTogglesSchema } from '@/hooks/use-chart-toggles';
 import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { useSetBreadcrumbs, useSetDocsLink } from '@/stores/header-store';
 import { timeSpanSearchMiddleware, timespanSearchSchema } from '@/utils/timespans';
@@ -32,7 +33,7 @@ const dashboardSearchSchema = z.object({
   s: sourcesSchema,
   c: z.enum(['map', 'list']).optional(),
   u: z.enum(['browsers', 'devices', 'os']).optional(),
-  e: z.boolean().optional(), // show events in the chart
+  ch: chartTogglesSchema, // visible chart categories (default: ['users', 'pageViews'])
   me: z // selected event in the dashboard events card
     .object({
       n: z.string(), // event name

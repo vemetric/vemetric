@@ -4,10 +4,10 @@ import type { ReactNode } from 'react';
 import type { IconType } from 'react-icons';
 import { TbEye, TbClock, TbDoorExit, TbUserSquareRounded, TbBolt } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
+import type { ChartCategoryKey } from '@/hooks/use-chart-toggles';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import { NumberCounter } from '../../number-counter';
 
-export type ChartCategoryKey = 'users' | 'pageViews' | 'bounceRate' | 'visitDuration' | 'events';
 export interface ChartCategory {
   label: string;
   icon: IconType;
@@ -44,7 +44,7 @@ export const CHART_CATEGORY_MAP: Record<ChartCategoryKey, ChartCategory> = {
     yAxisId: 'events',
   },
 };
-export const CHART_CATEGORIES = Object.entries(CHART_CATEGORY_MAP);
+export const CHART_CATEGORIES = Object.entries(CHART_CATEGORY_MAP) as [ChartCategoryKey, ChartCategory][];
 
 interface Props extends StatRootProps {
   categoryKey: ChartCategoryKey;

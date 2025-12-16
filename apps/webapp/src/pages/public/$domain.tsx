@@ -25,6 +25,7 @@ import { ThemeSwitch } from '@/components/theme-switch';
 import { TimespanSelect } from '@/components/timespan-select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProjectProvider } from '@/contexts/project-context';
+import { chartTogglesSchema } from '@/hooks/use-chart-toggles';
 import { getFaviconUrl } from '@/utils/favicon';
 import { timeSpanSearchMiddleware, timespanSearchSchema } from '@/utils/timespans';
 import { trpc } from '@/utils/trpc';
@@ -35,7 +36,7 @@ const dashboardSearchSchema = z.object({
   s: sourcesSchema,
   c: z.enum(['map', 'list']).optional(),
   u: z.enum(['browsers', 'devices', 'os']).optional(),
-  e: z.boolean().optional(),
+  ch: chartTogglesSchema, // visible chart categories (default: ['users', 'pageViews'])
   me: z // selected event in the dashboard events card
     .object({
       n: z.string(), // event name

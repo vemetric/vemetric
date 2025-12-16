@@ -14,11 +14,11 @@ import {
   CartesianGrid,
 } from 'recharts';
 import type { AxisDomain } from 'recharts/types/util/types';
+import type { ChartCategoryKey } from '@/hooks/use-chart-toggles';
 import { AUTH_ILLUSTRATION_DATA } from './auth-illustration-data';
 import { PageDotBackground } from '../../page-dot-background';
 import { Status } from '../../ui/status';
 import { Tooltip } from '../../ui/tooltip';
-import type { ChartCategoryKey } from '../dashboard/chart-category-card';
 import { CHART_CATEGORIES, CHART_CATEGORY_MAP, ChartCategoryCard } from '../dashboard/chart-category-card';
 import { DashboardCardHeader } from '../dashboard/dashboard-card-header';
 import type { ChartPayloadItem } from '../dashboard/dashboard-chart';

@@ -10,7 +10,6 @@ import { FilterContainer } from '@/components/filter/filter-container';
 import { FilterContextProvider } from '@/components/filter/filter-context';
 import { FilterSkeletons } from '@/components/filter/filter-skeletons';
 import { BrowsersCard } from '@/components/pages/dashboard/browsers-card';
-import { CHART_CATEGORY_KEYS } from '@/components/pages/dashboard/chart-category-card';
 import { CountriesCard } from '@/components/pages/dashboard/countries-card';
 import { DashboardChart } from '@/components/pages/dashboard/dashboard-chart';
 import { DevicesCard } from '@/components/pages/dashboard/devices-card';
@@ -22,12 +21,11 @@ import { TopSourcesCard } from '@/components/pages/dashboard/top-sources-card';
 import { ProjectInitCard } from '@/components/project-init-card';
 import { TimespanSelect } from '@/components/timespan-select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { chartTogglesSchema } from '@/hooks/use-chart-toggles';
 import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { useSetBreadcrumbs, useSetDocsLink } from '@/stores/header-store';
 import { timeSpanSearchMiddleware, timespanSearchSchema } from '@/utils/timespans';
 import { trpc } from '@/utils/trpc';
-
-export const chartTogglesSchema = z.array(z.enum(CHART_CATEGORY_KEYS)).min(1).optional();
 
 const dashboardSearchSchema = z.object({
   ...timespanSearchSchema.shape,

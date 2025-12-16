@@ -26,9 +26,9 @@ import { TimespanSelect } from '@/components/timespan-select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProjectProvider } from '@/contexts/project-context';
 import { getFaviconUrl } from '@/utils/favicon';
+import { chartTogglesSchema } from '@/hooks/use-chart-toggles';
 import { timeSpanSearchMiddleware, timespanSearchSchema } from '@/utils/timespans';
 import { trpc } from '@/utils/trpc';
-import { chartTogglesSchema } from '../_layout/p/$projectId/index';
 
 const dashboardSearchSchema = z.object({
   ...timespanSearchSchema.shape,

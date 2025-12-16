@@ -1,6 +1,6 @@
 import type { CardRootProps } from '@chakra-ui/react';
 import { Card, Icon, AspectRatio, Box, Flex, SimpleGrid, Text, useBreakpointValue } from '@chakra-ui/react';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import type { ChartInterval, TimeSpan } from '@vemetric/common/charts/timespans';
 import { getCustomDateRangeInterval, TIME_SPAN_DATA } from '@vemetric/common/charts/timespans';
 import { formatNumber } from '@vemetric/common/math';
@@ -20,17 +20,18 @@ import {
 } from 'recharts';
 import type { AxisDomain } from 'recharts/types/util/types';
 import { DeleteIconButton } from '@/components/delete-icon-button';
-import type { ChartCategoryKey } from '@/components/pages/dashboard/chart-category-card';
 import {
   CHART_CATEGORIES,
   CHART_CATEGORY_MAP,
   ChartCategoryCard,
 } from '@/components/pages/dashboard/chart-category-card';
+import type { ChartCategoryKey } from '@/components/pages/dashboard/chart-category-card';
 import { DashboardCardHeader } from '@/components/pages/dashboard/dashboard-card-header';
 import { EmptyState } from '@/components/ui/empty-state';
 import { MenuContent, MenuRoot, MenuTrigger, MenuItem } from '@/components/ui/menu';
 import { Status } from '@/components/ui/status';
 import { Tooltip } from '@/components/ui/tooltip';
+import { useChartToggles } from '@/hooks/use-chart-toggles';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import type { DashboardData } from '@/utils/trpc';
 import { ChartTooltip } from './chart-tooltip';
@@ -153,10 +154,11 @@ export const DashboardChart = (props: Props) => {
   const yAxisDomain = getYAxisDomain(autoMinValue, minValue, maxValue);
   const areaId = React.useId();
   const isMobile = useBreakpointValue({ base: true, md: false });
-  const { ch: chartToggles } = useSearch({
-    from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
-  });
   const navigate = useNavigate({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
+  const { activeCategoryKeys, showEvents, toggleCategory } = useChartToggles({
+    from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
+    publicDashboard,
+  });
 
   const timeSpanInterval = getTimespanInterval(timespan, timespanStartDate, timespanEndDate);
   const showEndDate = timeSpanInterval === 'ten_minutes' || timeSpanInterval === 'hourly';
@@ -164,39 +166,11 @@ export const DashboardChart = (props: Props) => {
 
   const [activeMobileCategory, setActiveMobileCategory] = useState<ChartCategoryKey>('users');
 
-  const defaultChartToggles: ChartCategoryKey[] = ['users', 'pageViews'];
-  const activeCategoryKeys = chartToggles ?? defaultChartToggles;
-  const showEvents = activeCategoryKeys.includes('events');
-
-  const isDefaultChartToggles = (toggles: ChartCategoryKey[]) => {
-    return toggles.length === defaultChartToggles.length && defaultChartToggles.every((key) => toggles.includes(key));
-  };
-
-  const toggleCategory = (category: ChartCategoryKey) => {
+  const handleToggleCategory = (category: ChartCategoryKey) => {
     if (isMobile) {
       return;
     }
-
-    let newToggles: ChartCategoryKey[];
-
-    if (activeCategoryKeys.length === 1 && activeCategoryKeys[0] === category) {
-      return;
-    }
-
-    if (activeCategoryKeys.includes(category)) {
-      newToggles = activeCategoryKeys.filter((c) => c !== category);
-    } else {
-      newToggles = [...activeCategoryKeys, category];
-    }
-
-    navigate({
-      search: (prev) => ({
-        ...prev,
-        ch: isDefaultChartToggles(newToggles) ? undefined : newToggles,
-      }),
-      params: (prev) => prev,
-      resetScroll: false,
-    });
+    toggleCategory(category);
   };
 
   const handleLiveClick = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -229,7 +203,7 @@ export const DashboardChart = (props: Props) => {
                       mr={{ base: 0, md: index === CHART_CATEGORIES.length - 1 ? 0 : 1.5 }}
                       value={data?.[categoryKey]}
                       isActive={isMobile || activeCategoryKeys.includes(categoryKey)}
-                      onClick={() => toggleCategory(categoryKey)}
+                      onClick={() => handleToggleCategory(categoryKey)}
                       label={
                         categoryKey === 'users' ? (
                           <Tooltip content={`${onlineUsers} users are currently online`}>
@@ -287,7 +261,7 @@ export const DashboardChart = (props: Props) => {
             <Text fontSize="xs" fontWeight="semibold">
               {data?.events.reduce((acc, curr) => acc + curr.count, 0) || 0} Events
             </Text>
-            <DeleteIconButton onClick={() => toggleCategory('events')} />
+            <DeleteIconButton onClick={() => handleToggleCategory('events')} />
           </Flex>
         )}
         <AspectRatio

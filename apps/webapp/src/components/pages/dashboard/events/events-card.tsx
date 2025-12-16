@@ -22,6 +22,7 @@ import { NumberCounter } from '@/components/number-counter';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useProjectContext } from '@/contexts/project-context';
+import { useChartToggles } from '@/hooks/use-chart-toggles';
 import { useFilters } from '@/hooks/use-filters';
 import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { trpc } from '@/utils/trpc';
@@ -47,11 +48,13 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
   const { timespan, startDate, endDate } = useTimespanParam({
     from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
   });
-  const { ch: chartToggles, me: selectedEvent } = useSearch({
+  const { me: selectedEvent } = useSearch({
     from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
   });
-  const defaultChartToggles = ['users', 'pageViews'] as const;
-  const showEvents = chartToggles?.includes('events') ?? false;
+  const { showEvents, toggleCategory } = useChartToggles({
+    from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
+    publicDashboard,
+  });
   const [page, setPage] = useState(1);
   const { toggleFilter } = useFilters({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
   const navigate = useNavigate({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
@@ -98,20 +101,7 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
             variant="surface"
             colorScheme="gray"
             rounded="sm"
-            onClick={() => {
-              const currentToggles = chartToggles ?? [...defaultChartToggles];
-              const newToggles = showEvents
-                ? currentToggles.filter((c) => c !== 'events')
-                : [...currentToggles, 'events' as const];
-              const isDefault =
-                newToggles.length === defaultChartToggles.length &&
-                defaultChartToggles.every((key) => newToggles.includes(key));
-              navigate({
-                search: (prev) => ({ ...prev, ch: isDefault ? undefined : newToggles }),
-                params: (prev) => prev,
-                resetScroll: false,
-              });
-            }}
+            onClick={() => toggleCategory('events')}
           >
             <Icon as={showEvents ? TbChartBarOff : TbChartBar} />
             {showEvents ? 'Hide from Chart' : 'Show in Chart'}

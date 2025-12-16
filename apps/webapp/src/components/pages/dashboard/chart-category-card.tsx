@@ -4,11 +4,12 @@ import type { ReactNode } from 'react';
 import type { IconType } from 'react-icons';
 import { TbEye, TbClock, TbDoorExit, TbUserSquareRounded, TbBolt } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
+import type { ChartCategoryKey } from '@/hooks/use-chart-toggles';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import { NumberCounter } from '../../number-counter';
 
-export const CHART_CATEGORY_KEYS = ['users', 'pageViews', 'bounceRate', 'visitDuration', 'events'] as const;
-export type ChartCategoryKey = (typeof CHART_CATEGORY_KEYS)[number];
+export type { ChartCategoryKey };
+
 export interface ChartCategory {
   label: string;
   icon: IconType;

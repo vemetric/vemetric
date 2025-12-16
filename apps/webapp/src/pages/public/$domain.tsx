@@ -36,7 +36,6 @@ const dashboardSearchSchema = z.object({
   s: sourcesSchema,
   c: z.enum(['map', 'list']).optional(),
   u: z.enum(['browsers', 'devices', 'os']).optional(),
-  e: z.boolean().optional(),
   ch: chartTogglesSchema, // visible chart categories (default: ['users', 'pageViews'])
   me: z // selected event in the dashboard events card
     .object({

@@ -7,7 +7,8 @@ import { CardIcon } from '@/components/card-icon';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import { NumberCounter } from '../../number-counter';
 
-export type ChartCategoryKey = 'users' | 'pageViews' | 'bounceRate' | 'visitDuration' | 'events';
+export const CHART_CATEGORY_KEYS = ['users', 'pageViews', 'bounceRate', 'visitDuration', 'events'] as const;
+export type ChartCategoryKey = (typeof CHART_CATEGORY_KEYS)[number];
 export interface ChartCategory {
   label: string;
   icon: IconType;

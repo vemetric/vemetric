@@ -47,9 +47,11 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
   const { timespan, startDate, endDate } = useTimespanParam({
     from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
   });
-  const { e: showEvents, me: selectedEvent } = useSearch({
+  const { ch: chartToggles, me: selectedEvent } = useSearch({
     from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
   });
+  const defaultChartToggles = ['users', 'pageViews'] as const;
+  const showEvents = chartToggles?.includes('events') ?? false;
   const [page, setPage] = useState(1);
   const { toggleFilter } = useFilters({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
   const navigate = useNavigate({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
@@ -96,13 +98,20 @@ export const EventsCard = ({ filterConfig, publicDashboard }: Props) => {
             variant="surface"
             colorScheme="gray"
             rounded="sm"
-            onClick={() =>
+            onClick={() => {
+              const currentToggles = chartToggles ?? [...defaultChartToggles];
+              const newToggles = showEvents
+                ? currentToggles.filter((c) => c !== 'events')
+                : [...currentToggles, 'events' as const];
+              const isDefault =
+                newToggles.length === defaultChartToggles.length &&
+                defaultChartToggles.every((key) => newToggles.includes(key));
               navigate({
-                search: (prev) => ({ ...prev, e: showEvents ? undefined : true }),
+                search: (prev) => ({ ...prev, ch: isDefault ? undefined : newToggles }),
                 params: (prev) => prev,
                 resetScroll: false,
-              })
-            }
+              });
+            }}
           >
             <Icon as={showEvents ? TbChartBarOff : TbChartBar} />
             {showEvents ? 'Hide from Chart' : 'Show in Chart'}

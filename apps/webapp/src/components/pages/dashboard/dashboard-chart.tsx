@@ -153,7 +153,7 @@ export const DashboardChart = (props: Props) => {
   const yAxisDomain = getYAxisDomain(autoMinValue, minValue, maxValue);
   const areaId = React.useId();
   const isMobile = useBreakpointValue({ base: true, md: false });
-  const { e: showEvents, ch: chartToggles } = useSearch({
+  const { ch: chartToggles } = useSearch({
     from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
   });
   const navigate = useNavigate({ from: publicDashboard ? '/public/$domain' : '/p/$projectId' });
@@ -164,29 +164,29 @@ export const DashboardChart = (props: Props) => {
 
   const [activeMobileCategory, setActiveMobileCategory] = useState<ChartCategoryKey>('users');
 
-  const defaultChartToggles: Array<Exclude<ChartCategoryKey, 'events'>> = ['users', 'pageViews'];
+  const defaultChartToggles: ChartCategoryKey[] = ['users', 'pageViews'];
   const activeCategoryKeys = chartToggles ?? defaultChartToggles;
+  const showEvents = activeCategoryKeys.includes('events');
 
-  const isDefaultChartToggles = (toggles: Array<Exclude<ChartCategoryKey, 'events'>>) => {
+  const isDefaultChartToggles = (toggles: ChartCategoryKey[]) => {
     return toggles.length === defaultChartToggles.length && defaultChartToggles.every((key) => toggles.includes(key));
   };
 
   const toggleCategory = (category: ChartCategoryKey) => {
-    if (isMobile || category === 'events') {
+    if (isMobile) {
       return;
     }
 
-    const categoryKey = category as Exclude<ChartCategoryKey, 'events'>;
-    let newToggles: Array<Exclude<ChartCategoryKey, 'events'>>;
+    let newToggles: ChartCategoryKey[];
 
-    if (activeCategoryKeys.length === 1 && activeCategoryKeys[0] === categoryKey) {
+    if (activeCategoryKeys.length === 1 && activeCategoryKeys[0] === category) {
       return;
     }
 
-    if (activeCategoryKeys.includes(categoryKey)) {
-      newToggles = activeCategoryKeys.filter((c) => c !== categoryKey);
+    if (activeCategoryKeys.includes(category)) {
+      newToggles = activeCategoryKeys.filter((c) => c !== category);
     } else {
-      newToggles = [...activeCategoryKeys, categoryKey];
+      newToggles = [...activeCategoryKeys, category];
     }
 
     navigate({
@@ -287,11 +287,7 @@ export const DashboardChart = (props: Props) => {
             <Text fontSize="xs" fontWeight="semibold">
               {data?.events.reduce((acc, curr) => acc + curr.count, 0) || 0} Events
             </Text>
-            <DeleteIconButton
-              onClick={() => {
-                navigate({ search: (prev) => ({ ...prev, e: undefined }), params: (prev) => prev, resetScroll: false });
-              }}
-            />
+            <DeleteIconButton onClick={() => toggleCategory('events')} />
           </Flex>
         )}
         <AspectRatio

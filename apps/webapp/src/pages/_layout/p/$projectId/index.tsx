@@ -10,6 +10,7 @@ import { FilterContainer } from '@/components/filter/filter-container';
 import { FilterContextProvider } from '@/components/filter/filter-context';
 import { FilterSkeletons } from '@/components/filter/filter-skeletons';
 import { BrowsersCard } from '@/components/pages/dashboard/browsers-card';
+import { CHART_CATEGORY_KEYS } from '@/components/pages/dashboard/chart-category-card';
 import { CountriesCard } from '@/components/pages/dashboard/countries-card';
 import { DashboardChart } from '@/components/pages/dashboard/dashboard-chart';
 import { DevicesCard } from '@/components/pages/dashboard/devices-card';
@@ -26,10 +27,7 @@ import { useSetBreadcrumbs, useSetDocsLink } from '@/stores/header-store';
 import { timeSpanSearchMiddleware, timespanSearchSchema } from '@/utils/timespans';
 import { trpc } from '@/utils/trpc';
 
-export const chartTogglesSchema = z
-  .array(z.enum(['users', 'pageViews', 'bounceRate', 'visitDuration']))
-  .min(1)
-  .optional();
+export const chartTogglesSchema = z.array(z.enum(CHART_CATEGORY_KEYS)).min(1).optional();
 
 const dashboardSearchSchema = z.object({
   ...timespanSearchSchema.shape,
@@ -37,7 +35,6 @@ const dashboardSearchSchema = z.object({
   s: sourcesSchema,
   c: z.enum(['map', 'list']).optional(),
   u: z.enum(['browsers', 'devices', 'os']).optional(),
-  e: z.boolean().optional(), // show events in the chart
   ch: chartTogglesSchema, // visible chart categories (default: ['users', 'pageViews'])
   me: z // selected event in the dashboard events card
     .object({

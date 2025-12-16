@@ -44,7 +44,7 @@ export const CHART_CATEGORY_MAP: Record<ChartCategoryKey, ChartCategory> = {
     yAxisId: 'events',
   },
 };
-export const CHART_CATEGORIES = Object.entries(CHART_CATEGORY_MAP);
+export const CHART_CATEGORIES = Object.entries(CHART_CATEGORY_MAP) as [ChartCategoryKey, ChartCategory][];
 
 interface Props extends StatRootProps {
   categoryKey: ChartCategoryKey;

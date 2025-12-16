@@ -46,7 +46,7 @@ export const getTimespanInterval = (timespan: TimeSpan, _startDate?: string, _en
 };
 
 export const getYAxisDomain = (autoMinValue: boolean, minValue?: number | undefined, maxValue?: number | undefined) => {
-  const minDomain = autoMinValue ? 'auto' : minValue ?? 0;
+  const minDomain = autoMinValue ? 'auto' : (minValue ?? 0);
   const maxDomain = maxValue ?? 'auto';
   return [minDomain, maxDomain];
 };
@@ -168,10 +168,7 @@ export const DashboardChart = (props: Props) => {
   const activeCategoryKeys = chartToggles ?? defaultChartToggles;
 
   const isDefaultChartToggles = (toggles: Array<Exclude<ChartCategoryKey, 'events'>>) => {
-    return (
-      toggles.length === defaultChartToggles.length &&
-      defaultChartToggles.every((key) => toggles.includes(key))
-    );
+    return toggles.length === defaultChartToggles.length && defaultChartToggles.every((key) => toggles.includes(key));
   };
 
   const toggleCategory = (category: ChartCategoryKey) => {
@@ -209,7 +206,7 @@ export const DashboardChart = (props: Props) => {
 
   const eventCategory = CHART_CATEGORY_MAP.events;
   const activeCategories = CHART_CATEGORIES.filter(([key]) =>
-    isMobile ? activeMobileCategory === key : activeCategoryKeys.includes(key as ChartCategoryKey),
+    isMobile ? activeMobileCategory === key : key !== 'events' && activeCategoryKeys.includes(key),
   );
   const onlineUsers = formatNumber(data?.currentActiveUsers ?? 0, true);
 

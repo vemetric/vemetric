@@ -28,7 +28,6 @@ import { ProjectProvider } from '@/contexts/project-context';
 import { getFaviconUrl } from '@/utils/favicon';
 import { timeSpanSearchMiddleware, timespanSearchSchema } from '@/utils/timespans';
 import { trpc } from '@/utils/trpc';
-
 import { chartTogglesSchema } from '../_layout/p/$projectId/index';
 
 const dashboardSearchSchema = z.object({

@@ -839,7 +839,7 @@ export const clickhouseEvent = {
     }): Promise<Array<ClickhouseEvent>> => {
       const { projectId, limit = EVENT_LIMIT, cursor, startDate, filterConfig } = props;
 
-      const cursorClause = cursor ? ` AND createdAt < ${escape(cursor)}` : '';
+      const cursorClause = cursor ? `AND createdAt < ${escape(cursor)}` : '';
 
       // Build filter queries using the existing filter system
       const { filterQueries } = filterConfig
@@ -851,7 +851,7 @@ export const clickhouseEvent = {
       const resultSet = await clickhouseClient.query({
         query: `
           SELECT ${EVENT_KEY_SELECTOR}, max(createdAt) as eventTime, any(usr.avatarUrl) as avatarUrl
-          FROM ${TABLE_NAME} 
+          FROM ${TABLE_NAME}
           LEFT JOIN (
             SELECT id, argMax(avatarUrl, updatedAt) as avatarUrl
             FROM user
@@ -859,13 +859,13 @@ export const clickhouseEvent = {
             GROUP BY id
             HAVING argMax(deleted, updatedAt) = 0
           ) usr ON userId = usr.id
-          WHERE projectId = ${escape(projectId)}${cursorClause}
+          PREWHERE projectId = ${escape(projectId)} AND isPageView <> 1
+          WHERE 1=1 ${cursorClause}
           ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
-          AND isPageView <> 1
           ${filterQueries || ''}
-          GROUP BY id 
-          HAVING sum(sign) > 0 
-          ORDER BY eventTime DESC 
+          GROUP BY id
+          HAVING sum(sign) > 0
+          ORDER BY eventTime DESC
           LIMIT ${escape(limit)}`,
         format: 'JSONEachRow',
       });

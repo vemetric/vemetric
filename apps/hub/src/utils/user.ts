@@ -10,7 +10,7 @@ import { setUserIdCookie } from './cookie';
 import { logger } from './logger';
 import type { HonoContext } from '../types';
 
-const enableLogs = false;
+const enableLogs = true;
 const logInfo = (params: Record<string, unknown>, msg: string) => {
   if (!enableLogs) {
     return;
@@ -91,7 +91,15 @@ export async function identifyUser(
     if (userId === null) {
       userId = generateUserId();
     }
-    await dbUserIdentificationMap.create(String(projectId), String(userId), identifier);
+    try {
+      await dbUserIdentificationMap.create(String(projectId), String(userId), identifier);
+    } catch (err) {
+      logger.error(
+        { projectId: String(projectId), userId: String(userId), identifier, err },
+        'Error creating user identification map entry',
+      );
+      throw err;
+    }
 
     await addToQueue(
       createUserQueue,

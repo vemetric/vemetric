@@ -179,6 +179,7 @@ app.post(
         EX: REDIS_USER_IDENTIFY_EXPIRATION,
       })) ?? null;
     if (lockAcquired === null) {
+      logger.info({ projectId: String(projectId), identifier }, 'Identification already running');
       return context.text('Identification is already running', 409);
     }
 

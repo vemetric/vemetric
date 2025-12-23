@@ -173,11 +173,14 @@ app.post(
     const redisClient = await getRedisClient();
     const redisKey = getRedisUserIdentifyKey(projectId, identifier);
 
-    const isActive = (await redisClient?.get(redisKey)) ?? null;
-    if (isActive !== null) {
+    const lockAcquired =
+      (await redisClient?.set(redisKey, '1', {
+        NX: true,
+        EX: REDIS_USER_IDENTIFY_EXPIRATION,
+      })) ?? null;
+    if (lockAcquired === null) {
       return context.text('Identification is already running', 409);
     }
-    await redisClient?.setEx(redisKey, REDIS_USER_IDENTIFY_EXPIRATION, '1');
 
     try {
       const userId = await getUserIdFromRequest(context, false);

@@ -2,6 +2,23 @@ import { createTRPCReact } from '@trpc/react-query';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from 'backend';
 
+/**
+ * Custom tRPC context for client-side operations.
+ * Used by splitLink to determine request routing.
+ */
+export interface TRPCContext {
+  /**
+   * When true, the request will bypass batching and be sent as a separate HTTP request.
+   * Useful for queries that should load in parallel with batched queries.
+   */
+  skipBatch?: boolean;
+}
+
+// Augment tRPC's types to include our custom context
+declare module '@trpc/client' {
+  interface OperationContext extends TRPCContext {}
+}
+
 export const trpc = createTRPCReact<AppRouter>({
   overrides: {
     useMutation: {

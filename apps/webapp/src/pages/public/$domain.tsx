@@ -63,6 +63,10 @@ function Page() {
     { domain, timespan, startDate, endDate, filterConfig },
     { keepPreviousData: true, onError: () => {}, refetchInterval: getTimespanRefetchInterval(timespan) },
   );
+  const { data: trendsData } = trpc.dashboard.getTrends.useQuery(
+    { domain, timespan, startDate, endDate, filterConfig },
+    { keepPreviousData: true, onError: () => {}, refetchInterval: getTimespanRefetchInterval(timespan) },
+  );
   const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery(
     {
       domain,
@@ -179,6 +183,7 @@ function Page() {
                     timespanStartDate={startDate}
                     timespanEndDate={endDate}
                     data={data}
+                    trends={trendsData}
                     publicDashboard
                   />
                   {isPreviousData && (

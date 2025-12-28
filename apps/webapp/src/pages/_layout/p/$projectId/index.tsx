@@ -65,6 +65,14 @@ function Page() {
       refetchInterval: getTimespanRefetchInterval(timespan),
     },
   );
+  const { data: trendsData } = trpc.dashboard.getTrends.useQuery(
+    { projectId, timespan, startDate, endDate, filterConfig },
+    {
+      keepPreviousData: true,
+      onError: () => {},
+      refetchInterval: getTimespanRefetchInterval(timespan),
+    },
+  );
   const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery(
     {
       projectId,
@@ -132,7 +140,7 @@ function Page() {
           </Box>
           <Flex flexDir="column" gap={3} pos="relative">
             <Box pos="relative">
-              <DashboardChart timespan={timespan} timespanStartDate={startDate} timespanEndDate={endDate} data={data} />
+              <DashboardChart timespan={timespan} timespanStartDate={startDate} timespanEndDate={endDate} data={data} trends={trendsData} />
               {isPreviousData && (
                 <Box pos="absolute" inset="0" opacity="0.8" zIndex="docked">
                   <Skeleton pos="absolute" inset="0" rounded="lg" />

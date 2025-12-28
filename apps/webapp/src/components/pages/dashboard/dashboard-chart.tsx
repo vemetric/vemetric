@@ -24,6 +24,7 @@ import {
   CHART_CATEGORIES,
   CHART_CATEGORY_MAP,
   ChartCategoryCard,
+  type MetricTrend,
 } from '@/components/pages/dashboard/chart-category-card';
 import { DashboardCardHeader } from '@/components/pages/dashboard/dashboard-card-header';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -150,11 +151,19 @@ export type ChartPayloadItem = {
   payload: any;
 };
 
+type TrendsData = {
+  users: MetricTrend;
+  pageViews: MetricTrend;
+  bounceRate: MetricTrend;
+  visitDuration: MetricTrend;
+};
+
 interface Props extends CardRootProps {
   timespan: TimeSpan;
   timespanStartDate?: string;
   timespanEndDate?: string;
   data: DashboardData;
+  trends?: TrendsData;
   autoMinValue?: boolean;
   minValue?: number;
   maxValue?: number;
@@ -166,6 +175,7 @@ interface Props extends CardRootProps {
 export const DashboardChart = (props: Props) => {
   const {
     data,
+    trends,
     timespan,
     timespanStartDate,
     timespanEndDate,
@@ -226,7 +236,7 @@ export const DashboardChart = (props: Props) => {
                       display={{ base: activeMobileCategory === categoryKey ? 'flex' : 'none', md: 'flex' }}
                       mr={{ base: 0, md: index === CHART_CATEGORIES.length - 1 ? 0 : 1.5 }}
                       value={data?.[categoryKey]}
-                      trend={data?.trends?.[categoryKey]}
+                      trend={trends?.[categoryKey]}
                       isActive={isMobile || activeCategoryKeys.includes(categoryKey)}
                       onClick={() => handleToggleCategory(categoryKey)}
                       label={
@@ -255,7 +265,7 @@ export const DashboardChart = (props: Props) => {
                       categoryKey={categoryKey}
                       mr={{ base: 0, md: 1.5 }}
                       value={data?.[categoryKey]}
-                      trend={data?.trends?.[categoryKey]}
+                      trend={trends?.[categoryKey]}
                       isActive
                       bg="bg.card"
                       onClick={() => setActiveMobileCategory(categoryKey)}

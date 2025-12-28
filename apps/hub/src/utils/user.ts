@@ -10,19 +10,13 @@ import { setUserIdCookie } from './cookie';
 import { logger } from './logger';
 import type { HonoContext } from '../types';
 
-const enableLogs = true;
+const enableLogs = false;
 const logInfo = (params: Record<string, unknown>, msg: string) => {
   if (!enableLogs) {
     return;
   }
   logger.info(params, msg);
 };
-
-export const REDIS_USER_IDENTIFY_EXPIRATION = 60; // seconds
-// used to make sure identification of a user is not done multiple at the same time
-export function getRedisUserIdentifyKey(projectId: bigint, identifier: string) {
-  return `identification:${projectId}:${identifier}`;
-}
 
 export const identifySchema = z.object({
   identifier: z.string().min(1),

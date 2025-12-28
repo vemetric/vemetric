@@ -17,9 +17,9 @@ import { eventSchema, trackEvent, validateSpecialEvents } from './utils/event';
 import { logger } from './utils/logger';
 import { handlePageLeave } from './utils/page-leave';
 import { getProjectByToken } from './utils/project';
-import { getRedisClient } from './utils/redis';
+import { getUserIdentificationLock, releaseUserIdentificationLock } from './utils/redis';
 import { getUserIdFromRequest, isPrefetchRequest } from './utils/request';
-import { REDIS_USER_IDENTIFY_EXPIRATION, getRedisUserIdentifyKey, identifySchema, identifyUser } from './utils/user';
+import { identifySchema, identifyUser } from './utils/user';
 
 const app = new Hono<{ Variables: HonoContextVars }>();
 
@@ -170,29 +170,21 @@ app.post(
 
     const { projectId } = context.var;
 
-    const redisClient = await getRedisClient();
-    const redisKey = getRedisUserIdentifyKey(projectId, identifier);
-
-    const lockAcquired =
-      (await redisClient?.set(redisKey, '1', {
-        NX: true,
-        EX: REDIS_USER_IDENTIFY_EXPIRATION,
-      })) ?? null;
-    if (lockAcquired === null) {
+    const { lockAcquired } = await getUserIdentificationLock(projectId, identifier);
+    if (!lockAcquired) {
       logger.info({ projectId: String(projectId), identifier }, 'Identification already running');
-      return context.text('Identification is already running', 409);
+      return context.text('Identification is running', 202);
     }
 
     try {
       const userId = await getUserIdFromRequest(context, false);
       const response = await identifyUser(context, body, projectId, userId);
 
-      await redisClient?.del(redisKey);
+      await releaseUserIdentificationLock(projectId, identifier);
 
       return response;
     } catch (err) {
-      await redisClient?.del(redisKey);
-
+      await releaseUserIdentificationLock(projectId, identifier);
       logger.error({ err }, 'Error identifying user');
       throw err;
     }

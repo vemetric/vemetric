@@ -20,6 +20,11 @@ vi.mock('../../src/utils/user', () => ({
   identifyUser: vi.fn(),
 }));
 
+vi.mock('../../src/utils/redis', () => ({
+  getUserIdentificationLock: vi.fn().mockResolvedValue({ lockAcquired: true }),
+  releaseUserIdentificationLock: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('@vemetric/common/request-ip', () => ({
   getClientIp: vi.fn(),
 }));

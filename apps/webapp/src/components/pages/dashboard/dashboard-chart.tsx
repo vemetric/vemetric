@@ -226,6 +226,7 @@ export const DashboardChart = (props: Props) => {
                       display={{ base: activeMobileCategory === categoryKey ? 'flex' : 'none', md: 'flex' }}
                       mr={{ base: 0, md: index === CHART_CATEGORIES.length - 1 ? 0 : 1.5 }}
                       value={data?.[categoryKey]}
+                      trend={data?.trends?.[categoryKey]}
                       isActive={isMobile || activeCategoryKeys.includes(categoryKey)}
                       onClick={() => handleToggleCategory(categoryKey)}
                       label={
@@ -254,6 +255,7 @@ export const DashboardChart = (props: Props) => {
                       categoryKey={categoryKey}
                       mr={{ base: 0, md: 1.5 }}
                       value={data?.[categoryKey]}
+                      trend={data?.trends?.[categoryKey]}
                       isActive
                       bg="bg.card"
                       onClick={() => setActiveMobileCategory(categoryKey)}

@@ -1,12 +1,28 @@
 import type { StatRootProps } from '@chakra-ui/react';
-import { Box, Flex, Stat } from '@chakra-ui/react';
+import { Box, Flex, Icon, Stat, Text } from '@chakra-ui/react';
 import type { ReactNode } from 'react';
 import type { IconType } from 'react-icons';
-import { TbEye, TbClock, TbDoorExit, TbUserSquareRounded, TbBolt } from 'react-icons/tb';
+import {
+  TbEye,
+  TbClock,
+  TbDoorExit,
+  TbUserSquareRounded,
+  TbBolt,
+  TbArrowUp,
+  TbArrowDown,
+  TbMinus,
+} from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import type { ChartCategoryKey } from '@/hooks/use-chart-toggles';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import { NumberCounter } from '../../number-counter';
+
+export type TrendDirection = 'up' | 'down' | 'same';
+
+export interface MetricTrend {
+  percentage: number;
+  direction: TrendDirection;
+}
 
 export interface ChartCategory {
   label: string;
@@ -14,14 +30,16 @@ export interface ChartCategory {
   color: string;
   yAxisId?: string;
   valueFormatter?: (value: number) => string;
+  higherIsBetter?: boolean; // Used to determine trend color (default: true)
 }
 
 export const CHART_CATEGORY_MAP: Record<ChartCategoryKey, ChartCategory> = {
-  users: { label: 'Users', icon: TbUserSquareRounded, color: 'blue' },
+  users: { label: 'Users', icon: TbUserSquareRounded, color: 'blue', higherIsBetter: true },
   pageViews: {
     label: 'Page Views',
     icon: TbEye,
     color: 'purple',
+    higherIsBetter: true,
   },
   bounceRate: {
     label: 'Bounce Rate',
@@ -29,6 +47,7 @@ export const CHART_CATEGORY_MAP: Record<ChartCategoryKey, ChartCategory> = {
     color: 'yellow',
     yAxisId: 'bounceRate',
     valueFormatter: (value: number) => `${value.toFixed(0)}%`,
+    higherIsBetter: false, // Lower bounce rate is better
   },
   visitDuration: {
     label: 'Visit Duration',
@@ -36,12 +55,14 @@ export const CHART_CATEGORY_MAP: Record<ChartCategoryKey, ChartCategory> = {
     color: 'pink',
     yAxisId: 'visitDuration',
     valueFormatter: (value: number) => dateTimeFormatter.formatDuration(value),
+    higherIsBetter: true, // Longer visits are better
   },
   events: {
     label: 'Events',
     icon: TbBolt,
     color: 'orange',
     yAxisId: 'events',
+    higherIsBetter: true,
   },
 };
 export const CHART_CATEGORIES = Object.entries(CHART_CATEGORY_MAP) as [ChartCategoryKey, ChartCategory][];
@@ -50,12 +71,45 @@ interface Props extends StatRootProps {
   categoryKey: ChartCategoryKey;
   label?: ReactNode;
   value: number | undefined | null;
+  trend?: MetricTrend;
   isActive?: boolean;
   onClick?: () => void;
 }
 
-export const ChartCategoryCard = ({ categoryKey, value, label, isActive = false, onClick, ...props }: Props) => {
+function getTrendIcon(direction: TrendDirection) {
+  switch (direction) {
+    case 'up':
+      return TbArrowUp;
+    case 'down':
+      return TbArrowDown;
+    default:
+      return TbMinus;
+  }
+}
+
+function getTrendColor(direction: TrendDirection, higherIsBetter: boolean): string {
+  if (direction === 'same') {
+    return 'gray.500';
+  }
+
+  const isPositive = direction === 'up';
+  const isGood = higherIsBetter ? isPositive : !isPositive;
+
+  return isGood ? 'green.500' : 'red.500';
+}
+
+export const ChartCategoryCard = ({
+  categoryKey,
+  value,
+  label,
+  trend,
+  isActive = false,
+  onClick,
+  ...props
+}: Props) => {
   const category = CHART_CATEGORY_MAP[categoryKey];
+  const TrendIcon = trend ? getTrendIcon(trend.direction) : null;
+  const trendColor = trend ? getTrendColor(trend.direction, category.higherIsBetter ?? true) : 'gray.500';
 
   return (
     <Stat.Root
@@ -104,6 +158,14 @@ export const ChartCategoryCard = ({ categoryKey, value, label, isActive = false,
             '-'
           )}
         </Stat.ValueText>
+        {trend && TrendIcon && (
+          <Flex align="center" gap={0.5} color={trendColor}>
+            <Icon as={TrendIcon} boxSize={3.5} />
+            <Text fontSize="xs" fontWeight="medium">
+              {trend.percentage}%
+            </Text>
+          </Flex>
+        )}
       </Flex>
     </Stat.Root>
   );

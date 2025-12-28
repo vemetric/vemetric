@@ -6,8 +6,33 @@ import { clickhouseEvent, clickhouseSession, getUserFilterQueries } from 'clickh
 import { dbFunnel } from 'database';
 import { z } from 'zod';
 import { getFilterFunnelsData } from '../utils/filter';
-import { fillTimeSeries } from '../utils/timeseries';
+import { fillTimeSeries, getPreviousPeriodDates } from '../utils/timeseries';
 import { timespanProcedure, router } from '../utils/trpc';
+
+export type MetricTrend = {
+  percentage: number;
+  direction: 'up' | 'down' | 'same';
+};
+
+function calculateTrend(current: number, previous: number): MetricTrend {
+  if (previous === 0 && current === 0) {
+    return { percentage: 0, direction: 'same' };
+  }
+  if (previous === 0) {
+    return { percentage: 100, direction: 'up' };
+  }
+  const percentageChange = ((current - previous) / previous) * 100;
+  const roundedPercentage = Math.round(Math.abs(percentageChange));
+
+  if (roundedPercentage === 0) {
+    return { percentage: 0, direction: 'same' };
+  }
+
+  return {
+    percentage: roundedPercentage,
+    direction: percentageChange > 0 ? 'up' : 'down',
+  };
+}
 
 export const dashboardRouter = router({
   getData: timespanProcedure
@@ -33,7 +58,24 @@ export const dashboardRouter = router({
         filterConfig,
       };
 
-      // Fetch all data in parallel
+      // Calculate previous period dates for trend comparison
+      const { prevStartDate, prevEndDate } = getPreviousPeriodDates(startDate, endDate);
+      const { filterQueries: prevFilterQueries } = getUserFilterQueries({
+        filterConfig,
+        projectId,
+        startDate: prevStartDate,
+        endDate: prevEndDate,
+        funnelsData,
+      });
+      const prevFilterOptions = {
+        timeSpan,
+        startDate: prevStartDate,
+        endDate: prevEndDate,
+        filterQueries: prevFilterQueries,
+        filterConfig,
+      };
+
+      // Fetch all data in parallel (current and previous period)
       const [
         pageViewTimeSeriesData,
         activeUserTimeSeriesData,
@@ -44,6 +86,11 @@ export const dashboardRouter = router({
         mostVisitedPagesData,
         eventsData,
         eventsTimeSeriesData,
+        // Previous period data for trends
+        prevPageViewTimeSeriesData,
+        prevUsersData,
+        prevBounceRateTimeSeriesData,
+        prevVisitDurationTimeSeriesData,
       ] = await Promise.all([
         clickhouseEvent.getPageViewTimeSeries(projectId, filterOptions),
         clickhouseEvent.getActiveUserTimeSeries(projectId, filterOptions),
@@ -54,6 +101,15 @@ export const dashboardRouter = router({
         clickhouseEvent.getMostVisitedPages(projectId, filterOptions),
         clickhouseEvent.getEvents(projectId, filterOptions),
         clickhouseEvent.getEventsTimeSeries(projectId, filterOptions),
+        // Previous period queries
+        clickhouseEvent.getPageViewTimeSeries(projectId, prevFilterOptions),
+        clickhouseEvent.getActiveUsers(projectId, {
+          startDate: prevStartDate,
+          endDate: prevEndDate,
+          filterQueries: prevFilterQueries,
+        }),
+        clickhouseEvent.getBounceRateTimeSeries(projectId, prevFilterOptions),
+        clickhouseSession.getVisitDurationTimeSeries(projectId, prevFilterOptions),
       ]);
 
       // Process the data after receiving all results
@@ -82,6 +138,18 @@ export const dashboardRouter = router({
         : 0;
       const eventsTimeSeries = fillTimeSeries(eventsTimeSeriesData, startDate, timeSpanData.interval, endDate);
 
+      // Calculate previous period metrics
+      const prevPageViews = prevPageViewTimeSeriesData?.reduce((sum, ts) => sum + ts.count, 0) ?? 0;
+      const prevBounceRate = prevBounceRateTimeSeriesData?.length
+        ? (prevBounceRateTimeSeriesData.reduce((sum, ts) => sum + ts.bounces, 0) /
+            prevBounceRateTimeSeriesData.reduce((sum, ts) => sum + ts.totalSessions, 0)) *
+          100
+        : 0;
+      const prevVisitDuration = prevVisitDurationTimeSeriesData?.length
+        ? prevVisitDurationTimeSeriesData.reduce((sum, ts) => sum + ts.count * ts.sessionCount, 0) /
+          prevVisitDurationTimeSeriesData.reduce((sum, ts) => sum + ts.sessionCount, 0)
+        : 0;
+
       const chartTimeSeries =
         activeUserTimeSeries?.map((ts, index) => ({
           date: ts.date,
@@ -95,6 +163,14 @@ export const dashboardRouter = router({
       const pageViews = pageViewTimeSeries?.map((pv) => pv.count).reduce((a, b) => a + b, 0) ?? 0;
       const isInitialized =
         eventsData.length > 0 || pageViews > 0 || (await clickhouseEvent.getAllEventsCount(projectId)) > 0;
+
+      // Calculate trends
+      const trends = {
+        users: calculateTrend(usersData, prevUsersData),
+        pageViews: calculateTrend(pageViews, prevPageViews),
+        bounceRate: calculateTrend(bounceRate, prevBounceRate),
+        visitDuration: calculateTrend(visitDuration, prevVisitDuration),
+      };
 
       return {
         isSubscriptionActive: subscriptionStatus.isActive,
@@ -110,6 +186,7 @@ export const dashboardRouter = router({
         events: eventsData,
         visitDuration,
         isInitialized,
+        trends,
       };
     }),
   getTopSources: timespanProcedure

@@ -71,6 +71,7 @@ function Page() {
       keepPreviousData: true,
       onError: () => {},
       refetchInterval: getTimespanRefetchInterval(timespan),
+      trpc: { context: { skipBatch: true } },
     },
   );
   const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery(

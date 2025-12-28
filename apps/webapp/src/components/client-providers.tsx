@@ -41,8 +41,8 @@ export const ClientProviders = ({ children }: PropsWithChildren) => {
       transformer: superjson,
       links: [
         splitLink({
-          // Send getTrends to a non-batched link so it loads in parallel with getData
-          condition: (op) => op.path === 'dashboard.getTrends',
+          // Check for skipBatch flag in context to send as separate request
+          condition: (op) => op.context.skipBatch === true,
           true: httpLink({ url, ...fetchOptions }),
           false: httpBatchLink({ url, ...fetchOptions }),
         }),

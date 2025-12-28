@@ -65,7 +65,12 @@ function Page() {
   );
   const { data: trendsData } = trpc.dashboard.getTrends.useQuery(
     { domain, timespan, startDate, endDate, filterConfig },
-    { keepPreviousData: true, onError: () => {}, refetchInterval: getTimespanRefetchInterval(timespan) },
+    {
+      keepPreviousData: true,
+      onError: () => {},
+      refetchInterval: getTimespanRefetchInterval(timespan),
+      trpc: { context: { skipBatch: true } },
+    },
   );
   const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery(
     {

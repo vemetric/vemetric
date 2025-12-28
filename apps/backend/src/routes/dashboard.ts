@@ -161,7 +161,8 @@ export const dashboardRouter = router({
       };
 
       // Calculate previous period dates
-      const { prevStartDate, prevEndDate } = getPreviousPeriodDates(startDate, endDate);
+      const currentEndDate = endDate ?? new Date();
+      const { prevStartDate, prevEndDate } = getPreviousPeriodDates(startDate, currentEndDate);
       const { filterQueries: prevFilterQueries } = getUserFilterQueries({
         filterConfig,
         projectId,
@@ -227,7 +228,7 @@ export const dashboardRouter = router({
         : 0;
 
       return {
-        users: calculateTrend(usersData, prevUsersData),
+        users: calculateTrend(usersData ?? 0, prevUsersData ?? 0),
         pageViews: calculateTrend(pageViews, prevPageViews),
         bounceRate: calculateTrend(bounceRate, prevBounceRate),
         visitDuration: calculateTrend(visitDuration, prevVisitDuration),

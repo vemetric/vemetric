@@ -15,6 +15,7 @@ import {
 } from 'react-icons/tb';
 import { useOpenCrispChat } from '@/stores/crisp-chat-store';
 import { authClient } from '@/utils/auth';
+import { EventLimitBanner } from './event-limit-banner';
 import { SocialButtons } from './social-buttons';
 import { ThemeSwitch } from './theme-switch';
 
@@ -114,7 +115,7 @@ export const Navigation = (props: CardRootProps) => {
       <Flex p={2} align="flex-end" justify="center" gap={2}>
         <SocialButtons />
       </Flex>
-      {/*<BlackFridayBanner />*/}
+      <EventLimitBanner />
       <Flex justify="center" p={2}>
         <ThemeSwitch />
       </Flex>

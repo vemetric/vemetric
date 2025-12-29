@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { logger } from '../utils/logger';
 import { paddleApi } from '../utils/paddle';
 import { organizationProcedure, organizationAdminProcedure, router, projectOrPublicProcedure } from '../utils/trpc';
-import { getCurrentUsageCycle, getUsagePerOrganization } from '../utils/usage';
+import { getUsageCycles } from '../utils/usage';
 
 export const billingRouter = router({
   billingStatus: organizationProcedure.query(async (opts) => {
@@ -11,16 +11,11 @@ export const billingRouter = router({
       ctx: { organization, billingInfo, subscriptionStatus },
     } = opts;
 
-    const currentUsageCycle = await getCurrentUsageCycle(organization, billingInfo);
-    const usageStats = await getUsagePerOrganization(
-      organization.id,
-      currentUsageCycle.startDate,
-      currentUsageCycle.endDate,
-    );
+    const usageCycles = await getUsageCycles(organization.id, organization, billingInfo, 2);
 
     return {
       ...subscriptionStatus,
-      usageStats,
+      usageCycles,
     };
   }),
   subscriptionActive: projectOrPublicProcedure.query(async (opts) => {
@@ -37,19 +32,13 @@ export const billingRouter = router({
       ctx: { organizationId, billingInfo, organization, subscriptionStatus },
     } = opts;
 
-    const currentUsageCycle = await getCurrentUsageCycle(organization, billingInfo);
-    const usageStats = await getUsagePerOrganization(
-      organizationId,
-      currentUsageCycle.startDate,
-      currentUsageCycle.endDate,
-    );
+    const usageCycles = await getUsageCycles(organizationId, organization, billingInfo, 2);
 
     return {
       ...subscriptionStatus,
       subscriptionEndDate: billingInfo?.subscriptionEndDate,
       subscriptionNextBilledAt: billingInfo?.subscriptionNextBilledAt,
-      usageResetDate: currentUsageCycle.endDate,
-      usageStats,
+      usageCycles,
     };
   }),
   managmentUrls: organizationAdminProcedure.query(async (opts) => {

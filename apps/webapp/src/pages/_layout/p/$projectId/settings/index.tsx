@@ -9,6 +9,7 @@ import { useSetBreadcrumbs } from '@/stores/header-store';
 
 const settingsSearchSchema = z.object({
   tab: fallback(z.enum(['general', 'billing']), 'general').default('general'),
+  pricingDialog: z.boolean().optional(),
 });
 
 export const Route = createFileRoute('/_layout/p/$projectId/settings/')({

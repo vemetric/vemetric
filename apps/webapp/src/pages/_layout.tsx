@@ -74,8 +74,8 @@ function LayoutComponent() {
     organizationId,
   });
 
-  const eventsUsed = billingStatus?.usageStats?.total ?? 0;
-  const { eventsIncluded } = getPricingPlan(billingStatus);
+  const { eventsIncluded, hasMultipleExceededCycles, showLimitWarning, cycles } = getPricingPlan(billingStatus);
+
   useEffect(() => {
     if (eventLimitStore.organizationId !== organizationId) {
       eventLimitStore.organizationId = organizationId;
@@ -83,7 +83,7 @@ function LayoutComponent() {
       shownPastDueToast = false;
     }
 
-    if (eventsUsed > eventsIncluded) {
+    if (showLimitWarning) {
       eventLimitStore.showEventLimitDialog = true;
     }
 
@@ -99,13 +99,17 @@ function LayoutComponent() {
           label: 'Update payment method',
           onClick: () => {
             if (projectId) {
-              navigate({ to: '/p/$projectId/settings', params: { projectId }, search: { tab: 'billing' } });
+              navigate({
+                to: '/p/$projectId/settings',
+                params: { projectId },
+                search: { tab: 'billing', pricingDialog: true },
+              });
             }
           },
         },
       });
     }
-  }, [billingStatus, billingStatus?.isPastDue, eventsUsed, eventsIncluded, organizationId, projectId, navigate]);
+  }, [billingStatus, billingStatus?.isPastDue, showLimitWarning, organizationId, projectId, navigate]);
 
   return (
     <>
@@ -176,8 +180,9 @@ function LayoutComponent() {
         </Grid>
         <EventLimitDialog
           projectId={projectId ?? ''}
-          usageStats={billingStatus?.usageStats}
+          cycles={cycles}
           eventsIncluded={eventsIncluded}
+          hasMultipleExceededCycles={hasMultipleExceededCycles}
         />
       </PageWrapper>
     </>

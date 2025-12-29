@@ -1,3 +1,5 @@
+import type { UsageStats } from '@vemetric/common/usage';
+
 export const FREE_PLAN_EVENTS = 2500;
 
 interface SubscriptionStatus {
@@ -5,7 +7,24 @@ interface SubscriptionStatus {
   isPastDue: boolean;
   priceId?: string;
   customPlanEvents?: number | null;
+  usageCycles?: UsageStats[];
 }
+
+export interface UsageCycle {
+  usage: UsageStats;
+  type: 'current' | 'previous' | 'past';
+  exceeded: boolean;
+}
+
+const hasMultipleExceeded = (usageCycles: UsageStats[], eventsIncluded: number): boolean => {
+  let exceededCount = 0;
+  for (const usageCycle of usageCycles) {
+    if (usageCycle.total > eventsIncluded) {
+      exceededCount++;
+    }
+  }
+  return exceededCount >= 2;
+};
 
 export const getPricingPlan = (subscriptionStatus?: SubscriptionStatus) => {
   let isYearly = false;
@@ -29,21 +48,33 @@ export const getPricingPlan = (subscriptionStatus?: SubscriptionStatus) => {
       })
     : null;
 
-  // If there's a custom plan override from the database, use it
-  if (subscriptionStatus?.customPlanEvents) {
-    return {
-      isYearly,
-      pricingPlanIndex,
-      eventsIncluded: subscriptionStatus.customPlanEvents,
-      price: pricingPlan?.price ?? 0,
-    };
-  }
+  const eventsIncluded = subscriptionStatus?.customPlanEvents ?? pricingPlan?.events ?? FREE_PLAN_EVENTS;
+
+  const usageCycles = subscriptionStatus?.usageCycles ?? [];
+
+  // Index 0 is current cycle
+  const currentCycleUsage = usageCycles[0];
+  const exceededInCurrentCycle = currentCycleUsage ? currentCycleUsage.total > eventsIncluded : false;
+  const hasMultipleExceededCycles = hasMultipleExceeded(usageCycles, eventsIncluded);
+
+  // Show warning if: current exceeded OR 2 consecutive cycles exceeded
+  const showLimitWarning = exceededInCurrentCycle || hasMultipleExceededCycles;
+
+  // Build cycles with computed flags for components
+  const cycles: UsageCycle[] = usageCycles.map((usage, index) => ({
+    usage,
+    type: index === 0 ? 'current' : index === 1 ? 'previous' : 'past',
+    exceeded: usage.total > eventsIncluded,
+  }));
 
   return {
     isYearly,
     pricingPlanIndex,
-    eventsIncluded: pricingPlan?.events ?? FREE_PLAN_EVENTS,
+    eventsIncluded,
     price: pricingPlan?.price ?? 0,
+    cycles,
+    hasMultipleExceededCycles: hasMultipleExceededCycles,
+    showLimitWarning,
   };
 };
 

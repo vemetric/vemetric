@@ -11,14 +11,15 @@ import {
   AbsoluteCenter,
   Spinner,
 } from '@chakra-ui/react';
-import { format } from 'date-fns';
+import { useNavigate, useSearch } from '@tanstack/react-router';
+import { addDays, format } from 'date-fns';
 import { useState } from 'react';
 import { TbArrowRight, TbCreditCard, TbBolt, TbLockX } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import { InfoTip } from '@/components/info-tip';
 import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import { toaster } from '@/components/ui/toaster';
-import { UsageStatsProgress } from '@/components/usage-stats-progress';
+import { UsageCycleHistory } from '@/components/usage-cycle-history';
 import { useOrganizationId } from '@/hooks/use-organization-id';
 import { getPricingPlan } from '@/utils/pricing';
 import { trpc } from '@/utils/trpc';
@@ -32,7 +33,8 @@ interface Props {
 export const BillingTab = ({ projectId }: Props) => {
   const { organizationId } = useOrganizationId(projectId);
 
-  const [pricingDialogOpen, setPricingDialogOpen] = useState(false);
+  const { pricingDialog = false } = useSearch({ from: '/_layout/p/$projectId/settings/' });
+  const navigate = useNavigate({ from: '/p/$projectId/settings' });
   const [isUndoCancellationLoading, setIsUndoCancellationLoading] = useState(false);
 
   const {
@@ -53,7 +55,8 @@ export const BillingTab = ({ projectId }: Props) => {
 
   const hasActiveSubscription = billingInfo?.isActive;
   const isPastDue = billingInfo?.isPastDue;
-  const { pricingPlanIndex, isYearly, eventsIncluded, price } = getPricingPlan(billingInfo);
+  const { pricingPlanIndex, isYearly, eventsIncluded, price, hasMultipleExceededCycles, showLimitWarning, cycles } =
+    getPricingPlan(billingInfo);
 
   const { data: managmentUrls, isLoading: isManagementUrlsLoading } = trpc.billing.managmentUrls.useQuery(
     {
@@ -77,8 +80,6 @@ export const BillingTab = ({ projectId }: Props) => {
   }
 
   const nextPaymentDate = billingInfo?.subscriptionNextBilledAt;
-  const eventsUsed = billingInfo?.usageStats.total ?? 0;
-  const eventUsageExceeded = eventsUsed > eventsIncluded;
   const hasInvoices = hasActiveSubscription;
 
   if (isLoading) {
@@ -126,7 +127,7 @@ export const BillingTab = ({ projectId }: Props) => {
                     variant={hasActiveSubscription ? 'surface' : 'solid'}
                     colorPalette={hasActiveSubscription ? 'gray' : 'purple'}
                     onClick={() => {
-                      setPricingDialogOpen(true);
+                      navigate({ resetScroll: false, search: (prev) => ({ ...prev, pricingDialog: true }) });
                     }}
                   >
                     {hasActiveSubscription ? 'Manage subscription' : 'Upgrade'} <TbArrowRight />
@@ -213,25 +214,43 @@ export const BillingTab = ({ projectId }: Props) => {
                 <TbBolt />
               </CardIcon>
               <Text fontWeight="semibold">Usage</Text>
-              {eventUsageExceeded && (
+              {showLimitWarning && (
                 <InfoTip
                   content={
-                    <Text>
-                      You have exceeded your included events limit.
-                      <br />
-                      Please upgrade to a higher plan.
-                    </Text>
+                    <>
+                      <Text maxW={hasMultipleExceededCycles ? '260px' : undefined} mb="1.5">
+                        You have {hasMultipleExceededCycles ? 'repeatedly ' : ''}exceeded your included events limit.
+                      </Text>
+                      <Text maxW={hasMultipleExceededCycles ? '260px' : undefined}>
+                        Please upgrade to a higher plan.
+                      </Text>
+                    </>
                   }
                   colorPalette="red"
                 />
               )}
+              <Box flexGrow={1} />
+              {showLimitWarning && (
+                <Button
+                  size="xs"
+                  variant="subtle"
+                  colorPalette="red"
+                  onClick={() => {
+                    navigate({ resetScroll: false, search: (prev) => ({ ...prev, pricingDialog: true }) });
+                  }}
+                >
+                  Upgrade
+                </Button>
+              )}
             </Flex>
           </Card.Header>
           <Card.Body alignItems="flex-start" gap="4">
-            <UsageStatsProgress usageStats={billingInfo?.usageStats} eventsIncluded={eventsIncluded} />
-            <Text textStyle="xs" color="fg.muted" textWrap="balance">
-              The usage count will reset on {format(billingInfo.usageResetDate, 'MMMM d, yyyy')}.
-            </Text>
+            <UsageCycleHistory cycles={cycles} eventsIncluded={eventsIncluded} />
+            {cycles[0] && (
+              <Text textStyle="xs" color="fg.muted" textWrap="balance">
+                The current usage cycle resets on {format(addDays(cycles[0].usage.periodEnd, 1), 'MMMM d, yyyy')}.
+              </Text>
+            )}
           </Card.Body>
         </Card.Root>
 
@@ -251,10 +270,12 @@ export const BillingTab = ({ projectId }: Props) => {
           </Card.Root>
         )}
 
-        {pricingDialogOpen && (
+        {pricingDialog && (
           <PricingDialog
             open
-            onOpenChange={({ open }) => setPricingDialogOpen(open)}
+            onOpenChange={({ open }) =>
+              navigate({ resetScroll: false, search: (prev) => ({ ...prev, pricingDialog: open ? true : undefined }) })
+            }
             currentPlan={hasActiveSubscription ? { pricingPlanIndex, isYearly } : undefined}
             organizationId={organizationId}
           />

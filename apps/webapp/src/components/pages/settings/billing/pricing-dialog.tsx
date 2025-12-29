@@ -1,5 +1,4 @@
 import { Dialog, Flex, Stack, Text, Button, CloseButton } from '@chakra-ui/react';
-import { motion } from 'motion/react';
 import { useState } from 'react';
 import { TbBolt } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
@@ -63,7 +62,7 @@ export const PricingDialog = ({ open, onOpenChange, currentPlan, organizationId 
   }
 
   let isDowngrade = false;
-  let buttonText = 'Change';
+  let buttonText = 'Upgrade';
   if (currentPlan === undefined) {
     buttonText = 'Upgrade';
   } else if (sliderValue > currentPlan.pricingPlanIndex) {
@@ -119,12 +118,8 @@ export const PricingDialog = ({ open, onOpenChange, currentPlan, organizationId 
                 />
 
                 <Stack gap={2.5}>
-                  <motion.div
-                    initial={{ height: hasChanged ? 'auto' : 0 }}
-                    animate={{ height: hasChanged ? 'auto' : 0 }}
-                    style={{ overflow: 'hidden' }}
-                  >
-                    {pricingPlan.price >= 0 && !isDowngrade ? (
+                  {pricingPlan.price >= 0 && !isDowngrade ? (
+                    <Tooltip content={hasChanged ? '' : 'Choose a different plan to upgrade.'} disabled={hasChanged}>
                       <Button
                         py={2}
                         px={4}
@@ -145,30 +140,30 @@ export const PricingDialog = ({ open, onOpenChange, currentPlan, organizationId 
                       >
                         {buttonText}
                       </Button>
-                    ) : (
-                      <Tooltip
-                        content="Please contact us if you want to downgrade your subscription."
-                        disabled={!isDowngrade}
+                    </Tooltip>
+                  ) : (
+                    <Tooltip
+                      content="Please contact us if you want to downgrade your subscription."
+                      disabled={!isDowngrade}
+                    >
+                      <Button
+                        py={2}
+                        px={4}
+                        fontSize="lg"
+                        fontWeight="medium"
+                        borderRadius="lg"
+                        width="full"
+                        colorPalette="purple"
+                        textDecor="none"
+                        onClick={() => {
+                          onOpenChange({ open: false });
+                          openCrispChat();
+                        }}
                       >
-                        <Button
-                          py={2}
-                          px={4}
-                          fontSize="lg"
-                          fontWeight="medium"
-                          borderRadius="lg"
-                          width="full"
-                          colorPalette="purple"
-                          textDecor="none"
-                          onClick={() => {
-                            onOpenChange({ open: false });
-                            openCrispChat();
-                          }}
-                        >
-                          Contact us
-                        </Button>
-                      </Tooltip>
-                    )}
-                  </motion.div>
+                        Contact us
+                      </Button>
+                    </Tooltip>
+                  )}
                   {currentPlan !== undefined && (
                     <>
                       <Button
@@ -213,7 +208,7 @@ export const PricingDialog = ({ open, onOpenChange, currentPlan, organizationId 
               </Stack>
             </Dialog.Body>
             <Dialog.CloseTrigger asChild top="0" right="0">
-              <CloseButton bg="bg" size="sm" variant="ghost" />
+              <CloseButton bg="transparent" size="sm" variant="ghost" />
             </Dialog.CloseTrigger>
           </Dialog.Content>
         </Dialog.Positioner>

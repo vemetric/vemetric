@@ -57,7 +57,7 @@ export const getPricingPlan = (subscriptionStatus?: SubscriptionStatus) => {
   const exceededInCurrentCycle = currentCycleUsage ? currentCycleUsage.total > eventsIncluded : false;
   const hasMultipleExceededCycles = hasMultipleExceeded(usageCycles, eventsIncluded);
 
-  // Show warning if: current exceeded OR 2 consecutive cycles exceeded
+  // Show warning if: current OR multiple cycles exceeded
   const showLimitWarning = exceededInCurrentCycle || hasMultipleExceededCycles;
 
   // Build cycles with computed flags for components

@@ -24,7 +24,6 @@ import {
   CHART_CATEGORIES,
   CHART_CATEGORY_MAP,
   ChartCategoryCard,
-  type MetricTrend,
 } from '@/components/pages/dashboard/chart-category-card';
 import { DashboardCardHeader } from '@/components/pages/dashboard/dashboard-card-header';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -34,6 +33,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import type { ChartCategoryKey } from '@/hooks/use-chart-toggles';
 import { useChartToggles } from '@/hooks/use-chart-toggles';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
+import type { TrendsData } from '@/utils/trends';
 import type { DashboardData } from '@/utils/trpc';
 import { ChartTooltip } from './chart-tooltip';
 
@@ -149,13 +149,6 @@ export type ChartPayloadItem = {
   color: string;
   type?: string;
   payload: any;
-};
-
-type TrendsData = {
-  users: MetricTrend;
-  pageViews: MetricTrend;
-  bounceRate: MetricTrend;
-  visitDuration: MetricTrend;
 };
 
 interface Props extends CardRootProps {

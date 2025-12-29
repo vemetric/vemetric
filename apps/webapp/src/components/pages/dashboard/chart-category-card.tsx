@@ -3,27 +3,13 @@ import { Box, Flex, Icon, Skeleton, Stat, Text } from '@chakra-ui/react';
 import { formatNumber } from '@vemetric/common/math';
 import type { ReactNode } from 'react';
 import type { IconType } from 'react-icons';
-import {
-  TbEye,
-  TbClock,
-  TbDoorExit,
-  TbUserSquareRounded,
-  TbBolt,
-  TbTrendingUp,
-  TbTrendingDown,
-  TbArrowNarrowRight,
-} from 'react-icons/tb';
+import { TbEye, TbClock, TbDoorExit, TbUserSquareRounded, TbBolt } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import type { ChartCategoryKey } from '@/hooks/use-chart-toggles';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
+import type { MetricTrend } from '@/utils/trends';
+import { getTrendColor, getTrendIcon } from '@/utils/trends';
 import { NumberCounter } from '../../number-counter';
-
-export type TrendDirection = 'up' | 'down' | 'same';
-
-export interface MetricTrend {
-  percentage: number;
-  direction: TrendDirection;
-}
 
 export interface ChartCategory {
   label: string;
@@ -75,28 +61,6 @@ interface Props extends StatRootProps {
   trend?: MetricTrend;
   isActive?: boolean;
   onClick?: () => void;
-}
-
-function getTrendIcon(direction: TrendDirection) {
-  switch (direction) {
-    case 'up':
-      return TbTrendingUp;
-    case 'down':
-      return TbTrendingDown;
-    default:
-      return TbArrowNarrowRight;
-  }
-}
-
-function getTrendColor(direction: TrendDirection, higherIsBetter: boolean): string {
-  if (direction === 'same') {
-    return 'gray.500';
-  }
-
-  const isPositive = direction === 'up';
-  const isGood = higherIsBetter ? isPositive : !isPositive;
-
-  return isGood ? 'green.500' : 'red.500';
 }
 
 export const ChartCategoryCard = ({ categoryKey, value, label, trend, isActive = false, onClick, ...props }: Props) => {

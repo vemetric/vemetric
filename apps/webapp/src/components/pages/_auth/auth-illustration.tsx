@@ -15,7 +15,7 @@ import {
 } from 'recharts';
 import type { AxisDomain } from 'recharts/types/util/types';
 import type { ChartCategoryKey } from '@/hooks/use-chart-toggles';
-import { AUTH_ILLUSTRATION_DATA } from './auth-illustration-data';
+import { AUTH_ILLUSTRATION_DATA, AUTH_ILLUSTRATION_TRENDS } from './auth-illustration-data';
 import { PageDotBackground } from '../../page-dot-background';
 import { Status } from '../../ui/status';
 import { Tooltip } from '../../ui/tooltip';
@@ -133,6 +133,7 @@ export const AuthIllustration = () => {
                           <ChartCategoryCard
                             categoryKey={categoryKey}
                             value={AUTH_ILLUSTRATION_DATA?.[categoryKey]}
+                            trend={AUTH_ILLUSTRATION_TRENDS?.[categoryKey]}
                             isActive={activeCategoryKeys.includes(categoryKey)}
                             onClick={() => toggleCategory(categoryKey)}
                             label={

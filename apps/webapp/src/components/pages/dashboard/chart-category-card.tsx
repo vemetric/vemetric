@@ -1,5 +1,6 @@
 import type { StatRootProps } from '@chakra-ui/react';
-import { Box, Flex, Icon, Stat, Text } from '@chakra-ui/react';
+import { Box, Flex, Icon, Skeleton, Stat, Text } from '@chakra-ui/react';
+import { formatNumber } from '@vemetric/common/math';
 import type { ReactNode } from 'react';
 import type { IconType } from 'react-icons';
 import {
@@ -8,9 +9,9 @@ import {
   TbDoorExit,
   TbUserSquareRounded,
   TbBolt,
-  TbArrowUp,
-  TbArrowDown,
-  TbMinus,
+  TbTrendingUp,
+  TbTrendingDown,
+  TbArrowNarrowRight,
 } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import type { ChartCategoryKey } from '@/hooks/use-chart-toggles';
@@ -79,11 +80,11 @@ interface Props extends StatRootProps {
 function getTrendIcon(direction: TrendDirection) {
   switch (direction) {
     case 'up':
-      return TbArrowUp;
+      return TbTrendingUp;
     case 'down':
-      return TbArrowDown;
+      return TbTrendingDown;
     default:
-      return TbMinus;
+      return TbArrowNarrowRight;
   }
 }
 
@@ -98,15 +99,7 @@ function getTrendColor(direction: TrendDirection, higherIsBetter: boolean): stri
   return isGood ? 'green.500' : 'red.500';
 }
 
-export const ChartCategoryCard = ({
-  categoryKey,
-  value,
-  label,
-  trend,
-  isActive = false,
-  onClick,
-  ...props
-}: Props) => {
+export const ChartCategoryCard = ({ categoryKey, value, label, trend, isActive = false, onClick, ...props }: Props) => {
   const category = CHART_CATEGORY_MAP[categoryKey];
   const TrendIcon = trend ? getTrendIcon(trend.direction) : null;
   const trendColor = trend ? getTrendColor(trend.direction, category.higherIsBetter ?? true) : 'gray.500';
@@ -146,7 +139,7 @@ export const ChartCategoryCard = ({
           _groupHover={{ opacity: 1 }}
         />
       </Stat.Label>
-      <Flex gap={2} align="center">
+      <Flex gap={2} align="flex-end" justify="space-between">
         <Stat.ValueText>
           {typeof value === 'number' ? (
             category.valueFormatter ? (
@@ -158,13 +151,15 @@ export const ChartCategoryCard = ({
             '-'
           )}
         </Stat.ValueText>
-        {trend && TrendIcon && (
+        {trend ? (
           <Flex align="center" gap={0.5} color={trendColor}>
-            <Icon as={TrendIcon} boxSize={3.5} />
+            {TrendIcon && <Icon as={TrendIcon} boxSize={3.5} />}
             <Text fontSize="xs" fontWeight="medium">
-              {trend.percentage}%
+              {formatNumber(trend.percentage)}%
             </Text>
           </Flex>
+        ) : (
+          <Skeleton w="40px" h="4" />
         )}
       </Flex>
     </Stat.Root>

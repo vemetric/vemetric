@@ -63,6 +63,7 @@ function Page() {
       keepPreviousData: true,
       onError: () => {},
       refetchInterval: getTimespanRefetchInterval(timespan),
+      trpc: { context: { skipBatch: true } },
     },
   );
   const { data: trendsData } = trpc.dashboard.getTrends.useQuery(
@@ -141,7 +142,13 @@ function Page() {
           </Box>
           <Flex flexDir="column" gap={3} pos="relative">
             <Box pos="relative">
-              <DashboardChart timespan={timespan} timespanStartDate={startDate} timespanEndDate={endDate} data={data} trends={trendsData} />
+              <DashboardChart
+                timespan={timespan}
+                timespanStartDate={startDate}
+                timespanEndDate={endDate}
+                data={data}
+                trends={trendsData}
+              />
               {isPreviousData && (
                 <Box pos="absolute" inset="0" opacity="0.8" zIndex="docked">
                   <Skeleton pos="absolute" inset="0" rounded="lg" />

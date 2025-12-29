@@ -13,7 +13,6 @@ interface CacheEntry {
 }
 
 const usageCyclesCache = new Map<string, CacheEntry>();
-const refreshingOrganizations = new Set<string>();
 
 export async function getUsageForPeriod(organizationId: string, startDate: Date, endDate: Date): Promise<UsageStats> {
   const projects = await dbProject.findByOrganizationId(organizationId);
@@ -105,16 +104,11 @@ export async function getUsageCycles(
   if (cached) {
     const isStale = now - cached.timestamp > CACHE_TTL_MS;
 
-    if (isStale && !refreshingOrganizations.has(cacheKey)) {
+    if (isStale) {
       // Trigger background refresh
-      refreshingOrganizations.add(cacheKey);
-      computeUsageCycles(organizationId, organization, billingInfo, numberOfPastCycles)
-        .then((data) => {
-          usageCyclesCache.set(cacheKey, { data, timestamp: Date.now() });
-        })
-        .finally(() => {
-          refreshingOrganizations.delete(cacheKey);
-        });
+      computeUsageCycles(organizationId, organization, billingInfo, numberOfPastCycles).then((data) => {
+        usageCyclesCache.set(cacheKey, { data, timestamp: Date.now() });
+      });
     }
 
     // Return cached data (even if stale)

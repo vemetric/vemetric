@@ -63,16 +63,6 @@ function Page() {
       keepPreviousData: true,
       onError: () => {},
       refetchInterval: getTimespanRefetchInterval(timespan),
-      trpc: { context: { skipBatch: true } },
-    },
-  );
-  const { data: trendsData } = trpc.dashboard.getTrends.useQuery(
-    { projectId, timespan, startDate, endDate, filterConfig },
-    {
-      keepPreviousData: true,
-      onError: () => {},
-      refetchInterval: getTimespanRefetchInterval(timespan),
-      trpc: { context: { skipBatch: true } },
     },
   );
   const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery(
@@ -147,7 +137,6 @@ function Page() {
                 timespanStartDate={startDate}
                 timespanEndDate={endDate}
                 data={data}
-                trends={trendsData}
               />
               {isPreviousData && (
                 <Box pos="absolute" inset="0" opacity="0.8" zIndex="docked">

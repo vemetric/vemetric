@@ -33,6 +33,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import type { ChartCategoryKey } from '@/hooks/use-chart-toggles';
 import { useChartToggles } from '@/hooks/use-chart-toggles';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
+import type { TrendsData } from '@/utils/trends';
 import type { DashboardData } from '@/utils/trpc';
 import { ChartTooltip } from './chart-tooltip';
 
@@ -155,6 +156,7 @@ interface Props extends CardRootProps {
   timespanStartDate?: string;
   timespanEndDate?: string;
   data: DashboardData;
+  trends?: TrendsData;
   autoMinValue?: boolean;
   minValue?: number;
   maxValue?: number;
@@ -166,6 +168,7 @@ interface Props extends CardRootProps {
 export const DashboardChart = (props: Props) => {
   const {
     data,
+    trends,
     timespan,
     timespanStartDate,
     timespanEndDate,
@@ -226,6 +229,7 @@ export const DashboardChart = (props: Props) => {
                       display={{ base: activeMobileCategory === categoryKey ? 'flex' : 'none', md: 'flex' }}
                       mr={{ base: 0, md: index === CHART_CATEGORIES.length - 1 ? 0 : 1.5 }}
                       value={data?.[categoryKey]}
+                      trend={trends?.[categoryKey]}
                       isActive={isMobile || activeCategoryKeys.includes(categoryKey)}
                       onClick={() => handleToggleCategory(categoryKey)}
                       label={
@@ -254,6 +258,7 @@ export const DashboardChart = (props: Props) => {
                       categoryKey={categoryKey}
                       mr={{ base: 0, md: 1.5 }}
                       value={data?.[categoryKey]}
+                      trend={trends?.[categoryKey]}
                       isActive
                       bg="bg.card"
                       onClick={() => setActiveMobileCategory(categoryKey)}

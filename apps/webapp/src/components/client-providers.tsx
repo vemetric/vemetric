@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { getFetch, httpBatchLink } from '@trpc/client';
+import { getFetch, httpBatchLink, httpLink, splitLink } from '@trpc/client';
 import type { PropsWithChildren } from 'react';
 import { useState } from 'react';
 import superjson from 'superjson';
@@ -26,19 +26,25 @@ export const ClientProviders = ({ children }: PropsWithChildren) => {
 
   const url = getBackendUrl() + '/trpc';
 
+  const fetchOptions = {
+    fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+      const fetch = getFetch();
+      return fetch(input, {
+        ...init,
+        credentials: 'include',
+      });
+    },
+  };
+
   const [trpcClient] = useState(() =>
     trpc.createClient({
       transformer: superjson,
       links: [
-        httpBatchLink({
-          url,
-          fetch: async (input, init?) => {
-            const fetch = getFetch();
-            return fetch(input, {
-              ...init,
-              credentials: 'include',
-            });
-          },
+        splitLink({
+          // Check for skipBatch flag in context to send as separate request
+          condition: (op) => op.context.skipBatch === true,
+          true: httpLink({ url, ...fetchOptions }),
+          false: httpBatchLink({ url, ...fetchOptions }),
         }),
       ],
     }),

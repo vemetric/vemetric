@@ -1,11 +1,14 @@
 import type { StatRootProps } from '@chakra-ui/react';
-import { Box, Flex, Stat } from '@chakra-ui/react';
+import { Box, Flex, Icon, Skeleton, Stat, Text } from '@chakra-ui/react';
+import { formatNumber } from '@vemetric/common/math';
 import type { ReactNode } from 'react';
 import type { IconType } from 'react-icons';
 import { TbEye, TbClock, TbDoorExit, TbUserSquareRounded, TbBolt } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import type { ChartCategoryKey } from '@/hooks/use-chart-toggles';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
+import type { MetricTrend } from '@/utils/trends';
+import { getTrendColor, getTrendIcon } from '@/utils/trends';
 import { NumberCounter } from '../../number-counter';
 
 export interface ChartCategory {
@@ -14,14 +17,16 @@ export interface ChartCategory {
   color: string;
   yAxisId?: string;
   valueFormatter?: (value: number) => string;
+  higherIsBetter?: boolean; // Used to determine trend color (default: true)
 }
 
 export const CHART_CATEGORY_MAP: Record<ChartCategoryKey, ChartCategory> = {
-  users: { label: 'Users', icon: TbUserSquareRounded, color: 'blue' },
+  users: { label: 'Users', icon: TbUserSquareRounded, color: 'blue', higherIsBetter: true },
   pageViews: {
     label: 'Page Views',
     icon: TbEye,
     color: 'purple',
+    higherIsBetter: true,
   },
   bounceRate: {
     label: 'Bounce Rate',
@@ -29,6 +34,7 @@ export const CHART_CATEGORY_MAP: Record<ChartCategoryKey, ChartCategory> = {
     color: 'yellow',
     yAxisId: 'bounceRate',
     valueFormatter: (value: number) => `${value.toFixed(0)}%`,
+    higherIsBetter: false, // Lower bounce rate is better
   },
   visitDuration: {
     label: 'Visit Duration',
@@ -36,12 +42,14 @@ export const CHART_CATEGORY_MAP: Record<ChartCategoryKey, ChartCategory> = {
     color: 'pink',
     yAxisId: 'visitDuration',
     valueFormatter: (value: number) => dateTimeFormatter.formatDuration(value),
+    higherIsBetter: true, // Longer visits are better
   },
   events: {
     label: 'Events',
     icon: TbBolt,
     color: 'orange',
     yAxisId: 'events',
+    higherIsBetter: true,
   },
 };
 export const CHART_CATEGORIES = Object.entries(CHART_CATEGORY_MAP) as [ChartCategoryKey, ChartCategory][];
@@ -50,12 +58,15 @@ interface Props extends StatRootProps {
   categoryKey: ChartCategoryKey;
   label?: ReactNode;
   value: number | undefined | null;
+  trend?: MetricTrend;
   isActive?: boolean;
   onClick?: () => void;
 }
 
-export const ChartCategoryCard = ({ categoryKey, value, label, isActive = false, onClick, ...props }: Props) => {
+export const ChartCategoryCard = ({ categoryKey, value, label, trend, isActive = false, onClick, ...props }: Props) => {
   const category = CHART_CATEGORY_MAP[categoryKey];
+  const TrendIcon = trend ? getTrendIcon(trend.direction) : null;
+  const trendColor = trend ? getTrendColor(trend.direction, category.higherIsBetter ?? true) : 'gray.500';
 
   return (
     <Stat.Root
@@ -92,7 +103,7 @@ export const ChartCategoryCard = ({ categoryKey, value, label, isActive = false,
           _groupHover={{ opacity: 1 }}
         />
       </Stat.Label>
-      <Flex gap={2} align="center">
+      <Flex gap={2} align="flex-end" justify="space-between">
         <Stat.ValueText>
           {typeof value === 'number' ? (
             category.valueFormatter ? (
@@ -104,6 +115,16 @@ export const ChartCategoryCard = ({ categoryKey, value, label, isActive = false,
             '-'
           )}
         </Stat.ValueText>
+        {trend ? (
+          <Flex align="center" gap={0.5} color={trendColor}>
+            {TrendIcon && <Icon as={TrendIcon} boxSize={3.5} />}
+            <Text fontSize="xs" fontWeight="medium">
+              {formatNumber(trend.percentage)}%
+            </Text>
+          </Flex>
+        ) : (
+          <Skeleton w="40px" h="4" />
+        )}
       </Flex>
     </Stat.Root>
   );

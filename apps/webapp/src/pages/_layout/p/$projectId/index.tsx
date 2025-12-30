@@ -25,6 +25,7 @@ import { chartTogglesSchema } from '@/hooks/use-chart-toggles';
 import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { useSetBreadcrumbs, useSetDocsLink } from '@/stores/header-store';
 import { timeSpanSearchMiddleware, timespanSearchSchema } from '@/utils/timespans';
+import { useTrendsData } from '@/utils/trends';
 import { trpc } from '@/utils/trpc';
 
 const dashboardSearchSchema = z.object({
@@ -63,8 +64,19 @@ function Page() {
       keepPreviousData: true,
       onError: () => {},
       refetchInterval: getTimespanRefetchInterval(timespan),
+      trpc: { context: { skipBatch: true } },
     },
   );
+  const { data: previousData } = trpc.dashboard.getPreviousData.useQuery(
+    { projectId, timespan, startDate, endDate, filterConfig },
+    {
+      keepPreviousData: true,
+      onError: () => {},
+      refetchInterval: getTimespanRefetchInterval(timespan),
+      trpc: { context: { skipBatch: true } },
+    },
+  );
+  const trendsData = useTrendsData(data, previousData);
   const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery(
     {
       projectId,
@@ -132,7 +144,13 @@ function Page() {
           </Box>
           <Flex flexDir="column" gap={3} pos="relative">
             <Box pos="relative">
-              <DashboardChart timespan={timespan} timespanStartDate={startDate} timespanEndDate={endDate} data={data} />
+              <DashboardChart
+                timespan={timespan}
+                timespanStartDate={startDate}
+                timespanEndDate={endDate}
+                data={data}
+                trends={trendsData}
+              />
               {isPreviousData && (
                 <Box pos="absolute" inset="0" opacity="0.8" zIndex="docked">
                   <Skeleton pos="absolute" inset="0" rounded="lg" />
@@ -144,7 +162,7 @@ function Page() {
               <TopSourcesCard filterConfig={filterConfig} />
               <EventsCard filterConfig={filterConfig} />
               <CountriesCard filterConfig={filterConfig} />
-              <FunnelsCard filterConfig={filterConfig} activeUsers={data.users ?? 0} />
+              <FunnelsCard filterConfig={filterConfig} activeUsers={data.users} />
               {userType === 'os' ? (
                 <OperatingSystemsCard filterConfig={filterConfig} />
               ) : userType === 'devices' ? (

@@ -2,6 +2,17 @@ import { createTRPCReact } from '@trpc/react-query';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from 'backend';
 
+// Augment tRPC's types to include our custom context
+declare module '@trpc/client' {
+  interface OperationContext {
+    /**
+     * When true, the request will bypass batching and be sent as a separate HTTP request.
+     * Useful for queries that should load in parallel with batched queries.
+     */
+    skipBatch?: boolean;
+  }
+}
+
 export const trpc = createTRPCReact<AppRouter>({
   overrides: {
     useMutation: {

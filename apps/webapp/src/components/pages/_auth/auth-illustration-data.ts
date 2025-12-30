@@ -1,9 +1,17 @@
+import type { TrendsData } from '@/utils/trends';
 import type { DashboardData } from '@/utils/trpc';
 
 type Data = Pick<
   DashboardData,
   'bounceRate' | 'pageViews' | 'chartTimeSeries' | 'currentActiveUsers' | 'users' | 'visitDuration'
 >;
+
+export const AUTH_ILLUSTRATION_TRENDS: TrendsData = {
+  users: { percentage: 0, direction: 'same' },
+  pageViews: { percentage: 7, direction: 'up' },
+  bounceRate: { percentage: 3, direction: 'up' },
+  visitDuration: { percentage: 12, direction: 'up' },
+};
 
 export const AUTH_ILLUSTRATION_DATA: Data = {
   bounceRate: 43.04635761589404,

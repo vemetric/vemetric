@@ -25,6 +25,7 @@ import { chartTogglesSchema } from '@/hooks/use-chart-toggles';
 import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { useSetBreadcrumbs, useSetDocsLink } from '@/stores/header-store';
 import { timeSpanSearchMiddleware, timespanSearchSchema } from '@/utils/timespans';
+import { useTrendsData } from '@/utils/trends';
 import { trpc } from '@/utils/trpc';
 
 const dashboardSearchSchema = z.object({
@@ -66,7 +67,7 @@ function Page() {
       trpc: { context: { skipBatch: true } },
     },
   );
-  const { data: trendsData } = trpc.dashboard.getTrends.useQuery(
+  const { data: previousData } = trpc.dashboard.getPreviousData.useQuery(
     { projectId, timespan, startDate, endDate, filterConfig },
     {
       keepPreviousData: true,
@@ -75,6 +76,7 @@ function Page() {
       trpc: { context: { skipBatch: true } },
     },
   );
+  const trendsData = useTrendsData(data, previousData);
   const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery(
     {
       projectId,
@@ -160,7 +162,7 @@ function Page() {
               <TopSourcesCard filterConfig={filterConfig} />
               <EventsCard filterConfig={filterConfig} />
               <CountriesCard filterConfig={filterConfig} />
-              <FunnelsCard filterConfig={filterConfig} activeUsers={data.users ?? 0} />
+              <FunnelsCard filterConfig={filterConfig} activeUsers={data.users} />
               {userType === 'os' ? (
                 <OperatingSystemsCard filterConfig={filterConfig} />
               ) : userType === 'devices' ? (

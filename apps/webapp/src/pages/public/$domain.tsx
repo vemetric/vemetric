@@ -77,7 +77,7 @@ function Page() {
       trpc: { context: { skipBatch: true } },
     },
   );
-  const trendsData = useTrendsData(data, previousData);
+  const trendsData = useTrendsData(isPreviousData ? undefined : data, previousData);
   const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery(
     {
       domain,

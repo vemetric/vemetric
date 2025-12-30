@@ -70,7 +70,6 @@ function Page() {
   const { data: previousData } = trpc.dashboard.getPreviousData.useQuery(
     { projectId, timespan, startDate, endDate, filterConfig },
     {
-      keepPreviousData: true,
       onError: () => {},
       refetchInterval: getTimespanRefetchInterval(timespan),
       trpc: { context: { skipBatch: true } },

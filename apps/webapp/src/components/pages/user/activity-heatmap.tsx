@@ -39,6 +39,7 @@ export function ActivityHeatmap({ projectId, userId, selectedDate }: Props) {
     // Generate months array and initialize daysByMonth
     for (let i = 0; i < monthsToShow; i++) {
       const date = new Date(now);
+      date.setDate(1); // Set to first of month to avoid overflow when changing months
       date.setMonth(now.getMonth() - i);
       const monthKey = dateTimeFormatter.formatMonth(date);
       months.unshift(monthKey);

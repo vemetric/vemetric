@@ -1,6 +1,6 @@
-import { customAlphabet } from 'nanoid';
 import { customId16, customId21 } from '@vemetric/common/id';
 import { createSiphash, createSiphashKey } from '@vemetric/common/siphash';
+import { customAlphabet } from 'nanoid';
 
 const projectIdKey = createSiphashKey('VMTRC_PROJE_ID!&');
 const userIdKey = createSiphashKey('VMTRC_USERE_ID!&');

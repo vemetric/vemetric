@@ -8,8 +8,7 @@ interface RateLimitConfig {
 
 const RATE_LIMITS: Record<SubscriptionTier, RateLimitConfig> = {
   free: { requestsPerHour: 600, burstPer10s: 20 },
-  professional: { requestsPerHour: 6000, burstPer10s: 100 },
-  enterprise: { requestsPerHour: 60000, burstPer10s: 1000 },
+  paid: { requestsPerHour: 6000, burstPer10s: 100 },
 };
 
 // In-memory rate limiting (for now, can be replaced with Redis later)

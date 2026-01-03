@@ -2,22 +2,12 @@ import { dbApiKey } from 'database';
 import type { Context, Next } from 'hono';
 import type { ApiContextVars, SubscriptionTier } from '../types';
 
-function getSubscriptionTier(productId: string | null | undefined): SubscriptionTier {
-  if (!productId) {
-    return 'free';
+function getSubscriptionTier(billingInfo: { productId: string } | null | undefined): SubscriptionTier {
+  // If there's billing info with a product, the user is on the paid plan
+  if (billingInfo?.productId) {
+    return 'paid';
   }
-
-  // Check for professional tier products
-  if (productId.includes('pro_') || productId.toLowerCase().includes('professional')) {
-    return 'professional';
-  }
-
-  // Check for enterprise tier products
-  if (productId.includes('ent_') || productId.toLowerCase().includes('enterprise')) {
-    return 'enterprise';
-  }
-
-  return 'professional';
+  return 'free';
 }
 
 export async function apiKeyAuth(c: Context<{ Variables: ApiContextVars }>, next: Next) {
@@ -88,7 +78,7 @@ export async function apiKeyAuth(c: Context<{ Variables: ApiContextVars }>, next
   }
 
   // Determine subscription tier
-  const subscriptionTier = getSubscriptionTier(apiKey.project.organization.billingInfo?.productId);
+  const subscriptionTier = getSubscriptionTier(apiKey.project.organization.billingInfo);
 
   // Set context
   c.set('api', {

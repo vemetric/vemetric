@@ -1,7 +1,7 @@
 import type { ApiKey, Project, Organization, BillingInfo } from 'database';
 import type { Context } from 'hono';
 
-export type SubscriptionTier = 'free' | 'professional' | 'enterprise';
+export type SubscriptionTier = 'free' | 'paid';
 
 export interface ApiKeyWithRelations extends ApiKey {
   project: Project & {

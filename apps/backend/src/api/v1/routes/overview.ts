@@ -29,6 +29,23 @@ interface TimeSeriesData {
   data: TimeSeriesDataPoint[];
 }
 
+interface TimeSeriesItem {
+  date: string;
+  count: number;
+}
+
+interface BounceRateItem {
+  date: string;
+  bounces: number;
+  totalSessions: number;
+}
+
+interface DurationItem {
+  date: string;
+  count: number;
+  sessionCount: number;
+}
+
 export function createOverviewRoutes(app: Hono<{ Variables: ApiContextVars }>) {
   // GET /stats/overview - Returns total pageviews, active users, online users, bounce rate, avg duration
   app.get('/stats/overview', async (c) => {
@@ -179,7 +196,7 @@ export function createOverviewRoutes(app: Hono<{ Variables: ApiContextVars }>) {
       };
 
       // Fetch requested time series data in parallel
-      const timeSeriesPromises: Promise<any[]>[] = [];
+      const timeSeriesPromises: Promise<unknown[]>[] = [];
 
       if (requestedMetrics.includes('pageviews')) {
         timeSeriesPromises.push(clickhouseEvent.getPageViewTimeSeries(projectId, filterOptions));
@@ -208,8 +225,8 @@ export function createOverviewRoutes(app: Hono<{ Variables: ApiContextVars }>) {
       let resultIndex = 0;
 
       if (requestedMetrics.includes('pageviews')) {
-        const pageViewData = results[resultIndex++];
-        pageViewData?.forEach((item: any) => {
+        const pageViewData = results[resultIndex++] as TimeSeriesItem[];
+        pageViewData?.forEach((item) => {
           const dateKey = new Date(item.date).toISOString();
           if (!dataMap.has(dateKey)) {
             dataMap.set(dateKey, { date: dateKey });
@@ -219,8 +236,8 @@ export function createOverviewRoutes(app: Hono<{ Variables: ApiContextVars }>) {
       }
 
       if (requestedMetrics.includes('users')) {
-        const usersData = results[resultIndex++];
-        usersData?.forEach((item: any) => {
+        const usersData = results[resultIndex++] as TimeSeriesItem[];
+        usersData?.forEach((item) => {
           const dateKey = new Date(item.date).toISOString();
           if (!dataMap.has(dateKey)) {
             dataMap.set(dateKey, { date: dateKey });
@@ -230,8 +247,8 @@ export function createOverviewRoutes(app: Hono<{ Variables: ApiContextVars }>) {
       }
 
       if (requestedMetrics.includes('sessions')) {
-        const sessionsData = results[resultIndex++];
-        sessionsData?.forEach((item: any) => {
+        const sessionsData = results[resultIndex++] as TimeSeriesItem[];
+        sessionsData?.forEach((item) => {
           const dateKey = new Date(item.date).toISOString();
           if (!dataMap.has(dateKey)) {
             dataMap.set(dateKey, { date: dateKey });
@@ -241,8 +258,8 @@ export function createOverviewRoutes(app: Hono<{ Variables: ApiContextVars }>) {
       }
 
       if (requestedMetrics.includes('bounce_rate')) {
-        const bounceRateData = results[resultIndex++];
-        bounceRateData?.forEach((item: any) => {
+        const bounceRateData = results[resultIndex++] as BounceRateItem[];
+        bounceRateData?.forEach((item) => {
           const dateKey = new Date(item.date).toISOString();
           if (!dataMap.has(dateKey)) {
             dataMap.set(dateKey, { date: dateKey });
@@ -253,8 +270,8 @@ export function createOverviewRoutes(app: Hono<{ Variables: ApiContextVars }>) {
       }
 
       if (requestedMetrics.includes('duration')) {
-        const durationData = results[resultIndex++];
-        durationData?.forEach((item: any) => {
+        const durationData = results[resultIndex++] as DurationItem[];
+        durationData?.forEach((item) => {
           const dateKey = new Date(item.date).toISOString();
           if (!dataMap.has(dateKey)) {
             dataMap.set(dateKey, { date: dateKey });

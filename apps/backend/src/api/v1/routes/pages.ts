@@ -27,6 +27,13 @@ interface SinglePageStats {
   bounce_rate: number;
 }
 
+interface SinglePageQueryResult {
+  views: string | number;
+  users: string | number;
+  avg_duration: string | number | null;
+  bounce_rate: string | number | null;
+}
+
 export function createPagesRoutes(app: Hono<{ Variables: ApiContextVars }>) {
   // GET /stats/pages - Returns top pages with views and users
   app.get('/stats/pages', async (c) => {
@@ -187,7 +194,7 @@ export function createPagesRoutes(app: Hono<{ Variables: ApiContextVars }>) {
       format: 'JSONEachRow',
     });
 
-      const result = (await resultSet.json()) as Array<any>;
+      const result = (await resultSet.json()) as SinglePageQueryResult[];
 
       if (result.length === 0) {
         return c.json(

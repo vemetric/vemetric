@@ -1,8 +1,12 @@
+import { customAlphabet } from 'nanoid';
 import { customId16, customId21 } from '@vemetric/common/id';
 import { createSiphash, createSiphashKey } from '@vemetric/common/siphash';
 
 const projectIdKey = createSiphashKey('VMTRC_PROJE_ID!&');
 const userIdKey = createSiphashKey('VMTRC_USERE_ID!&');
+
+const apiKeyAlphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+const customId32 = customAlphabet(apiKeyAlphabet, 32);
 
 export function generateOrganizationId() {
   return customId16();
@@ -35,4 +39,11 @@ export function generateSessionId() {
 
 export function generateToken() {
   return customId16();
+}
+
+export function generateApiKey(): { key: string; prefix: string } {
+  const randomPart = customId32();
+  const key = `vm_sk_${randomPart}`;
+  const prefix = key.slice(0, 10);
+  return { key, prefix };
 }

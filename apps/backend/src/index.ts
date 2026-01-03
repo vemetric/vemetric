@@ -7,6 +7,7 @@ import { cors } from 'hono/cors';
 import { csrf } from 'hono/csrf';
 import { HTTPException } from 'hono/http-exception';
 import { pinoLogger as honoPino } from 'hono-pino';
+import { createApiV1Router } from './api/v1';
 import { billingRouter } from './routes/billing';
 import { dashboardRouter } from './routes/dashboard';
 import { useEmailRoutes } from './routes/email';
@@ -136,6 +137,9 @@ app.on(['POST', 'GET'], '/auth/**', (c) => {
 });
 
 app.post('/takeapaddle', paddleWebhookHandler);
+
+// Mount API v1 router
+app.route('/api/v1', createApiV1Router());
 
 app.use(
   '/trpc/*',

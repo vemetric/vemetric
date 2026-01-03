@@ -142,8 +142,27 @@ model Project {
   dripSequences    EmailDripSequence[]
   emailDripHistory EmailDripHistory[]
   funnels          Funnel[]
+  apiKeys          ApiKey[]
 
   @@map("project")
+}
+
+model ApiKey {
+  id         String    @id @default(uuid())
+  projectId  String
+  name       String    @db.VarChar(255)
+  keyHash    String    @unique @db.VarChar(128)
+  keyPrefix  String    @db.VarChar(12)
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([keyHash])
+  @@map("api_key")
 }
 
 enum ProjectRole {

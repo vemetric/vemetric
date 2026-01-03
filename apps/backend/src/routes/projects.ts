@@ -6,7 +6,7 @@ import { getDripSequence, getStepDelay } from '@vemetric/email/email-drip-sequen
 import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
 import { addToQueue } from '@vemetric/queues/queue-utils';
 import { clickhouseEvent } from 'clickhouse';
-import { ProjectRole, dbProject } from 'database';
+import { dbApiKey, ProjectRole, dbProject } from 'database';
 import { z } from 'zod';
 import { logger } from '../utils/logger';
 import { fillTimeSeries, getTimeSpanStartDate } from '../utils/timeseries';
@@ -330,4 +330,81 @@ export const projectsRouter = router({
 
     return { excludedCountries: updatedCountries };
   }),
+
+  // API Key Management Endpoints
+  listApiKeys: projectProcedure.query(async (opts) => {
+    const {
+      ctx: { project },
+    } = opts;
+
+    const apiKeys = await dbApiKey.findByProjectId(project.id);
+
+    return apiKeys.map((key) => ({
+      id: key.id,
+      name: key.name,
+      keyPrefix: key.keyPrefix,
+      createdAt: key.createdAt.toISOString(),
+      lastUsedAt: key.lastUsedAt?.toISOString() ?? null,
+      expiresAt: key.expiresAt?.toISOString() ?? null,
+    }));
+  }),
+
+  createApiKey: projectProcedure
+    .input(
+      z.object({
+        name: z.string().min(1).max(255),
+        expiresAt: z.string().datetime().optional(),
+      }),
+    )
+    .mutation(async (opts) => {
+      const {
+        input: { name, expiresAt },
+        ctx: { project },
+      } = opts;
+
+      const apiKeyResult = await dbApiKey.create(
+        project.id,
+        name,
+        expiresAt ? new Date(expiresAt) : undefined,
+      );
+
+      // Return the full key only once during creation
+      return {
+        id: apiKeyResult.id,
+        name: apiKeyResult.name,
+        key: apiKeyResult.key, // Only returned during creation
+        keyPrefix: apiKeyResult.keyPrefix,
+        createdAt: apiKeyResult.createdAt.toISOString(),
+        expiresAt: apiKeyResult.expiresAt?.toISOString() ?? null,
+      };
+    }),
+
+  revokeApiKey: projectProcedure
+    .input(z.object({ keyId: z.string().uuid() }))
+    .mutation(async (opts) => {
+      const {
+        input: { keyId },
+        ctx: { project },
+      } = opts;
+
+      // Check if the key belongs to this project
+      const apiKey = await dbApiKey.findById(keyId);
+      if (!apiKey || apiKey.projectId !== project.id) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'API key not found',
+        });
+      }
+
+      if (apiKey.revokedAt) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'API key is already revoked',
+        });
+      }
+
+      await dbApiKey.revoke(keyId);
+
+      return { success: true };
+    }),
 });

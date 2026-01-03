@@ -7,9 +7,10 @@ import { useDebouncedState } from './use-debounced-state';
 
 interface Props {
   onSuccess?: (projectId: string) => void;
+  organizationId?: string;
 }
 
-export function useCreateProject({ onSuccess }: Props) {
+export function useCreateProject({ onSuccess, organizationId }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [domain, setDomain, debouncedDomain] = useDebouncedState({ defaultValue: '' });
@@ -48,7 +49,7 @@ export function useCreateProject({ onSuccess }: Props) {
     }
 
     mutate({
-      organizationId: session?.organizations[0].id ?? '',
+      organizationId: organizationId ?? session?.organizations[0].id ?? '',
       name: projectName,
       domain,
     });

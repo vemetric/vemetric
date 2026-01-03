@@ -1,7 +1,8 @@
 import type { IconProps } from '@chakra-ui/react';
 import { Icon } from '@chakra-ui/react';
-import { Link } from '@tanstack/react-router';
+import { Link, useParams } from '@tanstack/react-router';
 import { useId } from 'react';
+import { useOrganizationId } from '@/hooks/use-organization-id';
 
 interface Props extends IconProps {
   hideText?: boolean;
@@ -108,8 +109,15 @@ export const Logo = ({ hideText, asLink = true, ...props }: Props) => {
     </Icon>
   );
 
-  if (asLink) {
-    return <Link to="/">{logo}</Link>;
+  const { projectId, organizationId } = useParams({ strict: false });
+  const { organizationId: projectOrgaId } = useOrganizationId(projectId);
+  const resolvedOrgaId = organizationId || projectOrgaId;
+  if (asLink && resolvedOrgaId) {
+    return (
+      <Link to="/o/$organizationId" params={{ organizationId: resolvedOrgaId }}>
+        {logo}
+      </Link>
+    );
   }
 
   return logo;

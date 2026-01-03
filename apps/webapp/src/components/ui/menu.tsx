@@ -76,7 +76,11 @@ export const MenuItemGroup = React.forwardRef<
   const { title, children, ...rest } = props;
   return (
     <ChakraMenu.ItemGroup ref={ref} {...rest}>
-      {title && <ChakraMenu.ItemGroupLabel userSelect="none">{title}</ChakraMenu.ItemGroupLabel>}
+      {title && (
+        <ChakraMenu.ItemGroupLabel userSelect="none" fontSize="xs" color="fg.muted">
+          {title}
+        </ChakraMenu.ItemGroupLabel>
+      )}
       {children}
     </ChakraMenu.ItemGroup>
   );

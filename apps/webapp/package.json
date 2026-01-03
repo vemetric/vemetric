@@ -16,7 +16,7 @@
     "generate-pwa-assets": "pwa-assets-generator --preset minimal-2023 public/logo.svg"
   },
   "dependencies": {
-    "@ark-ui/react": "^5.22.0",
+    "@ark-ui/react": "^5.30.0",
     "@chakra-ui/react": "^3.30.0",
     "@emotion/react": "^11.14.0",
     "@paddle/paddle-js": "^1.4.0",
@@ -58,7 +58,7 @@
     "zod": "3.24.2"
   },
   "devDependencies": {
-    "@chakra-ui/cli": "^3.19.0",
+    "@chakra-ui/cli": "^3.30.0",
     "@tanstack/router-cli": "^1.116.0",
     "@tanstack/router-plugin": "^1.116.1",
     "@testing-library/react": "^16.3.0",

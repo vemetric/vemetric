@@ -10,13 +10,7 @@ import { ProjectRole, dbProject } from 'database';
 import { z } from 'zod';
 import { logger } from '../utils/logger';
 import { fillTimeSeries, getTimeSpanStartDate } from '../utils/timeseries';
-import {
-  loggedInProcedure,
-  organizationProcedure,
-  projectOrPublicProcedure,
-  projectProcedure,
-  router,
-} from '../utils/trpc';
+import { organizationProcedure, projectOrPublicProcedure, projectProcedure, router } from '../utils/trpc';
 import { vemetric } from '../utils/vemetric-client';
 
 const projectNameInput = z.string().min(2);
@@ -153,16 +147,18 @@ export const projectsRouter = router({
     await dbProject.update(project.id, { publicDashboard: !project.publicDashboard });
   }),
 
-  overview: loggedInProcedure.query(async (opts) => {
+  overview: organizationProcedure.query(async (opts) => {
     const {
-      ctx: { user },
+      ctx: { user, organizationId },
     } = opts;
 
     const timeSpan = '24hrs';
     const timeSpanData = TIME_SPAN_DATA[timeSpan];
     const startDate = getTimeSpanStartDate(timeSpan);
 
-    const projects = await dbProject.findByUserId(user.id);
+    const projects = (await dbProject.findByUserId(user.id)).filter(
+      (up) => up.project.organizationId === organizationId,
+    );
     const projectData = await Promise.all(
       projects.map(async ({ project }) => {
         const projectId = BigInt(project.id);

@@ -1,13 +1,14 @@
-import type { Hono } from 'hono';
 import { clickhouseEvent, clickhouseSession } from 'clickhouse';
-import type { ApiContextVars, ApiResponse } from '../types';
+import type { Hono } from 'hono';
+import { logger } from '../../../utils/logger';
 import {
   dateRangeSchema,
-  timeseriesQuerySchema,
+  getIntervalFromPeriod,
   getPeriodDates,
   getTimeSpanFromPeriod,
-  getIntervalFromPeriod,
+  timeseriesQuerySchema,
 } from '../schemas';
+import type { ApiContextVars, ApiResponse } from '../types';
 
 interface OverviewData {
   pageviews: number;
@@ -126,7 +127,7 @@ export function createOverviewRoutes(app: Hono<{ Variables: ApiContextVars }>) {
         );
       }
 
-      console.error('Error fetching overview stats:', error);
+      logger.error({ error }, 'Error fetching overview stats');
       return c.json(
         {
           error: {
@@ -300,7 +301,7 @@ export function createOverviewRoutes(app: Hono<{ Variables: ApiContextVars }>) {
         );
       }
 
-      console.error('Error fetching timeseries stats:', error);
+      logger.error({ error }, 'Error fetching timeseries stats');
       return c.json(
         {
           error: {

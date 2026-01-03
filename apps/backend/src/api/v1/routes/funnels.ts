@@ -1,13 +1,10 @@
-import type { Hono } from 'hono';
+import type { FunnelStep } from '@vemetric/common/funnel';
 import { clickhouseEvent } from 'clickhouse';
 import { dbFunnel } from 'database';
-import type { FunnelStep } from '@vemetric/common/funnel';
+import type { Hono } from 'hono';
+import { logger } from '../../../utils/logger';
+import { dateRangeSchema, funnelIdParamSchema, getPeriodDates } from '../schemas';
 import type { ApiContextVars, ApiResponse } from '../types';
-import {
-  dateRangeSchema,
-  funnelIdParamSchema,
-  getPeriodDates,
-} from '../schemas';
 
 interface FunnelStepResult {
   step: number;
@@ -109,7 +106,7 @@ export function createFunnelsRoutes(app: Hono<{ Variables: ApiContextVars }>) {
 
       return c.json(response);
     } catch (error) {
-      console.error('Error fetching funnels:', error);
+      logger.error({ error }, 'Error fetching funnels');
       return c.json(
         {
           error: {
@@ -230,7 +227,7 @@ export function createFunnelsRoutes(app: Hono<{ Variables: ApiContextVars }>) {
 
       return c.json(response);
     } catch (error) {
-      console.error('Error fetching funnel details:', error);
+      logger.error({ error }, 'Error fetching funnel details');
       return c.json(
         {
           error: {

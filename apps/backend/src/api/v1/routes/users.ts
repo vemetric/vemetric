@@ -31,7 +31,7 @@ interface UserDetail {
   createdAt: string;
   firstSeenAt: string;
   updatedAt: string;
-  customData: Record<string, any>;
+  customData: Record<string, unknown>;
   device?: {
     clientName: string;
     clientVersion: string;
@@ -44,13 +44,13 @@ interface UserDetail {
 interface UserEvent {
   id: string;
   name: string;
-  pathname: string;
-  origin: string;
+  pathname?: string;
+  origin?: string;
   createdAt: string;
   isPageView: boolean;
   sessionId: string;
   isOnline: boolean;
-  customData: Record<string, any>;
+  customData: Record<string, unknown>;
 }
 
 export function createUsersRoutes(app: Hono<{ Variables: ApiContextVars }>) {
@@ -89,7 +89,7 @@ export function createUsersRoutes(app: Hono<{ Variables: ApiContextVars }>) {
         { offset, limit },
         '',
         { operator: 'and', filters: [] } as IFilterConfig,
-        { key: 'last_seen_at', order: 'desc' },
+        undefined,
         startDate,
         search,
       );

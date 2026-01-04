@@ -1,3 +1,4 @@
+import type { TimeSpan } from '@vemetric/common/charts/timespans';
 import { z } from 'zod';
 
 export const periodSchema = z.enum(['24h', '7d', '30d', '3m', '6m', '1y']).default('7d');
@@ -90,7 +91,7 @@ export function getPeriodDates(
   return { start, end };
 }
 
-export function getTimeSpanFromPeriod(period?: string): string {
+export function getTimeSpanFromPeriod(period?: string): TimeSpan {
   switch (period) {
     case '24h':
       return '24hrs';

@@ -199,23 +199,33 @@ export function createOverviewRoutes(app: Hono<{ Variables: ApiContextVars }>) {
       const timeSeriesPromises: Promise<unknown[]>[] = [];
 
       if (requestedMetrics.includes('pageviews')) {
-        timeSeriesPromises.push(clickhouseEvent.getPageViewTimeSeries(projectId, filterOptions));
+        timeSeriesPromises.push(
+          clickhouseEvent.getPageViewTimeSeries(projectId, filterOptions).then((r) => r ?? []),
+        );
       }
 
       if (requestedMetrics.includes('users')) {
-        timeSeriesPromises.push(clickhouseEvent.getActiveUserTimeSeries(projectId, filterOptions));
+        timeSeriesPromises.push(
+          clickhouseEvent.getActiveUserTimeSeries(projectId, filterOptions).then((r) => r ?? []),
+        );
       }
 
       if (requestedMetrics.includes('sessions')) {
-        timeSeriesPromises.push(clickhouseEvent.getActiveUserTimeSeries(projectId, filterOptions));
+        timeSeriesPromises.push(
+          clickhouseEvent.getActiveUserTimeSeries(projectId, filterOptions).then((r) => r ?? []),
+        );
       }
 
       if (requestedMetrics.includes('bounce_rate')) {
-        timeSeriesPromises.push(clickhouseEvent.getBounceRateTimeSeries(projectId, filterOptions));
+        timeSeriesPromises.push(
+          clickhouseEvent.getBounceRateTimeSeries(projectId, filterOptions).then((r) => r ?? []),
+        );
       }
 
       if (requestedMetrics.includes('duration')) {
-        timeSeriesPromises.push(clickhouseSession.getVisitDurationTimeSeries(projectId, filterOptions));
+        timeSeriesPromises.push(
+          clickhouseSession.getVisitDurationTimeSeries(projectId, filterOptions).then((r) => r ?? []),
+        );
       }
 
       const results = await Promise.all(timeSeriesPromises);

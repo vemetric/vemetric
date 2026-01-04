@@ -16,7 +16,7 @@ const rateLimitStore = new Map<string, { count: number; resetAt: number; burstCo
 
 function cleanupExpiredEntries() {
   const now = Date.now();
-  for (const [key, value] of rateLimitStore.entries()) {
+  for (const [key, value] of Array.from(rateLimitStore.entries())) {
     if (value.resetAt < now && value.burstResetAt < now) {
       rateLimitStore.delete(key);
     }

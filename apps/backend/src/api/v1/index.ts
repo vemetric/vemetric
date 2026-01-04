@@ -1,5 +1,4 @@
 import { Hono } from 'hono';
-
 import { apiKeyAuth } from './middleware/auth';
 import { rateLimitMiddleware } from './middleware/rate-limit';
 import { createCountriesRoutes } from './routes/countries';

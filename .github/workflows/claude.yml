@@ -10,12 +10,13 @@ on:
 
 jobs:
   claude-review:
-    # Only run on PR comments when @claude is mentioned
+    # Only run on PR comments (not issue comments) when @claude is mentioned
     if: |
-      github.event.issue.pull_request ||
-      github.event.pull_request ||
-      github.event_name == 'pull_request_review' ||
-      github.event_name == 'pull_request_review_comment'
+      (
+        (github.event_name == 'issue_comment' && github.event.issue.pull_request != null && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude'))
+      )
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -24,33 +25,12 @@ jobs:
       id-token: write
       actions: read # Required for Claude to read CI results on PRs
     steps:
-      - name: Check for @claude mention
-        id: check
-        run: |
-          if [ "${{ github.event_name }}" = "issue_comment" ]; then
-            BODY="${{ github.event.comment.body }}"
-          elif [ "${{ github.event_name }}" = "pull_request_review_comment" ]; then
-            BODY="${{ github.event.comment.body }}"
-          elif [ "${{ github.event_name }}" = "pull_request_review" ]; then
-            BODY="${{ github.event.review.body }}"
-          fi
-
-          if echo "$BODY" | grep -q "@claude"; then
-            echo "mentioned=true" >> $GITHUB_OUTPUT
-          else
-            echo "mentioned=false" >> $GITHUB_OUTPUT
-            echo "Skipping: @claude not found in comment"
-            exit 0
-          fi
-
       - name: Checkout repository
-        if: steps.check.outputs.mentioned == 'true'
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
       - name: Run Claude Code
-        if: steps.check.outputs.mentioned == 'true'
         id: claude
         uses: anthropics/claude-code-action@v1
         with:

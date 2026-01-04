@@ -16,7 +16,7 @@ export function useCreateProject({ organizationId, onSuccess }: Props) {
   const [domain, setDomain, debouncedDomain] = useDebouncedState({ defaultValue: '' });
 
   const navigate = useNavigate();
-  const { refetch: refetchAuth } = authClient.useSession();
+  const { data: session, refetch: refetchAuth } = authClient.useSession();
   const { mutate } = trpc.projects.create.useMutation({
     onMutate: () => {
       setIsLoading(true);
@@ -36,8 +36,21 @@ export function useCreateProject({ organizationId, onSuccess }: Props) {
     },
   });
 
+  // Check if user is admin of the organization
+  const organization = session?.organizations.find((org) => org.id === organizationId);
+  const isAdmin = organization?.role === 'ADMIN';
+
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isAdmin) {
+      toaster.create({
+        title: 'Permission denied',
+        description: 'Only organization admins can create projects.',
+        type: 'error',
+      });
+      return;
+    }
 
     if (projectName.length < 2) {
       toaster.create({

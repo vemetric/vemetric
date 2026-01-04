@@ -1,4 +1,5 @@
 import { useParams, useSearch } from '@tanstack/react-router';
+import { useMemo } from 'react';
 import { authClient } from '@/utils/auth';
 
 export function useCurrentOrganization() {
@@ -11,11 +12,16 @@ export function useCurrentOrganization() {
     organizationId || orgId || projects?.find((p) => p.id === projectId)?.organizationId || '';
 
   const currentOrganization = organizations?.find((org) => org.id === resolvedOrganizationId);
+  const currentOrgaProjects = useMemo(() => {
+    if (!currentOrganization || !projects) return [];
+    return projects.filter((p) => p.organizationId === currentOrganization.id);
+  }, [currentOrganization, projects]);
 
   return {
     projectId,
     organizationId: resolvedOrganizationId,
     currentOrganization,
+    currentOrgaProjects,
     organizations,
     firstOrganization: organizations?.[0],
   };

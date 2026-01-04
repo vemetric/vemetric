@@ -1,9 +1,9 @@
 import type { FlexProps } from '@chakra-ui/react';
 import { Box, Button, Flex, Text, useBreakpointValue } from '@chakra-ui/react';
 import { Link, useMatches, useNavigate, useParams } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { TbArrowLeft, TbBuilding, TbCheck, TbChevronDown, TbChevronRight, TbPlus } from 'react-icons/tb';
-import { authClient } from '@/utils/auth';
+import { useCurrentOrganization } from '@/hooks/use-current-organization';
 import { getFaviconUrl } from '@/utils/favicon';
 import { CreateProjectDialog } from './create-project-dialog';
 import { LoadingImage } from './loading-image';
@@ -36,23 +36,10 @@ export const ProjectMenu = () => {
   const routeId = matches[matches.length - 1].routeId;
   const navigate = useNavigate();
 
+  const { projectId } = useParams({ strict: false });
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
-  const { data: session } = authClient.useSession();
-  const { projects, organizations } = session ?? {};
-  const params = useParams({ strict: false });
-  const project = projects?.find((p) => p.id === params.projectId);
-
-  // Determine current organization from the selected project
-  const currentOrganization = useMemo(() => {
-    if (!project || !organizations) return organizations?.[0];
-    return organizations.find((org) => org.id === project.organizationId) ?? organizations[0];
-  }, [project, organizations]);
-
-  // Filter projects by current organization
-  const organizationProjects = useMemo(() => {
-    if (!currentOrganization || !projects) return [];
-    return projects.filter((p) => p.organizationId === currentOrganization.id);
-  }, [currentOrganization, projects]);
+  const { currentOrganization, currentOrgaProjects, organizations } = useCurrentOrganization();
+  const project = currentOrgaProjects?.find((p) => p.id === projectId);
 
   const getProjectRoute = () => {
     if (routeId === '/_layout/p/$projectId/settings/') {
@@ -106,7 +93,7 @@ export const ProjectMenu = () => {
         }
         pt="2"
       >
-        {organizationProjects.map((p) => {
+        {currentOrgaProjects.map((p) => {
           const isSelected = p.id === project?.id;
           return (
             <MenuItem asChild value={p.id} key={p.id} bg={isSelected ? 'purple.muted' : undefined}>

@@ -10,14 +10,20 @@ import { ProjectRole, dbProject } from 'database';
 import { z } from 'zod';
 import { logger } from '../utils/logger';
 import { fillTimeSeries, getTimeSpanStartDate } from '../utils/timeseries';
-import { organizationProcedure, projectOrPublicProcedure, projectProcedure, router } from '../utils/trpc';
+import {
+  organizationAdminProcedure,
+  organizationProcedure,
+  projectOrPublicProcedure,
+  projectProcedure,
+  router,
+} from '../utils/trpc';
 import { vemetric } from '../utils/vemetric-client';
 
 const projectNameInput = z.string().min(2);
 const projectInput = z.object({ name: projectNameInput, domain: z.string() });
 
 export const projectsRouter = router({
-  create: organizationProcedure.input(projectInput).mutation(async (opts) => {
+  create: organizationAdminProcedure.input(projectInput).mutation(async (opts) => {
     const {
       input: { name, domain },
       ctx: { user, organization, subscriptionStatus },

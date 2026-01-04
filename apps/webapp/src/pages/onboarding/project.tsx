@@ -1,6 +1,7 @@
 import { Button, Input, Field, Stack, Span, HStack, Text, Icon } from '@chakra-ui/react';
 import { createFileRoute } from '@tanstack/react-router';
 import { TbDashboard, TbWorldQuestion } from 'react-icons/tb';
+import { z } from 'zod';
 import { LoadingImage } from '@/components/loading-image';
 import { OnboardingLayout } from '@/components/onboard-layout';
 import { SplashScreen } from '@/components/splash-screen';
@@ -10,14 +11,22 @@ import { useCreateProject } from '@/hooks/use-create-project';
 import { requireOnboardingProject } from '@/utils/auth-guards';
 import { getFaviconUrl } from '@/utils/favicon';
 
+const searchSchema = z.object({
+  orgId: z.string(),
+});
+
 export const Route = createFileRoute('/onboarding/project')({
-  beforeLoad: requireOnboardingProject,
+  validateSearch: searchSchema,
+  beforeLoad: ({ search }) => requireOnboardingProject({ search }),
   pendingComponent: SplashScreen,
   component: Page,
 });
 
 function Page() {
-  const { isLoading, projectName, setProjectName, debouncedDomain, domain, setDomain, onSubmit } = useCreateProject({});
+  const { orgId } = Route.useSearch();
+  const { isLoading, projectName, setProjectName, debouncedDomain, domain, setDomain, onSubmit } = useCreateProject({
+    organizationId: orgId,
+  });
 
   return (
     <OnboardingLayout

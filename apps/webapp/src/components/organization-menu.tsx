@@ -1,7 +1,6 @@
 import { Box, Button, Flex, Text } from '@chakra-ui/react';
 import { useNavigate } from '@tanstack/react-router';
 import { TbBuilding, TbCheck, TbChevronDown, TbPlus } from 'react-icons/tb';
-import { authClient } from '@/utils/auth';
 import { MenuContent, MenuItem, MenuItemGroup, MenuRoot, MenuSeparator, MenuTrigger } from './ui/menu';
 
 interface Props {
@@ -48,13 +47,13 @@ export const OrganizationMenuContent = (props: Props) => {
   );
 };
 
-export const OrganizationMenu = () => {
-  const navigate = useNavigate();
-  const { data: session } = authClient.useSession();
-  const { organizations } = session ?? {};
+interface MenuProps {
+  currentOrganization?: { id: string; name: string };
+  organizations: Array<{ id: string; name: string }>;
+}
 
-  // Use first organization as current (on base layout we don't have project context)
-  const currentOrganization = organizations?.[0];
+export const OrganizationMenu = ({ currentOrganization, organizations }: MenuProps) => {
+  const navigate = useNavigate();
 
   const handleOrganizationSwitch = (orgId: string) => {
     navigate({ to: '/o/$organizationId', params: { organizationId: orgId } });

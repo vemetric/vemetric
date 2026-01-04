@@ -1,8 +1,8 @@
 import type { FlexProps } from '@chakra-ui/react';
-import { Box, Button, Flex, Icon, Text, useBreakpointValue } from '@chakra-ui/react';
+import { Box, Button, Flex, Text, useBreakpointValue } from '@chakra-ui/react';
 import { Link, useMatches, useNavigate, useParams } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
-import { TbArrowLeft, TbBuilding, TbCheck, TbChevronDown, TbChevronRight, TbPlus, TbSettings } from 'react-icons/tb';
+import { TbArrowLeft, TbBuilding, TbCheck, TbChevronDown, TbChevronRight, TbPlus } from 'react-icons/tb';
 import { authClient } from '@/utils/auth';
 import { getFaviconUrl } from '@/utils/favicon';
 import { CreateProjectDialog } from './create-project-dialog';
@@ -228,19 +228,6 @@ export const ProjectMenu = () => {
                     <Text fontWeight="medium" lineClamp={1}>
                       {currentOrganization?.name || 'Organization'}
                     </Text>
-                    <Button
-                      variant="outline"
-                      boxSize="26px"
-                      minW="0"
-                      p="0"
-                      size="xs"
-                      ml="1"
-                      mr="4"
-                      borderColor="gray.500/40"
-                      tabIndex={-1}
-                    >
-                      <Icon as={TbSettings} boxSize="15px" />
-                    </Button>
                   </Flex>
                 </MenuTriggerItem>
                 <MenuContent minW="200px">
@@ -259,11 +246,13 @@ export const ProjectMenu = () => {
         </MenuContent>
       </MenuRoot>
 
-      <CreateProjectDialog
-        open={projectDialogOpen}
-        setOpen={setProjectDialogOpen}
-        organizationId={currentOrganization?.id}
-      />
+      {currentOrganization && (
+        <CreateProjectDialog
+          open={projectDialogOpen}
+          setOpen={setProjectDialogOpen}
+          organizationId={currentOrganization.id}
+        />
+      )}
     </>
   );
 };

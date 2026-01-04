@@ -21,15 +21,17 @@ function Page() {
   const [firstName, setFirstName] = useState('');
   const [organizationName, setOrganizationName] = useState('');
   const navigate = useNavigate();
-  const { refetch: refetchAuth } = authClient.useSession();
+  const { data: session, refetch: refetchAuth } = authClient.useSession();
+
+  const hasExistingOrganizations = (session?.organizations.length ?? 0) > 0;
 
   const { mutate } = trpc.organization.create.useMutation({
     onMutate: () => {
       setIsLoading(true);
     },
-    onSuccess: async () => {
+    onSuccess: async ({ organizationId }) => {
       await refetchAuth();
-      navigate({ to: '/onboarding/pricing' });
+      navigate({ to: '/onboarding/pricing', search: { orgId: organizationId } });
     },
     onError: (error) => {
       setIsLoading(false);
@@ -44,38 +46,54 @@ function Page() {
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (firstName.length < 2 || organizationName.length < 2) {
+    // For new users, require firstName
+    if (!hasExistingOrganizations && firstName.length < 2) {
       toaster.create({
         title: 'Error',
-        description: 'First name and organization name must be at least 2 characters long',
+        description: 'First name must be at least 2 characters long',
+        type: 'error',
+      });
+      return;
+    }
+
+    if (organizationName.length < 2) {
+      toaster.create({
+        title: 'Error',
+        description: 'Organization name must be at least 2 characters long',
         type: 'error',
       });
       return;
     }
 
     mutate({
-      firstName,
+      firstName: hasExistingOrganizations ? undefined : firstName,
       organizationName,
     });
   };
 
   return (
     <OnboardingLayout
-      title="Let's get you started quickly"
-      description="We'll use this information to personalize your workspace"
+      title={hasExistingOrganizations ? 'Create a new organization' : "Let's get you started quickly"}
+      description={
+        hasExistingOrganizations
+          ? 'Set up a new workspace for your team'
+          : "We'll use this information to personalize your workspace"
+      }
     >
       <Stack gap="4" w="full" maxW="sm" as="form" onSubmit={onSubmit}>
-        <Field.Root>
-          <Field.Label>First Name</Field.Label>
-          <InputGroup startElement={<TbUserSquareRounded />} width="full">
-            <Input
-              placeholder="John"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              disabled={isLoading}
-            />
-          </InputGroup>
-        </Field.Root>
+        {!hasExistingOrganizations && (
+          <Field.Root>
+            <Field.Label>First Name</Field.Label>
+            <InputGroup startElement={<TbUserSquareRounded />} width="full">
+              <Input
+                placeholder="John"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                disabled={isLoading}
+              />
+            </InputGroup>
+          </Field.Root>
+        )}
         <Field.Root>
           <Field.Label>Organization Name</Field.Label>
           <InputGroup startElement={<TbBuilding />} width="full">
@@ -87,9 +105,16 @@ function Page() {
             />
           </InputGroup>
         </Field.Root>
-        <Button type="submit" loading={isLoading}>
-          Create Organization
-        </Button>
+        <Stack gap="2">
+          <Button type="submit" loading={isLoading}>
+            Create Organization
+          </Button>
+          {hasExistingOrganizations && (
+            <Button type="button" variant="outline" onClick={() => navigate({ to: '/' })} disabled={isLoading}>
+              Cancel
+            </Button>
+          )}
+        </Stack>
         <HStack textStyle="sm" color="fg.muted" gap="1" alignSelf="center">
           Step <Span color="fg">1</Span> of 3
         </HStack>

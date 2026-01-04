@@ -46,7 +46,7 @@ function Page() {
         <GeneralTab projectId={projectId} />
       </Tabs.Content>
       <Tabs.Content value="billing">
-        <BillingTab projectId={projectId} />
+        <BillingTab />
       </Tabs.Content>
     </Tabs.Root>
   );

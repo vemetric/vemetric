@@ -1,12 +1,11 @@
 import { Box, Flex, Icon, LinkOverlay, Tag, Text, useClipboard } from '@chakra-ui/react';
-import { Link, useParams } from '@tanstack/react-router';
+import { Link } from '@tanstack/react-router';
 import { TbArrowRight, TbCheck } from 'react-icons/tb';
-import { useOrganizationId } from '@/hooks/use-organization-id';
+import { useCurrentOrganization } from '@/hooks/use-current-organization';
 import { trpc } from '@/utils/trpc';
 
 export const BlackFridayBanner = () => {
-  const { projectId } = useParams({ strict: false });
-  const { organizationId } = useOrganizationId(projectId);
+  const { organizationId, projectId } = useCurrentOrganization();
   const { copied, copy } = useClipboard({ value: 'BF2025' });
 
   const { data: billingStatus } = trpc.billing.billingStatus.useQuery({

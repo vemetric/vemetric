@@ -1,22 +1,21 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { ProjectOverviewPage } from '@/components/pages/project-overview/project-overview-page';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 import { SplashScreen } from '@/components/splash-screen';
-import { authClient } from '@/utils/auth';
 import { requireOnboarding } from '@/utils/auth-guards';
 
 export const Route = createFileRoute('/')({
-  beforeLoad: requireOnboarding,
+  beforeLoad: async () => {
+    const session = await requireOnboarding();
+
+    // Redirect to the first organization's page
+    const firstOrgId = session.organizations[0]?.id;
+    if (firstOrgId) {
+      throw redirect({
+        to: '/o/$organizationId',
+        params: { organizationId: firstOrgId },
+        replace: true,
+      });
+    }
+  },
   pendingComponent: SplashScreen,
-  component: Page,
+  component: () => <SplashScreen />,
 });
-
-function Page() {
-  const { data: session } = authClient.useSession();
-  const firstOrganizationId = session?.organizations[0]?.id;
-
-  if (!firstOrganizationId) {
-    return <SplashScreen />;
-  }
-
-  return <ProjectOverviewPage organizationId={firstOrganizationId} />;
-}

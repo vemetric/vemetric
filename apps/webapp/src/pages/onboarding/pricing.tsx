@@ -3,6 +3,7 @@ import { List, Box, Flex, Card, SimpleGrid, Button, Stack, Span, HStack, Text } 
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { TbChevronRight } from 'react-icons/tb';
+import { z } from 'zod';
 import { OnboardingLayout } from '@/components/onboard-layout';
 import { PricingSlider } from '@/components/pages/settings/billing/pricing-slider';
 import { SplashScreen } from '@/components/splash-screen';
@@ -19,14 +20,20 @@ const PricingCard = (props: CardRootProps) => {
   return <Card.Root p={5} borderWidth="1.5px" borderColor="gray.emphasized" rounded="xl" pos="relative" {...props} />;
 };
 
+const searchSchema = z.object({
+  orgId: z.string(),
+});
+
 export const Route = createFileRoute('/onboarding/pricing')({
-  beforeLoad: requireOnboardingPricing,
+  validateSearch: searchSchema,
+  beforeLoad: ({ search }) => requireOnboardingPricing({ search }),
   pendingComponent: SplashScreen,
   component: Page,
 });
 
 function Page() {
   const { data: session, refetch: refetchAuth } = authClient.useSession();
+  const { orgId } = Route.useSearch();
   const openCrispChat = useOpenCrispChat();
   const navigate = useNavigate();
 
@@ -41,7 +48,7 @@ function Page() {
     },
     onSuccess: async () => {
       await refetchAuth();
-      navigate({ to: '/onboarding/project' });
+      navigate({ to: '/onboarding/project', search: { orgId } });
     },
     onError: (error) => {
       setIsLoading(false);
@@ -99,9 +106,7 @@ function Page() {
                 borderRadius="lg"
                 width="full"
                 loading={isLoading}
-                onClick={() => {
-                  mutate();
-                }}
+                onClick={() => mutate({ organizationId: orgId })}
               >
                 Start for free
               </Button>
@@ -153,7 +158,7 @@ function Page() {
                   loading={isLoading}
                   onClick={() => {
                     openPaddleCheckout({
-                      organizationId: session?.organizations[0].id ?? '',
+                      organizationId: orgId,
                       email: session?.user.email ?? '',
                       pricingPlan,
                       isYearly,

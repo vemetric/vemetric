@@ -1,5 +1,5 @@
 import { Box, Card, Flex, Grid } from '@chakra-ui/react';
-import { Outlet, createFileRoute, useNavigate, useParams } from '@tanstack/react-router';
+import { Outlet, createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { EventLimitDialog, eventLimitStore } from '@/components/event-limit-dialog';
 import { Header } from '@/components/header';
@@ -10,7 +10,7 @@ import { PageWrapper } from '@/components/page-wrapper';
 import { SplashScreen } from '@/components/splash-screen';
 import { TabletHeader } from '@/components/tablet-header';
 import { toaster } from '@/components/ui/toaster';
-import { useOrganizationId } from '@/hooks/use-organization-id';
+import { useCurrentOrganization } from '@/hooks/use-current-organization';
 import { requireOnboarding } from '@/utils/auth-guards';
 import { getPricingPlan } from '@/utils/pricing';
 import { trpc } from '@/utils/trpc';
@@ -66,8 +66,7 @@ export const Route = createFileRoute('/_layout')({
 });
 
 function LayoutComponent() {
-  const { projectId } = useParams({ strict: false });
-  const { organizationId } = useOrganizationId(projectId);
+  const { organizationId, projectId } = useCurrentOrganization();
   const navigate = useNavigate();
 
   const { data: billingStatus } = trpc.billing.billingStatus.useQuery({

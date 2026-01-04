@@ -1,4 +1,5 @@
 import { Flex, Box } from '@chakra-ui/react';
+import { useCurrentOrganization } from '@/hooks/use-current-organization';
 import { Logo } from './logo';
 import { OrganizationMenu } from './organization-menu';
 import { PageWrapper } from './page-wrapper';
@@ -10,6 +11,8 @@ interface Props {
 
 export const BaseLayout = (props: Props) => {
   const { children } = props;
+
+  const { currentOrganization, organizations } = useCurrentOrganization();
 
   return (
     <>
@@ -26,8 +29,8 @@ export const BaseLayout = (props: Props) => {
       >
         <Flex align="center" gap={3}>
           <Logo h={{ base: '32px', md: '44px' }} />
-          <Box w="1px" h="20px" ml="1" bg="border.emphasized" />
-          <OrganizationMenu />
+          {currentOrganization && <Box w="1px" h="20px" ml="1" bg="border.emphasized" />}
+          <OrganizationMenu currentOrganization={currentOrganization} organizations={organizations || []} />
         </Flex>
         <UserMenu />
       </Flex>

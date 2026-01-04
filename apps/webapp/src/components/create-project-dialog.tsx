@@ -23,7 +23,7 @@ interface CreateProjectDialogProps {
   children?: React.ReactNode;
   open?: boolean;
   setOpen?: (open: boolean) => void;
-  organizationId?: string;
+  organizationId: string;
 }
 
 export const CreateProjectDialog = ({
@@ -34,12 +34,12 @@ export const CreateProjectDialog = ({
 }: CreateProjectDialogProps) => {
   const [open, setOpen] = useState(false);
   const { isLoading, projectName, setProjectName, debouncedDomain, domain, setDomain, onSubmit } = useCreateProject({
+    organizationId,
     onSuccess: () => {
       (_setOpen ?? setOpen)(false);
       setProjectName('');
       setDomain('');
     },
-    organizationId,
   });
 
   return (

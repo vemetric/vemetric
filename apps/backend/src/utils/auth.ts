@@ -104,7 +104,10 @@ export const auth = betterAuth({
       return {
         user,
         session,
-        organizations: userOrganizations.map((userOrg) => userOrg.organization),
+        organizations: userOrganizations.map((userOrg) => ({
+          ...userOrg.organization,
+          role: userOrg.role,
+        })),
         projects: userProjects.map((userProject) => ({
           id: String(userProject.project.id),
           name: userProject.project.name,

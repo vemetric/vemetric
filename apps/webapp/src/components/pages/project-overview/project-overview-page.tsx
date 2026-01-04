@@ -207,7 +207,7 @@ export const ProjectOverviewPage = ({ organizationId }: ProjectOverviewPageProps
                   <ProjectCard key={project.id} project={project} />
                 ))}
 
-                <CreateProjectDialog>
+                <CreateProjectDialog organizationId={organizationId}>
                   <Stack
                     w="100%"
                     gap="4"

@@ -1,10 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { ProjectOverviewPage } from '@/components/pages/project-overview/project-overview-page';
 import { SplashScreen } from '@/components/splash-screen';
-import { requireOnboarding } from '@/utils/auth-guards';
+import { requireOrganizationOnboarded } from '@/utils/auth-guards';
 
 export const Route = createFileRoute('/o/$organizationId')({
-  beforeLoad: requireOnboarding,
+  beforeLoad: ({ params }) => requireOrganizationOnboarded(params.organizationId),
   pendingComponent: SplashScreen,
   component: RouteComponent,
 });

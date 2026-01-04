@@ -20,18 +20,14 @@ import { InfoTip } from '@/components/info-tip';
 import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import { toaster } from '@/components/ui/toaster';
 import { UsageCycleHistory } from '@/components/usage-cycle-history';
-import { useOrganizationId } from '@/hooks/use-organization-id';
+import { useCurrentOrganization } from '@/hooks/use-current-organization';
 import { getPricingPlan } from '@/utils/pricing';
 import { trpc } from '@/utils/trpc';
 import { BillingHistory } from './billing-history';
 import { PricingDialog } from './pricing-dialog';
 
-interface Props {
-  projectId: string;
-}
-
-export const BillingTab = ({ projectId }: Props) => {
-  const { organizationId } = useOrganizationId(projectId);
+export const BillingTab = () => {
+  const { organizationId } = useCurrentOrganization();
 
   const { pricingDialog = false } = useSearch({ from: '/_layout/p/$projectId/settings/' });
   const navigate = useNavigate({ from: '/p/$projectId/settings' });

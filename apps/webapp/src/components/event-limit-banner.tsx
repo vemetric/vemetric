@@ -1,13 +1,12 @@
 import { Box, Icon, LinkOverlay, Text } from '@chakra-ui/react';
-import { Link, useParams } from '@tanstack/react-router';
+import { Link } from '@tanstack/react-router';
 import { TbArrowRight, TbBolt } from 'react-icons/tb';
-import { useOrganizationId } from '@/hooks/use-organization-id';
+import { useCurrentOrganization } from '@/hooks/use-current-organization';
 import { getPricingPlan } from '@/utils/pricing';
 import { trpc } from '@/utils/trpc';
 
 export const EventLimitBanner = () => {
-  const { projectId } = useParams({ strict: false });
-  const { organizationId } = useOrganizationId(projectId);
+  const { organizationId, projectId } = useCurrentOrganization();
 
   const { data: billingStatus } = trpc.billing.billingStatus.useQuery({
     organizationId,

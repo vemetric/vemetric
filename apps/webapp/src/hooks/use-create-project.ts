@@ -6,17 +6,17 @@ import { trpc } from '@/utils/trpc';
 import { useDebouncedState } from './use-debounced-state';
 
 interface Props {
+  organizationId: string;
   onSuccess?: (projectId: string) => void;
-  organizationId?: string;
 }
 
-export function useCreateProject({ onSuccess, organizationId }: Props) {
+export function useCreateProject({ organizationId, onSuccess }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [domain, setDomain, debouncedDomain] = useDebouncedState({ defaultValue: '' });
 
   const navigate = useNavigate();
-  const { data: session, refetch: refetchAuth } = authClient.useSession();
+  const { refetch: refetchAuth } = authClient.useSession();
   const { mutate } = trpc.projects.create.useMutation({
     onMutate: () => {
       setIsLoading(true);
@@ -49,7 +49,7 @@ export function useCreateProject({ onSuccess, organizationId }: Props) {
     }
 
     mutate({
-      organizationId: organizationId ?? session?.organizations[0].id ?? '',
+      organizationId,
       name: projectName,
       domain,
     });

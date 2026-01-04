@@ -1,8 +1,11 @@
+import { TRPCError } from '@trpc/server';
 import { OrganizationRole, dbAuthUser, dbOrganization } from 'database';
 import { z } from 'zod';
 import { logger } from '../utils/logger';
 import { loggedInProcedure, organizationAdminProcedure, router } from '../utils/trpc';
 import { vemetric } from '../utils/vemetric-client';
+
+const MAX_FREE_ORGANIZATIONS = 2;
 
 export const organizationRouter = router({
   create: loggedInProcedure
@@ -12,6 +15,15 @@ export const organizationRouter = router({
         input: { firstName, organizationName },
         ctx: { user },
       } = opts;
+
+      // Check if user has reached the limit of free organizations
+      const freeOrgCount = await dbOrganization.countUserFreeAdminOrganizations(user.id);
+      if (freeOrgCount >= MAX_FREE_ORGANIZATIONS) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: `You can only create up to ${MAX_FREE_ORGANIZATIONS} free organizations. Please upgrade an existing organization to create more.`,
+        });
+      }
 
       const organization = await dbOrganization.create(organizationName);
       await dbOrganization.addUser(organization.id, user.id, OrganizationRole.ADMIN);

@@ -1,6 +1,6 @@
+import type { ISources } from '@vemetric/common/sources';
 import { clickhouseSession } from 'clickhouse';
 import type { Hono } from 'hono';
-import type { ISources } from '@vemetric/common/sources';
 import { getPeriodDates, sourcesQuerySchema } from '../schemas';
 import type { ApiContextVars, ApiResponse } from '../types';
 
@@ -65,7 +65,7 @@ export function createSourcesRoutes(app: Hono<{ Variables: ApiContextVars }>) {
       };
 
       return c.json(response);
-    } catch (error) {
+    } catch {
       return c.json(
         {
           error: {

@@ -67,7 +67,7 @@ export function createDevicesRoutes(app: Hono<{ Variables: ApiContextVars }>) {
       };
 
       return c.json(response);
-    } catch (error) {
+    } catch {
       return c.json(
         {
           error: {
@@ -128,7 +128,7 @@ export function createDevicesRoutes(app: Hono<{ Variables: ApiContextVars }>) {
       };
 
       return c.json(response);
-    } catch (error) {
+    } catch {
       return c.json(
         {
           error: {
@@ -189,7 +189,7 @@ export function createDevicesRoutes(app: Hono<{ Variables: ApiContextVars }>) {
       };
 
       return c.json(response);
-    } catch (error) {
+    } catch {
       return c.json(
         {
           error: {

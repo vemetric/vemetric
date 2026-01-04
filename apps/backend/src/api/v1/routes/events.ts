@@ -1,6 +1,6 @@
-import type { Hono } from 'hono';
-import { clickhouseEvent } from 'clickhouse';
 import type { IFilterConfig } from '@vemetric/common/filters';
+import { clickhouseEvent } from 'clickhouse';
+import type { Hono } from 'hono';
 import {
   dateRangeSchema,
   eventNameParamSchema,
@@ -92,7 +92,7 @@ export function createEventsRoutes(app: Hono<{ Variables: ApiContextVars }>) {
       };
 
       return c.json(response);
-    } catch (error) {
+    } catch {
       return c.json(
         {
           error: {
@@ -181,7 +181,7 @@ export function createEventsRoutes(app: Hono<{ Variables: ApiContextVars }>) {
       };
 
       return c.json(response);
-    } catch (error) {
+    } catch {
       return c.json(
         {
           error: {

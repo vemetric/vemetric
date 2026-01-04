@@ -58,7 +58,7 @@ export function getPeriodDates(
 ): { start: Date; end: Date } {
   const now = new Date();
   let start: Date;
-  let end: Date = endDate ? new Date(endDate) : now;
+  const end: Date = endDate ? new Date(endDate) : now;
 
   if (startDate) {
     start = new Date(startDate);

@@ -1,15 +1,16 @@
 import { Hono } from 'hono';
-import type { ApiContextVars } from './types';
+
 import { apiKeyAuth } from './middleware/auth';
 import { rateLimitMiddleware } from './middleware/rate-limit';
+import { createCountriesRoutes } from './routes/countries';
+import { createDevicesRoutes } from './routes/devices';
+import { createEventsRoutes } from './routes/events';
+import { createFunnelsRoutes } from './routes/funnels';
 import { createOverviewRoutes } from './routes/overview';
 import { createPagesRoutes } from './routes/pages';
 import { createSourcesRoutes } from './routes/sources';
-import { createCountriesRoutes } from './routes/countries';
 import { createUsersRoutes } from './routes/users';
-import { createFunnelsRoutes } from './routes/funnels';
-import { createEventsRoutes } from './routes/events';
-import { createDevicesRoutes } from './routes/devices';
+import type { ApiContextVars } from './types';
 
 export function createApiV1Router() {
   const api = new Hono<{ Variables: ApiContextVars }>();

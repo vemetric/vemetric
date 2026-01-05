@@ -2,28 +2,14 @@ import type { FlexProps } from '@chakra-ui/react';
 import { Box, Button, Flex, Text, useBreakpointValue } from '@chakra-ui/react';
 import { Link, useMatches, useNavigate, useParams } from '@tanstack/react-router';
 import { useState } from 'react';
-import { TbArrowLeft, TbBuilding, TbCheck, TbChevronDown, TbChevronRight, TbPlus } from 'react-icons/tb';
+import { TbArrowLeft, TbCheck, TbChevronDown, TbChevronRight, TbPlus } from 'react-icons/tb';
 import { useCurrentOrganization } from '@/hooks/use-current-organization';
 import { getFaviconUrl } from '@/utils/favicon';
 import { CreateProjectDialog } from './create-project-dialog';
 import { LoadingImage } from './loading-image';
+import { OrganizationIcon } from './organization-icon';
 import { OrganizationMenuContent } from './organization-menu';
 import { MenuContent, MenuItem, MenuItemGroup, MenuRoot, MenuSeparator, MenuTrigger, MenuTriggerItem } from './ui/menu';
-
-const OrganizationIcon = (props: FlexProps) => (
-  <Flex
-    align="center"
-    justify="center"
-    boxSize="24px"
-    bg="purple.muted"
-    rounded="md"
-    color="purple.fg"
-    fontSize="sm"
-    {...props}
-  >
-    <TbBuilding />
-  </Flex>
-);
 
 const IconBox = ({ children, ...props }: FlexProps) => (
   <Flex align="center" justify="center" boxSize="24px" bg="gray.subtle" rounded="md" fontSize="md" {...props}>

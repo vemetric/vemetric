@@ -1,6 +1,7 @@
 import { Box, Button, Flex, Text } from '@chakra-ui/react';
 import { useNavigate } from '@tanstack/react-router';
-import { TbBuilding, TbCheck, TbChevronDown, TbPlus } from 'react-icons/tb';
+import { TbCheck, TbChevronDown, TbPlus } from 'react-icons/tb';
+import { OrganizationIcon } from './organization-icon';
 import { MenuContent, MenuItem, MenuItemGroup, MenuRoot, MenuSeparator, MenuTrigger } from './ui/menu';
 
 interface Props {
@@ -72,17 +73,7 @@ export const OrganizationMenu = ({ currentOrganization, organizations }: MenuPro
       <MenuTrigger asChild>
         <Button variant="ghost" size={{ base: 'xs', md: 'sm' }} px={1} h="auto" py={1}>
           <Flex align="center" gap={2}>
-            <Flex
-              align="center"
-              justify="center"
-              boxSize={{ base: '20px', md: '24px' }}
-              bg="purple.muted"
-              rounded="md"
-              color="purple.fg"
-              fontSize="sm"
-            >
-              <TbBuilding />
-            </Flex>
+            <OrganizationIcon boxSize={{ base: '20px', md: '24px' }} />
             <Text fontWeight="medium" display={{ base: 'none', md: 'block' }}>
               {currentOrganization.name}
             </Text>

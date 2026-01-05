@@ -73,7 +73,7 @@ export const OrganizationMenu = ({ currentOrganization, organizations }: MenuPro
       <MenuTrigger asChild>
         <Button variant="ghost" size={{ base: 'xs', md: 'sm' }} px={1} h="auto" py={1}>
           <Flex align="center" gap={2}>
-            <OrganizationIcon boxSize={{ base: '20px', md: '24px' }} />
+            <OrganizationIcon />
             <Text fontWeight="medium" display={{ base: 'none', md: 'block' }}>
               {currentOrganization.name}
             </Text>

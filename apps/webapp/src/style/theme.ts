@@ -49,6 +49,9 @@ export const vemetricTheme = createSystem(defaultConfig, {
     '#crisp-chatbox > div > a': {
       display: 'none!important',
     },
+    '#crisp-chatbox-button': {
+      display: 'none!important',
+    },
     '.vault-overlay': {
       position: 'fixed',
       inset: 0,

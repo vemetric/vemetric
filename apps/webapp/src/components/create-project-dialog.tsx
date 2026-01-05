@@ -1,6 +1,6 @@
 import { Button, Field, Icon, Input, Stack, Text } from '@chakra-ui/react';
 import { useState } from 'react';
-import { TbDashboard, TbWorldQuestion } from 'react-icons/tb';
+import { TbBuilding, TbDashboard, TbWorldQuestion } from 'react-icons/tb';
 import {
   DialogActionTrigger,
   DialogBody,
@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { useCreateProject } from '@/hooks/use-create-project';
+import { authClient } from '@/utils/auth';
 import { getFaviconUrl } from '@/utils/favicon';
 import { LoadingImage } from './loading-image';
 import { InputGroup } from './ui/input-group';
@@ -33,6 +34,9 @@ export const CreateProjectDialog = ({
   organizationId,
 }: CreateProjectDialogProps) => {
   const [open, setOpen] = useState(false);
+  const { data: session } = authClient.useSession();
+  const organizationName = session?.organizations?.find((org) => org.id === organizationId)?.name;
+
   const { isLoading, projectName, setProjectName, debouncedDomain, domain, setDomain, onSubmit } = useCreateProject({
     organizationId,
     onSuccess: () => {
@@ -62,6 +66,14 @@ export const CreateProjectDialog = ({
         <DialogBody px="6">
           <Stack gap={{ base: '6', md: '8' }}>
             <Stack gap={{ base: '4', md: '6' }}>
+              {organizationName && (
+                <Field.Root>
+                  <Field.Label>Organization</Field.Label>
+                  <InputGroup startElement={<TbBuilding />} width="full">
+                    <Input value={organizationName} readOnly disabled bg="bg.muted" cursor="not-allowed" />
+                  </InputGroup>
+                </Field.Root>
+              )}
               <Field.Root>
                 <Field.Label>Project Name</Field.Label>
                 <InputGroup startElement={<TbDashboard />} width="full">

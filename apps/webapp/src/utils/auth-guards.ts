@@ -181,7 +181,7 @@ export async function requireOnboardingPricing({ search }: { search: { orgId: st
         replace: true,
       });
     }
-    throw redirect({ to: '/', replace: true });
+    throw redirect({ to: '/o/$organizationId', params: { organizationId: orgId }, replace: true });
   }
 
   return session;
@@ -222,7 +222,7 @@ export async function requireOnboardingProject({ search }: { search: { orgId: st
 
   // Already has projects - redirect to home
   if (status.hasProjects) {
-    throw redirect({ to: '/', replace: true });
+    throw redirect({ to: '/o/$organizationId', params: { organizationId: orgId }, replace: true });
   }
 
   return session;
@@ -260,12 +260,12 @@ export async function requireOnboardingWaiting({ search }: { search: { orgId: st
       });
     }
     // Fully onboarded - redirect to home
-    throw redirect({ to: '/', replace: true });
+    throw redirect({ to: '/o/$organizationId', params: { organizationId: orgId }, replace: true });
   }
 
   // Org is fully onboarded - redirect to home
   if (status.isFullyOnboarded) {
-    throw redirect({ to: '/', replace: true });
+    throw redirect({ to: '/o/$organizationId', params: { organizationId: orgId }, replace: true });
   }
 
   return { session, orgStatus: status };

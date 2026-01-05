@@ -71,10 +71,10 @@ export const OrganizationMenu = ({ currentOrganization, organizations }: MenuPro
   return (
     <MenuRoot>
       <MenuTrigger asChild>
-        <Button variant="ghost" size={{ base: 'xs', md: 'sm' }} px={1} h="auto" py={1}>
+        <Button variant="ghost" size={{ base: 'xs', md: 'sm' }} px={1} h="auto" py={1} flexShrink={1}>
           <Flex align="center" gap={2}>
             <OrganizationIcon />
-            <Text fontWeight="medium" display={{ base: 'none', md: 'block' }}>
+            <Text textAlign="left" fontWeight="medium" lineClamp={1}>
               {currentOrganization.name}
             </Text>
             <TbChevronDown />

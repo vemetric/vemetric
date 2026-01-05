@@ -30,7 +30,7 @@ function Page() {
 
   return (
     <OnboardingLayout
-      title="Now let's create your first project"
+      title="Let's create your first project"
       description="We're excited to help you gain more insights!"
     >
       <Stack gap="4" w="full" maxW="sm" as="form" onSubmit={onSubmit}>

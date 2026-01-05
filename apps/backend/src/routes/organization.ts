@@ -9,7 +9,7 @@ const MAX_FREE_ORGANIZATIONS = 2;
 
 export const organizationRouter = router({
   create: loggedInProcedure
-    .input(z.object({ firstName: z.string().min(2).optional(), organizationName: z.string().min(2) }))
+    .input(z.object({ firstName: z.string().min(2).or(z.undefined()), organizationName: z.string().min(2) }))
     .mutation(async (opts) => {
       const {
         input: { firstName, organizationName },

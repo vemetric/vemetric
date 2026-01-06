@@ -235,7 +235,7 @@ export const ApiKeysCard = (props: Props) => {
             {createdKey ? (
               <Stack gap={4}>
                 <Text fontSize="sm" color="fg.muted">
-                  Your API key has been created. Make sure to copy it now - you won't be able to see it again!
+                  Your API key has been created. Make sure to copy it now - you won&apos;t be able to see it again!
                 </Text>
                 <Field.Root>
                   <Field.Label>Your API Key</Field.Label>

@@ -200,6 +200,11 @@ export async function requireOnboardingWaiting({ search }: { search: { orgId: st
     throw redirect({ to: '/', replace: true });
   }
 
+  // Org is fully onboarded - redirect to home
+  if (status.isFullyOnboarded) {
+    throw redirect({ to: '/o/$organizationId', params: { organizationId: orgId }, replace: true });
+  }
+
   // Admins should go to the actual onboarding pages
   if (status.isAdmin) {
     if (!status.hasPricing) {
@@ -209,6 +214,7 @@ export async function requireOnboardingWaiting({ search }: { search: { orgId: st
         replace: true,
       });
     }
+
     if (!status.hasProjects) {
       throw redirect({
         to: '/onboarding/project',
@@ -216,13 +222,6 @@ export async function requireOnboardingWaiting({ search }: { search: { orgId: st
         replace: true,
       });
     }
-    // Fully onboarded - redirect to home
-    throw redirect({ to: '/o/$organizationId', params: { organizationId: orgId }, replace: true });
-  }
-
-  // Org is fully onboarded - redirect to home
-  if (status.isFullyOnboarded) {
-    throw redirect({ to: '/o/$organizationId', params: { organizationId: orgId }, replace: true });
   }
 
   return { session, orgStatus: status };

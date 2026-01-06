@@ -7,11 +7,11 @@ import { SplashScreen } from '@/components/splash-screen';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
 import { authClient } from '@/utils/auth';
-import { requireOnboardingOrganization } from '@/utils/auth-guards';
+import { requireAuthentication } from '@/utils/auth-guards';
 import { trpc } from '@/utils/trpc';
 
 export const Route = createFileRoute('/onboarding/organization')({
-  beforeLoad: requireOnboardingOrganization,
+  beforeLoad: requireAuthentication,
   pendingComponent: SplashScreen,
   component: Page,
 });

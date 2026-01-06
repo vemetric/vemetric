@@ -106,17 +106,6 @@ export async function requireProjectAccess(projectId: string) {
 }
 
 /**
- * Route guard for onboarding/organization - for new users OR existing users creating new org
- * New users (no orgs): show full form with firstName
- * Existing users: show only org name field (accessed via "Create Organization" button)
- */
-export async function requireOnboardingOrganization() {
-  const session = await requireAuthentication();
-  // Allow access regardless of existing orgs - both new and existing users can create orgs
-  return session;
-}
-
-/**
  * Route guard for onboarding/pricing - requires orgId in search params
  * Validates that the org exists, user has access, user is admin, and pricing isn't already done
  */

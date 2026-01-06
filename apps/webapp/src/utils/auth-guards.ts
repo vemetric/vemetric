@@ -7,7 +7,7 @@ type Session = NonNullable<Awaited<getSession>['data']>;
 /**
  * Helper to get an organization's onboarding status
  */
-export function getOrganizationOnboardingStatus(session: Session, organizationId: string) {
+function getOrganizationOnboardingStatus(session: Session, organizationId: string) {
   const org = session.organizations.find((o) => o.id === organizationId);
   if (!org) return null;
 
@@ -20,16 +20,6 @@ export function getOrganizationOnboardingStatus(session: Session, organizationId
     isFullyOnboarded: org.pricingOnboarded && orgProjects.length > 0,
     isAdmin: org.role === 'ADMIN',
   };
-}
-
-/**
- * Helper to check if user has any fully onboarded organization
- */
-export function hasAnyOnboardedOrganization(session: Session) {
-  return session.organizations.some((org) => {
-    const orgProjects = session.projects.filter((p) => p.organizationId === org.id);
-    return org.pricingOnboarded && orgProjects.length > 0;
-  });
 }
 
 /**
@@ -65,47 +55,6 @@ export async function requireAnonymous() {
 }
 
 /**
- * Route guard for main app - ensures user has at least one fully onboarded organization
- * For new users with no orgs, redirects to organization creation
- */
-export async function requireOnboarding() {
-  const session = await requireAuthentication();
-
-  // No organizations at all - start onboarding
-  if (session.organizations.length === 0) {
-    throw redirect({
-      to: '/onboarding/organization',
-      replace: true,
-    });
-  }
-
-  // Check if user has any fully onboarded organization
-  if (!hasAnyOnboardedOrganization(session)) {
-    // Find the first non-onboarded org and redirect to its onboarding
-    const firstOrg = session.organizations[0];
-    const status = getOrganizationOnboardingStatus(session, firstOrg.id);
-
-    if (!status?.hasPricing) {
-      throw redirect({
-        to: '/onboarding/pricing',
-        search: { orgId: firstOrg.id },
-        replace: true,
-      });
-    }
-
-    if (!status?.hasProjects) {
-      throw redirect({
-        to: '/onboarding/project',
-        search: { orgId: firstOrg.id },
-        replace: true,
-      });
-    }
-  }
-
-  return session;
-}
-
-/**
  * Route guard for a specific organization - checks if that org is fully onboarded
  */
 export async function requireOrganizationOnboarded(organizationId: string) {
@@ -135,6 +84,25 @@ export async function requireOrganizationOnboarded(organizationId: string) {
   }
 
   return session;
+}
+
+/**
+ * Route guard for project access - checks if user has access to the project
+ * Note: If a project exists in the session, the organization must already be onboarded
+ * (projects can only be created after completing the onboarding flow)
+ */
+export async function requireProjectAccess(projectId: string) {
+  const session = await requireAuthentication();
+
+  // Find the project in the user's accessible projects
+  const project = session.projects.find((p) => p.id === projectId);
+
+  // User doesn't have access to this project
+  if (!project) {
+    throw redirect({ to: '/', replace: true });
+  }
+
+  return { session, project };
 }
 
 /**

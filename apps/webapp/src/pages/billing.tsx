@@ -1,21 +1,28 @@
-import { createFileRoute, Navigate } from '@tanstack/react-router';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 import { SplashScreen } from '@/components/splash-screen';
-import { authClient } from '@/utils/auth';
-import { requireOnboarding } from '@/utils/auth-guards';
+import { requireAuthentication } from '@/utils/auth-guards';
 
 export const Route = createFileRoute('/billing')({
-  beforeLoad: requireOnboarding,
+  beforeLoad: async () => {
+    const session = await requireAuthentication();
+
+    // No projects - redirect to home (which will handle onboarding)
+    if (session.projects.length === 0) {
+      throw redirect({
+        to: '/',
+        replace: true,
+      });
+    }
+
+    // Redirect to project settings billing tab
+    // The destination route is protected by requireProjectAccess
+    throw redirect({
+      to: '/p/$projectId/settings',
+      params: { projectId: session.projects[0].id },
+      search: { tab: 'billing' },
+      replace: true,
+    });
+  },
   pendingComponent: SplashScreen,
-  component: RouteComponent,
+  component: () => <SplashScreen />,
 });
-
-function RouteComponent() {
-  const { data: session, isPending: isSessionLoading } = authClient.useSession();
-
-  const project = session?.projects[0];
-  if (isSessionLoading || !project) {
-    return <SplashScreen />;
-  }
-
-  return <Navigate to="/p/$projectId/settings" params={{ projectId: project.id }} search={{ tab: 'billing' }} />;
-}

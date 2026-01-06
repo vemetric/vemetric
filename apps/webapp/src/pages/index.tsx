@@ -1,20 +1,26 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { SplashScreen } from '@/components/splash-screen';
-import { requireOnboarding } from '@/utils/auth-guards';
+import { requireAuthentication } from '@/utils/auth-guards';
 
 export const Route = createFileRoute('/')({
   beforeLoad: async () => {
-    const session = await requireOnboarding();
+    const session = await requireAuthentication();
 
-    // Redirect to the first organization's page
-    const firstOrgId = session.organizations[0]?.id;
-    if (firstOrgId) {
+    // No organizations - start onboarding
+    if (session.organizations.length === 0) {
       throw redirect({
-        to: '/o/$organizationId',
-        params: { organizationId: firstOrgId },
+        to: '/onboarding/organization',
         replace: true,
       });
     }
+
+    // Redirect to the first organization's page
+    // Let that route handle org-specific onboarding checks
+    throw redirect({
+      to: '/o/$organizationId',
+      params: { organizationId: session.organizations[0].id },
+      replace: true,
+    });
   },
   pendingComponent: SplashScreen,
   component: () => <SplashScreen />,

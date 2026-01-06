@@ -29,6 +29,14 @@ export const projectsRouter = router({
       ctx: { user, organization, subscriptionStatus },
     } = opts;
 
+    // Ensure organization has completed pricing onboarding before creating projects
+    if (!organization.pricingOnboarded) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Please complete pricing onboarding step before creating a project.',
+      });
+    }
+
     if (!subscriptionStatus.isActive) {
       const existingProjects = await dbProject.findByOrganizationId(organization.id);
       if (existingProjects.length > 1) {

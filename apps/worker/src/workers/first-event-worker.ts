@@ -86,6 +86,7 @@ export async function initFirstEventWorker() {
               },
               {
                 delay,
+                jobId: `first_event_feedback_${adminUser.userId}`,
               },
             );
 

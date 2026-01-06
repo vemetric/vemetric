@@ -38,4 +38,17 @@ export const dbProject = {
       where: { id },
       data,
     }),
+  hasUserAccess: async (userId: string, projectId: string, organizationId: string): Promise<boolean> => {
+    // Get all project access entries for this user in this organization
+    const userProjectAccess = await prismaClient.userProjectAccess.findMany({
+      where: { userId, organizationId },
+    });
+
+    // No restrictions configured, user has full access to all projects
+    if (userProjectAccess.length === 0) {
+      return true;
+    }
+
+    return userProjectAccess.some((access) => access.projectId === projectId);
+  },
 };

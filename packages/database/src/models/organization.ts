@@ -1,4 +1,4 @@
-import type { Organization, OrganizationRole, Project } from '@prisma/client';
+import type { Organization, OrganizationRole } from '@prisma/client';
 import { prismaClient } from '../client';
 import { generateOrganizationId } from '../utils/id';
 export { OrganizationRole } from '@prisma/client';
@@ -16,7 +16,16 @@ export const dbOrganization = {
       include: {
         organization: {
           include: {
-            project: true,
+            project: {
+              where: {
+                OR: [
+                  // Project is explicitly in the user's access list
+                  { userProjectAccess: { some: { userId } } },
+                  // OR no access restrictions exist for this user in this organization
+                  { organization: { userProjectAccess: { none: { userId } } } },
+                ],
+              },
+            },
           },
         },
       },
@@ -64,37 +73,5 @@ export const dbOrganization = {
       },
     });
     return count;
-  },
-  filterProjectsByUserAccess: async <T extends Pick<Project, 'id' | 'organizationId'>>(
-    userId: string,
-    projects: T[],
-  ): Promise<T[]> => {
-    if (projects.length === 0) return [];
-
-    // Get all project access entries for this user (organizationId is now directly on the table)
-    const userProjectAccess = await prismaClient.userProjectAccess.findMany({
-      where: { userId },
-      select: { projectId: true, organizationId: true },
-    });
-
-    // Group by organization: Map<organizationId, Set<projectId>>
-    const accessByOrg = new Map<string, Set<string>>();
-    for (const access of userProjectAccess) {
-      if (!accessByOrg.has(access.organizationId)) {
-        accessByOrg.set(access.organizationId, new Set());
-      }
-      accessByOrg.get(access.organizationId)!.add(access.projectId);
-    }
-
-    // Filter projects
-    return projects.filter((project) => {
-      const orgRestrictions = accessByOrg.get(project.organizationId);
-
-      // No restrictions for this org → full access
-      if (!orgRestrictions || orgRestrictions.size === 0) return true;
-
-      // Has restrictions → check if project is in allowed list
-      return orgRestrictions.has(project.id);
-    });
   },
 };

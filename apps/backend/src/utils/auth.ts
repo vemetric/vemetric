@@ -109,9 +109,6 @@ export const auth = betterAuth({
         }));
       });
 
-      // Filter projects based on user's project access restrictions
-      const accessibleProjects = await dbOrganization.filterProjectsByUserAccess(user.id, allProjects);
-
       return {
         user,
         session,
@@ -119,7 +116,7 @@ export const auth = betterAuth({
           ...userOrg.organization,
           role: userOrg.role,
         })),
-        projects: accessibleProjects,
+        projects: allProjects,
       };
     }),
   ],

@@ -24,6 +24,18 @@ export const dbProject = {
     prismaClient.project.findMany({
       where: { organizationId },
     }),
+  findByOrganizationAndUserId: (organizationId: string, userId: string) =>
+    prismaClient.project.findMany({
+      where: {
+        organizationId,
+        OR: [
+          // Project is explicitly in the user's access list
+          { userProjectAccess: { some: { userId } } },
+          // OR no access restrictions exist for this user in this organization
+          { organization: { userProjectAccess: { none: { userId } } } },
+        ],
+      },
+    }),
   update: (
     id: string,
     data: Partial<{

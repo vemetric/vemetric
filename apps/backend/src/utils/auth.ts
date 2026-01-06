@@ -5,7 +5,7 @@ import { addToQueue } from '@vemetric/queues/queue-utils';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { createAuthMiddleware, customSession, lastLoginMethod } from 'better-auth/plugins';
-import { dbOrganization, dbProject, prismaClient } from 'database';
+import { dbOrganization, prismaClient } from 'database';
 import { sendEmailVerificationLink, sendPasswordResetLink } from './email';
 import { logger } from './logger';
 import { vemetric } from './vemetric-client';
@@ -98,8 +98,16 @@ export const auth = betterAuth({
   plugins: [
     lastLoginMethod(),
     customSession(async ({ user, session }) => {
-      const userOrganizations = await dbOrganization.getUserOrganizations(user.id, true);
-      const userProjects = await dbProject.findByUserId(user.id);
+      const userOrganizations = await dbOrganization.getUserOrganizationsWithProjects(user.id);
+      const allProjects = userOrganizations.flatMap(({ organization }) => {
+        return organization.project.map((project) => ({
+          id: String(project.id),
+          name: project.name,
+          domain: project.domain,
+          token: project.token,
+          organizationId: project.organizationId,
+        }));
+      });
 
       return {
         user,
@@ -108,13 +116,7 @@ export const auth = betterAuth({
           ...userOrg.organization,
           role: userOrg.role,
         })),
-        projects: userProjects.map((userProject) => ({
-          id: String(userProject.project.id),
-          name: userProject.project.name,
-          domain: userProject.project.domain,
-          token: userProject.project.token,
-          organizationId: userProject.project.organizationId,
-        })),
+        projects: allProjects,
       };
     }),
   ],

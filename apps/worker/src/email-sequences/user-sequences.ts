@@ -1,17 +1,14 @@
 import { sendTransactionalMail } from '@vemetric/email/transactional';
-import { dbEmailDripSequence, prismaClient } from 'database';
+import { dbEmailDripSequence, dbOrganization } from 'database';
 import { type SequenceContext, type SequenceResult } from './common';
 
 export async function processNoProjectSequence(sequenceContext: SequenceContext): Promise<SequenceResult> {
   const { user, unsubscribeLink, sequence, stepNumber } = sequenceContext;
 
-  const userProjects = await prismaClient.userProject.count({
-    where: {
-      userId: user.id,
-    },
-  });
+  const userOrgs = await dbOrganization.getUserOrganizationsWithProjects(user.id);
+  const hasProjects = userOrgs.some(({ organization }) => organization.project.length > 0);
 
-  if (userProjects > 0) {
+  if (hasProjects) {
     // User has created projects, no need to continue the sequence
     await dbEmailDripSequence.completeUserSequence(user.id, sequence.sequenceType);
     return { skipped: true };

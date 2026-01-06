@@ -20,7 +20,6 @@ model User {
   sessions           Session[]
   accounts           Account[]
   organizations      UserOrganization[]
-  projects           UserProject[]
   emailDripHistory   EmailDripHistory[]
   emailDripSequences EmailDripSequence[]
 
@@ -137,30 +136,12 @@ model Project {
   excludedIps       String?   @db.Text
   excludedCountries String?   @db.Text
 
-  users            UserProject[]
   organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   dripSequences    EmailDripSequence[]
   emailDripHistory EmailDripHistory[]
   funnels          Funnel[]
 
   @@map("project")
-}
-
-enum ProjectRole {
-  ADMIN
-  MEMBER
-}
-
-model UserProject {
-  userId    String
-  user      User        @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  projectId String
-  project   Project     @relation(fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  role      ProjectRole
-  createdAt DateTime    @default(now())
-
-  @@id([userId, projectId])
-  @@map("user_project")
 }
 
 model Salt {

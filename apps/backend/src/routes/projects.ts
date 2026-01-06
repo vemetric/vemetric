@@ -6,7 +6,7 @@ import { getDripSequence, getStepDelay } from '@vemetric/email/email-drip-sequen
 import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
 import { addToQueue } from '@vemetric/queues/queue-utils';
 import { clickhouseEvent } from 'clickhouse';
-import { ProjectRole, dbProject } from 'database';
+import { dbProject } from 'database';
 import { z } from 'zod';
 import { logger } from '../utils/logger';
 import { fillTimeSeries, getTimeSpanStartDate } from '../utils/timeseries';
@@ -72,7 +72,6 @@ export const projectsRouter = router({
 
     try {
       const project = await dbProject.create(name, resolvedDomain, organization.id);
-      await dbProject.addUser(project.id, user.id, ProjectRole.ADMIN);
 
       try {
         await vemetric.trackEvent('ProjectCreated', {
@@ -163,18 +162,16 @@ export const projectsRouter = router({
 
   overview: organizationProcedure.query(async (opts) => {
     const {
-      ctx: { user, organizationId },
+      ctx: { organizationId },
     } = opts;
 
     const timeSpan = '24hrs';
     const timeSpanData = TIME_SPAN_DATA[timeSpan];
     const startDate = getTimeSpanStartDate(timeSpan);
 
-    const projects = (await dbProject.findByUserId(user.id)).filter(
-      (up) => up.project.organizationId === organizationId,
-    );
+    const projects = await dbProject.findByOrganizationId(organizationId);
     const projectData = await Promise.all(
-      projects.map(async ({ project }) => {
+      projects.map(async (project) => {
         const projectId = BigInt(project.id);
 
         const dataPromises = Promise.all([

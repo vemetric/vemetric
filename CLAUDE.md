@@ -29,7 +29,10 @@ Vemetric is an open-source web and product analytics platform built as a monorep
 # Development (starts all services except health-check)
 bun dev
 
-# Build all applications and check for typescript issues
+# Quick Typecheck for all applications
+bun run tsc
+
+# Build all applications
 bun run build
 
 # Lint all applications

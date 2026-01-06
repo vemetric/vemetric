@@ -10,10 +10,16 @@ export const dbOrganization = {
   addUser: (organizationId: string, userId: string, role: OrganizationRole) =>
     prismaClient.userOrganization.create({ data: { organizationId, userId, role } }),
   findById: (id: string) => prismaClient.organization.findUnique({ where: { id }, include: { billingInfo: true } }),
-  getUserOrganizations: (userId: string, includeOrganization: boolean = false) =>
+  getUserOrganizationsWithProjects: (userId: string) =>
     prismaClient.userOrganization.findMany({
       where: { userId },
-      include: { organization: includeOrganization },
+      include: {
+        organization: {
+          include: {
+            project: true,
+          },
+        },
+      },
     }),
   getOrganizationUsers: (organizationId: string) =>
     prismaClient.userOrganization.findMany({ where: { organizationId } }),

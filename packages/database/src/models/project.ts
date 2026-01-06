@@ -1,24 +1,13 @@
-import type { ProjectRole } from '@prisma/client';
 import { prismaClient } from '../client';
 import { generateProjectId, generateToken } from '../utils/id';
-export { ProjectRole, type Project } from '@prisma/client';
+export { type Project } from '@prisma/client';
 
 export const dbProject = {
   create: (name: string, domain: string, organizationId: string) =>
     prismaClient.project.create({
       data: { id: String(generateProjectId()), name, domain, token: generateToken(), organizationId },
     }),
-  addUser: (projectId: string, userId: string, role: ProjectRole) =>
-    prismaClient.userProject.create({ data: { projectId, userId, role } }),
   findAll: () => prismaClient.project.findMany(),
-  findByUserId: (userId: string) =>
-    prismaClient.userProject.findMany({
-      where: { userId },
-      include: {
-        project: true,
-      },
-      orderBy: { createdAt: 'asc' },
-    }),
   findByDomain: (domain: string) =>
     prismaClient.project.findFirst({
       where: { domain },
@@ -49,8 +38,4 @@ export const dbProject = {
       where: { id },
       data,
     }),
-  hasUserAccess: async (projectId: string, userId: string) => {
-    const count = await prismaClient.userProject.count({ where: { userId, projectId } });
-    return count > 0;
-  },
 };

@@ -67,9 +67,12 @@ function LayoutComponent() {
   const { organizationId, projectId } = useCurrentOrganization();
   const navigate = useNavigate();
 
-  const { data: billingStatus } = trpc.billing.billingStatus.useQuery({
-    organizationId,
-  });
+  const { data: billingStatus } = trpc.billing.billingStatus.useQuery(
+    {
+      organizationId,
+    },
+    { enabled: !!organizationId },
+  );
 
   const { eventsIncluded, hasMultipleExceededCycles, showLimitWarning, cycles } = getPricingPlan(billingStatus);
 
@@ -166,7 +169,7 @@ function LayoutComponent() {
                       roundedBottom="xl"
                       minH={{ base: '90dvh', md: '80dvh', lg: '88dvh' }}
                     >
-                      <Outlet key={projectId ?? 'noproject'} />
+                      <Outlet key={`${organizationId ?? 'noorg'}-${projectId ?? 'noproject'}`} />
                     </Box>
                   </Card.Root>
                 </Box>

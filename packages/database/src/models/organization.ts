@@ -18,7 +18,9 @@ export const dbOrganization = {
   getOrganizationUsers: (organizationId: string) =>
     prismaClient.userOrganization.findMany({ where: { organizationId } }),
   hasUserAccess: async (organizationId: string, userId: string, role?: OrganizationRole) => {
-    const count = await prismaClient.userOrganization.count({ where: { userId, organizationId, role } });
+    const count = await prismaClient.userOrganization.count({
+      where: role ? { userId, organizationId, role } : { userId, organizationId },
+    });
     return count > 0;
   },
   update: (id: string, data: Partial<Omit<Organization, 'id' | 'createdAt' | 'updatedAt'>>) =>

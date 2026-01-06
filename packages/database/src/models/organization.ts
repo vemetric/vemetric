@@ -28,16 +28,31 @@ export const dbOrganization = {
     }),
   /**
    * Count the number of free organizations where the user is an admin.
-   * An organization is "free" if it has no billingInfo record.
+   * An organization is "free" if:
+   * - It has no billingInfo record, OR
+   * - It has billingInfo but subscriptionStatus is not 'active' or 'past_due'
    */
   countUserFreeAdminOrganizations: async (userId: string) => {
     const count = await prismaClient.userOrganization.count({
       where: {
         userId,
         role: 'ADMIN',
-        organization: {
-          billingInfo: null,
-        },
+        OR: [
+          {
+            organization: {
+              billingInfo: null,
+            },
+          },
+          {
+            organization: {
+              billingInfo: {
+                subscriptionStatus: {
+                  notIn: ['active', 'past_due'],
+                },
+              },
+            },
+          },
+        ],
       },
     });
     return count;

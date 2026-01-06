@@ -1,3 +1,4 @@
+import { verifyUnsubscribeToken } from '@vemetric/common/email-token';
 import { dbAuthUser } from 'database';
 import type { Hono } from 'hono';
 import type { HonoContextVars } from '../types';
@@ -7,9 +8,15 @@ const redirectUrl = 'https://app.vemetric.com/email/unsubscribe';
 
 export async function useEmailRoutes(app: Hono<{ Variables: HonoContextVars }>) {
   app.get('/email/unsubscribe', async (c) => {
-    const userId = c.req.query('token');
+    const token = c.req.query('token');
 
+    if (!token) {
+      return c.redirect(`${redirectUrl}?error=true`);
+    }
+
+    const userId = verifyUnsubscribeToken(token);
     if (!userId) {
+      logger.warn({ token }, 'Invalid unsubscribe token');
       return c.redirect(`${redirectUrl}?error=true`);
     }
 

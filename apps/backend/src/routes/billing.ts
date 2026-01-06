@@ -90,7 +90,21 @@ export const billingRouter = router({
     .mutation(async (opts) => {
       const {
         input: { transactionId },
+        ctx: { billingInfo },
       } = opts;
+
+      if (!billingInfo) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Billing info not found' });
+      }
+
+      const transaction = await paddleApi.transactions.get(transactionId);
+      if (transaction.customerId !== billingInfo.customerId) {
+        logger.warn(
+          { transactionId, transactionCustomerId: transaction.customerId, billingCustomerId: billingInfo.customerId },
+          'Attempt to access transaction for different customer',
+        );
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Transaction not found' });
+      }
 
       const invoicePDF = await paddleApi.transactions.getInvoicePDF(transactionId);
       return { url: invoicePDF.url };

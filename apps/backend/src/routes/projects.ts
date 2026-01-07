@@ -6,12 +6,12 @@ import { getDripSequence, getStepDelay } from '@vemetric/email/email-drip-sequen
 import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
 import { addToQueue } from '@vemetric/queues/queue-utils';
 import { clickhouseEvent } from 'clickhouse';
-import { ProjectRole, dbProject } from 'database';
+import { dbProject } from 'database';
 import { z } from 'zod';
 import { logger } from '../utils/logger';
 import { fillTimeSeries, getTimeSpanStartDate } from '../utils/timeseries';
 import {
-  loggedInProcedure,
+  organizationAdminProcedure,
   organizationProcedure,
   projectOrPublicProcedure,
   projectProcedure,
@@ -23,11 +23,19 @@ const projectNameInput = z.string().min(2);
 const projectInput = z.object({ name: projectNameInput, domain: z.string() });
 
 export const projectsRouter = router({
-  create: organizationProcedure.input(projectInput).mutation(async (opts) => {
+  create: organizationAdminProcedure.input(projectInput).mutation(async (opts) => {
     const {
       input: { name, domain },
       ctx: { user, organization, subscriptionStatus },
     } = opts;
+
+    // Ensure organization has completed pricing onboarding before creating projects
+    if (!organization.pricingOnboarded) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Please complete pricing onboarding step before creating a project.',
+      });
+    }
 
     if (!subscriptionStatus.isActive) {
       const existingProjects = await dbProject.findByOrganizationId(organization.id);
@@ -64,7 +72,6 @@ export const projectsRouter = router({
 
     try {
       const project = await dbProject.create(name, resolvedDomain, organization.id);
-      await dbProject.addUser(project.id, user.id, ProjectRole.ADMIN);
 
       try {
         await vemetric.trackEvent('ProjectCreated', {
@@ -153,18 +160,18 @@ export const projectsRouter = router({
     await dbProject.update(project.id, { publicDashboard: !project.publicDashboard });
   }),
 
-  overview: loggedInProcedure.query(async (opts) => {
+  overview: organizationProcedure.query(async (opts) => {
     const {
-      ctx: { user },
+      ctx: { organizationId, user },
     } = opts;
 
     const timeSpan = '24hrs';
     const timeSpanData = TIME_SPAN_DATA[timeSpan];
     const startDate = getTimeSpanStartDate(timeSpan);
 
-    const projects = await dbProject.findByUserId(user.id);
+    const projects = await dbProject.findByOrganizationAndUserId(organizationId, user.id);
     const projectData = await Promise.all(
-      projects.map(async ({ project }) => {
+      projects.map(async (project) => {
         const projectId = BigInt(project.id);
 
         const dataPromises = Promise.all([

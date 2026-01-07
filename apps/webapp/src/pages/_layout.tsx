@@ -1,5 +1,5 @@
 import { Box, Card, Flex, Grid } from '@chakra-ui/react';
-import { Outlet, createFileRoute, useNavigate, useParams } from '@tanstack/react-router';
+import { Outlet, createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { EventLimitDialog, eventLimitStore } from '@/components/event-limit-dialog';
 import { Header } from '@/components/header';
@@ -10,8 +10,7 @@ import { PageWrapper } from '@/components/page-wrapper';
 import { SplashScreen } from '@/components/splash-screen';
 import { TabletHeader } from '@/components/tablet-header';
 import { toaster } from '@/components/ui/toaster';
-import { useOrganizationId } from '@/hooks/use-organization-id';
-import { requireOnboarding } from '@/utils/auth-guards';
+import { useCurrentOrganization } from '@/hooks/use-current-organization';
 import { getPricingPlan } from '@/utils/pricing';
 import { trpc } from '@/utils/trpc';
 
@@ -60,19 +59,20 @@ const BackgroundSvg = () => (
 let shownPastDueToast = false;
 
 export const Route = createFileRoute('/_layout')({
-  beforeLoad: requireOnboarding,
   pendingComponent: SplashScreen,
   component: LayoutComponent,
 });
 
 function LayoutComponent() {
-  const { projectId } = useParams({ strict: false });
-  const { organizationId } = useOrganizationId(projectId);
+  const { organizationId, projectId } = useCurrentOrganization();
   const navigate = useNavigate();
 
-  const { data: billingStatus } = trpc.billing.billingStatus.useQuery({
-    organizationId,
-  });
+  const { data: billingStatus } = trpc.billing.billingStatus.useQuery(
+    {
+      organizationId,
+    },
+    { enabled: !!organizationId },
+  );
 
   const { eventsIncluded, hasMultipleExceededCycles, showLimitWarning, cycles } = getPricingPlan(billingStatus);
 
@@ -169,7 +169,7 @@ function LayoutComponent() {
                       roundedBottom="xl"
                       minH={{ base: '90dvh', md: '80dvh', lg: '88dvh' }}
                     >
-                      <Outlet key={projectId ?? 'noproject'} />
+                      <Outlet key={`${organizationId ?? 'noorg'}-${projectId ?? 'noproject'}`} />
                     </Box>
                   </Card.Root>
                 </Box>

@@ -6,10 +6,11 @@ import { trpc } from '@/utils/trpc';
 import { useDebouncedState } from './use-debounced-state';
 
 interface Props {
+  organizationId: string;
   onSuccess?: (projectId: string) => void;
 }
 
-export function useCreateProject({ onSuccess }: Props) {
+export function useCreateProject({ organizationId, onSuccess }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [domain, setDomain, debouncedDomain] = useDebouncedState({ defaultValue: '' });
@@ -35,8 +36,21 @@ export function useCreateProject({ onSuccess }: Props) {
     },
   });
 
+  // Check if user is admin of the organization
+  const organization = session?.organizations.find((org) => org.id === organizationId);
+  const isAdmin = organization?.role === 'ADMIN';
+
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isAdmin) {
+      toaster.create({
+        title: 'Permission denied',
+        description: 'Only organization admins can create projects.',
+        type: 'error',
+      });
+      return;
+    }
 
     if (projectName.length < 2) {
       toaster.create({
@@ -48,7 +62,7 @@ export function useCreateProject({ onSuccess }: Props) {
     }
 
     mutate({
-      organizationId: session?.organizations[0].id ?? '',
+      organizationId,
       name: projectName,
       domain,
     });

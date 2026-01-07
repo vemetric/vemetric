@@ -90,6 +90,11 @@ export const funnelsRouter = router({
     } = opts;
 
     if (id) {
+      const existingFunnel = await dbFunnel.findById(id);
+      if (!existingFunnel || existingFunnel.projectId !== project.id) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Funnel not found' });
+      }
+
       // Update existing funnel
       const funnel = await dbFunnel.update(id, { name, steps, icon });
 
@@ -141,6 +146,11 @@ export const funnelsRouter = router({
       input: { id },
       ctx: { user, project },
     } = opts;
+
+    const funnel = await dbFunnel.findById(id);
+    if (!funnel || funnel.projectId !== project.id) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Funnel not found' });
+    }
 
     await dbFunnel.delete(id);
 

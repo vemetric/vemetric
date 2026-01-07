@@ -1,10 +1,9 @@
-import { Flex, Link, Box, Center, Spinner, Span } from '@chakra-ui/react';
-import { useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
-import { authClient } from '@/utils/auth';
+import { Flex, Box } from '@chakra-ui/react';
+import { useCurrentOrganization } from '@/hooks/use-current-organization';
 import { Logo } from './logo';
+import { OrganizationMenu } from './organization-menu';
 import { PageWrapper } from './page-wrapper';
-import { ThemeSwitch } from './theme-switch';
+import { UserMenu } from './user-menu';
 
 interface Props {
   children: React.ReactNode;
@@ -12,8 +11,8 @@ interface Props {
 
 export const BaseLayout = (props: Props) => {
   const { children } = props;
-  const navigate = useNavigate();
-  const [isLogoutLoading, setIsLogoutLoading] = useState(false);
+
+  const { currentOrganization, organizations } = useCurrentOrganization();
 
   return (
     <>
@@ -21,40 +20,19 @@ export const BaseLayout = (props: Props) => {
         align="center"
         justify="space-between"
         bg={{ base: 'bg.card', md: 'none' }}
-        px={{ base: 2, md: 5 }}
-        pt={{ base: 2, md: 4 }}
-        pb={{ base: 2, md: 0 }}
+        px={{ base: 1.5, md: 5 }}
+        pt={{ base: 0, md: 4 }}
+        pb={{ base: 0, md: 0 }}
+        h={{ base: '50px', md: 'auto' }}
         borderBottom={{ base: '1px solid', md: 'none' }}
-        borderColor="border.emphasized"
+        borderColor="purple.fg/10"
       >
-        <Flex justify="center" w={{ base: 'auto', lg: '190px' }}>
+        <Flex align="center" gap={3}>
           <Logo h={{ base: '32px', md: '44px' }} />
+          {currentOrganization && <Box w="1px" h="20px" ml="1" bg="border.emphasized" />}
+          <OrganizationMenu currentOrganization={currentOrganization} organizations={organizations || []} />
         </Flex>
-        <Flex align="center" gap="4">
-          <ThemeSwitch />
-          <Box w="1px" h="20px" bg="border.emphasized" />
-          <Link
-            as="button"
-            pos="relative"
-            textStyle="sm"
-            onClick={async () => {
-              if (isLogoutLoading) {
-                return;
-              }
-
-              setIsLogoutLoading(true);
-              await authClient.signOut();
-              navigate({ to: '/login' });
-            }}
-          >
-            <Span opacity={isLogoutLoading ? 0.5 : 1}>Logout</Span>
-            {isLogoutLoading && (
-              <Center pos="absolute" top="0" left="0" w="100%" h="100%">
-                <Spinner size="xs" />
-              </Center>
-            )}
-          </Link>
-        </Flex>
+        <UserMenu />
       </Flex>
       <PageWrapper flexDir="column">{children}</PageWrapper>
     </>

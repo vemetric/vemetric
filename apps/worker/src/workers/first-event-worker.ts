@@ -40,9 +40,13 @@ export async function initFirstEventWorker() {
           firstEventAt: null,
         },
         include: {
-          users: {
-            where: {
-              role: 'ADMIN',
+          organization: {
+            include: {
+              users: {
+                where: {
+                  role: 'ADMIN',
+                },
+              },
             },
           },
         },
@@ -57,9 +61,9 @@ export async function initFirstEventWorker() {
 
           if (firstEvent) {
             // Track the first event for analytics
-            const adminUser = project.users[0];
+            const adminUser = project.organization.users[0];
             if (!adminUser) {
-              logger.error({ projectId: project.id }, 'No admin user found for project');
+              logger.error({ projectId: project.id }, 'No admin user found for organization');
               continue;
             }
 

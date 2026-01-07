@@ -292,6 +292,7 @@ export const vemetricTheme = createSystem(defaultConfig, {
             bg: 'bg',
           },
           item: {
+            rounded: 'none',
             _hover: {
               bg: { _light: '{colors.gray.200}', _dark: '{colors.gray.700}' },
             },

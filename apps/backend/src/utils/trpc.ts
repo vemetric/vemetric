@@ -143,14 +143,21 @@ export const projectProcedure = loggedInProcedure.input(z.object({ projectId: z.
     ctx: { user },
   } = opts;
 
-  const hasAccess = await dbProject.hasUserAccess(input.projectId, user.id);
-  if (!hasAccess) {
-    throw new TRPCError({ code: 'FORBIDDEN', message: 'No permissions to access this project' });
-  }
-
   const project = await dbProject.findById(input.projectId);
   if (!project) {
     throw new TRPCError({ code: 'NOT_FOUND', message: 'Project not found' });
+  }
+
+  // Check user has access to the project's organization
+  const hasOrgAccess = await dbOrganization.hasUserAccess(project.organizationId, user.id);
+  if (!hasOrgAccess) {
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'No permissions to access this organization' });
+  }
+
+  // Check user has access to this specific project (if restrictions are configured)
+  const hasProjectAccess = await dbProject.hasUserAccess(user.id, project.id, project.organizationId);
+  if (!hasProjectAccess) {
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'No permissions to access this project' });
   }
 
   const organization = await dbOrganization.findById(project.organizationId);
@@ -201,8 +208,15 @@ export const projectOrPublicProcedure = publicProcedure
         throw new TRPCError({ code: 'UNAUTHORIZED' });
       }
 
-      const hasAccess = await dbProject.hasUserAccess(project.id, user.id);
-      if (!hasAccess) {
+      // Check user has access to the project's organization
+      const hasOrgAccess = await dbOrganization.hasUserAccess(project.organizationId, user.id);
+      if (!hasOrgAccess) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'No permissions to access this organization' });
+      }
+
+      // Check user has access to this specific project (if restrictions are configured)
+      const hasProjectAccess = await dbProject.hasUserAccess(user.id, project.id, project.organizationId);
+      if (!hasProjectAccess) {
         throw new TRPCError({ code: 'FORBIDDEN', message: 'No permissions to access this project' });
       }
     }

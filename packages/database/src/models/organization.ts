@@ -10,15 +10,32 @@ export const dbOrganization = {
   addUser: (organizationId: string, userId: string, role: OrganizationRole) =>
     prismaClient.userOrganization.create({ data: { organizationId, userId, role } }),
   findById: (id: string) => prismaClient.organization.findUnique({ where: { id }, include: { billingInfo: true } }),
-  getUserOrganizations: (userId: string, includeOrganization: boolean = false) =>
+  getUserOrganizationsWithProjects: (userId: string) =>
     prismaClient.userOrganization.findMany({
       where: { userId },
-      include: { organization: includeOrganization },
+      include: {
+        organization: {
+          include: {
+            project: {
+              where: {
+                OR: [
+                  // Project is explicitly in the user's access list
+                  { userProjectAccess: { some: { userId } } },
+                  // OR no access restrictions exist for this user in this organization
+                  { organization: { userProjectAccess: { none: { userId } } } },
+                ],
+              },
+            },
+          },
+        },
+      },
     }),
   getOrganizationUsers: (organizationId: string) =>
     prismaClient.userOrganization.findMany({ where: { organizationId } }),
   hasUserAccess: async (organizationId: string, userId: string, role?: OrganizationRole) => {
-    const count = await prismaClient.userOrganization.count({ where: { userId, organizationId, role } });
+    const count = await prismaClient.userOrganization.count({
+      where: role ? { userId, organizationId, role } : { userId, organizationId },
+    });
     return count > 0;
   },
   update: (id: string, data: Partial<Omit<Organization, 'id' | 'createdAt' | 'updatedAt'>>) =>
@@ -26,4 +43,35 @@ export const dbOrganization = {
       where: { id },
       data,
     }),
+  /**
+   * Count the number of free organizations where the user is an admin.
+   * An organization is "free" if:
+   * - It has no billingInfo record, OR
+   * - It has billingInfo but subscriptionStatus is not 'active' or 'past_due'
+   */
+  countUserFreeAdminOrganizations: async (userId: string) => {
+    const count = await prismaClient.userOrganization.count({
+      where: {
+        userId,
+        role: 'ADMIN',
+        OR: [
+          {
+            organization: {
+              billingInfo: null,
+            },
+          },
+          {
+            organization: {
+              billingInfo: {
+                subscriptionStatus: {
+                  notIn: ['active', 'past_due'],
+                },
+              },
+            },
+          },
+        ],
+      },
+    });
+    return count;
+  },
 };

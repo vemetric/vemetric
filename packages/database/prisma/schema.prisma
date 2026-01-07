@@ -20,9 +20,9 @@ model User {
   sessions           Session[]
   accounts           Account[]
   organizations      UserOrganization[]
-  projects           UserProject[]
   emailDripHistory   EmailDripHistory[]
   emailDripSequences EmailDripSequence[]
+  projectAccess      UserProjectAccess[]
 
   @@map("user")
 }
@@ -81,9 +81,10 @@ model Organization {
   pricingOnboarded Boolean  @default(false)
   customPlanEvents Int? // Custom event limit override (null = use regular billing)
 
-  users       UserOrganization[]
-  project     Project[]
-  billingInfo BillingInfo?
+  users             UserOrganization[]
+  project           Project[]
+  billingInfo       BillingInfo?
+  userProjectAccess UserProjectAccess[]
 
   @@map("organization")
 }
@@ -125,42 +126,40 @@ model UserOrganization {
 }
 
 model Project {
-  id              String    @id
-  name            String    @db.VarChar
-  domain          String    @unique @db.VarChar
-  token           String    @unique @db.VarChar
-  organizationId  String
-  createdAt       DateTime  @default(now())
+  id                String    @id
+  name              String    @db.VarChar
+  domain            String    @unique @db.VarChar
+  token             String    @unique @db.VarChar
+  organizationId    String
+  createdAt         DateTime  @default(now())
   publicDashboard   Boolean   @default(false)
   eventIcons        Json      @default("{}")
   firstEventAt      DateTime?
   excludedIps       String?   @db.Text
   excludedCountries String?   @db.Text
 
-  users            UserProject[]
-  organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  dripSequences    EmailDripSequence[]
-  emailDripHistory EmailDripHistory[]
-  funnels          Funnel[]
+  organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  dripSequences     EmailDripSequence[]
+  emailDripHistory  EmailDripHistory[]
+  funnels           Funnel[]
+  userProjectAccess UserProjectAccess[]
 
+  @@unique([id, organizationId])
   @@map("project")
 }
 
-enum ProjectRole {
-  ADMIN
-  MEMBER
-}
+model UserProjectAccess {
+  userId         String
+  projectId      String
+  organizationId String
 
-model UserProject {
-  userId    String
-  user      User        @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  projectId String
-  project   Project     @relation(fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  role      ProjectRole
-  createdAt DateTime    @default(now())
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project      Project      @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@id([userId, projectId])
-  @@map("user_project")
+  @@index([userId, organizationId])
+  @@map("user_project_access")
 }
 
 model Salt {

@@ -151,7 +151,7 @@ export const projectProcedure = loggedInProcedure.input(z.object({ projectId: z.
   // Check user has access to the project's organization
   const hasOrgAccess = await dbOrganization.hasUserAccess(project.organizationId, user.id);
   if (!hasOrgAccess) {
-    throw new TRPCError({ code: 'FORBIDDEN', message: 'No permissions to access this project' });
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'No permissions to access this organization' });
   }
 
   // Check user has access to this specific project (if restrictions are configured)
@@ -211,7 +211,7 @@ export const projectOrPublicProcedure = publicProcedure
       // Check user has access to the project's organization
       const hasOrgAccess = await dbOrganization.hasUserAccess(project.organizationId, user.id);
       if (!hasOrgAccess) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'No permissions to access this project' });
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'No permissions to access this organization' });
       }
 
       // Check user has access to this specific project (if restrictions are configured)

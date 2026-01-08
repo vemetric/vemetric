@@ -1,6 +1,6 @@
 import { useBreakpointValue } from '@chakra-ui/react';
 import { initializePaddle } from '@paddle/paddle-js';
-import { createRootRoute, Outlet, retainSearchParams, useRouterState } from '@tanstack/react-router';
+import { createRootRoute, Outlet, retainSearchParams, useLocation } from '@tanstack/react-router';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { vemetric } from '@vemetric/react';
 import { useEffect, useRef } from 'react';
@@ -40,7 +40,7 @@ export const Route = createRootRoute({
 });
 
 function RootLayout() {
-  const { location } = useRouterState();
+  const location = useLocation();
   const { colorMode } = useColorMode();
   const isMobile = useBreakpointValue({ base: true, md: false });
   const { data: session, isPending: isSessionLoading } = authClient.useSession();

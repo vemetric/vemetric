@@ -11,7 +11,7 @@ import {
   AbsoluteCenter,
   Spinner,
 } from '@chakra-ui/react';
-import { useNavigate, useRouterState, useSearch } from '@tanstack/react-router';
+import { useNavigate, useLocation, useSearch } from '@tanstack/react-router';
 import { addDays, format } from 'date-fns';
 import { useEffect, useState } from 'react';
 import { TbArrowRight, TbCreditCard, TbBolt, TbLockX } from 'react-icons/tb';
@@ -30,7 +30,7 @@ interface Props {
 }
 
 export const BillingTab = ({ organizationId }: Props) => {
-  const { location } = useRouterState();
+  const location = useLocation();
   const { pricingDialog = false } = useSearch({ strict: false });
   const navigate = useNavigate();
   const [isUndoCancellationLoading, setIsUndoCancellationLoading] = useState(false);

@@ -1,15 +1,15 @@
-import { Tabs } from '@chakra-ui/react';
+import { Button, Tabs, Text } from '@chakra-ui/react';
 import { useNavigate, createFileRoute } from '@tanstack/react-router';
 import { fallback, zodValidator } from '@tanstack/zod-adapter';
 import { TbSettings, TbCreditCard } from 'react-icons/tb';
 import { z } from 'zod';
-import { BillingTab } from '@/components/pages/settings/billing/billing-tab';
-import { GeneralTab } from '@/components/pages/settings/general-tab';
+import { ProjectGeneralTab } from '@/components/pages/settings/project/general-tab';
+import { EmptyState } from '@/components/ui/empty-state';
+import { useOrgSettingsDialog } from '@/hooks/use-org-settings-dialog';
 import { useSetBreadcrumbs } from '@/stores/header-store';
 
 const settingsSearchSchema = z.object({
   tab: fallback(z.enum(['general', 'billing']), 'general').default('general'),
-  pricingDialog: z.boolean().optional(),
 });
 
 export const Route = createFileRoute('/_layout/p/$projectId/settings/')({
@@ -22,6 +22,8 @@ function Page() {
   const { tab } = Route.useSearch();
   const navigate = useNavigate({ from: '/p/$projectId/settings' });
   useSetBreadcrumbs(['Settings']);
+
+  const { open } = useOrgSettingsDialog();
 
   return (
     <Tabs.Root
@@ -43,10 +45,23 @@ function Page() {
         </Tabs.Trigger>
       </Tabs.List>
       <Tabs.Content value="general">
-        <GeneralTab projectId={projectId} />
+        <ProjectGeneralTab projectId={projectId} />
       </Tabs.Content>
       <Tabs.Content value="billing">
-        <BillingTab />
+        <EmptyState
+          icon={<TbCreditCard size={64} />}
+          title="Billing & Usage is managed at the organization level"
+          description={
+            <>
+              <Text mb="1">Usage is shared across all projects within the organization.</Text>
+              <Text>Head to Organization Settings to manage billing details.</Text>
+            </>
+          }
+        >
+          <Button onClick={() => open('billing')}>
+            <TbSettings /> Open Organization Settings
+          </Button>
+        </EmptyState>
       </Tabs.Content>
     </Tabs.Root>
   );

@@ -4,6 +4,7 @@ import { TbBuilding } from 'react-icons/tb';
 
 export const OrganizationIcon = (props: FlexProps) => (
   <Flex
+    as="span"
     flexShrink={0}
     align="center"
     justify="center"

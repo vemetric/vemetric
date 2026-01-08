@@ -8,6 +8,98 @@ import { vemetric } from '../utils/vemetric-client';
 const MAX_FREE_ORGANIZATIONS = 2;
 
 export const organizationRouter = router({
+  settings: organizationAdminProcedure.query(async (opts) => {
+    const { organization } = opts.ctx;
+    return {
+      id: organization.id,
+      name: organization.name,
+      createdAt: organization.createdAt,
+    };
+  }),
+  updateSettings: organizationAdminProcedure
+    .input(z.object({ name: z.string().min(2).max(100) }))
+    .mutation(async (opts) => {
+      const {
+        input: { organizationId, name },
+      } = opts;
+
+      await dbOrganization.update(organizationId, { name });
+      return { success: true };
+    }),
+  members: organizationAdminProcedure.query(async (opts) => {
+    const {
+      input: { organizationId },
+      ctx: { user },
+    } = opts;
+
+    const members = await dbOrganization.getOrganizationUsersWithDetails(organizationId);
+
+    return {
+      members: members.map((m) => ({
+        userId: m.userId,
+        role: m.role,
+        createdAt: m.createdAt,
+        user: m.user,
+      })),
+      currentUserId: user.id,
+    };
+  }),
+  removeMember: organizationAdminProcedure.input(z.object({ userId: z.string() })).mutation(async (opts) => {
+    const {
+      input: { organizationId, userId },
+      ctx: { user },
+    } = opts;
+
+    // Cannot remove yourself
+    if (userId === user.id) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'You cannot remove yourself from the organization',
+      });
+    }
+
+    // Check if target user exists in the organization
+    const members = await dbOrganization.getOrganizationUsers(organizationId);
+    const targetMember = members.find((m) => m.userId === userId);
+    if (!targetMember) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'User is not a member of this organization',
+      });
+    }
+
+    await dbOrganization.removeUser(organizationId, userId);
+    return { success: true };
+  }),
+  updateMemberRole: organizationAdminProcedure
+    .input(z.object({ userId: z.string(), role: z.enum(['ADMIN', 'MEMBER']) }))
+    .mutation(async (opts) => {
+      const {
+        input: { organizationId, userId, role },
+        ctx: { user },
+      } = opts;
+
+      // Cannot change your own role
+      if (userId === user.id) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'You cannot change your own role',
+        });
+      }
+
+      // Check if target user exists in the organization
+      const members = await dbOrganization.getOrganizationUsers(organizationId);
+      const targetMember = members.find((m) => m.userId === userId);
+      if (!targetMember) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'User is not a member of this organization',
+        });
+      }
+
+      await dbOrganization.updateUserRole(organizationId, userId, role as OrganizationRole);
+      return { success: true };
+    }),
   create: loggedInProcedure
     .input(z.object({ firstName: z.string().min(2).or(z.undefined()), organizationName: z.string().min(2) }))
     .mutation(async (opts) => {

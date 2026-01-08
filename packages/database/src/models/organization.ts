@@ -32,6 +32,30 @@ export const dbOrganization = {
     }),
   getOrganizationUsers: (organizationId: string) =>
     prismaClient.userOrganization.findMany({ where: { organizationId } }),
+  getOrganizationUsersWithDetails: (organizationId: string) =>
+    prismaClient.userOrganization.findMany({
+      where: { organizationId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    }),
+  removeUser: (organizationId: string, userId: string) =>
+    prismaClient.userOrganization.delete({
+      where: { userId_organizationId: { userId, organizationId } },
+    }),
+  updateUserRole: (organizationId: string, userId: string, role: OrganizationRole) =>
+    prismaClient.userOrganization.update({
+      where: { userId_organizationId: { userId, organizationId } },
+      data: { role },
+    }),
   hasUserAccess: async (organizationId: string, userId: string, role?: OrganizationRole) => {
     const count = await prismaClient.userOrganization.count({
       where: role ? { userId, organizationId, role } : { userId, organizationId },

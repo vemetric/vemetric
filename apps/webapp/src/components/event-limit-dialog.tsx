@@ -1,5 +1,5 @@
 import { Box, Flex, Text, Icon, Button } from '@chakra-ui/react';
-import { Link } from '@tanstack/react-router';
+import { Link, useLocation } from '@tanstack/react-router';
 import { TbBolt } from 'react-icons/tb';
 import { proxy, useSnapshot } from 'valtio';
 import { DialogRoot, DialogContent, DialogBody, DialogCloseTrigger } from '@/components/ui/dialog';
@@ -13,14 +13,14 @@ export const eventLimitStore = proxy({
 });
 
 interface Props {
-  projectId: string;
   cycles: UsageCycle[];
   eventsIncluded: number;
   hasMultipleExceededCycles: boolean;
 }
 
-export const EventLimitDialog = ({ projectId, cycles, eventsIncluded, hasMultipleExceededCycles }: Props) => {
+export const EventLimitDialog = ({ cycles, eventsIncluded, hasMultipleExceededCycles }: Props) => {
   const { hasClosedEventLimitDialog, showEventLimitDialog } = useSnapshot(eventLimitStore);
+  const location = useLocation();
 
   if (hasClosedEventLimitDialog || !showEventLimitDialog) return null;
 
@@ -71,7 +71,14 @@ export const EventLimitDialog = ({ projectId, cycles, eventsIncluded, hasMultipl
               Please upgrade to a higher plan.
             </Text>
             <Button asChild onClick={onClose}>
-              <Link to="/p/$projectId/settings" params={{ projectId }} search={{ tab: 'billing', pricingDialog: true }}>
+              <Link
+                to={location.pathname}
+                search={(prev) => ({
+                  ...prev,
+                  orgSettings: 'billing',
+                  pricingDialog: true,
+                })}
+              >
                 Upgrade
               </Link>
             </Button>

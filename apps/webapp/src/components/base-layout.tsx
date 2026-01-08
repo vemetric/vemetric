@@ -2,6 +2,7 @@ import { Flex, Box } from '@chakra-ui/react';
 import { useCurrentOrganization } from '@/hooks/use-current-organization';
 import { Logo } from './logo';
 import { OrganizationMenu } from './organization-menu';
+import { OrganizationSettingsDialog } from './organization-settings-dialog';
 import { PageWrapper } from './page-wrapper';
 import { UserMenu } from './user-menu';
 
@@ -35,6 +36,7 @@ export const BaseLayout = (props: Props) => {
         <UserMenu />
       </Flex>
       <PageWrapper flexDir="column">{children}</PageWrapper>
+      <OrganizationSettingsDialog />
     </>
   );
 };

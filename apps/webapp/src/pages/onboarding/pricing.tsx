@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { TbChevronRight } from 'react-icons/tb';
 import { z } from 'zod';
 import { OnboardingLayout } from '@/components/onboard-layout';
-import { PricingSlider } from '@/components/pages/settings/billing/pricing-slider';
+import { PricingSlider } from '@/components/pages/settings/organization/billing/pricing-slider';
 import { SplashScreen } from '@/components/splash-screen';
 import { toaster } from '@/components/ui/toaster';
 import { Tooltip } from '@/components/ui/tooltip';

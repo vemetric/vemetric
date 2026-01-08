@@ -1,25 +1,26 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { SplashScreen } from '@/components/splash-screen';
-import { requireAuthentication } from '@/utils/auth-guards';
+import { requireAuthentication, requireOrganizationOnboarded } from '@/utils/auth-guards';
 
 export const Route = createFileRoute('/billing')({
   beforeLoad: async () => {
     const session = await requireAuthentication();
 
-    // No projects - redirect to home (which will handle onboarding)
-    if (session.projects.length === 0) {
+    // No organizations - redirect to home (which will handle onboarding)
+    if (session.organizations.length === 0) {
       throw redirect({
         to: '/',
         replace: true,
       });
     }
 
-    // Redirect to project settings billing tab
-    // The destination route is protected by requireProjectAccess
+    const firstOrganization = session.organizations[0];
+    await requireOrganizationOnboarded(firstOrganization.id);
+
     throw redirect({
-      to: '/p/$projectId/settings',
-      params: { projectId: session.projects[0].id },
-      search: { tab: 'billing' },
+      to: '/o/$organizationId',
+      params: { organizationId: firstOrganization.id },
+      search: { orgSettings: 'billing', pricingDialog: true },
       replace: true,
     });
   },

@@ -1,6 +1,7 @@
-import { Box, Button, Flex, Text } from '@chakra-ui/react';
+import { Box, Button, ButtonGroup, Flex, Text } from '@chakra-ui/react';
 import { useNavigate } from '@tanstack/react-router';
-import { TbCheck, TbChevronDown, TbPlus } from 'react-icons/tb';
+import { TbCheck, TbChevronDown, TbPlus, TbSettings } from 'react-icons/tb';
+import { useOrgSettingsDialog } from '@/hooks/use-org-settings-dialog';
 import { OrganizationIcon } from './organization-icon';
 import { MenuContent, MenuItem, MenuItemGroup, MenuRoot, MenuSeparator, MenuTrigger } from './ui/menu';
 
@@ -55,6 +56,7 @@ interface MenuProps {
 
 export const OrganizationMenu = ({ currentOrganization, organizations }: MenuProps) => {
   const navigate = useNavigate();
+  const { open: openOrgSettings } = useOrgSettingsDialog();
 
   const handleOrganizationSwitch = (orgId: string) => {
     navigate({ to: '/o/$organizationId', params: { organizationId: orgId } });
@@ -69,26 +71,29 @@ export const OrganizationMenu = ({ currentOrganization, organizations }: MenuPro
   }
 
   return (
-    <MenuRoot>
-      <MenuTrigger asChild>
-        <Button variant="ghost" size={{ base: 'xs', md: 'sm' }} px={1} h="auto" py={1} flexShrink={1}>
-          <Flex align="center" gap={2}>
+    <ButtonGroup size={{ base: 'xs', md: 'sm' }} variant="surface" attached>
+      <MenuRoot>
+        <MenuTrigger asChild>
+          <Button px={1} h="34px" py={1} flexShrink={1} roundedRight="none">
             <OrganizationIcon />
-            <Text textAlign="left" fontWeight="medium" lineClamp={1}>
+            <Text as="span" textAlign="left" fontWeight="medium" lineClamp={1}>
               {currentOrganization.name}
             </Text>
             <TbChevronDown />
-          </Flex>
-        </Button>
-      </MenuTrigger>
-      <MenuContent maxH="80vh" minW="200px">
-        <OrganizationMenuContent
-          currentOrganization={currentOrganization}
-          organizations={organizations || []}
-          onSwitchOrganization={handleOrganizationSwitch}
-          onCreateOrganization={handleCreateOrganization}
-        />
-      </MenuContent>
-    </MenuRoot>
+          </Button>
+        </MenuTrigger>
+        <MenuContent maxH="80vh" minW="200px">
+          <OrganizationMenuContent
+            currentOrganization={currentOrganization}
+            organizations={organizations || []}
+            onSwitchOrganization={handleOrganizationSwitch}
+            onCreateOrganization={handleCreateOrganization}
+          />
+        </MenuContent>
+      </MenuRoot>
+      <Button h="34px" py={1} px={1} minW="none" aria-label="Organization Settings" onClick={() => openOrgSettings()}>
+        <TbSettings />
+      </Button>
+    </ButtonGroup>
   );
 };

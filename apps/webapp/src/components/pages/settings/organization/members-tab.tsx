@@ -64,6 +64,10 @@ export const OrganizationMembersTab = (props: Props) => {
     },
   });
 
+  if (error) {
+    return <ErrorState title="Error loading members" />;
+  }
+
   if (isMembersLoading) {
     return (
       <Box h="200px" pos="relative">

@@ -1,8 +1,8 @@
 import { Card, Box, Button, Field, Input, Flex, Stack, Text, AbsoluteCenter, Spinner } from '@chakra-ui/react';
 import { useEffect, useState } from 'react';
-import { TbBuilding, TbSettings, TbLockX } from 'react-icons/tb';
+import { TbBuilding, TbSettings } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
-import { EmptyState, ErrorState } from '@/components/ui/empty-state';
+import { ErrorState } from '@/components/ui/empty-state';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
 import { authClient } from '@/utils/auth';
@@ -72,16 +72,6 @@ export const OrganizationGeneralTab = (props: Props) => {
   }, [settings?.name]);
 
   if (error) {
-    if (error?.data?.httpStatus === 403) {
-      return (
-        <EmptyState
-          icon={<TbLockX />}
-          title="You don't have admin access to this organization."
-          description="The settings can only be accessed by admins."
-        />
-      );
-    }
-
     return <ErrorState title="Error loading settings" />;
   }
 

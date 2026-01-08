@@ -6,6 +6,7 @@ import { loggedInProcedure, organizationAdminProcedure, router } from '../utils/
 import { vemetric } from '../utils/vemetric-client';
 
 const MAX_FREE_ORGANIZATIONS = 2;
+const inputName = z.string().min(2).max(100);
 
 export const organizationRouter = router({
   settings: organizationAdminProcedure.query(async (opts) => {
@@ -16,16 +17,14 @@ export const organizationRouter = router({
       createdAt: organization.createdAt,
     };
   }),
-  updateSettings: organizationAdminProcedure
-    .input(z.object({ name: z.string().min(2).max(100) }))
-    .mutation(async (opts) => {
-      const {
-        input: { organizationId, name },
-      } = opts;
+  updateSettings: organizationAdminProcedure.input(z.object({ name: inputName })).mutation(async (opts) => {
+    const {
+      input: { organizationId, name },
+    } = opts;
 
-      await dbOrganization.update(organizationId, { name });
-      return { success: true };
-    }),
+    await dbOrganization.update(organizationId, { name });
+    return { success: true };
+  }),
   members: organizationAdminProcedure.query(async (opts) => {
     const {
       input: { organizationId },
@@ -101,7 +100,12 @@ export const organizationRouter = router({
       return { success: true };
     }),
   create: loggedInProcedure
-    .input(z.object({ firstName: z.string().min(2).or(z.undefined()), organizationName: z.string().min(2) }))
+    .input(
+      z.object({
+        firstName: inputName.or(z.undefined()),
+        organizationName: inputName,
+      }),
+    )
     .mutation(async (opts) => {
       const {
         input: { firstName, organizationName },

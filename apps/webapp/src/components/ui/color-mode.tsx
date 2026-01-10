@@ -1,12 +1,11 @@
 'use client';
 
-import type { IconButtonProps, SpanProps } from '@chakra-ui/react';
-import { IconButton, Span } from '@chakra-ui/react';
+import type { SpanProps } from '@chakra-ui/react';
+import { Span } from '@chakra-ui/react';
 import { vemetric } from '@vemetric/react';
 import { ThemeProvider, useTheme } from 'next-themes';
 import type { ThemeProviderProps } from 'next-themes';
 import React from 'react';
-import { TbSun, TbMoon } from 'react-icons/tb';
 
 export interface ColorModeProviderProps extends ThemeProviderProps {}
 
@@ -20,23 +19,74 @@ export type ColorTheme = 'light' | 'dark' | 'system';
 export interface UseColorModeReturn {
   colorMode: ColorMode;
   colorTheme: ColorTheme;
-  setColorMode: (colorMode: ColorMode) => void;
-  toggleColorMode: () => void;
+  setColorMode: (colorMode: ColorTheme, event?: React.MouseEvent) => void;
+}
+
+function setViewTransitionOrigin(event?: React.MouseEvent) {
+  if (event) {
+    const x = event.clientX;
+    const y = event.clientY;
+    document.documentElement.style.setProperty('--theme-toggle-x', `${x}px`);
+    document.documentElement.style.setProperty('--theme-toggle-y', `${y}px`);
+  } else {
+    // Default to center if no event
+    document.documentElement.style.setProperty('--theme-toggle-x', '50%');
+    document.documentElement.style.setProperty('--theme-toggle-y', '50%');
+  }
+}
+
+function startViewTransition(callback: () => void, targetTheme: 'light' | 'dark', event?: React.MouseEvent) {
+  // Check if View Transitions API is supported and user prefers reduced motion
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (!document.startViewTransition || prefersReducedMotion) {
+    callback();
+    return;
+  }
+
+  // Set transition direction before starting
+  const transitionDirection = targetTheme === 'dark' ? 'to-dark' : 'to-light';
+  document.documentElement.dataset.themeTransition = transitionDirection;
+
+  setViewTransitionOrigin(event);
+
+  const transition = document.startViewTransition(callback);
+
+  // Clean up after transition completes
+  transition.finished.then(() => {
+    delete document.documentElement.dataset.themeTransition;
+  });
 }
 
 export function useColorMode(): UseColorModeReturn {
   const { theme, resolvedTheme, setTheme } = useTheme();
-  const toggleColorMode = () => {
-    setTheme(resolvedTheme === 'light' ? 'dark' : 'light');
-  };
+
   return {
     colorTheme: (theme ?? 'system') as ColorTheme,
     colorMode: resolvedTheme as ColorMode,
-    setColorMode: (colorMode: ColorMode) => {
-      vemetric.trackEvent('ChangeColorMode', { eventData: { colorMode }, userData: { set: { colorMode } } });
-      setTheme(colorMode);
+    setColorMode: (colorMode: ColorTheme, event?: React.MouseEvent) => {
+      // Resolve target theme for the view transition animation
+      let targetTheme: 'light' | 'dark';
+      if (colorMode === 'system') {
+        // Check system preference
+        targetTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      } else {
+        targetTheme = colorMode;
+      }
+
+      const applyTheme = () => {
+        vemetric.trackEvent('ChangeColorMode', { eventData: { colorMode }, userData: { set: { colorMode } } });
+        setTheme(colorMode);
+      };
+
+      // Skip animation if resolved theme isn't changing
+      if (targetTheme === resolvedTheme) {
+        applyTheme();
+        return;
+      }
+
+      startViewTransition(applyTheme, targetTheme, event);
     },
-    toggleColorMode,
   };
 }
 
@@ -44,32 +94,6 @@ export function useColorModeValue<T>(light: T, dark: T) {
   const { colorMode } = useColorMode();
   return colorMode === 'dark' ? dark : light;
 }
-
-interface ColorModeButtonProps extends Omit<IconButtonProps, 'aria-label'> {}
-
-export const ColorModeButton = React.forwardRef<HTMLButtonElement, ColorModeButtonProps>(
-  function ColorModeButton(props, ref) {
-    const { toggleColorMode, colorMode } = useColorMode();
-    return (
-      <IconButton
-        onClick={toggleColorMode}
-        variant="surface"
-        aria-label="Toggle color mode"
-        size="xs"
-        ref={ref}
-        {...props}
-        css={{
-          _icon: {
-            width: '4.5',
-            height: '4.5',
-          },
-        }}
-      >
-        {colorMode === 'dark' ? <TbMoon /> : <TbSun />}
-      </IconButton>
-    );
-  },
-);
 
 export const LightMode = React.forwardRef<HTMLSpanElement, SpanProps>(function LightMode(props, ref) {
   return (

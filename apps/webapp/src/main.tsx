@@ -47,6 +47,8 @@ createRoot(document.getElementById('root')!).render(
           '/p/*/funnels',
           '/p/*/funnels/*',
           '/p/*/events',
+          '/o/*',
+          '/invite/*',
         ]}
       />
       <RouterProvider router={router} />

@@ -96,7 +96,7 @@ export const PricingDialog = ({ open, onOpenChange, currentPlan, organizationId 
       <Dialog.Root open={open} onOpenChange={onOpenChange}>
         <Dialog.Backdrop />
         <Dialog.Positioner>
-          <Dialog.Content mt={10} bg="bg.card" minW={{ base: 'none', md: '550px' }}>
+          <Dialog.Content mt={20} bg="bg.card" minW={{ base: 'none', md: '550px' }}>
             <Dialog.Title p={5} borderBottom="1px solid" borderColor="gray.emphasized">
               <Flex align="center" gap={3}>
                 <CardIcon>

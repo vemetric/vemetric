@@ -1,8 +1,8 @@
 import { TRPCError } from '@trpc/server';
-import { OrganizationRole, dbAuthUser, dbOrganization } from 'database';
+import { OrganizationRole, dbAuthUser, dbInvitation, dbOrganization, prismaClient } from 'database';
 import { z } from 'zod';
 import { logger } from '../utils/logger';
-import { loggedInProcedure, organizationAdminProcedure, router } from '../utils/trpc';
+import { loggedInProcedure, organizationAdminProcedure, publicProcedure, router } from '../utils/trpc';
 import { vemetric } from '../utils/vemetric-client';
 
 const MAX_FREE_ORGANIZATIONS = 2;
@@ -150,5 +150,89 @@ export const organizationRouter = router({
     await dbOrganization.update(organizationId, {
       pricingOnboarded: true,
     });
+  }),
+
+  // Invitation routes
+  invitations: organizationAdminProcedure.query(async (opts) => {
+    const {
+      input: { organizationId },
+    } = opts;
+
+    const invitations = await dbInvitation.listByOrganization(organizationId);
+    return { invitations };
+  }),
+
+  createInvitation: organizationAdminProcedure
+    .input(z.object({ role: z.enum(['ADMIN', 'MEMBER']) }))
+    .mutation(async (opts) => {
+      const {
+        input: { organizationId, role },
+        ctx: { user },
+      } = opts;
+
+      const invitation = await dbInvitation.create(organizationId, user.id, role as OrganizationRole);
+      return { invitation };
+    }),
+
+  revokeInvitation: organizationAdminProcedure.input(z.object({ token: z.string() })).mutation(async (opts) => {
+    const {
+      input: { token },
+    } = opts;
+
+    await dbInvitation.delete(token);
+    return { success: true };
+  }),
+
+  getInvitationByToken: publicProcedure.input(z.object({ token: z.string() })).query(async (opts) => {
+    const {
+      input: { token },
+    } = opts;
+
+    const invitation = await dbInvitation.findByToken(token);
+    if (!invitation) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Invitation not found or has expired',
+      });
+    }
+
+    return {
+      organizationName: invitation.organization.name,
+    };
+  }),
+
+  acceptInvitation: loggedInProcedure.input(z.object({ token: z.string() })).mutation(async (opts) => {
+    const {
+      input: { token },
+      ctx: { user },
+    } = opts;
+
+    const invitation = await dbInvitation.findByToken(token);
+    if (!invitation) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Invitation not found or has expired',
+      });
+    }
+
+    // Check if user is already a member
+    const isAlreadyMember = await dbOrganization.hasUserAccess(invitation.organizationId, user.id);
+    if (isAlreadyMember) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'You are already a member of this organization',
+      });
+    }
+
+    // Add user to organization and delete invitation
+    await prismaClient.$transaction([
+      dbOrganization.addUser(invitation.organizationId, user.id, invitation.role),
+      dbInvitation.delete(token),
+    ]);
+
+    return {
+      organizationId: invitation.organizationId,
+      organizationName: invitation.organization.name,
+    };
   }),
 });

@@ -5,7 +5,7 @@ import { useOrgSettingsDialog } from '@/hooks/use-org-settings-dialog';
 import { OrganizationIcon } from './organization-icon';
 import { BillingTab } from './pages/settings/organization/billing/billing-tab';
 import { OrganizationGeneralTab } from './pages/settings/organization/general-tab';
-import { OrganizationMembersTab } from './pages/settings/organization/members-tab';
+import { OrganizationMembersTab } from './pages/settings/organization/members/members-tab';
 import { DialogRoot, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogCloseTrigger } from './ui/dialog';
 import { toaster } from './ui/toaster';
 
@@ -50,7 +50,7 @@ export const OrganizationSettingsDialog = () => {
       size="lg"
       scrollBehavior="inside"
     >
-      <DialogContent maxW="600px">
+      <DialogContent maxW="600px" bg="gray.subtle">
         <DialogHeader py={4}>
           <DialogTitle display="flex" alignItems="center" gap="5">
             Organization Settings
@@ -64,13 +64,14 @@ export const OrganizationSettingsDialog = () => {
             )}
           </DialogTitle>
         </DialogHeader>
-        <DialogBody pt={2} pb={4} px={{ base: 2, md: 4 }}>
+        <DialogBody p={0} m="1px" bg="bg" rounded="md" overflow="hidden">
           <Tabs.Root
             value={tab}
             onValueChange={({ value }) => setTab(value as 'general' | 'billing' | 'members')}
             variant="outline"
+            css={{ '& > [data-part="content"]': { border: 'none', rounded: 'none' } }}
           >
-            <Tabs.List>
+            <Tabs.List bg="gray.subtle" _before={{ rounded: 'none' }} css={{ '& > [data-selected]': { bg: 'bg' } }}>
               <Tabs.Trigger value="general">
                 <TbSettings />
                 General

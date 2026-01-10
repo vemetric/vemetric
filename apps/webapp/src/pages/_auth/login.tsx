@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
 import { authClient, loginWithProvider } from '@/utils/auth';
+import { redirectPath } from '@/utils/local-storage';
 import { getAppUrl } from '@/utils/url';
 
 export const Route = createFileRoute('/_auth/login')({
@@ -22,6 +23,23 @@ function Page() {
   const [password, setPassword] = useState('');
   const [sentResetPasswordLink, setSentResetPasswordLink] = useState(false);
 
+  const handleLoginSuccess = async () => {
+    // Check for pending redirect
+    const redirect = redirectPath.get();
+    if (redirect) {
+      redirectPath.clear();
+      navigate({ to: redirect });
+      return;
+    }
+
+    const session = await authClient.getSession();
+    if (session?.data?.projects.length === 1) {
+      navigate({ to: `/p/${session.data.projects[0].id}` });
+    } else {
+      navigate({ to: '/' });
+    }
+  };
+
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -36,14 +54,7 @@ function Page() {
           setPassword('');
           setIsLoading(true);
         },
-        onSuccess: async () => {
-          const session = await authClient.getSession();
-          if (session?.data?.projects.length === 1) {
-            navigate({ to: `/p/${session.data.projects[0].id}` });
-          } else {
-            navigate({ to: '/' });
-          }
-        },
+        onSuccess: handleLoginSuccess,
         onError: (ctx) => {
           setIsLoading(false);
           if (ctx.error.code === 'EMAIL_NOT_VERIFIED') {

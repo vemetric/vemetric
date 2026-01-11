@@ -57,16 +57,6 @@ export const organizationRouter = router({
       });
     }
 
-    // Check if target user exists in the organization
-    const members = await dbOrganization.getOrganizationUsers(organizationId);
-    const targetMember = members.find((m) => m.userId === userId);
-    if (!targetMember) {
-      throw new TRPCError({
-        code: 'NOT_FOUND',
-        message: 'User is not a member of this organization',
-      });
-    }
-
     await dbOrganization.removeUser(organizationId, userId);
     return { success: true };
   }),
@@ -83,16 +73,6 @@ export const organizationRouter = router({
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message: 'You cannot change your own role',
-        });
-      }
-
-      // Check if target user exists in the organization
-      const members = await dbOrganization.getOrganizationUsers(organizationId);
-      const targetMember = members.find((m) => m.userId === userId);
-      if (!targetMember) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'User is not a member of this organization',
         });
       }
 
@@ -176,8 +156,24 @@ export const organizationRouter = router({
 
   revokeInvitation: organizationAdminProcedure.input(z.object({ token: z.string() })).mutation(async (opts) => {
     const {
-      input: { token },
+      input: { organizationId, token },
     } = opts;
+
+    // Verify the invitation belongs to this organization
+    const invitation = await dbInvitation.findByToken(token, true);
+    if (!invitation) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Invitation not found',
+      });
+    }
+
+    if (invitation.organizationId !== organizationId) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Invitation does not belong to this organization',
+      });
+    }
 
     await dbInvitation.delete(token);
     return { success: true };

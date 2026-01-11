@@ -1,4 +1,5 @@
 import { Card, Box, Button, Flex, Text, Table, Badge, IconButton, AbsoluteCenter, Spinner } from '@chakra-ui/react';
+import { isInvitationExpired } from '@vemetric/common/organization';
 import { useState } from 'react';
 import { TbTrash, TbCopy, TbUserPlus, TbLink } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
@@ -26,6 +27,7 @@ export const InvitationsCard = (props: Props) => {
   } = trpc.organization.invitations.useQuery({ organizationId });
 
   const invitations = invitationsData?.invitations ?? [];
+  const activeInvitations = invitations.filter((inv) => !isInvitationExpired(inv.createdAt));
 
   const copyInviteLink = async (token: string) => {
     const inviteUrl = `${getAppUrl()}/invite/${token}`;
@@ -45,11 +47,11 @@ export const InvitationsCard = (props: Props) => {
               <TbLink />
             </CardIcon>
             <Text fontWeight="semibold">Pending Invitations</Text>
-            {!isLoading && invitations.length > 0 && (
-              <Badge ml="auto" colorPalette="orange" mr={2}>
-                {invitations.length} pending
-              </Badge>
-            )}
+            <Box flexGrow={1} mr={2}>
+              {!isLoading && activeInvitations.length > 0 && (
+                <Badge colorPalette="orange">{activeInvitations.length} pending</Badge>
+              )}
+            </Box>
             <MenuRoot>
               <MenuTrigger asChild>
                 <Button ml={invitations.length > 0 ? 0 : 'auto'} size="xs" colorPalette="purple">
@@ -87,59 +89,74 @@ export const InvitationsCard = (props: Props) => {
                 <Table.Row>
                   <Table.ColumnHeader>Link</Table.ColumnHeader>
                   <Table.ColumnHeader w="100px">Role</Table.ColumnHeader>
-                  <Table.ColumnHeader w="130px">Created At</Table.ColumnHeader>
+                  <Table.ColumnHeader w="130px">Status</Table.ColumnHeader>
                   <Table.ColumnHeader w="120px">Actions</Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
-                {invitations.map((invitation) => (
-                  <Table.Row key={invitation.token} css={{ '&:last-of-type > td': { borderBottom: 'none' } }}>
-                    <Table.Cell>
-                      <Button
-                        variant="ghost"
-                        rounded="none"
-                        px="1"
-                        py="0.5"
-                        h="auto"
-                        color="purple.fg"
-                        lineClamp={1}
-                        _hover={{ bg: 'purple.subtle' }}
-                        onClick={() => copyInviteLink(invitation.token)}
-                      >
-                        {`/invite/${invitation.token}`}
-                      </Button>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <Badge colorPalette={invitation.role === 'ADMIN' ? 'purple' : 'gray'}>{invitation.role}</Badge>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <Text fontSize="sm" color="fg.muted">
-                        {dateTimeFormatter.formatDate(invitation.createdAt)}
-                      </Text>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <Flex gap={1}>
-                        <IconButton
-                          aria-label="Copy invite link"
+                {invitations.map((invitation) => {
+                  const expired = isInvitationExpired(invitation.createdAt);
+                  return (
+                    <Table.Row
+                      key={invitation.token}
+                      css={{ '&:last-of-type > td': { borderBottom: 'none' } }}
+                      opacity={expired ? 0.6 : 1}
+                    >
+                      <Table.Cell>
+                        <Button
                           variant="ghost"
-                          size="xs"
+                          rounded="none"
+                          px="1"
+                          py="0.5"
+                          h="auto"
+                          color={expired ? 'fg.muted' : 'purple.fg'}
+                          lineClamp={1}
+                          textDecoration={expired ? 'line-through' : undefined}
+                          _hover={{ bg: expired ? 'gray.subtle' : 'purple.subtle' }}
                           onClick={() => copyInviteLink(invitation.token)}
+                          disabled={expired}
                         >
-                          <TbCopy />
-                        </IconButton>
-                        <IconButton
-                          aria-label="Revoke invitation"
-                          variant="ghost"
-                          size="xs"
-                          colorPalette="red"
-                          onClick={() => setInvitationToRevoke(invitation.token)}
-                        >
-                          <TbTrash />
-                        </IconButton>
-                      </Flex>
-                    </Table.Cell>
-                  </Table.Row>
-                ))}
+                          {`/invite/${invitation.token}`}
+                        </Button>
+                      </Table.Cell>
+                      <Table.Cell>
+                        <Badge colorPalette={invitation.role === 'ADMIN' ? 'purple' : 'gray'}>{invitation.role}</Badge>
+                      </Table.Cell>
+                      <Table.Cell>
+                        {expired ? (
+                          <Badge colorPalette="red">Expired</Badge>
+                        ) : (
+                          <Text fontSize="sm" color="fg.muted">
+                            {dateTimeFormatter.formatDate(invitation.createdAt)}
+                          </Text>
+                        )}
+                      </Table.Cell>
+                      <Table.Cell>
+                        <Flex gap={1}>
+                          {!expired && (
+                            <IconButton
+                              aria-label="Copy invite link"
+                              variant="ghost"
+                              size="xs"
+                              onClick={() => copyInviteLink(invitation.token)}
+                            >
+                              <TbCopy />
+                            </IconButton>
+                          )}
+                          <IconButton
+                            aria-label="Revoke invitation"
+                            variant="ghost"
+                            size="xs"
+                            colorPalette="red"
+                            onClick={() => setInvitationToRevoke(invitation.token)}
+                          >
+                            <TbTrash />
+                          </IconButton>
+                        </Flex>
+                      </Table.Cell>
+                    </Table.Row>
+                  );
+                })}
               </Table.Body>
             </Table.Root>
           )}

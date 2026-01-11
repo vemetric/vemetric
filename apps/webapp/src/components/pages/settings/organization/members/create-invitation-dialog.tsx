@@ -1,4 +1,5 @@
 import { Badge, Button, Text } from '@chakra-ui/react';
+import { INVITATION_EXPIRY_MS } from '@vemetric/common/organization';
 import {
   DialogRoot,
   DialogContent,
@@ -27,8 +28,10 @@ export const CreateInvitationDialog = (props: Props) => {
       const inviteUrl = `${getAppUrl()}/invite/${data.invitation.token}`;
       await navigator.clipboard.writeText(inviteUrl);
       toaster.create({
-        title: 'Invitation link copied to clipboard',
+        title: 'Invitation link created and copied to clipboard',
+        description: `The link expires in ${INVITATION_EXPIRY_MS / (1000 * 60 * 60 * 24)} days.`,
         type: 'success',
+        duration: 5000,
       });
       onSuccess();
     },

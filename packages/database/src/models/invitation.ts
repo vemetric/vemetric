@@ -1,4 +1,5 @@
 import type { Invitation, OrganizationRole } from '@prisma/client';
+import { INVITATION_EXPIRY_MS } from '@vemetric/common/organization';
 import { prismaClient } from '../client';
 import { generateToken } from '../utils/id';
 
@@ -15,9 +16,12 @@ export const dbInvitation = {
       },
     }),
 
-  findByToken: (token: string) =>
-    prismaClient.invitation.findUnique({
-      where: { token },
+  findByToken: (token: string, skipExpiryCheck = false) =>
+    prismaClient.invitation.findFirst({
+      where: {
+        token,
+        createdAt: skipExpiryCheck ? undefined : { gt: new Date(Date.now() - INVITATION_EXPIRY_MS) },
+      },
       include: {
         organization: {
           select: {

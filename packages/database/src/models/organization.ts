@@ -32,6 +32,11 @@ export const dbOrganization = {
     }),
   getOrganizationUsers: (organizationId: string) =>
     prismaClient.userOrganization.findMany({ where: { organizationId } }),
+  getOrganizationUsersWithDetails: (organizationId: string) =>
+    prismaClient.userOrganization.findMany({
+      where: { organizationId },
+      include: { user: { select: { id: true, email: true, name: true } } },
+    }),
   hasUserAccess: async (organizationId: string, userId: string, role?: OrganizationRole) => {
     const count = await prismaClient.userOrganization.count({
       where: role ? { userId, organizationId, role } : { userId, organizationId },

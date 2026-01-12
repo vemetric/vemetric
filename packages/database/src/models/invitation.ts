@@ -48,4 +48,12 @@ export const dbInvitation = {
     }),
 
   delete: (token: string) => prismaClient.invitation.delete({ where: { token } }),
+
+  countPendingByOrganization: (organizationId: string) =>
+    prismaClient.invitation.count({
+      where: {
+        organizationId,
+        createdAt: { gt: new Date(Date.now() - INVITATION_EXPIRY_MS) },
+      },
+    }),
 };

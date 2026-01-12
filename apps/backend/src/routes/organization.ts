@@ -1,11 +1,13 @@
 import { TRPCError } from '@trpc/server';
 import { OrganizationRole, dbAuthUser, dbInvitation, dbOrganization, prismaClient } from 'database';
 import { z } from 'zod';
+import { getSubscriptionStatus } from '../utils/billing';
 import { logger } from '../utils/logger';
 import { loggedInProcedure, organizationAdminProcedure, publicProcedure, router } from '../utils/trpc';
 import { vemetric } from '../utils/vemetric-client';
 
 const MAX_FREE_ORGANIZATIONS = 2;
+const MAX_FREE_PLAN_MEMBERS = 2;
 const inputName = z.string().min(2).max(100);
 
 export const organizationRouter = router({
@@ -147,8 +149,23 @@ export const organizationRouter = router({
     .mutation(async (opts) => {
       const {
         input: { organizationId, role },
-        ctx: { user },
+        ctx: { user, subscriptionStatus },
       } = opts;
+
+      // Check member limit for free plan organizations
+      if (!subscriptionStatus.isActive) {
+        const [memberCount, pendingInvitationCount] = await Promise.all([
+          dbOrganization.countMembers(organizationId),
+          dbInvitation.countPendingByOrganization(organizationId),
+        ]);
+
+        if (memberCount + pendingInvitationCount >= MAX_FREE_PLAN_MEMBERS) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: `Your organization is on the free plan. You can only have up to ${MAX_FREE_PLAN_MEMBERS} members. Please upgrade to add more members.`,
+          });
+        }
+      }
 
       const invitation = await dbInvitation.create(organizationId, user.id, role as OrganizationRole);
       return { invitation };
@@ -218,6 +235,24 @@ export const organizationRouter = router({
         code: 'BAD_REQUEST',
         message: 'You are already a member of this organization',
       });
+    }
+
+    const organization = await dbOrganization.findById(invitation.organizationId);
+    if (!organization) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Organization not found' });
+    }
+
+    const subscriptionStatus = await getSubscriptionStatus(organization);
+
+    // Check member limit for free plan organizations
+    if (!subscriptionStatus.isActive) {
+      const memberCount = await dbOrganization.countMembers(invitation.organizationId);
+      if (memberCount >= MAX_FREE_PLAN_MEMBERS) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: `This organization has reached its member limit on the free plan. Please ask an admin to upgrade to add more members.`,
+        });
+      }
     }
 
     // Add user to organization and delete invitation

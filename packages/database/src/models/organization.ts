@@ -98,4 +98,5 @@ export const dbOrganization = {
     });
     return count;
   },
+  countMembers: (organizationId: string) => prismaClient.userOrganization.count({ where: { organizationId } }),
 };

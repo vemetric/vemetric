@@ -1,5 +1,13 @@
 import { TRPCError } from '@trpc/server';
-import { OrganizationRole, dbAuthUser, dbInvitation, dbOrganization, prismaClient } from 'database';
+import {
+  OrganizationRole,
+  dbAuthUser,
+  dbInvitation,
+  dbOrganization,
+  dbProject,
+  dbUserProjectAccess,
+  prismaClient,
+} from 'database';
 import { z } from 'zod';
 import { getSubscriptionStatus } from '../utils/billing';
 import { logger } from '../utils/logger';
@@ -11,76 +19,6 @@ const MAX_FREE_PLAN_MEMBERS = 2;
 const inputName = z.string().min(2).max(100);
 
 export const organizationRouter = router({
-  settings: organizationAdminProcedure.query(async (opts) => {
-    const { organization } = opts.ctx;
-    return {
-      id: organization.id,
-      name: organization.name,
-      createdAt: organization.createdAt,
-    };
-  }),
-  updateSettings: organizationAdminProcedure.input(z.object({ name: inputName })).mutation(async (opts) => {
-    const {
-      input: { organizationId, name },
-    } = opts;
-
-    await dbOrganization.update(organizationId, { name });
-    return { success: true };
-  }),
-  members: organizationAdminProcedure.query(async (opts) => {
-    const {
-      input: { organizationId },
-      ctx: { user },
-    } = opts;
-
-    const members = await dbOrganization.getOrganizationUsersWithDetails(organizationId);
-
-    return {
-      members: members.map((m) => ({
-        userId: m.userId,
-        role: m.role,
-        createdAt: m.createdAt,
-        user: m.user,
-      })),
-      currentUserId: user.id,
-    };
-  }),
-  removeMember: organizationAdminProcedure.input(z.object({ userId: z.string() })).mutation(async (opts) => {
-    const {
-      input: { organizationId, userId },
-      ctx: { user },
-    } = opts;
-
-    // Cannot remove yourself
-    if (userId === user.id) {
-      throw new TRPCError({
-        code: 'BAD_REQUEST',
-        message: 'You cannot remove yourself from the organization',
-      });
-    }
-
-    await dbOrganization.removeUser(organizationId, userId);
-    return { success: true };
-  }),
-  updateMemberRole: organizationAdminProcedure
-    .input(z.object({ userId: z.string(), role: z.enum(['ADMIN', 'MEMBER']) }))
-    .mutation(async (opts) => {
-      const {
-        input: { organizationId, userId, role },
-        ctx: { user },
-      } = opts;
-
-      // Cannot change your own role
-      if (userId === user.id) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'You cannot change your own role',
-        });
-      }
-
-      await dbOrganization.updateUserRole(organizationId, userId, role as OrganizationRole);
-      return { success: true };
-    }),
   create: loggedInProcedure
     .input(
       z.object({
@@ -124,6 +62,7 @@ export const organizationRouter = router({
 
       return { organizationId: organization.id };
     }),
+
   pricingOnboarding: organizationAdminProcedure.mutation(async (opts) => {
     const {
       input: { organizationId },
@@ -134,7 +73,169 @@ export const organizationRouter = router({
     });
   }),
 
-  // Invitation routes
+  settings: organizationAdminProcedure.query(async (opts) => {
+    const { organization } = opts.ctx;
+    return {
+      id: organization.id,
+      name: organization.name,
+      createdAt: organization.createdAt,
+    };
+  }),
+
+  updateSettings: organizationAdminProcedure.input(z.object({ name: inputName })).mutation(async (opts) => {
+    const {
+      input: { organizationId, name },
+    } = opts;
+
+    await dbOrganization.update(organizationId, { name });
+    return { success: true };
+  }),
+
+  members: organizationAdminProcedure.query(async (opts) => {
+    const {
+      input: { organizationId },
+      ctx: { user },
+    } = opts;
+
+    const members = await dbOrganization.getOrganizationUsersWithDetails(organizationId);
+
+    return {
+      members: members.map((member) => {
+        const userAccess = member.user.projectAccess;
+        // ADMINs always have full access, MEMBERs with no entries have full access
+        const hasFullAccess = member.role === 'ADMIN' || !userAccess || userAccess.length === 0;
+        const accessibleCount = userAccess.length;
+
+        return {
+          userId: member.userId,
+          role: member.role,
+          createdAt: member.createdAt,
+          user: member.user,
+          projectAccess: {
+            hasFullAccess,
+            accessibleCount,
+          },
+        };
+      }),
+      currentUserId: user.id,
+    };
+  }),
+
+  removeMember: organizationAdminProcedure.input(z.object({ userId: z.string() })).mutation(async (opts) => {
+    const {
+      input: { organizationId, userId },
+      ctx: { user },
+    } = opts;
+
+    // Cannot remove yourself
+    if (userId === user.id) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'You cannot remove yourself from the organization',
+      });
+    }
+
+    await dbOrganization.removeUser(organizationId, userId);
+    return { success: true };
+  }),
+
+  updateMemberRole: organizationAdminProcedure
+    .input(z.object({ userId: z.string(), role: z.enum(['ADMIN', 'MEMBER']) }))
+    .mutation(async (opts) => {
+      const {
+        input: { organizationId, userId, role },
+        ctx: { user },
+      } = opts;
+
+      // Cannot change your own role
+      if (userId === user.id) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'You cannot change your own role',
+        });
+      }
+
+      // When promoting to ADMIN, clear any project access restrictions since ADMINs have full access
+      if (role === 'ADMIN') {
+        await dbUserProjectAccess.removeAllRestrictions(userId, organizationId);
+      }
+      await dbOrganization.updateUserRole(organizationId, userId, role as OrganizationRole);
+
+      return { success: true };
+    }),
+
+  memberProjectAccess: organizationAdminProcedure.input(z.object({ userId: z.string() })).query(async (opts) => {
+    const {
+      input: { organizationId, userId },
+    } = opts;
+
+    const accessibleProjectIds = await dbUserProjectAccess.getUserProjectIds(userId, organizationId);
+    const hasRestrictions = accessibleProjectIds.length > 0;
+
+    return {
+      accessibleProjectIds,
+      hasRestrictions,
+    };
+  }),
+
+  updateMemberProjectAccess: organizationAdminProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        projectIds: z.array(z.string()),
+        hasRestrictions: z.boolean(),
+      }),
+    )
+    .mutation(async (opts) => {
+      const {
+        input: { organizationId, userId, projectIds, hasRestrictions },
+      } = opts;
+
+      const member = await dbOrganization.getSingleUserOrganization(organizationId, userId);
+      if (!member) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Member not found in this organization',
+        });
+      }
+
+      // ADMINs always have full access - cannot restrict them
+      if (member.role === 'ADMIN') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Cannot restrict project access for admins. Admins always have full access to all projects.',
+        });
+      }
+
+      // Validate that all project IDs belong to this organization
+      if (projectIds.length > 0) {
+        const projects = await dbProject.findByOrganizationId(organizationId);
+        const validProjectIds = new Set(projects.map((p) => p.id));
+        const invalidIds = projectIds.filter((id) => !validProjectIds.has(id));
+
+        if (invalidIds.length > 0) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Only projects within the organization can be assigned for access.',
+          });
+        }
+      } else if (hasRestrictions) {
+        // If hasRestrictions is true but no projectIds provided, it's invalid
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Select at least one project or disable restrictions to give full access.',
+        });
+      }
+
+      if (hasRestrictions) {
+        await dbUserProjectAccess.setUserProjectAccess(userId, organizationId, projectIds);
+      } else {
+        await dbUserProjectAccess.removeAllRestrictions(userId, organizationId);
+      }
+
+      return { success: true };
+    }),
+
   invitations: organizationAdminProcedure.query(async (opts) => {
     const {
       input: { organizationId },

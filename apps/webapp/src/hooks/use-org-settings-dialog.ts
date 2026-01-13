@@ -11,7 +11,7 @@ import { useCurrentOrganization } from './use-current-organization';
 export function useOrgSettingsDialog() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { organizationId, isAdmin, isOnboarded, currentOrganization } = useCurrentOrganization();
+  const { isPending, organizationId, isAdmin, isOnboarded, currentOrganization } = useCurrentOrganization();
 
   // Get the typed search params from the root route
   const { orgSettings: tab } = useSearch({ strict: false });
@@ -47,6 +47,7 @@ export function useOrgSettingsDialog() {
   };
 
   return {
+    isPending,
     isOpen,
     isAdmin,
     isOnboarded,

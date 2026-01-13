@@ -10,11 +10,11 @@ import { DialogRoot, DialogContent, DialogHeader, DialogTitle, DialogBody, Dialo
 import { toaster } from './ui/toaster';
 
 export const OrganizationSettingsDialog = () => {
-  const { isOpen, tab, organizationId, currentOrganization, isAdmin, isOnboarded, close, setTab } =
+  const { isPending, isOpen, tab, organizationId, currentOrganization, isAdmin, isOnboarded, close, setTab } =
     useOrgSettingsDialog();
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || isPending) return;
 
     if (!isOnboarded) {
       close();
@@ -35,7 +35,7 @@ export const OrganizationSettingsDialog = () => {
       });
       return;
     }
-  }, [isAdmin, isOpen, isOnboarded, close]);
+  }, [isPending, isAdmin, isOpen, isOnboarded, close]);
 
   if (!organizationId || !isAdmin || !isOnboarded) {
     return null;
@@ -51,7 +51,7 @@ export const OrganizationSettingsDialog = () => {
       scrollBehavior="inside"
     >
       <DialogContent maxW="600px" bg="gray.subtle">
-        <DialogHeader py={4}>
+        <DialogHeader pt={4} pb={2}>
           <DialogTitle display="flex" alignItems="center" gap="5">
             Organization Settings
             {currentOrganization && (
@@ -64,12 +64,20 @@ export const OrganizationSettingsDialog = () => {
             )}
           </DialogTitle>
         </DialogHeader>
-        <DialogBody p={0} m="1px" bg="bg" rounded="md" overflow="hidden">
+        <DialogBody p={0} pt={2} m="1px" bg="gray.subtle" rounded="md" overflow="hidden">
           <Tabs.Root
             value={tab}
             onValueChange={({ value }) => setTab(value as 'general' | 'billing' | 'members')}
             variant="outline"
-            css={{ '& > [data-part="content"]': { border: 'none', rounded: 'none' } }}
+            css={{
+              '& > [data-part="content"]': {
+                border: 'none',
+                rounded: 'none',
+                overflowY: 'auto',
+                maxH: '600px',
+                bg: 'bg',
+              },
+            }}
           >
             <Tabs.List bg="gray.subtle" _before={{ rounded: 'none' }} css={{ '& > [data-selected]': { bg: 'bg' } }}>
               <Tabs.Trigger value="general">

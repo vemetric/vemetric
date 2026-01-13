@@ -1,6 +1,6 @@
 import type { ImageProps } from '@chakra-ui/react';
 import { Box, Center, Image, Skeleton, Icon } from '@chakra-ui/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TbWorldQuestion } from 'react-icons/tb';
 
 interface Props extends ImageProps {}
@@ -9,7 +9,13 @@ export const LoadingImage = (props: Props) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
+  const skipFirst = useRef(true);
   useEffect(() => {
+    if (skipFirst.current) {
+      skipFirst.current = false;
+      return;
+    }
+
     setError(false);
     setLoading(true);
   }, [props.src]);

@@ -9,6 +9,7 @@ import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import { trpc } from '@/utils/trpc';
 import { getAppUrl } from '@/utils/url';
 import { CreateInvitationDialog } from './create-invitation-dialog';
+import { MemberBadge } from './member-badge';
 import { RevokeInvitationDialog } from './revoke-invitation-dialog';
 
 interface Props {
@@ -120,7 +121,7 @@ export const InvitationsCard = (props: Props) => {
                         </Button>
                       </Table.Cell>
                       <Table.Cell>
-                        <Badge colorPalette={invitation.role === 'ADMIN' ? 'purple' : 'gray'}>{invitation.role}</Badge>
+                        <MemberBadge role={invitation.role} />
                       </Table.Cell>
                       <Table.Cell>
                         {expired ? (

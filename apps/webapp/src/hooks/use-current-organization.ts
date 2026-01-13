@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { authClient } from '@/utils/auth';
 
 export function useCurrentOrganization() {
-  const { data: session } = authClient.useSession();
+  const { data: session, isPending } = authClient.useSession();
   const { organizations, projects } = session ?? {};
 
   const { organizationId, projectId } = useParams({ strict: false });
@@ -22,6 +22,7 @@ export function useCurrentOrganization() {
   }, [currentOrganization, projects]);
 
   return {
+    isPending,
     projectId,
     organizationId: resolvedOrganizationId,
     currentOrganization,

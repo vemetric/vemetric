@@ -1,5 +1,4 @@
 import { Button, Text } from '@chakra-ui/react';
-import { INVITATION_EXPIRY_MS } from '@vemetric/common/organization';
 import {
   DialogRoot,
   DialogContent,
@@ -11,26 +10,23 @@ import {
 } from '@/components/ui/dialog';
 import { toaster } from '@/components/ui/toaster';
 import { trpc } from '@/utils/trpc';
-import { getAppUrl } from '@/utils/url';
 import { MemberBadge } from './member-badge';
 import { MemberRoleAlert } from './member-role-alert';
 
 interface Props {
   organizationId: string;
-  role: 'ADMIN' | 'MEMBER' | null;
+  member: { userId: string; name: string; currentRole: 'ADMIN' | 'MEMBER'; newRole: 'ADMIN' | 'MEMBER' } | null;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export const CreateInvitationDialog = (props: Props) => {
-  const { organizationId, role, onClose, onSuccess } = props;
+export const ChangeRoleDialog = (props: Props) => {
+  const { organizationId, member, onClose, onSuccess } = props;
 
-  const { mutate: createInvitation, isPending } = trpc.organization.createInvitation.useMutation({
-    onSuccess: async (data) => {
-      const inviteUrl = `${getAppUrl()}/invite/${data.invitation.token}`;
-      await navigator.clipboard.writeText(inviteUrl);
+  const { mutate: updateRole, isPending } = trpc.organization.updateMemberRole.useMutation({
+    onSuccess: () => {
       toaster.create({
-        title: 'Invitation link created and copied to clipboard',
+        title: 'Role updated successfully',
         type: 'success',
       });
       onSuccess();
@@ -44,7 +40,9 @@ export const CreateInvitationDialog = (props: Props) => {
     },
   });
 
-  if (!role) {
+  const isPromotingToAdmin = member?.newRole === 'ADMIN';
+
+  if (!member) {
     return null;
   }
 
@@ -52,14 +50,14 @@ export const CreateInvitationDialog = (props: Props) => {
     <DialogRoot open onOpenChange={onClose}>
       <DialogContent mt={20}>
         <DialogHeader>
-          <DialogTitle>Create Invitation Link</DialogTitle>
+          <DialogTitle>{isPromotingToAdmin ? 'Promote to Admin' : 'Change to Member'}</DialogTitle>
         </DialogHeader>
         <DialogBody>
           <Text mb={3}>
-            Create an invitation link for a new <MemberBadge role={role} />? The link will be copied to your clipboard
-            and expires in {INVITATION_EXPIRY_MS / (1000 * 60 * 60 * 24)} days.
+            Are you sure you want to change <strong>{member.name}</strong> from{' '}
+            <MemberBadge role={member.currentRole} /> to <MemberBadge role={member.newRole} />?
           </Text>
-          <MemberRoleAlert role={role} />
+          <MemberRoleAlert role={member.newRole} />
         </DialogBody>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
@@ -69,10 +67,10 @@ export const CreateInvitationDialog = (props: Props) => {
             colorPalette="purple"
             loading={isPending}
             onClick={() => {
-              createInvitation({ organizationId, role });
+              updateRole({ organizationId, userId: member.userId, role: member.newRole });
             }}
           >
-            Create & Copy Link
+            {isPromotingToAdmin ? 'Promote to Admin' : 'Change to Member'}
           </Button>
         </DialogFooter>
         <DialogCloseTrigger />

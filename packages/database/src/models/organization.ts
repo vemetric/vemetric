@@ -37,15 +37,23 @@ export const dbOrganization = {
       where: { organizationId },
       include: {
         user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
+          include: {
+            projectAccess: {
+              where: { organizationId },
+            },
           },
         },
       },
       orderBy: { createdAt: 'asc' },
+    }),
+  getSingleUserOrganization: (organizationId: string, userId: string) =>
+    prismaClient.userOrganization.findUnique({
+      where: {
+        userId_organizationId: {
+          userId,
+          organizationId,
+        },
+      },
     }),
   removeUser: (organizationId: string, userId: string) =>
     prismaClient.userOrganization.delete({

@@ -11,7 +11,7 @@ export const OrganizationMembersTab = (props: Props) => {
 
   return (
     <Flex flexDir="column" gap={6}>
-      <MembersCard organizationId={organizationId} />
+      <MembersCard />
       <InvitationsCard organizationId={organizationId} />
     </Flex>
   );

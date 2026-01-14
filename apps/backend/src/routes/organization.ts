@@ -1,9 +1,16 @@
 import { TRPCError } from '@trpc/server';
-import { OrganizationRole, dbAuthUser, dbInvitation, dbOrganization, dbProject, dbUserProjectAccess } from 'database';
+import {
+  OrganizationRole,
+  dbAuthUser,
+  dbInvitation,
+  dbOrganization,
+  dbProject,
+  dbUserProjectAccess,
+  serializableTransaction,
+} from 'database';
 import { z } from 'zod';
 import { getSubscriptionStatus } from '../utils/billing';
 import { logger } from '../utils/logger';
-import { serializableTransaction } from '../utils/transactions';
 import { loggedInProcedure, organizationAdminProcedure, publicProcedure, router } from '../utils/trpc';
 import { vemetric } from '../utils/vemetric-client';
 

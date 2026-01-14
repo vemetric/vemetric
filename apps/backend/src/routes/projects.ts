@@ -6,11 +6,10 @@ import { getDripSequence, getStepDelay } from '@vemetric/email/email-drip-sequen
 import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
 import { addToQueue } from '@vemetric/queues/queue-utils';
 import { clickhouseEvent } from 'clickhouse';
-import { dbProject } from 'database';
+import { dbProject, serializableTransaction } from 'database';
 import { z } from 'zod';
 import { logger } from '../utils/logger';
 import { fillTimeSeries, getTimeSpanStartDate } from '../utils/timeseries';
-import { serializableTransaction } from '../utils/transactions';
 import {
   organizationAdminProcedure,
   organizationProcedure,

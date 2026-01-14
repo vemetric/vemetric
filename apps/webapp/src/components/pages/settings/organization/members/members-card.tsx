@@ -1,5 +1,5 @@
 import { Card, Box, Button, Flex, Text, Table, Badge, Avatar, AbsoluteCenter, Spinner } from '@chakra-ui/react';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { TbUsers, TbTrash, TbChevronDown, TbChevronRight, TbFolders, TbShieldLock, TbUserPlus } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from '@/components/ui/menu';
@@ -76,9 +76,8 @@ export const MembersCard = () => {
                   const canExpand = true;
 
                   return (
-                    <>
+                    <React.Fragment key={member.userId}>
                       <Table.Row
-                        key={member.userId}
                         css={{
                           '&:last-of-type > td': { borderBottom: isExpanded ? undefined : 'none' },
                           cursor: canExpand ? 'pointer' : 'default',
@@ -222,7 +221,7 @@ export const MembersCard = () => {
                         </Table.Cell>
                       </Table.Row>
                       {isExpanded && (
-                        <Table.Row key={`${member.userId}-expanded`}>
+                        <Table.Row>
                           <Table.Cell colSpan={3} p={0}>
                             <MemberProjectAccess
                               userId={member.userId}
@@ -234,7 +233,7 @@ export const MembersCard = () => {
                           </Table.Cell>
                         </Table.Row>
                       )}
-                    </>
+                    </React.Fragment>
                   );
                 })}
               </Table.Body>

@@ -38,7 +38,9 @@ describe('getUsageForPeriod', () => {
     const endDate = new Date('2024-01-31');
     const result = await getUsageForPeriod('org-1', startDate, endDate);
 
-    expect(dbProject.findByOrganizationId).toHaveBeenCalledWith('org-1');
+    expect(dbProject.findByOrganizationId).toHaveBeenCalledWith({
+      organizationId: 'org-1',
+    });
     expect(clickhouseEvent.getUsagePerProject).toHaveBeenCalledWith(['1', '2'], expect.any(Date), expect.any(Date));
 
     expect(result).toEqual({

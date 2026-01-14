@@ -47,7 +47,7 @@ export const TRANSACTIONAL_TEMPLATE_MAP = {
     email: FirstEventFeedback,
   },
   subscriptionCancelled: {
-    subject: "We're sorry to see you go - your feedback matters",
+    subject: 'Thanks for being part of our journey!',
     email: SubscriptionCancelledMail,
   },
 };

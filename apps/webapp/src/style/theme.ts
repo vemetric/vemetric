@@ -71,8 +71,42 @@ export const vemetricTheme = createSystem(defaultConfig, {
       roundedTop: 'xl',
       p: 3,
     },
+    // View Transition API - Circular Reveal Animation for Theme Switch
+    '::view-transition-old(root), ::view-transition-new(root)': {
+      animation: 'none',
+      mixBlendMode: 'normal',
+    },
+    // To dark: light contracts (turning off the light)
+    '[data-theme-transition="to-dark"]::view-transition-old(root)': {
+      zIndex: 9999,
+      clipPath: 'circle(150% at var(--theme-toggle-x, 50%) var(--theme-toggle-y, 50%))',
+      animation: 'circular-contract 400ms ease-in-out both',
+    },
+    '[data-theme-transition="to-dark"]::view-transition-new(root)': {
+      zIndex: 1,
+      clipPath: 'none!important',
+      animation: 'none!important',
+    },
+    // To light: light expands (turning on the light)
+    '[data-theme-transition="to-light"]::view-transition-old(root)': {
+      zIndex: 1,
+    },
+    '[data-theme-transition="to-light"]::view-transition-new(root)': {
+      zIndex: 9999,
+      animation: 'circular-expand 400ms ease-in-out',
+    },
   },
   theme: {
+    keyframes: {
+      'circular-expand': {
+        from: { clipPath: 'circle(0% at var(--theme-toggle-x, 50%) var(--theme-toggle-y, 50%))' },
+        to: { clipPath: 'circle(150% at var(--theme-toggle-x, 50%) var(--theme-toggle-y, 50%))' },
+      },
+      'circular-contract': {
+        from: { clipPath: 'circle(150% at var(--theme-toggle-x, 50%) var(--theme-toggle-y, 50%))' },
+        to: { clipPath: 'circle(0% at var(--theme-toggle-x, 50%) var(--theme-toggle-y, 50%))' },
+      },
+    },
     tokens: {
       colors: {
         purple: {

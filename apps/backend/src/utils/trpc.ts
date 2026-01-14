@@ -194,7 +194,7 @@ export const projectOrPublicProcedure = publicProcedure
 
     const project = input.projectId
       ? await dbProject.findById(input.projectId)
-      : await dbProject.findByDomain(input.domain!);
+      : await dbProject.findByDomain({ domain: input.domain! });
     if (!project) {
       throw new TRPCError({ code: 'NOT_FOUND', message: 'Project not found' });
     }

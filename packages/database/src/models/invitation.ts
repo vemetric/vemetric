@@ -1,13 +1,23 @@
 import type { Invitation, OrganizationRole } from '@prisma/client';
 import { INVITATION_EXPIRY_MS } from '@vemetric/common/organization';
-import { prismaClient } from '../client';
+import { type DbClient, prismaClient } from '../client';
 import { generateToken } from '../utils/id';
 
 export type { Invitation };
 
 export const dbInvitation = {
-  create: (organizationId: string, createdById: string, role: OrganizationRole) =>
-    prismaClient.invitation.create({
+  create: ({
+    organizationId,
+    createdById,
+    role,
+    client = prismaClient,
+  }: {
+    organizationId: string;
+    createdById: string;
+    role: OrganizationRole;
+    client?: DbClient;
+  }) =>
+    client.invitation.create({
       data: {
         token: generateToken(),
         organizationId,
@@ -47,10 +57,17 @@ export const dbInvitation = {
       orderBy: { createdAt: 'desc' },
     }),
 
-  delete: (token: string) => prismaClient.invitation.delete({ where: { token } }),
+  delete: ({ token, client = prismaClient }: { token: string; client?: DbClient }) =>
+    client.invitation.delete({ where: { token } }),
 
-  countPendingByOrganization: (organizationId: string) =>
-    prismaClient.invitation.count({
+  countPendingByOrganization: ({
+    organizationId,
+    client = prismaClient,
+  }: {
+    organizationId: string;
+    client?: DbClient;
+  }) =>
+    client.invitation.count({
       where: {
         organizationId,
         createdAt: { gt: new Date(Date.now() - INVITATION_EXPIRY_MS) },

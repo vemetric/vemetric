@@ -1,15 +1,28 @@
 import type { Organization, OrganizationRole } from '@prisma/client';
-import { prismaClient } from '../client';
+import { type DbClient, prismaClient } from '../client';
 import { generateOrganizationId } from '../utils/id';
 export { OrganizationRole } from '@prisma/client';
 
 export type { Organization };
 
 export const dbOrganization = {
-  create: (name: string) => prismaClient.organization.create({ data: { id: generateOrganizationId(), name } }),
-  addUser: (organizationId: string, userId: string, role: OrganizationRole) =>
-    prismaClient.userOrganization.create({ data: { organizationId, userId, role } }),
+  create: ({ name, client = prismaClient }: { name: string; client?: DbClient }) =>
+    client.organization.create({ data: { id: generateOrganizationId(), name } }),
+
+  addUser: ({
+    organizationId,
+    userId,
+    role,
+    client = prismaClient,
+  }: {
+    organizationId: string;
+    userId: string;
+    role: OrganizationRole;
+    client?: DbClient;
+  }) => client.userOrganization.create({ data: { organizationId, userId, role } }),
+
   findById: (id: string) => prismaClient.organization.findUnique({ where: { id }, include: { billingInfo: true } }),
+
   getUserOrganizationsWithProjects: (userId: string) =>
     prismaClient.userOrganization.findMany({
       where: { userId },
@@ -30,8 +43,10 @@ export const dbOrganization = {
         },
       },
     }),
+
   getOrganizationUsers: (organizationId: string) =>
     prismaClient.userOrganization.findMany({ where: { organizationId } }),
+
   getOrganizationUsersWithDetails: (organizationId: string) =>
     prismaClient.userOrganization.findMany({
       where: { organizationId },
@@ -46,8 +61,17 @@ export const dbOrganization = {
       },
       orderBy: { createdAt: 'asc' },
     }),
-  getSingleUserOrganization: (organizationId: string, userId: string) =>
-    prismaClient.userOrganization.findUnique({
+
+  getSingleUserOrganization: ({
+    organizationId,
+    userId,
+    client = prismaClient,
+  }: {
+    organizationId: string;
+    userId: string;
+    client?: DbClient;
+  }) =>
+    client.userOrganization.findUnique({
       where: {
         userId_organizationId: {
           userId,
@@ -55,12 +79,32 @@ export const dbOrganization = {
         },
       },
     }),
-  removeUser: (organizationId: string, userId: string) =>
-    prismaClient.userOrganization.delete({
+
+  removeUser: ({
+    organizationId,
+    userId,
+    client = prismaClient,
+  }: {
+    organizationId: string;
+    userId: string;
+    client?: DbClient;
+  }) =>
+    client.userOrganization.delete({
       where: { userId_organizationId: { userId, organizationId } },
     }),
-  updateUserRole: (organizationId: string, userId: string, role: OrganizationRole) =>
-    prismaClient.userOrganization.update({
+
+  updateUserRole: ({
+    organizationId,
+    userId,
+    role,
+    client = prismaClient,
+  }: {
+    organizationId: string;
+    userId: string;
+    role: OrganizationRole;
+    client?: DbClient;
+  }) =>
+    client.userOrganization.update({
       where: { userId_organizationId: { userId, organizationId } },
       data: { role },
     }),
@@ -75,14 +119,15 @@ export const dbOrganization = {
       where: { id },
       data,
     }),
+
   /**
    * Count the number of free organizations where the user is an admin.
    * An organization is "free" if:
    * - It has no billingInfo record, OR
    * - It has billingInfo but subscriptionStatus is not 'active' or 'past_due'
    */
-  countUserFreeAdminOrganizations: async (userId: string) => {
-    const count = await prismaClient.userOrganization.count({
+  countUserFreeAdminOrganizations: async ({ userId, client = prismaClient }: { userId: string; client?: DbClient }) => {
+    const count = await client.userOrganization.count({
       where: {
         userId,
         role: 'ADMIN',
@@ -106,5 +151,13 @@ export const dbOrganization = {
     });
     return count;
   },
-  countMembers: (organizationId: string) => prismaClient.userOrganization.count({ where: { organizationId } }),
+  countMembers: ({
+    organizationId,
+    userId,
+    client = prismaClient,
+  }: {
+    organizationId: string;
+    userId?: string;
+    client?: DbClient;
+  }) => client.userOrganization.count({ where: userId ? { organizationId, userId } : { organizationId } }),
 };

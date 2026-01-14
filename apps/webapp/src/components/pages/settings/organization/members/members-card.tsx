@@ -53,7 +53,7 @@ export const MembersCard = () => {
             </CreateInvitationMenu>
           </Flex>
         </Card.Header>
-        <Card.Body>
+        <Card.Body overflow="auto">
           {isLoading ? (
             <Box h="100px" pos="relative">
               <AbsoluteCenter>

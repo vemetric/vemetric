@@ -1,16 +1,9 @@
 import { TRPCError } from '@trpc/server';
-import {
-  OrganizationRole,
-  dbAuthUser,
-  dbInvitation,
-  dbOrganization,
-  dbProject,
-  dbUserProjectAccess,
-  prismaClient,
-} from 'database';
+import { OrganizationRole, dbAuthUser, dbInvitation, dbOrganization, dbProject, dbUserProjectAccess } from 'database';
 import { z } from 'zod';
 import { getSubscriptionStatus } from '../utils/billing';
 import { logger } from '../utils/logger';
+import { serializableTransaction } from '../utils/transactions';
 import { loggedInProcedure, organizationAdminProcedure, publicProcedure, router } from '../utils/trpc';
 import { vemetric } from '../utils/vemetric-client';
 
@@ -32,17 +25,24 @@ export const organizationRouter = router({
         ctx: { user },
       } = opts;
 
-      // Check if user has reached the limit of free organizations
-      const freeOrgCount = await dbOrganization.countUserFreeAdminOrganizations(user.id);
-      if (freeOrgCount >= MAX_FREE_ORGANIZATIONS) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: `You can only create up to ${MAX_FREE_ORGANIZATIONS} free organizations. Please upgrade an existing organization to create more.`,
-        });
-      }
+      const organization = await serializableTransaction(async (client) => {
+        const freeOrgCount = await dbOrganization.countUserFreeAdminOrganizations({ userId: user.id, client });
+        if (freeOrgCount >= MAX_FREE_ORGANIZATIONS) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: `You can only create up to ${MAX_FREE_ORGANIZATIONS} free organizations. Please upgrade an existing organization to create more.`,
+          });
+        }
 
-      const organization = await dbOrganization.create(organizationName);
-      await dbOrganization.addUser(organization.id, user.id, OrganizationRole.ADMIN);
+        const org = await dbOrganization.create({ name: organizationName, client });
+        await dbOrganization.addUser({
+          organizationId: org.id,
+          userId: user.id,
+          role: OrganizationRole.ADMIN,
+          client,
+        });
+        return org;
+      });
 
       // Only update name if provided (for new users during initial onboarding)
       if (firstName) {
@@ -135,7 +135,8 @@ export const organizationRouter = router({
       });
     }
 
-    await dbOrganization.removeUser(organizationId, userId);
+    await dbOrganization.removeUser({ organizationId, userId });
+
     return { success: true };
   }),
 
@@ -155,11 +156,14 @@ export const organizationRouter = router({
         });
       }
 
-      // When promoting to ADMIN, clear any project access restrictions since ADMINs have full access
-      if (role === 'ADMIN') {
-        await dbUserProjectAccess.removeAllRestrictions(userId, organizationId);
-      }
-      await dbOrganization.updateUserRole(organizationId, userId, role as OrganizationRole);
+      await serializableTransaction(async (client) => {
+        // When promoting to ADMIN, clear any project access restrictions since ADMINs have full access
+        if (role === 'ADMIN') {
+          await dbUserProjectAccess.removeAllRestrictions({ userId, organizationId, client });
+        }
+
+        await dbOrganization.updateUserRole({ organizationId, userId, role: role as OrganizationRole, client });
+      });
 
       return { success: true };
     }),
@@ -191,47 +195,49 @@ export const organizationRouter = router({
         input: { organizationId, userId, projectIds, hasRestrictions },
       } = opts;
 
-      const member = await dbOrganization.getSingleUserOrganization(organizationId, userId);
-      if (!member) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Member not found in this organization',
-        });
-      }
-
-      // ADMINs always have full access - cannot restrict them
-      if (member.role === 'ADMIN') {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'Cannot restrict project access for admins. Admins always have full access to all projects.',
-        });
-      }
-
-      // Validate that all project IDs belong to this organization
-      if (projectIds.length > 0) {
-        const projects = await dbProject.findByOrganizationId(organizationId);
-        const validProjectIds = new Set(projects.map((p) => p.id));
-        const invalidIds = projectIds.filter((id) => !validProjectIds.has(id));
-
-        if (invalidIds.length > 0) {
+      await serializableTransaction(async (client) => {
+        const member = await dbOrganization.getSingleUserOrganization({ organizationId, userId, client });
+        if (!member) {
           throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: 'Only projects within the organization can be assigned for access.',
+            code: 'NOT_FOUND',
+            message: 'Member not found in this organization',
           });
         }
-      } else if (hasRestrictions) {
-        // If hasRestrictions is true but no projectIds provided, it's invalid
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'Select at least one project or disable restrictions to give full access.',
-        });
-      }
 
-      if (hasRestrictions) {
-        await dbUserProjectAccess.setUserProjectAccess(userId, organizationId, projectIds);
-      } else {
-        await dbUserProjectAccess.removeAllRestrictions(userId, organizationId);
-      }
+        // ADMINs always have full access - cannot restrict them
+        if (member.role === 'ADMIN') {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Cannot restrict project access for admins. Admins always have full access to all projects.',
+          });
+        }
+
+        // Validate that all project IDs belong to this organization
+        if (projectIds.length > 0) {
+          const projects = await dbProject.findByOrganizationId({ organizationId, client });
+          const validProjectIds = new Set(projects.map((p) => p.id));
+          const invalidIds = projectIds.filter((id) => !validProjectIds.has(id));
+
+          if (invalidIds.length > 0) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'Only projects within the organization can be assigned for access.',
+            });
+          }
+        } else if (hasRestrictions) {
+          // If hasRestrictions is true but no projectIds provided, it's invalid
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Select at least one project or disable restrictions to give full access.',
+          });
+        }
+
+        if (hasRestrictions) {
+          await dbUserProjectAccess.setUserProjectAccess({ userId, organizationId, projectIds, client });
+        } else {
+          await dbUserProjectAccess.removeAllRestrictions({ userId, organizationId, client });
+        }
+      });
 
       return { success: true };
     }),
@@ -253,22 +259,29 @@ export const organizationRouter = router({
         ctx: { user, subscriptionStatus },
       } = opts;
 
-      // Check member limit for free plan organizations
-      if (!subscriptionStatus.isActive) {
-        const [memberCount, pendingInvitationCount] = await Promise.all([
-          dbOrganization.countMembers(organizationId),
-          dbInvitation.countPendingByOrganization(organizationId),
-        ]);
+      const invitation = await serializableTransaction(async (client) => {
+        if (!subscriptionStatus.isActive) {
+          const [memberCount, pendingInvitationCount] = await Promise.all([
+            dbOrganization.countMembers({ organizationId, client }),
+            dbInvitation.countPendingByOrganization({ organizationId, client }),
+          ]);
 
-        if (memberCount + pendingInvitationCount >= MAX_FREE_PLAN_MEMBERS) {
-          throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: `Your organization is on the free plan. You can only have up to ${MAX_FREE_PLAN_MEMBERS} members. Please upgrade to add more members.`,
-          });
+          if (memberCount + pendingInvitationCount >= MAX_FREE_PLAN_MEMBERS) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: `Your organization is on the free plan. You can only have up to ${MAX_FREE_PLAN_MEMBERS} members. Please upgrade to add more members.`,
+            });
+          }
         }
-      }
 
-      const invitation = await dbInvitation.create(organizationId, user.id, role as OrganizationRole);
+        return dbInvitation.create({
+          organizationId,
+          createdById: user.id,
+          role: role as OrganizationRole,
+          client,
+        });
+      });
+
       return { invitation };
     }),
 
@@ -293,7 +306,7 @@ export const organizationRouter = router({
       });
     }
 
-    await dbInvitation.delete(token);
+    await dbInvitation.delete({ token });
     return { success: true };
   }),
 
@@ -329,15 +342,6 @@ export const organizationRouter = router({
       });
     }
 
-    // Check if user is already a member
-    const isAlreadyMember = await dbOrganization.hasUserAccess(invitation.organizationId, user.id);
-    if (isAlreadyMember) {
-      throw new TRPCError({
-        code: 'BAD_REQUEST',
-        message: 'You are already a member of this organization',
-      });
-    }
-
     const organization = await dbOrganization.findById(invitation.organizationId);
     if (!organization) {
       throw new TRPCError({ code: 'NOT_FOUND', message: 'Organization not found' });
@@ -345,26 +349,47 @@ export const organizationRouter = router({
 
     const subscriptionStatus = await getSubscriptionStatus(organization);
 
-    // Check member limit for free plan organizations
-    if (!subscriptionStatus.isActive) {
-      const memberCount = await dbOrganization.countMembers(invitation.organizationId);
-      if (memberCount >= MAX_FREE_PLAN_MEMBERS) {
+    const result = await serializableTransaction(async (client) => {
+      const userMembership = await dbOrganization.countMembers({
+        organizationId: invitation.organizationId,
+        userId: user.id,
+        client,
+      });
+      if (userMembership > 0) {
         throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: `This organization has reached its member limit on the free plan. Please ask an admin to upgrade to add more members.`,
+          code: 'BAD_REQUEST',
+          message: 'You are already a member of this organization',
         });
       }
-    }
 
-    // Add user to organization and delete invitation
-    await prismaClient.$transaction([
-      dbOrganization.addUser(invitation.organizationId, user.id, invitation.role),
-      dbInvitation.delete(token),
-    ]);
+      if (!subscriptionStatus.isActive) {
+        const memberCount = await dbOrganization.countMembers({
+          organizationId: invitation.organizationId,
+          client,
+        });
+        if (memberCount >= MAX_FREE_PLAN_MEMBERS) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: `This organization has reached its member limit on the free plan. Please ask an admin to upgrade to add more members.`,
+          });
+        }
+      }
 
-    return {
-      organizationId: invitation.organizationId,
-      organizationName: invitation.organization.name,
-    };
+      await dbOrganization.addUser({
+        organizationId: invitation.organizationId,
+        userId: user.id,
+        role: invitation.role,
+        client,
+      });
+
+      await dbInvitation.delete({ token, client });
+
+      return {
+        organizationId: invitation.organizationId,
+        organizationName: invitation.organization.name,
+      };
+    });
+
+    return result;
   }),
 });

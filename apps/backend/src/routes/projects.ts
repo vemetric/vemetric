@@ -10,6 +10,7 @@ import { dbProject } from 'database';
 import { z } from 'zod';
 import { logger } from '../utils/logger';
 import { fillTimeSeries, getTimeSpanStartDate } from '../utils/timeseries';
+import { serializableTransaction } from '../utils/transactions';
 import {
   organizationAdminProcedure,
   organizationProcedure,
@@ -37,16 +38,6 @@ export const projectsRouter = router({
       });
     }
 
-    if (!subscriptionStatus.isActive) {
-      const existingProjects = await dbProject.findByOrganizationId(organization.id);
-      if (existingProjects.length > 1) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'Please upgrade to a higher plan if you want to create more than 2 projects.',
-        });
-      }
-    }
-
     let resolvedDomain: string;
     try {
       let url = domain;
@@ -65,13 +56,30 @@ export const projectsRouter = router({
       throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid domain' });
     }
 
-    const existingProject = await dbProject.findByDomain(resolvedDomain);
-    if (existingProject) {
-      throw new TRPCError({ code: 'BAD_REQUEST', message: 'There already exists a project with this domain' });
-    }
-
     try {
-      const project = await dbProject.create(name, resolvedDomain, organization.id);
+      const project = await serializableTransaction(async (client) => {
+        // Check project limit for free plan
+        if (!subscriptionStatus.isActive) {
+          const existingProjects = await dbProject.findByOrganizationId({
+            organizationId: organization.id,
+            client,
+          });
+          if (existingProjects.length > 1) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'Please upgrade to a higher plan if you want to create more than 2 projects.',
+            });
+          }
+        }
+
+        // Check domain uniqueness
+        const existingProject = await dbProject.findByDomain({ domain: resolvedDomain, client });
+        if (existingProject) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'There already exists a project with this domain' });
+        }
+
+        return dbProject.create({ name, domain: resolvedDomain, organizationId: organization.id, client });
+      });
 
       try {
         await vemetric.trackEvent('ProjectCreated', {

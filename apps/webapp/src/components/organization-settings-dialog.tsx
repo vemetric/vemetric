@@ -1,4 +1,4 @@
-import { Flex, Tabs, Text } from '@chakra-ui/react';
+import { Flex, Tabs, Text, Span } from '@chakra-ui/react';
 import { useEffect } from 'react';
 import { TbCreditCard, TbSettings, TbUsers } from 'react-icons/tb';
 import { useOrgSettingsDialog } from '@/hooks/use-org-settings-dialog';
@@ -47,12 +47,18 @@ export const OrganizationSettingsDialog = () => {
       onOpenChange={({ open }) => {
         if (!open) close();
       }}
-      size="lg"
+      size={{ mdDown: 'full', md: 'lg' }}
       scrollBehavior="inside"
     >
-      <DialogContent maxW="600px" bg="gray.subtle">
-        <DialogHeader pt={4} pb={2}>
-          <DialogTitle display="flex" alignItems="center" gap="5">
+      <DialogContent maxW={{ base: 'none', md: '600px' }} bg="gray.subtle">
+        <DialogHeader pt={4} pb={2} px={{ base: 3, md: 6 }}>
+          <DialogTitle
+            display="flex"
+            flexDirection={{ base: 'column', md: 'row' }}
+            alignItems={{ base: 'flex-start', md: 'center' }}
+            gap={{ base: 2, md: 5 }}
+            fontSize={{ base: 'md', md: 'lg' }}
+          >
             Organization Settings
             {currentOrganization && (
               <Flex align="center" gap={2} px={1.5} py={1} bg="gray.subtle" rounded="md" fontSize="md">
@@ -74,7 +80,8 @@ export const OrganizationSettingsDialog = () => {
                 border: 'none',
                 rounded: 'none',
                 overflowY: 'auto',
-                maxH: '600px',
+                minH: { base: 'calc(100vh - 150px)', md: '0px' },
+                maxH: { base: 'calc(100vh - 150px)', md: '600px' },
                 bg: 'bg',
               },
             }}
@@ -86,7 +93,7 @@ export const OrganizationSettingsDialog = () => {
               </Tabs.Trigger>
               <Tabs.Trigger value="billing">
                 <TbCreditCard />
-                Billing & Usage
+                Billing<Span hideBelow="md"> & Usage</Span>
               </Tabs.Trigger>
               <Tabs.Trigger value="members">
                 <TbUsers />

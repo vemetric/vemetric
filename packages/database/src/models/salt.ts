@@ -31,27 +31,29 @@ export const dbSalt = {
    * @returns Promise<number> The number of deleted salts
    */
   cleanupOldSalts: async (): Promise<number> => {
-    // Get IDs of the 4 most recent salts that we want to keep
-    const saltsToKeep = await prismaClient.salt.findMany({
-      select: { id: true },
-      take: 4,
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
-
-    const keepIds = saltsToKeep.map((salt) => salt.id);
-
-    // Delete all salts except the ones we want to keep
-    const result = await prismaClient.salt.deleteMany({
-      where: {
-        id: {
-          notIn: keepIds,
+    return prismaClient.$transaction(async (tx) => {
+      // Get IDs of the 4 most recent salts that we want to keep
+      const saltsToKeep = await tx.salt.findMany({
+        select: { id: true },
+        take: 4,
+        orderBy: {
+          createdAt: 'desc',
         },
-      },
-    });
+      });
 
-    return result.count;
+      const keepIds = saltsToKeep.map((salt) => salt.id);
+
+      // Delete all salts except the ones we want to keep
+      const result = await tx.salt.deleteMany({
+        where: {
+          id: {
+            notIn: keepIds,
+          },
+        },
+      });
+
+      return result.count;
+    });
   },
 
   /**

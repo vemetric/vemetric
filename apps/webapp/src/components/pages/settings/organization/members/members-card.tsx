@@ -1,11 +1,12 @@
 import { Card, Box, Button, Flex, Text, Table, Badge, Avatar, AbsoluteCenter, Spinner } from '@chakra-ui/react';
 import { useState } from 'react';
-import { TbUsers, TbTrash, TbChevronDown, TbChevronRight, TbFolders, TbShieldLock } from 'react-icons/tb';
+import { TbUsers, TbTrash, TbChevronDown, TbChevronRight, TbFolders, TbShieldLock, TbUserPlus } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from '@/components/ui/menu';
 import { useCurrentOrganization } from '@/hooks/use-current-organization';
 import { trpc } from '@/utils/trpc';
 import { ChangeRoleDialog } from './change-role-dialog';
+import { CreateInvitationMenu } from './create-invitation-menu';
 import { MemberProjectAccess } from './member-project-access';
 import { RemoveMemberDialog } from './remove-member-dialog';
 
@@ -38,11 +39,18 @@ export const MembersCard = () => {
               <TbUsers />
             </CardIcon>
             <Text fontWeight="semibold">Members</Text>
+            <Box flexGrow={1} />
             {!isLoading && (
-              <Badge ml="auto" colorPalette="purple">
+              <Badge colorPalette="purple">
                 {members.length} {members.length === 1 ? 'member' : 'members'}
               </Badge>
             )}
+            <CreateInvitationMenu organizationId={organizationId}>
+              <Button aria-label="Create Invite Link" size="xs" colorPalette="purple">
+                <TbUserPlus />
+                Invite
+              </Button>
+            </CreateInvitationMenu>
           </Flex>
         </Card.Header>
         <Card.Body>

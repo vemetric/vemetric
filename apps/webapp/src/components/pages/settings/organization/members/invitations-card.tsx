@@ -3,12 +3,11 @@ import { isInvitationExpired } from '@vemetric/common/organization';
 import { useState } from 'react';
 import { TbTrash, TbCopy, TbUserPlus, TbLink } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
-import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from '@/components/ui/menu';
 import { toaster } from '@/components/ui/toaster';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import { trpc } from '@/utils/trpc';
 import { getAppUrl } from '@/utils/url';
-import { CreateInvitationDialog } from './create-invitation-dialog';
+import { CreateInvitationMenu } from './create-invitation-menu';
 import { MemberBadge } from './member-badge';
 import { RevokeInvitationDialog } from './revoke-invitation-dialog';
 
@@ -19,7 +18,6 @@ interface Props {
 export const InvitationsCard = (props: Props) => {
   const { organizationId } = props;
   const [invitationToRevoke, setInvitationToRevoke] = useState<string | null>(null);
-  const [createInviteRole, setCreateInviteRole] = useState<'ADMIN' | 'MEMBER' | null>(null);
 
   const {
     data: invitationsData,
@@ -53,22 +51,11 @@ export const InvitationsCard = (props: Props) => {
                 <Badge colorPalette="orange">{activeInvitations.length} pending</Badge>
               )}
             </Box>
-            <MenuRoot>
-              <MenuTrigger asChild>
-                <Button ml={invitations.length > 0 ? 0 : 'auto'} size="xs" colorPalette="purple">
-                  <TbUserPlus />
-                  Create Invite Link
-                </Button>
-              </MenuTrigger>
-              <MenuContent portalled={false}>
-                <MenuItem value="member" onClick={() => setCreateInviteRole('MEMBER')}>
-                  Invite as Member
-                </MenuItem>
-                <MenuItem value="admin" onClick={() => setCreateInviteRole('ADMIN')}>
-                  Invite as Admin
-                </MenuItem>
-              </MenuContent>
-            </MenuRoot>
+            <CreateInvitationMenu organizationId={organizationId}>
+              <Button aria-label="Create Invite Link" size="xs" colorPalette="purple">
+                <TbUserPlus />
+              </Button>
+            </CreateInvitationMenu>
           </Flex>
         </Card.Header>
         <Card.Body>
@@ -110,6 +97,7 @@ export const InvitationsCard = (props: Props) => {
                           px="1"
                           py="0.5"
                           h="auto"
+                          maxW="200px"
                           color={expired ? 'fg.muted' : 'purple.fg'}
                           lineClamp={1}
                           textDecoration={expired ? 'line-through' : undefined}
@@ -163,16 +151,6 @@ export const InvitationsCard = (props: Props) => {
           )}
         </Card.Body>
       </Card.Root>
-
-      <CreateInvitationDialog
-        organizationId={organizationId}
-        role={createInviteRole}
-        onClose={() => setCreateInviteRole(null)}
-        onSuccess={() => {
-          refetchInvitations();
-          setCreateInviteRole(null);
-        }}
-      />
 
       <RevokeInvitationDialog
         organizationId={organizationId}

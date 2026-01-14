@@ -1,6 +1,6 @@
 import { sendTransactionalMail } from '@vemetric/email/transactional';
 import { clickhouseEvent } from 'clickhouse';
-import { dbEmailDripSequence } from 'database';
+import { dbEmailDripSequence, dbOrganization } from 'database';
 import { type SequenceContext, type SequenceResult } from './common';
 
 export async function processNoEventsSequence(sequenceContext: SequenceContext): Promise<SequenceResult> {
@@ -15,6 +15,22 @@ export async function processNoEventsSequence(sequenceContext: SequenceContext):
     // we don't need to continue the sequence as the project has events
     await dbEmailDripSequence.completeProjectSequence(project.id, sequence.sequenceType);
     return { skipped: true };
+  }
+
+  // Check if the user has any OTHER project with events already (where he is organization admin)
+  // If so, they already know how to integrate and don't need onboarding emails
+  const userOrgs = await dbOrganization.getUserOrganizationsWithProjects(user.id);
+  const userAdminOrgs = userOrgs.filter((org) => org.role === 'ADMIN');
+  const allUserProjects = userAdminOrgs.flatMap(({ organization }) => organization.project);
+  const otherProjects = allUserProjects.filter((p) => p.id !== project.id);
+
+  for (const otherProject of otherProjects) {
+    const otherProjectHasEvents = (await clickhouseEvent.getAllEventsCount(BigInt(otherProject.id))) > 0;
+    if (otherProjectHasEvents) {
+      // User already has another project with events, they know how to onboard
+      await dbEmailDripSequence.completeProjectSequence(project.id, sequence.sequenceType);
+      return { skipped: true };
+    }
   }
 
   let result: SequenceResult | undefined;

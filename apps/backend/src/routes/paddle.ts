@@ -1,6 +1,7 @@
 import type { EventEntity } from '@paddle/paddle-node-sdk';
 import { EventName } from '@paddle/paddle-node-sdk';
 import { getClientIp } from '@vemetric/common/request-ip';
+import { sendTransactionalMail } from '@vemetric/email/transactional';
 import type { BillingInfo } from 'database';
 import { dbBillingInfo, dbOrganization } from 'database';
 import type { HonoContext } from '../types';
@@ -148,20 +149,29 @@ export const paddleWebhookHandler = async (context: HonoContext) => {
         priceId,
       });
 
-      const orgUser = (await dbOrganization.getOrganizationUsers(organizationId))[0];
+      const orgUser = (await dbOrganization.getOrganizationUsersWithDetails(organizationId))[0];
       if (orgUser) {
-        await vemetric.trackEvent(
-          scheduledChange?.action === 'cancel' ? 'SubscriptionCancelled' : 'SubscriptionUpdated',
-          {
-            userIdentifier: orgUser.userId,
-            userData: {
-              set: {
-                isPaid: entity.data.status === 'active',
-                productId,
-              },
+        const isCancellation = scheduledChange?.action === 'cancel';
+
+        await vemetric.trackEvent(isCancellation ? 'SubscriptionCancelled' : 'SubscriptionUpdated', {
+          userIdentifier: orgUser.userId,
+          userData: {
+            set: {
+              isPaid: entity.data.status === 'active',
+              productId,
             },
           },
-        );
+        });
+
+        // Send cancellation feedback email
+        if (isCancellation) {
+          await sendTransactionalMail(orgUser.user.email, {
+            template: 'subscriptionCancelled',
+            props: {
+              userName: orgUser.user.name,
+            },
+          });
+        }
       }
       break;
     }

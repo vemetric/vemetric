@@ -17,10 +17,11 @@ export async function processNoEventsSequence(sequenceContext: SequenceContext):
     return { skipped: true };
   }
 
-  // Check if the user has any OTHER project with events already
+  // Check if the user has any OTHER project with events already (where he is organization admin)
   // If so, they already know how to integrate and don't need onboarding emails
   const userOrgs = await dbOrganization.getUserOrganizationsWithProjects(user.id);
-  const allUserProjects = userOrgs.flatMap(({ organization }) => organization.project);
+  const userAdminOrgs = userOrgs.filter((org) => org.role === 'ADMIN');
+  const allUserProjects = userAdminOrgs.flatMap(({ organization }) => organization.project);
   const otherProjects = allUserProjects.filter((p) => p.id !== project.id);
 
   for (const otherProject of otherProjects) {

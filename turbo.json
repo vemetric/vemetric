@@ -8,6 +8,12 @@
     },
     "test": {},
     "test:watch": {},
+    "e2e": {
+      "cache": false
+    },
+    "e2e:ui": {
+      "cache": false
+    },
     "lint": {},
     "tsc": {},
     "dev": {

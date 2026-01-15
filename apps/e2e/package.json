@@ -1,0 +1,18 @@
+{
+  "name": "e2e",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "report": "playwright show-report",
+    "lint": "eslint . --max-warnings 0",
+    "tsc": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@vemetric/eslint-config": "workspace:*",
+    "typescript": "^5.7.3"
+  }
+}

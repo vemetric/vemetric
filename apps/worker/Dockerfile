@@ -16,6 +16,7 @@ COPY apps/health-check/package.json ./apps/health-check/
 COPY apps/hub/package.json ./apps/hub/
 COPY apps/webapp/package.json ./apps/webapp/
 COPY apps/worker/package.json ./apps/worker/
+COPY apps/e2e/package.json ./apps/e2e/
 COPY packages/clickhouse/package.json ./packages/clickhouse/
 COPY packages/common/package.json ./packages/common/
 COPY packages/database/package.json ./packages/database/

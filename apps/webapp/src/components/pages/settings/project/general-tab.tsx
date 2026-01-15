@@ -20,8 +20,8 @@ import { TbDashboard, TbSettings, TbBrowserShare, TbLockX, TbKey, TbWorldQuestio
 import { CardIcon } from '@/components/card-icon';
 import { CodeBox } from '@/components/code-box';
 import { LoadingImage } from '@/components/loading-image';
-import { ExcludedCountriesCard } from '@/components/pages/settings/excluded-countries-card';
-import { ExcludedIpsCard } from '@/components/pages/settings/excluded-ips-card';
+import { ExcludedCountriesCard } from '@/components/pages/settings/project/excluded-countries-card';
+import { ExcludedIpsCard } from '@/components/pages/settings/project/excluded-ips-card';
 import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
@@ -33,7 +33,7 @@ interface Props {
   projectId: string;
 }
 
-export const GeneralTab = (props: Props) => {
+export const ProjectGeneralTab = (props: Props) => {
   const { projectId } = props;
   const [isLoading, setIsLoading] = useState(false);
 

@@ -23,6 +23,7 @@ model User {
   emailDripHistory   EmailDripHistory[]
   emailDripSequences EmailDripSequence[]
   projectAccess      UserProjectAccess[]
+  createdInvitations Invitation[]
 
   @@map("user")
 }
@@ -85,8 +86,22 @@ model Organization {
   project           Project[]
   billingInfo       BillingInfo?
   userProjectAccess UserProjectAccess[]
+  invitations       Invitation[]
 
   @@map("organization")
+}
+
+model Invitation {
+  token          String           @id
+  organizationId String
+  role           OrganizationRole @default(MEMBER)
+  createdById    String
+  createdAt      DateTime         @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@map("invitation")
 }
 
 model BillingInfo {

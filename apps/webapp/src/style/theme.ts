@@ -3,6 +3,7 @@ import {
   cardAnatomy,
   checkboxAnatomy,
   comboboxAnatomy,
+  dialogAnatomy,
   emptyStateAnatomy,
   menuAnatomy,
   selectAnatomy,
@@ -281,6 +282,16 @@ export const vemetricTheme = createSystem(defaultConfig, {
           },
         },
       }),
+      dialog: defineSlotRecipe({
+        slots: dialogAnatomy.keys(),
+        base: {
+          backdrop: {
+            _dark: {
+              bg: 'blackAlpha.700',
+            },
+          },
+        },
+      }),
       emptyState: defineSlotRecipe({
         slots: emptyStateAnatomy.keys(),
         base: {
@@ -379,6 +390,7 @@ export const vemetricTheme = createSystem(defaultConfig, {
             outline: {
               root: {
                 boxShadow: '0 0 0 1px {colors.gray.emphasized}',
+                overflow: 'hidden',
               },
               columnHeader: {
                 borderColor: 'gray.emphasized',

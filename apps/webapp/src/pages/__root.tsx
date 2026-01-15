@@ -1,8 +1,10 @@
 import { useBreakpointValue } from '@chakra-ui/react';
 import { initializePaddle } from '@paddle/paddle-js';
-import { createRootRoute, Outlet, useRouterState } from '@tanstack/react-router';
+import { createRootRoute, Outlet, useLocation } from '@tanstack/react-router';
+import { zodValidator } from '@tanstack/zod-adapter';
 import { vemetric } from '@vemetric/react';
 import { useEffect, useRef } from 'react';
+import { z } from 'zod';
 import { CrispChat } from '@/components/crisp-chat';
 import { CrispScript } from '@/components/crisp-script';
 import { useColorMode } from '@/components/ui/color-mode';
@@ -23,12 +25,19 @@ initializePaddle({
   },
 });
 
+// Global search params available on all routes
+const rootSearchSchema = z.object({
+  orgSettings: z.enum(['general', 'billing', 'members']).optional(),
+  pricingDialog: z.boolean().optional(),
+});
+
 export const Route = createRootRoute({
+  validateSearch: zodValidator(rootSearchSchema),
   component: RootLayout,
 });
 
 function RootLayout() {
-  const { location } = useRouterState();
+  const location = useLocation();
   const { colorMode } = useColorMode();
   const isMobile = useBreakpointValue({ base: true, md: false });
   const { data: session, isPending: isSessionLoading } = authClient.useSession();

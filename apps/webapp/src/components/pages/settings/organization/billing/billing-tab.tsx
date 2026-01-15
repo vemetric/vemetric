@@ -11,27 +11,38 @@ import {
   AbsoluteCenter,
   Spinner,
 } from '@chakra-ui/react';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { useNavigate, useLocation, useSearch } from '@tanstack/react-router';
 import { addDays, format } from 'date-fns';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { TbArrowRight, TbCreditCard, TbBolt, TbLockX } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import { InfoTip } from '@/components/info-tip';
 import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import { toaster } from '@/components/ui/toaster';
 import { UsageCycleHistory } from '@/components/usage-cycle-history';
-import { useCurrentOrganization } from '@/hooks/use-current-organization';
 import { getPricingPlan } from '@/utils/pricing';
 import { trpc } from '@/utils/trpc';
 import { BillingHistory } from './billing-history';
 import { PricingDialog } from './pricing-dialog';
 
-export const BillingTab = () => {
-  const { organizationId } = useCurrentOrganization();
+interface Props {
+  organizationId: string;
+}
 
-  const { pricingDialog = false } = useSearch({ from: '/_layout/p/$projectId/settings/' });
-  const navigate = useNavigate({ from: '/p/$projectId/settings' });
+export const BillingTab = ({ organizationId }: Props) => {
+  const location = useLocation();
+  const { pricingDialog = false } = useSearch({ strict: false });
+  const navigate = useNavigate();
   const [isUndoCancellationLoading, setIsUndoCancellationLoading] = useState(false);
+  const [fakeLoading, setFakeLoading] = useState(true); // to avoid weird layout shift of pricing dialog when visible immediately
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setFakeLoading(false);
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, []);
 
   const {
     data: billingInfo,
@@ -78,7 +89,7 @@ export const BillingTab = () => {
   const nextPaymentDate = billingInfo?.subscriptionNextBilledAt;
   const hasInvoices = hasActiveSubscription;
 
-  if (isLoading) {
+  if (isLoading || fakeLoading) {
     return (
       <Box h="200px" pos="relative">
         <AbsoluteCenter>
@@ -123,7 +134,11 @@ export const BillingTab = () => {
                     variant={hasActiveSubscription ? 'surface' : 'solid'}
                     colorPalette={hasActiveSubscription ? 'gray' : 'purple'}
                     onClick={() => {
-                      navigate({ resetScroll: false, search: (prev) => ({ ...prev, pricingDialog: true }) });
+                      navigate({
+                        to: location.pathname,
+                        resetScroll: false,
+                        search: (prev) => ({ ...prev, pricingDialog: true }),
+                      });
                     }}
                   >
                     {hasActiveSubscription ? 'Manage subscription' : 'Upgrade'} <TbArrowRight />
@@ -232,7 +247,11 @@ export const BillingTab = () => {
                   variant="subtle"
                   colorPalette="red"
                   onClick={() => {
-                    navigate({ resetScroll: false, search: (prev) => ({ ...prev, pricingDialog: true }) });
+                    navigate({
+                      to: location.pathname,
+                      resetScroll: false,
+                      search: (prev) => ({ ...prev, pricingDialog: true }),
+                    });
                   }}
                 >
                   Upgrade
@@ -270,7 +289,11 @@ export const BillingTab = () => {
           <PricingDialog
             open
             onOpenChange={({ open }) =>
-              navigate({ resetScroll: false, search: (prev) => ({ ...prev, pricingDialog: open ? true : undefined }) })
+              navigate({
+                to: location.pathname,
+                resetScroll: false,
+                search: (prev) => ({ ...prev, pricingDialog: open ? true : undefined }),
+              })
             }
             currentPlan={hasActiveSubscription ? { pricingPlanIndex, isYearly } : undefined}
             organizationId={organizationId}

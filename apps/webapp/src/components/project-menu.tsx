@@ -2,8 +2,9 @@ import type { FlexProps } from '@chakra-ui/react';
 import { Box, Button, Flex, Text, useBreakpointValue } from '@chakra-ui/react';
 import { Link, useMatches, useNavigate, useParams } from '@tanstack/react-router';
 import { useState } from 'react';
-import { TbArrowLeft, TbCheck, TbChevronDown, TbChevronRight, TbPlus } from 'react-icons/tb';
+import { TbArrowLeft, TbCheck, TbChevronDown, TbChevronRight, TbPlus, TbSettings } from 'react-icons/tb';
 import { useCurrentOrganization } from '@/hooks/use-current-organization';
+import { useOrgSettingsDialog } from '@/hooks/use-org-settings-dialog';
 import { getFaviconUrl } from '@/utils/favicon';
 import { CreateProjectDialog } from './create-project-dialog';
 import { LoadingImage } from './loading-image';
@@ -25,6 +26,7 @@ export const ProjectMenu = () => {
   const { projectId } = useParams({ strict: false });
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const { currentOrganization, currentOrgaProjects, organizations } = useCurrentOrganization();
+  const { open: openOrgSettings } = useOrgSettingsDialog();
   const project = currentOrgaProjects?.find((p) => p.id === projectId);
 
   const getProjectRoute = () => {
@@ -185,6 +187,19 @@ export const ProjectMenu = () => {
                     <OrganizationIcon />
                     <Text fontWeight="medium">{currentOrganization?.name || 'Organization'}</Text>
                   </Flex>
+                  <Button
+                    variant="surface"
+                    size="xs"
+                    p={1}
+                    h="auto"
+                    minW="auto"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openOrgSettings();
+                    }}
+                  >
+                    <TbSettings />
+                  </Button>
                   <TbChevronRight />
                 </MenuItem>
                 <MenuSeparator my="0" />
@@ -202,6 +217,17 @@ export const ProjectMenu = () => {
                       {currentOrganization?.name || 'Organization'}
                     </Text>
                   </Flex>
+                  <Button
+                    tabIndex={-1}
+                    variant="surface"
+                    size="xs"
+                    p={1}
+                    h="auto"
+                    minW="auto"
+                    onClick={() => openOrgSettings()}
+                  >
+                    <TbSettings />
+                  </Button>
                 </MenuTriggerItem>
                 <MenuContent minW="200px">
                   <OrganizationMenuContent

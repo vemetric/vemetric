@@ -1,27 +1,42 @@
-import { prismaClient } from '../client';
+import { type DbClient, prismaClient } from '../client';
 import { generateProjectId, generateToken } from '../utils/id';
 export { type Project } from '@prisma/client';
 
 export const dbProject = {
-  create: (name: string, domain: string, organizationId: string) =>
-    prismaClient.project.create({
+  create: ({
+    name,
+    domain,
+    organizationId,
+    client = prismaClient,
+  }: {
+    name: string;
+    domain: string;
+    organizationId: string;
+    client?: DbClient;
+  }) =>
+    client.project.create({
       data: { id: String(generateProjectId()), name, domain, token: generateToken(), organizationId },
     }),
+
   findAll: () => prismaClient.project.findMany(),
-  findByDomain: (domain: string) =>
-    prismaClient.project.findFirst({
+
+  findByDomain: ({ domain, client = prismaClient }: { domain: string; client?: DbClient }) =>
+    client.project.findFirst({
       where: { domain },
     }),
+
   findByToken: (token: string) =>
     prismaClient.project.findFirst({
       where: { token },
     }),
+
   findById: (id: string) =>
     prismaClient.project.findFirst({
       where: { id },
     }),
-  findByOrganizationId: (organizationId: string) =>
-    prismaClient.project.findMany({
+
+  findByOrganizationId: ({ organizationId, client = prismaClient }: { organizationId: string; client?: DbClient }) =>
+    client.project.findMany({
       where: { organizationId },
     }),
   findByOrganizationAndUserId: (organizationId: string, userId: string) =>

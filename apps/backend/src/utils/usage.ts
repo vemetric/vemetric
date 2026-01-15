@@ -15,7 +15,7 @@ interface CacheEntry {
 const usageCyclesCache = new Map<string, CacheEntry>();
 
 export async function getUsageForPeriod(organizationId: string, startDate: Date, endDate: Date): Promise<UsageStats> {
-  const projects = await dbProject.findByOrganizationId(organizationId);
+  const projects = await dbProject.findByOrganizationId({ organizationId });
 
   const usageStats = await clickhouseEvent.getUsagePerProject(
     projects.map((project) => project.id),

@@ -1,16 +1,18 @@
 import { Box, Card, Flex, Grid } from '@chakra-ui/react';
-import { Outlet, createFileRoute, useNavigate } from '@tanstack/react-router';
+import { Outlet, createFileRoute } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { EventLimitDialog, eventLimitStore } from '@/components/event-limit-dialog';
 import { Header } from '@/components/header';
 import { Logo } from '@/components/logo';
 import { MobileMenu } from '@/components/mobile-menu';
 import { Navigation } from '@/components/navigation';
+import { OrganizationSettingsDialog } from '@/components/organization-settings-dialog';
 import { PageWrapper } from '@/components/page-wrapper';
 import { SplashScreen } from '@/components/splash-screen';
 import { TabletHeader } from '@/components/tablet-header';
 import { toaster } from '@/components/ui/toaster';
 import { useCurrentOrganization } from '@/hooks/use-current-organization';
+import { useOrgSettingsDialog } from '@/hooks/use-org-settings-dialog';
 import { getPricingPlan } from '@/utils/pricing';
 import { trpc } from '@/utils/trpc';
 
@@ -65,7 +67,7 @@ export const Route = createFileRoute('/_layout')({
 
 function LayoutComponent() {
   const { organizationId, projectId } = useCurrentOrganization();
-  const navigate = useNavigate();
+  const { open } = useOrgSettingsDialog();
 
   const { data: billingStatus } = trpc.billing.billingStatus.useQuery(
     {
@@ -98,18 +100,12 @@ function LayoutComponent() {
         action: {
           label: 'Update payment method',
           onClick: () => {
-            if (projectId) {
-              navigate({
-                to: '/p/$projectId/settings',
-                params: { projectId },
-                search: { tab: 'billing', pricingDialog: true },
-              });
-            }
+            open('billing', true);
           },
         },
       });
     }
-  }, [billingStatus, billingStatus?.isPastDue, showLimitWarning, organizationId, projectId, navigate]);
+  }, [billingStatus, billingStatus?.isPastDue, showLimitWarning, organizationId, open]);
 
   return (
     <>
@@ -179,11 +175,11 @@ function LayoutComponent() {
           </Box>
         </Grid>
         <EventLimitDialog
-          projectId={projectId ?? ''}
           cycles={cycles}
           eventsIncluded={eventsIncluded}
           hasMultipleExceededCycles={hasMultipleExceededCycles}
         />
+        <OrganizationSettingsDialog />
       </PageWrapper>
     </>
   );

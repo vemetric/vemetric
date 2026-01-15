@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import type { Auth } from 'backend';
 import { customSessionClient, lastLoginMethodClient } from 'better-auth/client/plugins';
 import { createAuthClient } from 'better-auth/react';
@@ -8,6 +9,17 @@ export const authClient = createAuthClient({
   baseURL: getBackendUrl() + '/auth',
   plugins: [lastLoginMethodClient(), customSessionClient<Auth>()],
 });
+
+export const useLogout = () => {
+  const queryClient = useQueryClient();
+
+  return {
+    logout: async () => {
+      await authClient.signOut();
+      queryClient.clear();
+    },
+  };
+};
 
 export const loginWithProvider = async (provider: 'google' | 'github', setIsLoading: (value: boolean) => void) => {
   await authClient.signIn.social(

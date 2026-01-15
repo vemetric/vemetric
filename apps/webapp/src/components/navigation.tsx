@@ -14,7 +14,7 @@ import {
   TbUserSquareRounded,
 } from 'react-icons/tb';
 import { useOpenCrispChat } from '@/stores/crisp-chat-store';
-import { authClient } from '@/utils/auth';
+import { useLogout } from '@/utils/auth';
 import { EventLimitBanner } from './event-limit-banner';
 import { SocialButtons } from './social-buttons';
 import { ThemeSwitch } from './theme-switch';
@@ -60,6 +60,7 @@ export const NavDivider = (props: BoxProps) => (
 export const Navigation = (props: CardRootProps) => {
   const navigate = useNavigate();
   const matches = useMatches();
+  const { logout } = useLogout();
   const routeId = matches[matches.length - 1].routeId;
 
   const openCrispChat = useOpenCrispChat();
@@ -149,7 +150,7 @@ export const Navigation = (props: CardRootProps) => {
           }
 
           setIsLogoutLoading(true);
-          await authClient.signOut();
+          await logout();
           navigate({ to: '/login' });
         }}
       >

@@ -11,7 +11,7 @@
     "tsc": "tsc --noEmit"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.0",
+    "@playwright/test": "^1.57.0",
     "@vemetric/eslint-config": "workspace:*",
     "typescript": "^5.7.3"
   }

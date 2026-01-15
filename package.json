@@ -10,6 +10,8 @@
     "tsc": "turbo run tsc",
     "test": "turbo run test",
     "test:watch": "turbo run test:watch",
+    "e2e": "turbo run e2e --filter=e2e",
+    "e2e:ui": "turbo run e2e:ui --filter=e2e",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "turbo": "turbo"
   },

@@ -2,19 +2,20 @@ import { Center, Flex, IconButton, Span, Spinner, Text } from '@chakra-ui/react'
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { TbLogout, TbMenu2 } from 'react-icons/tb';
-import { authClient } from '@/utils/auth';
+import { useLogout } from '@/utils/auth';
 import { ThemeSwitch } from './theme-switch';
 import { MenuContent, MenuItem, MenuRoot, MenuSeparator, MenuTrigger } from './ui/menu';
 
 export const UserMenu = () => {
   const navigate = useNavigate();
   const [isLogoutLoading, setIsLogoutLoading] = useState(false);
+  const { logout } = useLogout();
 
   const handleLogout = async () => {
     if (isLogoutLoading) return;
 
     setIsLogoutLoading(true);
-    await authClient.signOut();
+    await logout();
     navigate({ to: '/login' });
   };
 

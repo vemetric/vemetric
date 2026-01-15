@@ -31,6 +31,18 @@ export const MemberRoleAlert = ({ role }: Props) => {
                   <TbX />
                 </List.Indicator>
               )}
+              Create new projects
+            </List.Item>
+            <List.Item>
+              {role === 'ADMIN' ? (
+                <List.Indicator asChild color="green.500">
+                  <TbCheck />
+                </List.Indicator>
+              ) : (
+                <List.Indicator asChild color="red.500">
+                  <TbX />
+                </List.Indicator>
+              )}
               Manage organization settings and billing infos
             </List.Item>
             <List.Item>

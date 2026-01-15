@@ -21,6 +21,7 @@ function InvitePage() {
   const { data: session, isPending: isSessionLoading, refetch } = authClient.useSession();
   const isLoggedIn = !!session?.user;
   const [isAccepting, setIsAccepting] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const {
     data: invitation,
@@ -34,6 +35,7 @@ function InvitePage() {
         title: `You've joined ${data.organizationName}`,
         type: 'success',
       });
+      setIsRedirecting(true);
       // Refresh session to get updated organizations list
       await refetch();
       navigate({ to: '/o/$organizationId', params: { organizationId: data.organizationId } });
@@ -48,7 +50,7 @@ function InvitePage() {
     },
   });
 
-  if (isSessionLoading || isInvitationLoading || isAccepting) {
+  if (isSessionLoading || isInvitationLoading || isRedirecting) {
     return (
       <Flex minH="100dvh" align="center" justify="center">
         <Spinner size="lg" />
@@ -121,7 +123,6 @@ function InvitePage() {
                       size="lg"
                       loading={isAccepting}
                       onClick={() => {
-                        setIsAccepting(true);
                         acceptInvitation({ token });
                       }}
                     >

@@ -1,27 +1,47 @@
 /**
  * E2E Test Fixtures
  *
- * This module exports all test fixtures for authenticated tests.
+ * This module exports test fixtures for authenticated tests.
  *
- * Usage in tests:
+ * Usage:
  * ```ts
- * import { test, expect } from '../fixtures';
+ * // For tests with an onboarded user:
+ * import { testOnboarded, expect } from '../fixtures';
  *
- * test('my test', async ({ onboardedUserPage }) => {
- *   // Use authenticated page
+ * testOnboarded('my test', async ({ authenticatedPage, scenario }) => {
+ *   // authenticatedPage is already logged in
+ *   // scenario has the user/org/project data
+ * });
+ *
+ * // For tests with a non-onboarded user:
+ * import { testNonOnboarded, expect } from '../fixtures';
+ *
+ * testNonOnboarded('my test', async ({ authenticatedPage, scenario }) => {
+ *   // User has an org without completed pricing
+ * });
+ *
+ * // For tests with a multi-org user:
+ * import { testMultiOrg, expect } from '../fixtures';
+ *
+ * // For tests needing multiple different users:
+ * import { testAuthenticated, expect } from '../fixtures';
+ *
+ * testAuthenticated('my test', async ({ createAuthenticatedPage, testScenarios }) => {
+ *   const page1 = await createAuthenticatedPage('onboardedUser');
+ *   const page2 = await createAuthenticatedPage('nonOnboardedUser');
  * });
  * ```
  */
 
-export { test, expect, getStorageStatePath, AUTH_DIR } from './auth';
-export type { AuthFixtures } from './auth';
-
 export {
-  TEST_SCENARIOS,
-  setupTestUserData,
-  cleanupTestData,
-  testUserExists,
-  disconnectDb,
-  ensureTestDataExists,
-} from './db';
+  testOnboarded,
+  testNonOnboarded,
+  testMultiOrg,
+  testAuthenticated,
+  expect,
+  getStorageStatePath,
+  AUTH_DIR,
+} from './auth';
+
+export { TEST_SCENARIOS, cleanupTestData, disconnectDb } from './db';
 export type { TestUser, TestOrganization, TestProject, TestScenario, TestScenarioKey } from './db';

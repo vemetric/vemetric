@@ -1,64 +1,65 @@
-import { test, expect } from '../../fixtures/auth';
+import { testNonOnboarded, testOnboarded, expect } from '../../fixtures/auth';
 
-test.describe('Onboarding - Authenticated', () => {
-  test('non-onboarded user is redirected to pricing page', async ({ nonOnboardedUserPage, testScenarios }) => {
-    const { nonOnboardedUser } = testScenarios;
-    const org = nonOnboardedUser.organizations[0];
+testNonOnboarded.describe('Onboarding - Non-Onboarded User', () => {
+  testNonOnboarded('is redirected to pricing page when accessing org', async ({ authenticatedPage, scenario }) => {
+    const org = scenario.organizations[0];
 
     // Try to access the organization page directly
-    await nonOnboardedUserPage.goto(`/o/${org.organization.id}`);
+    await authenticatedPage.goto(`/o/${org.organization.id}`);
 
     // Should be redirected to the pricing onboarding page
-    await nonOnboardedUserPage.waitForURL(`**/onboarding/pricing**`);
+    await authenticatedPage.waitForURL(`**/onboarding/pricing**`);
 
     // Verify the pricing page content
-    await expect(nonOnboardedUserPage.getByText('How many events are you going to track?')).toBeVisible();
+    await expect(authenticatedPage.getByText('How many events are you going to track?')).toBeVisible();
 
     // Verify the "Start for free" button is present
-    await expect(nonOnboardedUserPage.getByRole('button', { name: 'Start for free' })).toBeVisible();
+    await expect(authenticatedPage.getByRole('button', { name: 'Start for free' })).toBeVisible();
 
     // Verify we're on step 2 of 3
-    await expect(nonOnboardedUserPage.getByText('Step')).toBeVisible();
-    await expect(nonOnboardedUserPage.getByText('2')).toBeVisible();
-    await expect(nonOnboardedUserPage.getByText('of 3')).toBeVisible();
+    await expect(authenticatedPage.getByText('Step')).toBeVisible();
+    await expect(authenticatedPage.getByText('2')).toBeVisible();
+    await expect(authenticatedPage.getByText('of 3')).toBeVisible();
   });
 
-  test('non-onboarded user sees both free and professional plan options', async ({
-    nonOnboardedUserPage,
-    testScenarios,
-  }) => {
-    const { nonOnboardedUser } = testScenarios;
-    const org = nonOnboardedUser.organizations[0];
+  testNonOnboarded('sees both free and professional plan options', async ({ authenticatedPage, scenario }) => {
+    const org = scenario.organizations[0];
 
     // Navigate to the pricing page
-    await nonOnboardedUserPage.goto(`/onboarding/pricing?orgId=${org.organization.id}`);
+    await authenticatedPage.goto(`/onboarding/pricing?orgId=${org.organization.id}`);
 
     // Verify Free plan card is visible
-    await expect(nonOnboardedUserPage.getByText('Free')).toBeVisible();
-    await expect(nonOnboardedUserPage.getByText('For small projects to get started')).toBeVisible();
+    await expect(authenticatedPage.getByText('Free')).toBeVisible();
+    await expect(authenticatedPage.getByText('For small projects to get started')).toBeVisible();
 
     // Verify Professional plan card is visible
-    await expect(nonOnboardedUserPage.getByText('Professional')).toBeVisible();
-    await expect(nonOnboardedUserPage.getByText('Powerful insights for your business')).toBeVisible();
+    await expect(authenticatedPage.getByText('Professional')).toBeVisible();
+    await expect(authenticatedPage.getByText('Powerful insights for your business')).toBeVisible();
 
     // Verify pricing details
-    await expect(nonOnboardedUserPage.getByText('$0')).toBeVisible();
-    await expect(nonOnboardedUserPage.getByText('events per month', { exact: false })).toBeVisible();
+    await expect(authenticatedPage.getByText('$0')).toBeVisible();
+    await expect(authenticatedPage.getByText('events per month', { exact: false })).toBeVisible();
   });
+});
 
-  test('authenticated user navigating to root is redirected based on org status', async ({
-    onboardedUserPage,
-    nonOnboardedUserPage,
-    testScenarios,
-  }) => {
-    // Onboarded user should go to their org page
-    await onboardedUserPage.goto('/');
-    const { onboardedUser } = testScenarios;
-    const onboardedOrg = onboardedUser.organizations[0];
-    await onboardedUserPage.waitForURL(`**/o/${onboardedOrg.organization.id}**`);
+testOnboarded.describe('Onboarding - Onboarded User', () => {
+  testOnboarded('is redirected to org page when navigating to root', async ({ authenticatedPage, scenario }) => {
+    const org = scenario.organizations[0];
 
-    // Non-onboarded user should be redirected to pricing
-    await nonOnboardedUserPage.goto('/');
-    await nonOnboardedUserPage.waitForURL(`**/onboarding/pricing**`);
+    // Navigate to root
+    await authenticatedPage.goto('/');
+
+    // Should be redirected to org page
+    await authenticatedPage.waitForURL(`**/o/${org.organization.id}**`);
+  });
+});
+
+testNonOnboarded.describe('Onboarding - Non-Onboarded User Root Navigation', () => {
+  testNonOnboarded('is redirected to pricing when navigating to root', async ({ authenticatedPage }) => {
+    // Navigate to root
+    await authenticatedPage.goto('/');
+
+    // Should be redirected to pricing
+    await authenticatedPage.waitForURL(`**/onboarding/pricing**`);
   });
 });

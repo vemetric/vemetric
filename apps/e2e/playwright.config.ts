@@ -16,18 +16,9 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
   },
   projects: [
-    // Auth setup project - runs first to authenticate test users
-    {
-      name: 'auth-setup',
-      testDir: './auth',
-      testMatch: 'auth-setup.ts',
-      use: { ...devices['Desktop Chrome'] },
-    },
-    // Main test project - depends on auth setup
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['auth-setup'],
     },
   ],
 });

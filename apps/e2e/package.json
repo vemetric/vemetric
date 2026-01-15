@@ -11,8 +11,7 @@
     "tsc": "tsc --noEmit"
   },
   "dependencies": {
-    "database": "workspace:*",
-    "nanoid": "^5.0.4"
+    "database": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",

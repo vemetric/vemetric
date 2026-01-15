@@ -137,181 +137,42 @@ export const TEST_SCENARIOS = {
 export type TestScenarioKey = keyof typeof TEST_SCENARIOS;
 
 /**
- * Ensure test data exists in the database
- * This creates the organizations, projects, and user associations
- * Note: Users are created via the signup API in auth-setup.ts
- */
-export async function ensureTestDataExists(scenario: TestScenario): Promise<void> {
-  const { user, organizations } = scenario;
-
-  // Check if user exists
-  const existingUser = await prismaClient.user.findUnique({
-    where: { id: user.id },
-  });
-
-  if (!existingUser) {
-    // User doesn't exist yet - they will be created via signup API
-    // We just need to ensure the user ID is unique
-    return;
-  }
-
-  // Create organizations and projects for existing user
-  for (const { organization, role, projects } of organizations) {
-    // Upsert organization
-    await prismaClient.organization.upsert({
-      where: { id: organization.id },
-      create: {
-        id: organization.id,
-        name: organization.name,
-        pricingOnboarded: organization.pricingOnboarded,
-      },
-      update: {
-        name: organization.name,
-        pricingOnboarded: organization.pricingOnboarded,
-      },
-    });
-
-    // Upsert user-organization relationship
-    await prismaClient.userOrganization.upsert({
-      where: {
-        userId_organizationId: {
-          userId: user.id,
-          organizationId: organization.id,
-        },
-      },
-      create: {
-        userId: user.id,
-        organizationId: organization.id,
-        role,
-      },
-      update: {
-        role,
-      },
-    });
-
-    // Upsert projects
-    for (const project of projects) {
-      await prismaClient.project.upsert({
-        where: { id: project.id },
-        create: {
-          id: project.id,
-          name: project.name,
-          domain: project.domain,
-          token: project.token,
-          organizationId: project.organizationId,
-        },
-        update: {
-          name: project.name,
-          domain: project.domain,
-        },
-      });
-    }
-  }
-}
-
-/**
- * Set up test data for a user after they've been created via signup
- */
-export async function setupTestUserData(scenario: TestScenario): Promise<void> {
-  const { user, organizations } = scenario;
-
-  for (const { organization, role, projects } of organizations) {
-    // Create organization
-    await prismaClient.organization.upsert({
-      where: { id: organization.id },
-      create: {
-        id: organization.id,
-        name: organization.name,
-        pricingOnboarded: organization.pricingOnboarded,
-      },
-      update: {
-        name: organization.name,
-        pricingOnboarded: organization.pricingOnboarded,
-      },
-    });
-
-    // Create user-organization relationship
-    await prismaClient.userOrganization.upsert({
-      where: {
-        userId_organizationId: {
-          userId: user.id,
-          organizationId: organization.id,
-        },
-      },
-      create: {
-        userId: user.id,
-        organizationId: organization.id,
-        role,
-      },
-      update: {
-        role,
-      },
-    });
-
-    // Create projects
-    for (const project of projects) {
-      await prismaClient.project.upsert({
-        where: { id: project.id },
-        create: {
-          id: project.id,
-          name: project.name,
-          domain: project.domain,
-          token: project.token,
-          organizationId: project.organizationId,
-        },
-        update: {
-          name: project.name,
-          domain: project.domain,
-        },
-      });
-    }
-  }
-}
-
-/**
  * Clean up test data (use with caution, mainly for teardown)
  */
 export async function cleanupTestData(): Promise<void> {
-  const testUserIds = Object.values(TEST_SCENARIOS).map((s) => s.user.id);
   const testOrgIds = Object.values(TEST_SCENARIOS).flatMap((s) => s.organizations.map((o) => o.organization.id));
   const testProjectIds = Object.values(TEST_SCENARIOS).flatMap((s) =>
     s.organizations.flatMap((o) => o.projects.map((p) => p.id)),
   );
 
-  // Delete in order to respect foreign key constraints
+  // Delete test projects
   await prismaClient.project.deleteMany({
     where: { id: { in: testProjectIds } },
   });
 
+  // Delete test user-org relationships
   await prismaClient.userOrganization.deleteMany({
-    where: { userId: { in: testUserIds } },
+    where: { organizationId: { in: testOrgIds } },
   });
 
+  // Delete test organizations
   await prismaClient.organization.deleteMany({
     where: { id: { in: testOrgIds } },
   });
 
+  // Delete test users by email pattern
+  const testEmails = Object.values(TEST_SCENARIOS).map((s) => s.user.email);
   await prismaClient.session.deleteMany({
-    where: { userId: { in: testUserIds } },
+    where: { user: { email: { in: testEmails } } },
   });
 
   await prismaClient.account.deleteMany({
-    where: { userId: { in: testUserIds } },
+    where: { user: { email: { in: testEmails } } },
   });
 
   await prismaClient.user.deleteMany({
-    where: { id: { in: testUserIds } },
+    where: { email: { in: testEmails } },
   });
-}
-
-/**
- * Check if a test user exists in the database
- */
-export async function testUserExists(userId: string): Promise<boolean> {
-  const user = await prismaClient.user.findUnique({
-    where: { id: userId },
-  });
-  return user !== null;
 }
 
 /**

@@ -26,7 +26,7 @@ function InvitePage() {
     data: invitation,
     error: invitationError,
     isLoading: isInvitationLoading,
-  } = trpc.organization.getInvitationByToken.useQuery({ token }, { retry: false });
+  } = trpc.organization.getInvitationByToken.useQuery({ token });
 
   const { mutate: acceptInvitation } = trpc.organization.acceptInvitation.useMutation({
     onSuccess: async (data) => {
@@ -56,18 +56,32 @@ function InvitePage() {
     );
   }
 
-  if (invitationError) {
+  if (!invitation || invitationError) {
     return (
       <Flex minH="100dvh" align="center" justify="center">
-        <Container maxW="md">
+        <Container maxW="lg">
           <Card.Root>
-            <Card.Body maxW="320px" mx="auto">
+            <Card.Body mx="auto">
+              <ErrorState title="An error occured while loading the invitation" />
+            </Card.Body>
+          </Card.Root>
+        </Container>
+      </Flex>
+    );
+  }
+
+  if (!invitation.success) {
+    return (
+      <Flex minH="100dvh" align="center" justify="center">
+        <Container maxW="lg">
+          <Card.Root>
+            <Card.Body mx="auto">
               <ErrorState
                 title="Invalid Invitation"
                 description="This invitation link is invalid or has already been used."
               />
-              <Flex justify="center" mt={4}>
-                <Button asChild variant="outline">
+              <Flex justify="center" mt={4} mb={2}>
+                <Button asChild>
                   <RouterLink to="/">Go to Dashboard</RouterLink>
                 </Button>
               </Flex>
@@ -76,10 +90,6 @@ function InvitePage() {
         </Container>
       </Flex>
     );
-  }
-
-  if (!invitation) {
-    return null;
   }
 
   return (

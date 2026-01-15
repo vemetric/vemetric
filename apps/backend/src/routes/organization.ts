@@ -324,13 +324,13 @@ export const organizationRouter = router({
 
     const invitation = await dbInvitation.findByToken(token);
     if (!invitation) {
-      throw new TRPCError({
-        code: 'NOT_FOUND',
-        message: 'Invitation not found or has expired',
-      });
+      return {
+        success: false,
+      };
     }
 
     return {
+      success: true,
       organizationName: invitation.organization.name,
     };
   }),

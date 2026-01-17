@@ -138,7 +138,7 @@ function Page() {
             <>
               <Box pos="sticky" top={0} zIndex="dropdown">
                 {isFilterableDataLoading ? (
-                  <Box pt={3}>
+                  <Box pt={2}>
                     <FilterSkeletons loading />
                   </Box>
                 ) : (
@@ -225,7 +225,9 @@ function Page() {
             </>
           ) : (
             <Flex flexDir="column" gap={3}>
-              <FilterSkeletons loading />
+              <Box pt={2}>
+                <FilterSkeletons loading />
+              </Box>
               <AspectRatio ratio={16 / 7}>
                 <Skeleton height="full" width="full" loading />
               </AspectRatio>

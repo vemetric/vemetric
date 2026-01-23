@@ -7,7 +7,7 @@ interface Props {
 
 export const EmailChangeMail = ({ verificationLink }: Props) => {
   return (
-    <BaseTemplate previewText="Hey, please confirm you new email address.">
+    <BaseTemplate previewText="Hey, please confirm your new email address.">
       <Section>
         <Text style={textStyle}>Hey, please verify your new email address by clicking the button below:</Text>
         <Button style={buttonStyle} href={verificationLink}>

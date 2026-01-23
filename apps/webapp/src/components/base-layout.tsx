@@ -1,9 +1,11 @@
 import { Flex, Box } from '@chakra-ui/react';
 import { useCurrentOrganization } from '@/hooks/use-current-organization';
+import { AccountAvatar } from './account-avatar';
 import { Logo } from './logo';
 import { OrganizationMenu } from './organization-menu';
-import { OrganizationSettingsDialog } from './organization-settings-dialog';
 import { PageWrapper } from './page-wrapper';
+import { AccountSettingsDialog } from './pages/settings/account/account-settings-dialog';
+import { OrganizationSettingsDialog } from './pages/settings/organization/organization-settings-dialog';
 import { UserMenu } from './user-menu';
 
 interface Props {
@@ -20,6 +22,7 @@ export const BaseLayout = (props: Props) => {
       <Flex
         align="center"
         justify="space-between"
+        gap={2}
         bg={{ base: 'bg.card', md: 'none' }}
         px={{ base: 1.5, md: 5 }}
         pt={{ base: 0, md: 4 }}
@@ -33,10 +36,19 @@ export const BaseLayout = (props: Props) => {
           {currentOrganization && <Box w="1px" h="20px" ml="1" bg="border.emphasized" />}
           <OrganizationMenu currentOrganization={currentOrganization} organizations={organizations || []} />
         </Flex>
-        <UserMenu />
+        <UserMenu
+          showThemeSwitch
+          rounded="full"
+          _focusVisible={{ outline: '2px solid', outlineColor: 'gray.fg/60' }}
+          transition="all 0.2s ease-in-out"
+          _hover={{ opacity: 0.75 }}
+        >
+          <AccountAvatar />
+        </UserMenu>
       </Flex>
       <PageWrapper flexDir="column">{children}</PageWrapper>
       <OrganizationSettingsDialog />
+      <AccountSettingsDialog />
     </>
   );
 };

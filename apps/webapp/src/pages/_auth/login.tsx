@@ -154,7 +154,7 @@ function Page() {
                     return;
                   }
 
-                  const res = await authClient.forgetPassword({
+                  const res = await authClient.requestPasswordReset({
                     email,
                     redirectTo: getAppUrl() + '/reset-password',
                   });

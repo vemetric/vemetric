@@ -10,6 +10,7 @@ export const Route = createFileRoute('/')({
     if (session.organizations.length === 0) {
       throw redirect({
         to: '/onboarding/organization',
+        search: (search) => search,
         replace: true,
       });
     }
@@ -19,6 +20,7 @@ export const Route = createFileRoute('/')({
     throw redirect({
       to: '/o/$organizationId',
       params: { organizationId: session.organizations[0].id },
+      search: (search) => search,
       replace: true,
     });
   },

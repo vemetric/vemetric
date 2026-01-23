@@ -3,6 +3,7 @@ import { Message } from 'postmark';
 import type { MessageSendingResponse } from 'postmark/dist/client/models';
 import type { ComponentProps } from 'react';
 import { postmarkClient } from './postmark-client';
+import EmailChangeMail from '../emails/email-change';
 import EmailVerificationMail from '../emails/email-verification';
 import PasswordResetMail from '../emails/password-reset';
 import FirstEventFeedback from '../emails/sequences/first-event-feedback/feedback';
@@ -21,6 +22,10 @@ export const TRANSACTIONAL_TEMPLATE_MAP = {
   emailVerification: {
     subject: 'Verify your email address',
     email: EmailVerificationMail,
+  },
+  emailChange: {
+    subject: 'Verify your new email address',
+    email: EmailChangeMail,
   },
   passwordReset: {
     subject: 'Reset your password',

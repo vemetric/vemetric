@@ -1,5 +1,5 @@
 import type { BoxProps, CardRootProps, FlexProps } from '@chakra-ui/react';
-import { Box, Card, Flex, Icon, Spinner } from '@chakra-ui/react';
+import { Box, Card, Flex, HStack, Icon, IconButton, Spinner, Text } from '@chakra-ui/react';
 import type { LinkProps } from '@tanstack/react-router';
 import { Link, useMatches, useNavigate, useParams } from '@tanstack/react-router';
 import type { ElementType } from 'react';
@@ -7,22 +7,28 @@ import { useState } from 'react';
 import {
   TbDeviceAnalytics,
   TbChartFunnel,
-  TbLogout,
   TbMessageCircleQuestion,
   TbStack2,
   TbTool,
   TbUserSquareRounded,
+  TbDotsVertical,
+  TbLogout,
+  TbSettings,
 } from 'react-icons/tb';
+import { useAccountSettingsDialog } from '@/hooks/use-account-settings-dialog';
 import { useOpenCrispChat } from '@/stores/crisp-chat-store';
-import { useLogout } from '@/utils/auth';
+import { authClient, useLogout } from '@/utils/auth';
+import { AccountAvatar } from './account-avatar';
 import { EventLimitBanner } from './event-limit-banner';
 import { SocialButtons } from './social-buttons';
 import { ThemeSwitch } from './theme-switch';
+import { UserMenu } from './user-menu';
 
 interface NavigationItemProps extends FlexProps {
   icon: ElementType;
   to?: LinkProps['to'];
   params?: LinkProps['params'];
+  search?: LinkProps['search'];
   isActive?: boolean;
 }
 
@@ -59,7 +65,10 @@ export const NavDivider = (props: BoxProps) => (
 
 export const Navigation = (props: CardRootProps) => {
   const navigate = useNavigate();
+  const { open: openAccountSettings } = useAccountSettingsDialog();
   const matches = useMatches();
+  const { data: session } = authClient.useSession();
+  const { user } = session ?? {};
   const { logout } = useLogout();
   const routeId = matches[matches.length - 1].routeId;
 
@@ -111,6 +120,15 @@ export const Navigation = (props: CardRootProps) => {
       >
         Events
       </NavigationItem>
+      <NavigationItem
+        isActive={routeId === '/_layout/p/$projectId/settings/'}
+        icon={TbTool}
+        as={Link}
+        to="/p/$projectId/settings"
+        params={{ projectId }}
+      >
+        Settings
+      </NavigationItem>
       <NavDivider />
       <Box h={{ base: '30px', md: '30px', lg: '100px' }} />
       <Flex p={2} align="flex-end" justify="center" gap={2}>
@@ -132,17 +150,18 @@ export const Navigation = (props: CardRootProps) => {
         Help
       </NavigationItem>
       <NavigationItem
-        isActive={routeId === '/_layout/p/$projectId/settings/'}
-        icon={TbTool}
-        as={Link}
-        to="/p/$projectId/settings"
-        params={{ projectId }}
+        as="button"
+        cursor="pointer"
+        hideFrom="lg"
+        icon={TbSettings}
+        onClick={() => openAccountSettings()}
       >
-        Settings
+        Account
       </NavigationItem>
       <NavigationItem
         as="button"
         cursor="pointer"
+        hideFrom="lg"
         icon={isLogoutLoading ? Spinner : TbLogout}
         onClick={async () => {
           if (isLogoutLoading) {
@@ -156,6 +175,38 @@ export const Navigation = (props: CardRootProps) => {
       >
         Logout
       </NavigationItem>
+      <UserMenu asChild hideBelow="lg">
+        <HStack
+          role="button"
+          gap="3"
+          mt="1.5"
+          pl="2"
+          mx="1"
+          py="1.5"
+          justify="space-between"
+          align="center"
+          cursor="pointer"
+          rounded="md"
+          border="1px solid transparent"
+          transition="all 0.2s ease-in-out"
+          _hover={{ bg: 'gray.subtle', borderColor: 'gray.muted' }}
+        >
+          <HStack gap="3">
+            <AccountAvatar />
+            <Box>
+              <Text textStyle="sm" fontWeight="medium">
+                {user?.name || 'Unknown'}
+              </Text>
+              <Text textStyle="sm" color="fg.muted">
+                Account
+              </Text>
+            </Box>
+          </HStack>
+          <IconButton as="div" p={1.5} h="auto" minW="0px" variant="ghost" colorPalette="gray" aria-label="Open Menu">
+            <TbDotsVertical />
+          </IconButton>
+        </HStack>
+      </UserMenu>
     </Card.Root>
   );
 };

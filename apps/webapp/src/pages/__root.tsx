@@ -32,6 +32,7 @@ const rootSearchSchema = z.object({
   pricingDialog: z.boolean().optional(),
   settings: z.enum(['general', 'auth']).optional(),
   changeEmail: z.boolean().optional(),
+  error: z.string().optional(),
 });
 
 export const Route = createRootRoute({
@@ -42,7 +43,7 @@ export const Route = createRootRoute({
 function RootLayout() {
   const location = useLocation();
   const { colorMode } = useColorMode();
-  const { changeEmail } = Route.useSearch();
+  const { changeEmail, error: errorCode } = Route.useSearch();
   const navigate = useNavigate();
   const isMobile = useBreakpointValue({ base: true, md: false });
   const { data: session, isPending: isSessionLoading } = authClient.useSession();
@@ -94,6 +95,33 @@ function RootLayout() {
       });
     }
   }, [changeEmail, location.pathname, navigate]);
+
+  useEffect(() => {
+    if (errorCode) {
+      const accountAlreadyLinkedError = errorCode === 'account already linked to different user';
+      const openSettings = accountAlreadyLinkedError;
+
+      setTimeout(() => {
+        const title = 'An error occured';
+        let description = `Please reach out if the issue persists. (${errorCode})`;
+        if (accountAlreadyLinkedError) {
+          description = 'This account is already linked to a different user.';
+        }
+
+        toaster.create({
+          title,
+          description,
+          type: 'error',
+          duration: 5000,
+        });
+      });
+      navigate({
+        to: location.pathname,
+        search: (prev) => ({ ...prev, error: undefined, settings: openSettings ? 'auth' : undefined }),
+        replace: true,
+      });
+    }
+  }, [errorCode, location.pathname, navigate]);
 
   return (
     <>

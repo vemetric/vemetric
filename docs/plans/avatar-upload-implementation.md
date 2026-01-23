@@ -2,7 +2,18 @@
 
 ## Overview
 
-Enable users to upload custom avatar images with a simple cropping mechanism in account settings.
+Enable users to upload custom avatar images with a simple cropping mechanism in the existing account settings dialog.
+
+## Existing Infrastructure
+
+The following components already exist and will be extended:
+
+| Component | Path | Status |
+|-----------|------|--------|
+| Account settings dialog | `apps/webapp/src/components/pages/settings/account/account-settings-dialog.tsx` | Exists |
+| General settings tab | `apps/webapp/src/components/pages/settings/account/general-tab.tsx` | Extend |
+| Account router | `apps/backend/src/routes/account.ts` | Extend |
+| Account avatar component | `apps/webapp/src/components/account-avatar.tsx` | No changes needed |
 
 ## Key Decisions
 
@@ -13,7 +24,7 @@ Enable users to upload custom avatar images with a simple cropping mechanism in 
 | Scenario | S3/R2 Configured | Avatar Upload |
 |----------|------------------|---------------|
 | SaaS deployment | Yes (R2) | Enabled |
-| Self-hosted (minimal) | No | Disabled - fallback to initials/Gravatar |
+| Self-hosted (minimal) | No | Disabled - fallback to initials |
 | Self-hosted (full) | Yes (S3/MinIO/R2) | Enabled |
 
 **Rationale:** Avatars are nice-to-have, not critical. Self-hosters who don't want to configure object storage simply won't have avatar uploads. This avoids implementing and maintaining local filesystem storage.
@@ -21,8 +32,8 @@ Enable users to upload custom avatar images with a simple cropping mechanism in 
 ### Fallback for Disabled Uploads
 
 When storage is not configured:
-- Use Chakra UI's `<Avatar name="..." />` which generates initial-based avatars
-- Optionally support Gravatar via email hash
+- Use Chakra UI's `<Avatar.Fallback name="..." />` which generates initial-based avatars (already implemented)
+- Hide the upload button in the UI
 
 ---
 
@@ -38,6 +49,7 @@ AWS_SECRET_ACCESS_KEY=
 AWS_S3_BUCKET=vemetric-avatars
 AWS_S3_REGION=auto
 AWS_S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com  # Required for R2/MinIO
+AWS_S3_PUBLIC_URL=https://avatars.vemetric.com  # Optional: custom domain for public access
 ```
 
 ---
@@ -46,7 +58,7 @@ AWS_S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com  # Required for R2
 
 ### 1. Storage Utility
 
-**File:** `apps/backend/src/utils/storage.ts`
+**File:** `apps/backend/src/utils/storage.ts` (NEW)
 
 ```typescript
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
@@ -95,54 +107,63 @@ export const storage = {
   },
 
   getPublicUrl(key: string): string {
-    // For R2 with public bucket or custom domain
-    const publicDomain = process.env.AWS_S3_PUBLIC_URL ||
-      `https://${process.env.AWS_S3_BUCKET}.${process.env.AWS_S3_ENDPOINT?.replace('https://', '')}`;
-    return `${publicDomain}/${key}`;
+    if (process.env.AWS_S3_PUBLIC_URL) {
+      return `${process.env.AWS_S3_PUBLIC_URL}/${key}`;
+    }
+    // Default R2 public URL format
+    return `https://${process.env.AWS_S3_BUCKET}.${process.env.AWS_S3_ENDPOINT?.replace('https://', '')}/${key}`;
   },
 
   extractKeyFromUrl(url: string): string | null {
-    // Extract the key from a full URL for deletion
     const match = url.match(/avatars\/[^?]+/);
     return match ? match[0] : null;
   },
 };
 ```
 
-### 2. Account Router
+### 2. Extend Account Router
 
-**File:** `apps/backend/src/routes/account.ts`
+**File:** `apps/backend/src/routes/account.ts` (MODIFY)
+
+Add the following procedures to the existing router:
 
 ```typescript
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
+import { dbAuthUser } from 'database';
 import { loggedInProcedure, router } from '../utils/trpc';
-import { dbAuthUser } from '@vemetric/database';
 import { storage, isStorageConfigured } from '../utils/storage';
 
 export const accountRouter = router({
-  // Get current user profile
-  getProfile: loggedInProcedure.query(async ({ ctx }) => {
+  // EXISTING: settings query stays as-is, but add avatarUploadsEnabled
+  settings: loggedInProcedure.query(async (opts) => {
+    const { user } = opts.ctx;
+    const linkedAccounts = await dbAuthUser.getLinkedAccounts(user.id);
+
+    const accounts = linkedAccounts.map((account) => ({
+      id: account.id,
+      provider: account.providerId,
+      accountId: account.accountId,
+      createdAt: account.createdAt,
+    }));
+
+    const hasPassword = accounts.some((account) => account.provider === 'credential');
+
     return {
-      id: ctx.var.user.id,
-      name: ctx.var.user.name,
-      email: ctx.var.user.email,
-      image: ctx.var.user.image,
-      avatarUploadsEnabled: isStorageConfigured(),
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        emailVerified: user.emailVerified,
+        image: user.image,
+      },
+      accounts,
+      hasPassword,
+      avatarUploadsEnabled: isStorageConfigured(), // ADD THIS
     };
   }),
 
-  // Update profile name
-  updateProfile: loggedInProcedure
-    .input(z.object({
-      name: z.string().min(1).max(100).optional(),
-    }))
-    .mutation(async ({ ctx, input }) => {
-      await dbAuthUser.update(ctx.var.user.id, { name: input.name });
-      return { success: true };
-    }),
-
-  // Get presigned URL for avatar upload
+  // NEW: Get presigned URL for avatar upload
   getAvatarUploadUrl: loggedInProcedure
     .input(z.object({
       contentType: z.enum(['image/jpeg', 'image/png', 'image/webp']),
@@ -162,7 +183,7 @@ export const accountRouter = router({
       return { uploadUrl, key };
     }),
 
-  // Confirm avatar upload and update user record
+  // NEW: Confirm avatar upload and update user record
   confirmAvatarUpload: loggedInProcedure
     .input(z.object({
       key: z.string(),
@@ -200,12 +221,14 @@ export const accountRouter = router({
       return { success: true, imageUrl };
     }),
 
-  // Delete avatar
+  // NEW: Delete avatar
   deleteAvatar: loggedInProcedure.mutation(async ({ ctx }) => {
     if (ctx.var.user.image) {
-      const key = storage.extractKeyFromUrl(ctx.var.user.image);
-      if (key && isStorageConfigured()) {
-        await storage.delete(key).catch(() => {});
+      if (isStorageConfigured()) {
+        const key = storage.extractKeyFromUrl(ctx.var.user.image);
+        if (key) {
+          await storage.delete(key).catch(() => {});
+        }
       }
       await dbAuthUser.update(ctx.var.user.id, { image: null });
     }
@@ -214,22 +237,7 @@ export const accountRouter = router({
 });
 ```
 
-### 3. Register Router
-
-**File:** `apps/backend/src/index.ts`
-
-Add import and register the router:
-
-```typescript
-import { accountRouter } from './routes/account';
-
-const appRouter = router({
-  // ... existing routers
-  account: accountRouter,
-});
-```
-
-### 4. Dependencies
+### 3. Dependencies
 
 ```bash
 cd apps/backend
@@ -249,28 +257,32 @@ bun add react-easy-crop
 
 ### 2. Avatar Cropper Component
 
-**File:** `apps/webapp/src/components/avatar-cropper.tsx`
+**File:** `apps/webapp/src/components/avatar-cropper.tsx` (NEW)
 
 ```typescript
 import { useState, useCallback } from 'react';
 import Cropper, { Area } from 'react-easy-crop';
+import { Button, Flex, Box, Text } from '@chakra-ui/react';
+import { Slider } from '@/components/ui/slider';
 import {
-  Dialog,
-  Button,
-  Slider,
-  Flex,
-  Box,
-  Text,
-} from '@chakra-ui/react';
+  DialogRoot,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogBody,
+  DialogFooter,
+  DialogCloseTrigger,
+} from '@/components/ui/dialog';
 
 interface AvatarCropperProps {
   image: string;
   open: boolean;
   onClose: () => void;
   onCropComplete: (croppedBlob: Blob) => void;
+  isLoading?: boolean;
 }
 
-export function AvatarCropper({ image, open, onClose, onCropComplete }: AvatarCropperProps) {
+export function AvatarCropper({ image, open, onClose, onCropComplete, isLoading }: AvatarCropperProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
@@ -289,51 +301,59 @@ export function AvatarCropper({ image, open, onClose, onCropComplete }: AvatarCr
 
   const handleConfirm = async () => {
     if (!croppedAreaPixels) return;
-
     const croppedBlob = await getCroppedImage(image, croppedAreaPixels);
     onCropComplete(croppedBlob);
   };
 
   return (
-    <Dialog.Root open={open} onOpenChange={(e) => !e.open && onClose()}>
-      <Dialog.Backdrop />
-      <Dialog.Positioner>
-        <Dialog.Content maxW="500px">
-          <Dialog.Header>
-            <Dialog.Title>Crop Avatar</Dialog.Title>
-          </Dialog.Header>
-          <Dialog.Body>
-            <Box position="relative" h="300px" bg="gray.900" borderRadius="md">
-              <Cropper
-                image={image}
-                crop={crop}
-                zoom={zoom}
-                aspect={1}
-                cropShape="round"
-                onCropChange={onCropChange}
-                onZoomChange={onZoomChange}
-                onCropComplete={onCropAreaChange}
-              />
-            </Box>
-            <Flex align="center" gap={4} mt={4}>
-              <Text fontSize="sm" color="fg.muted">Zoom</Text>
-              <Slider
-                value={[zoom]}
-                onValueChange={(e) => onZoomChange(e.value[0])}
-                min={1}
-                max={3}
-                step={0.1}
-                flex={1}
-              />
-            </Flex>
-          </Dialog.Body>
-          <Dialog.Footer>
-            <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button colorPalette="blue" onClick={handleConfirm}>Save</Button>
-          </Dialog.Footer>
-        </Dialog.Content>
-      </Dialog.Positioner>
-    </Dialog.Root>
+    <DialogRoot
+      open={open}
+      onOpenChange={({ open }) => {
+        if (!open) onClose();
+      }}
+    >
+      <DialogContent maxW="500px">
+        <DialogHeader>
+          <DialogTitle>Crop Avatar</DialogTitle>
+        </DialogHeader>
+        <DialogBody>
+          <Box position="relative" h="300px" bg="black" borderRadius="md" overflow="hidden">
+            <Cropper
+              image={image}
+              crop={crop}
+              zoom={zoom}
+              aspect={1}
+              cropShape="round"
+              onCropChange={onCropChange}
+              onZoomChange={onZoomChange}
+              onCropComplete={onCropAreaChange}
+            />
+          </Box>
+          <Flex align="center" gap={4} mt={4}>
+            <Text fontSize="sm" color="fg.muted" flexShrink={0}>
+              Zoom
+            </Text>
+            <Slider
+              value={[zoom]}
+              onValueChange={({ value }) => onZoomChange(value[0])}
+              min={1}
+              max={3}
+              step={0.1}
+              flex={1}
+            />
+          </Flex>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isLoading}>
+            Cancel
+          </Button>
+          <Button colorPalette="blue" onClick={handleConfirm} loading={isLoading}>
+            Save
+          </Button>
+        </DialogFooter>
+        <DialogCloseTrigger />
+      </DialogContent>
+    </DialogRoot>
   );
 }
 
@@ -361,11 +381,7 @@ async function getCroppedImage(imageSrc: string, pixelCrop: Area): Promise<Blob>
   );
 
   return new Promise((resolve) => {
-    canvas.toBlob(
-      (blob) => resolve(blob!),
-      'image/webp',
-      0.85 // Quality
-    );
+    canvas.toBlob((blob) => resolve(blob!), 'image/webp', 0.85);
   });
 }
 
@@ -379,108 +395,158 @@ function createImage(url: string): Promise<HTMLImageElement> {
 }
 ```
 
-### 3. Avatar Uploader Component
+### 3. Extend General Tab with Avatar Section
 
-**File:** `apps/webapp/src/components/avatar-uploader.tsx`
+**File:** `apps/webapp/src/components/pages/settings/account/general-tab.tsx` (MODIFY)
+
+Add avatar section to the existing ProfileSection or create a new AvatarSection:
 
 ```typescript
-import { useState, useRef } from 'react';
-import { Button, Flex, Spinner } from '@chakra-ui/react';
-import { AvatarCropper } from './avatar-cropper';
-import { trpc } from '@/utils/trpc';
+import { useRef, useState } from 'react';
+import { Avatar, Box, Button, Card, Flex, Input, Spinner, Stack, Text, Field } from '@chakra-ui/react';
+import { TbCamera, TbSettings, TbTrash, TbUser } from 'react-icons/tb';
+import { AvatarCropper } from '@/components/avatar-cropper';
+import { CardIcon } from '@/components/card-icon';
+import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
+import { authClient } from '@/utils/auth';
+import { trpc } from '@/utils/trpc';
 
-interface AvatarUploaderProps {
-  onUploadComplete: (imageUrl: string) => void;
+// Add new AvatarSection component
+interface AvatarSectionProps {
+  image: string | null;
+  name: string | null;
+  avatarUploadsEnabled: boolean;
+  onUpdate: () => Promise<void>;
 }
 
-export function AvatarUploader({ onUploadComplete }: AvatarUploaderProps) {
+const AvatarSection = ({ image, name, avatarUploadsEnabled, onUpdate }: AvatarSectionProps) => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const getUploadUrl = trpc.account.getAvatarUploadUrl.useMutation();
   const confirmUpload = trpc.account.confirmAvatarUpload.useMutation();
+  const deleteAvatar = trpc.account.deleteAvatar.useMutation();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
+    // Reset input so same file can be selected again
+    e.target.value = '';
+
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      toaster.error({ title: 'Please select a JPG, PNG, or WebP image' });
+      toaster.create({ title: 'Please select a JPG, PNG, or WebP image', type: 'error' });
       return;
     }
 
-    // Validate file size (5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toaster.error({ title: 'Image must be less than 5MB' });
+      toaster.create({ title: 'Image must be less than 5MB', type: 'error' });
       return;
     }
 
-    // Read file and open cropper
     const reader = new FileReader();
     reader.onload = () => setSelectedImage(reader.result as string);
     reader.readAsDataURL(file);
   };
 
   const handleCropComplete = async (croppedBlob: Blob) => {
-    setSelectedImage(null);
     setIsUploading(true);
 
     try {
-      // 1. Get presigned upload URL
       const { uploadUrl, key } = await getUploadUrl.mutateAsync({
         contentType: 'image/webp',
         fileSize: croppedBlob.size,
       });
 
-      // 2. Upload to S3/R2
       const uploadResponse = await fetch(uploadUrl, {
         method: 'PUT',
         body: croppedBlob,
-        headers: {
-          'Content-Type': 'image/webp',
-        },
+        headers: { 'Content-Type': 'image/webp' },
       });
 
       if (!uploadResponse.ok) {
         throw new Error('Failed to upload image');
       }
 
-      // 3. Confirm upload and update user record
-      const { imageUrl } = await confirmUpload.mutateAsync({ key });
+      await confirmUpload.mutateAsync({ key });
 
-      toaster.success({ title: 'Avatar updated successfully' });
-      onUploadComplete(imageUrl);
+      toaster.create({ title: 'Avatar updated successfully', type: 'success' });
+      setSelectedImage(null);
+      await onUpdate();
     } catch (error) {
-      toaster.error({ title: 'Failed to upload avatar' });
-      console.error('Avatar upload error:', error);
+      toaster.create({ title: 'Failed to upload avatar', type: 'error' });
     } finally {
       setIsUploading(false);
     }
   };
 
-  return (
-    <>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        onChange={handleFileSelect}
-        style={{ display: 'none' }}
-      />
+  const handleDeleteAvatar = async () => {
+    try {
+      await deleteAvatar.mutateAsync();
+      toaster.create({ title: 'Avatar removed', type: 'success' });
+      await onUpdate();
+    } catch (error) {
+      toaster.create({ title: 'Failed to remove avatar', type: 'error' });
+    }
+  };
 
-      <Flex gap={2}>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isUploading}
-        >
-          {isUploading ? <Spinner size="sm" /> : 'Change Avatar'}
-        </Button>
-      </Flex>
+  return (
+    <Card.Root>
+      <Card.Header>
+        <Flex align="center" gap={2}>
+          <CardIcon>
+            <TbCamera />
+          </CardIcon>
+          <Text fontWeight="semibold">Profile Picture</Text>
+        </Flex>
+      </Card.Header>
+      <Card.Body p={4}>
+        <Flex align="center" gap={4}>
+          <Avatar.Root size="2xl">
+            <Avatar.Fallback name={name || '?'} />
+            {image && <Avatar.Image src={image} />}
+          </Avatar.Root>
+
+          {avatarUploadsEnabled ? (
+            <Stack gap={2}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleFileSelect}
+                style={{ display: 'none' }}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+              >
+                <TbCamera />
+                Change Avatar
+              </Button>
+              {image && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  colorPalette="red"
+                  onClick={handleDeleteAvatar}
+                  disabled={isUploading}
+                >
+                  <TbTrash />
+                  Remove
+                </Button>
+              )}
+            </Stack>
+          ) : (
+            <Text fontSize="sm" color="fg.muted">
+              Avatar uploads are not available on this instance
+            </Text>
+          )}
+        </Flex>
+      </Card.Body>
 
       {selectedImage && (
         <AvatarCropper
@@ -488,164 +554,44 @@ export function AvatarUploader({ onUploadComplete }: AvatarUploaderProps) {
           open={!!selectedImage}
           onClose={() => setSelectedImage(null)}
           onCropComplete={handleCropComplete}
+          isLoading={isUploading}
         />
       )}
-    </>
+    </Card.Root>
   );
-}
-```
+};
 
-### 4. Account Settings Page
+// Update AccountGeneralTab to include AvatarSection
+export const AccountGeneralTab = () => {
+  const { refetch: refetchAuth } = authClient.useSession();
+  const { data: settings, error, refetch, isLoading: isSettingsLoading } = trpc.account.settings.useQuery();
 
-**File:** `apps/webapp/src/pages/_layout/account.tsx`
+  // ... existing loading/error handling ...
 
-```typescript
-import { useState } from 'react';
-import {
-  Box,
-  Heading,
-  Card,
-  Stack,
-  Flex,
-  Input,
-  Button,
-  Avatar,
-  Text,
-} from '@chakra-ui/react';
-import { Field } from '@/components/ui/field';
-import { AvatarUploader } from '@/components/avatar-uploader';
-import { trpc } from '@/utils/trpc';
-import { toaster } from '@/components/ui/toaster';
-
-export default function AccountSettingsPage() {
-  const utils = trpc.useUtils();
-  const { data: profile, isLoading } = trpc.account.getProfile.useQuery();
-  const updateProfile = trpc.account.updateProfile.useMutation();
-  const deleteAvatar = trpc.account.deleteAvatar.useMutation();
-
-  const [name, setName] = useState('');
-  const [isInitialized, setIsInitialized] = useState(false);
-
-  // Initialize form with profile data
-  if (profile && !isInitialized) {
-    setName(profile.name || '');
-    setIsInitialized(true);
-  }
-
-  const handleSave = async () => {
-    try {
-      await updateProfile.mutateAsync({ name });
-      toaster.success({ title: 'Profile updated' });
-      utils.account.getProfile.invalidate();
-    } catch (error) {
-      toaster.error({ title: 'Failed to update profile' });
-    }
+  const refreshData = async () => {
+    await Promise.all([refetch(), refetchAuth()]);
   };
-
-  const handleAvatarUploadComplete = (imageUrl: string) => {
-    utils.account.getProfile.invalidate();
-  };
-
-  const handleDeleteAvatar = async () => {
-    try {
-      await deleteAvatar.mutateAsync();
-      toaster.success({ title: 'Avatar removed' });
-      utils.account.getProfile.invalidate();
-    } catch (error) {
-      toaster.error({ title: 'Failed to remove avatar' });
-    }
-  };
-
-  if (isLoading) {
-    return <Box p={8}>Loading...</Box>;
-  }
 
   return (
-    <Box maxW="600px" mx="auto" py={8} px={4}>
-      <Heading size="lg" mb={6}>Account Settings</Heading>
-
-      <Card.Root mb={6}>
-        <Card.Header>
-          <Card.Title>Profile</Card.Title>
-        </Card.Header>
-        <Card.Body>
-          <Stack gap={6}>
-            {/* Avatar Section */}
-            <Flex align="center" gap={4}>
-              <Avatar.Root size="2xl">
-                <Avatar.Image src={profile?.image || undefined} />
-                <Avatar.Fallback name={profile?.name || profile?.email} />
-              </Avatar.Root>
-
-              <Stack gap={2}>
-                {profile?.avatarUploadsEnabled ? (
-                  <>
-                    <AvatarUploader onUploadComplete={handleAvatarUploadComplete} />
-                    {profile?.image && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        colorPalette="red"
-                        onClick={handleDeleteAvatar}
-                      >
-                        Remove
-                      </Button>
-                    )}
-                  </>
-                ) : (
-                  <Text fontSize="sm" color="fg.muted">
-                    Avatar uploads are not available on this instance
-                  </Text>
-                )}
-              </Stack>
-            </Flex>
-
-            {/* Name Field */}
-            <Field label="Display Name">
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Your name"
-              />
-            </Field>
-
-            {/* Email (read-only) */}
-            <Field label="Email">
-              <Input value={profile?.email || ''} disabled />
-            </Field>
-
-            <Button
-              colorPalette="blue"
-              onClick={handleSave}
-              loading={updateProfile.isPending}
-              alignSelf="flex-start"
-            >
-              Save Changes
-            </Button>
-          </Stack>
-        </Card.Body>
-      </Card.Root>
-    </Box>
+    <Flex flexDir="column" gap={4} p={4}>
+      <AvatarSection
+        image={settings.user.image}
+        name={settings.user.name}
+        avatarUploadsEnabled={settings.avatarUploadsEnabled}
+        onUpdate={refreshData}
+      />
+      <ProfileSection name={settings.user.name ?? ''} onUpdate={refreshData} />
+    </Flex>
   );
-}
+};
 ```
-
-### 5. Add Route Configuration
-
-**File:** `apps/webapp/src/routes.ts` (or equivalent router config)
-
-Add route for `/account` pointing to the account settings page.
-
-### 6. Add Navigation Link
-
-Update user menu/dropdown to include "Account Settings" link navigating to `/account`.
 
 ---
 
 ## Upload Flow
 
 ```
-User clicks "Change Avatar"
+User clicks "Change Avatar" in Account Settings > General tab
          │
          ▼
 File picker opens (accept: jpg, png, webp)
@@ -654,7 +600,7 @@ File picker opens (accept: jpg, png, webp)
 User selects image (validated: type, <5MB)
          │
          ▼
-Crop modal opens (react-easy-crop)
+Crop dialog opens (react-easy-crop)
          │
          ▼
 User adjusts crop area + zoom
@@ -698,19 +644,16 @@ Frontend invalidates queries, shows new avatar
 apps/backend/
 ├── src/
 │   ├── routes/
-│   │   └── account.ts                 # NEW
-│   ├── utils/
-│   │   └── storage.ts                 # NEW
-│   └── index.ts                       # MODIFY - add account router
+│   │   └── account.ts                 # MODIFY - add upload mutations
+│   └── utils/
+│       └── storage.ts                 # NEW - S3/R2 utilities
 
 apps/webapp/
 ├── src/
-│   ├── components/
-│   │   ├── avatar-cropper.tsx         # NEW
-│   │   └── avatar-uploader.tsx        # NEW
-│   └── pages/
-│       └── _layout/
-│           └── account.tsx            # NEW
+│   └── components/
+│       ├── avatar-cropper.tsx         # NEW - crop dialog
+│       └── pages/settings/account/
+│           └── general-tab.tsx        # MODIFY - add AvatarSection
 ```
 
 ---
@@ -743,10 +686,10 @@ apps/webapp/
 
 ### Public Access
 
-Either:
-- Enable public access on the bucket, OR
-- Set up a custom domain with Cloudflare CDN, OR
-- Use signed URLs for reading (adds complexity)
+Options:
+- Enable public access on the bucket
+- Set up a custom domain with Cloudflare CDN (recommended for production)
+- Use `AWS_S3_PUBLIC_URL` env var to specify custom domain
 
 ---
 
@@ -754,11 +697,13 @@ Either:
 
 **Backend:**
 ```bash
+cd apps/backend
 bun add @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
 ```
 
 **Frontend:**
 ```bash
+cd apps/webapp
 bun add react-easy-crop
 ```
 
@@ -770,8 +715,9 @@ bun add react-easy-crop
 - [ ] Reject files > 5MB
 - [ ] Reject non-image files
 - [ ] Crop and zoom functionality works
-- [ ] Avatar updates immediately after upload
+- [ ] Avatar updates immediately in dialog and header
 - [ ] Old avatar is deleted from storage
 - [ ] Delete avatar functionality works
-- [ ] Graceful handling when storage not configured
+- [ ] Graceful handling when storage not configured (button hidden)
 - [ ] Error states display appropriate messages
+- [ ] Session/auth state updates after avatar change

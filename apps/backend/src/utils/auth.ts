@@ -106,6 +106,9 @@ export const auth = betterAuth({
       },
     },
   },
+  onAPIError: {
+    errorURL: getVemetricUrl('app'),
+  },
   plugins: [
     lastLoginMethod(),
     customSession(async ({ user, session }) => {

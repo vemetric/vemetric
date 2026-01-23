@@ -14,17 +14,16 @@ export function useOrgSettingsDialog() {
   const { isPending, organizationId, isAdmin, isOnboarded, currentOrganization } = useCurrentOrganization();
 
   // Get the typed search params from the root route
-  const { orgSettings: tab } = useSearch({ strict: false });
+  const { orgSettings: tab, settings: settingsTab } = useSearch({ strict: false });
   type SettingsTab = typeof tab;
 
-  const isOpen = tab !== undefined;
+  const isOpen = tab !== undefined && !settingsTab;
 
   const open = useCallback(
     (newTab: SettingsTab = 'general', pricingDialog?: boolean) => {
       navigate({
         to: location.pathname,
         search: (prev) => ({ ...prev, orgSettings: newTab, pricingDialog }),
-        replace: true,
       });
     },
     [location.pathname, navigate],
@@ -34,7 +33,6 @@ export function useOrgSettingsDialog() {
     navigate({
       to: location.pathname,
       search: (prev) => ({ ...prev, orgSettings: undefined }),
-      replace: true,
     });
   }, [location.pathname, navigate]);
 
@@ -42,7 +40,6 @@ export function useOrgSettingsDialog() {
     navigate({
       to: location.pathname,
       search: (prev) => ({ ...prev, orgSettings: newTab }),
-      replace: true,
     });
   };
 

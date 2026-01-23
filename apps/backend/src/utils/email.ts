@@ -2,8 +2,9 @@ import { getVemetricUrl } from '@vemetric/common/env';
 import { sendTransactionalMail } from '@vemetric/email/transactional';
 
 export async function sendEmailVerificationLink(userEmail: string, url: string) {
+  const changeEmail = url.includes('changeEmail');
   await sendTransactionalMail(userEmail, {
-    template: 'emailVerification',
+    template: changeEmail ? 'emailChange' : 'emailVerification',
     props: {
       verificationLink: url.replace('callbackURL=/', `callbackURL=${getVemetricUrl('app')}/`),
     },

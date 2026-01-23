@@ -7,6 +7,7 @@ import { cors } from 'hono/cors';
 import { csrf } from 'hono/csrf';
 import { HTTPException } from 'hono/http-exception';
 import { pinoLogger as honoPino } from 'hono-pino';
+import { accountRouter } from './routes/account';
 import { billingRouter } from './routes/billing';
 import { dashboardRouter } from './routes/dashboard';
 import { useEmailRoutes } from './routes/email';
@@ -32,6 +33,7 @@ if (process.env.SENTRY_URL) {
 }
 
 export const appRouter = router({
+  account: accountRouter,
   dashboard: dashboardRouter,
   events: eventsRouter,
   filters: filtersRouter,

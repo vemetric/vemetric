@@ -31,6 +31,7 @@ export async function requireAuthentication() {
   if (!session?.user) {
     throw redirect({
       to: '/login',
+      search: (search) => search,
       replace: true,
     });
   }

@@ -1,6 +1,6 @@
 import { useBreakpointValue } from '@chakra-ui/react';
 import { initializePaddle } from '@paddle/paddle-js';
-import { createRootRoute, Outlet, useLocation } from '@tanstack/react-router';
+import { createRootRoute, Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { vemetric } from '@vemetric/react';
 import { useEffect, useRef } from 'react';
@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { CrispChat } from '@/components/crisp-chat';
 import { CrispScript } from '@/components/crisp-script';
 import { useColorMode } from '@/components/ui/color-mode';
+import { toaster } from '@/components/ui/toaster';
 import { authClient } from '@/utils/auth';
 
 let isCheckoutCompleted = false;
@@ -29,6 +30,8 @@ initializePaddle({
 const rootSearchSchema = z.object({
   orgSettings: z.enum(['general', 'billing', 'members']).optional(),
   pricingDialog: z.boolean().optional(),
+  settings: z.enum(['general', 'auth']).optional(),
+  changeEmail: z.boolean().optional(),
 });
 
 export const Route = createRootRoute({
@@ -39,6 +42,8 @@ export const Route = createRootRoute({
 function RootLayout() {
   const location = useLocation();
   const { colorMode } = useColorMode();
+  const { changeEmail } = Route.useSearch();
+  const navigate = useNavigate();
   const isMobile = useBreakpointValue({ base: true, md: false });
   const { data: session, isPending: isSessionLoading } = authClient.useSession();
   const identifiedUserIdRef = useRef<string | null>(null);
@@ -71,6 +76,24 @@ function RootLayout() {
       vemetric.resetUser();
     }
   }, [isSessionLoading, session, session?.user?.id, session?.user?.name]);
+
+  useEffect(() => {
+    if (changeEmail) {
+      setTimeout(() => {
+        toaster.create({
+          title: 'Email changed',
+          description: 'Your email address has been changed successfully.',
+          type: 'success',
+          duration: 5000,
+        });
+      });
+      navigate({
+        to: location.pathname,
+        search: (prev) => ({ ...prev, changeEmail: undefined }),
+        replace: true,
+      });
+    }
+  }, [changeEmail, location.pathname, navigate]);
 
   return (
     <>

@@ -2,12 +2,19 @@ import { Flex, Tabs, Text, Span } from '@chakra-ui/react';
 import { useEffect } from 'react';
 import { TbCreditCard, TbSettings, TbUsers } from 'react-icons/tb';
 import { useOrgSettingsDialog } from '@/hooks/use-org-settings-dialog';
-import { OrganizationIcon } from './organization-icon';
-import { BillingTab } from './pages/settings/organization/billing/billing-tab';
-import { OrganizationGeneralTab } from './pages/settings/organization/general-tab';
-import { OrganizationMembersTab } from './pages/settings/organization/members/members-tab';
-import { DialogRoot, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogCloseTrigger } from './ui/dialog';
-import { toaster } from './ui/toaster';
+import { BillingTab } from './billing/billing-tab';
+import { OrganizationGeneralTab } from './general-tab';
+import { OrganizationMembersTab } from './members/members-tab';
+import { OrganizationIcon } from '../../../organization-icon';
+import {
+  DialogRoot,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogBody,
+  DialogCloseTrigger,
+} from '../../../ui/dialog';
+import { toaster } from '../../../ui/toaster';
 
 export const OrganizationSettingsDialog = () => {
   const { isPending, isOpen, tab, organizationId, currentOrganization, isAdmin, isOnboarded, close, setTab } =
@@ -61,7 +68,17 @@ export const OrganizationSettingsDialog = () => {
           >
             Organization Settings
             {currentOrganization && (
-              <Flex align="center" gap={2} px={1.5} py={1} bg="gray.subtle" rounded="md" fontSize="md">
+              <Flex
+                align="center"
+                gap={2}
+                px={1.5}
+                py={1}
+                bg="gray.subtle"
+                border="1px solid"
+                borderColor="gray.muted"
+                rounded="md"
+                fontSize="md"
+              >
                 <OrganizationIcon />
                 <Text textAlign="left" fontWeight="medium" lineClamp={1}>
                   {currentOrganization.name}

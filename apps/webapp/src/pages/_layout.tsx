@@ -6,8 +6,9 @@ import { Header } from '@/components/header';
 import { Logo } from '@/components/logo';
 import { MobileMenu } from '@/components/mobile-menu';
 import { Navigation } from '@/components/navigation';
-import { OrganizationSettingsDialog } from '@/components/organization-settings-dialog';
 import { PageWrapper } from '@/components/page-wrapper';
+import { AccountSettingsDialog } from '@/components/pages/settings/account/account-settings-dialog';
+import { OrganizationSettingsDialog } from '@/components/pages/settings/organization/organization-settings-dialog';
 import { SplashScreen } from '@/components/splash-screen';
 import { TabletHeader } from '@/components/tablet-header';
 import { toaster } from '@/components/ui/toaster';
@@ -180,6 +181,7 @@ function LayoutComponent() {
           hasMultipleExceededCycles={hasMultipleExceededCycles}
         />
         <OrganizationSettingsDialog />
+        <AccountSettingsDialog />
       </PageWrapper>
     </>
   );

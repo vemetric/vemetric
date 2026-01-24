@@ -40,7 +40,7 @@ export const accountRouter = router({
       z.object({
         contentType: z.enum(['image/jpeg', 'image/png', 'image/webp']),
         fileSize: z.number().max(5 * 1024 * 1024), // 5MB max
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       if (!isStorageConfigured()) {
@@ -52,7 +52,7 @@ export const accountRouter = router({
 
       const { user } = ctx;
       const key = `avatars/${user.id}/${crypto.randomUUID()}.webp`;
-      const uploadUrl = await storage.getSignedUploadUrl(key, input.contentType);
+      const uploadUrl = await storage.getSignedUploadUrl(key, input.contentType, input.fileSize);
 
       return { uploadUrl, key };
     }),
@@ -61,7 +61,7 @@ export const accountRouter = router({
     .input(
       z.object({
         key: z.string(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       if (!isStorageConfigured()) {

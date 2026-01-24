@@ -2,11 +2,7 @@ import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 export const isStorageConfigured = (): boolean => {
-  return !!(
-    process.env.AWS_ACCESS_KEY_ID &&
-    process.env.AWS_SECRET_ACCESS_KEY &&
-    process.env.AWS_S3_BUCKET
-  );
+  return !!(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY && process.env.AWS_S3_BUCKET);
 };
 
 const getS3Client = () => {
@@ -25,12 +21,13 @@ const getS3Client = () => {
 };
 
 export const storage = {
-  async getSignedUploadUrl(key: string, contentType: string): Promise<string> {
+  async getSignedUploadUrl(key: string, contentType: string, contentLength: number): Promise<string> {
     const client = getS3Client();
     const command = new PutObjectCommand({
       Bucket: process.env.AWS_S3_BUCKET,
       Key: key,
       ContentType: contentType,
+      ContentLength: contentLength,
     });
     return getSignedUrl(client, command, { expiresIn: 300 }); // 5 minutes
   },
@@ -41,7 +38,7 @@ export const storage = {
       new DeleteObjectCommand({
         Bucket: process.env.AWS_S3_BUCKET,
         Key: key,
-      })
+      }),
     );
   },
 

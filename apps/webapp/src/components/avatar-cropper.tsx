@@ -1,5 +1,5 @@
 import { Box, Button, Flex, Slider, Text } from '@chakra-ui/react';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import Cropper, { type Area } from 'react-easy-crop';
 import {
   DialogBody,
@@ -23,18 +23,6 @@ export function AvatarCropper({ image, open, onClose, onCropComplete, isLoading 
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
-
-  const onCropChange = useCallback((location: { x: number; y: number }) => {
-    setCrop(location);
-  }, []);
-
-  const onZoomChange = useCallback((value: number) => {
-    setZoom(value);
-  }, []);
-
-  const onCropAreaChange = useCallback((_: Area, croppedAreaPixels: Area) => {
-    setCroppedAreaPixels(croppedAreaPixels);
-  }, []);
 
   const handleConfirm = async () => {
     if (!croppedAreaPixels) return;
@@ -61,9 +49,9 @@ export function AvatarCropper({ image, open, onClose, onCropComplete, isLoading 
               zoom={zoom}
               aspect={1}
               cropShape="round"
-              onCropChange={onCropChange}
-              onZoomChange={onZoomChange}
-              onCropComplete={onCropAreaChange}
+              onCropChange={setCrop}
+              onZoomChange={setZoom}
+              onCropComplete={(_, croppedAreaPixels) => setCroppedAreaPixels(croppedAreaPixels)}
             />
           </Box>
           <Flex align="center" gap={4} mt={4}>
@@ -72,7 +60,7 @@ export function AvatarCropper({ image, open, onClose, onCropComplete, isLoading 
             </Text>
             <Slider.Root
               value={[zoom]}
-              onValueChange={({ value }) => onZoomChange(value[0])}
+              onValueChange={({ value }) => setZoom(value[0])}
               min={1}
               max={3}
               step={0.1}
@@ -88,10 +76,10 @@ export function AvatarCropper({ image, open, onClose, onCropComplete, isLoading 
           </Flex>
         </DialogBody>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isLoading}>
+          <Button variant="surface" onClick={onClose} disabled={isLoading}>
             Cancel
           </Button>
-          <Button colorPalette="blue" onClick={handleConfirm} loading={isLoading}>
+          <Button colorPalette="primary" onClick={handleConfirm} loading={isLoading}>
             Save
           </Button>
         </DialogFooter>

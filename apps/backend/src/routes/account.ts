@@ -39,8 +39,6 @@ export const accountRouter = router({
   getAvatarUploadUrl: loggedInProcedure
     .input(
       z.object({
-        // Only accept webp since frontend always converts to webp
-        contentType: z.literal('image/webp'),
         fileSize: z.number().max(5 * 1024 * 1024), // 5MB max
       }),
     )
@@ -54,7 +52,7 @@ export const accountRouter = router({
 
       const { user } = ctx;
       const key = `avatars/${user.id}/${crypto.randomUUID()}.webp`;
-      const uploadUrl = await storage.getSignedUploadUrl(key, input.contentType, input.fileSize);
+      const uploadUrl = await storage.getSignedUploadUrl(key, 'image/webp', input.fileSize);
 
       return { uploadUrl, key };
     }),

@@ -52,7 +52,6 @@ export const AvatarSection = ({ onUpdate }: AvatarSectionProps) => {
 
     try {
       const { uploadUrl, key } = await getUploadUrl.mutateAsync({
-        contentType: 'image/webp',
         fileSize: croppedBlob.size,
       });
 

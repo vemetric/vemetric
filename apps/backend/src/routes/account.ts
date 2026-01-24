@@ -2,7 +2,7 @@ import { TRPCError } from '@trpc/server';
 import { dbAuthUser } from 'database';
 import { z } from 'zod';
 import { logger } from '../utils/logger';
-import { isStorageConfigured, storage } from '../utils/storage';
+import { getAvatarKeyPrefix, isStorageConfigured, storage } from '../utils/storage';
 import { loggedInProcedure, router } from '../utils/trpc';
 
 export const accountRouter = router({
@@ -51,7 +51,8 @@ export const accountRouter = router({
       }
 
       const { user } = ctx;
-      const key = `avatars/${user.id}/${crypto.randomUUID()}.webp`;
+      const prefix = getAvatarKeyPrefix();
+      const key = `${prefix}${user.id}/${crypto.randomUUID()}.webp`;
       const uploadUrl = await storage.getSignedUploadUrl(key, 'image/webp', input.fileSize);
 
       return { uploadUrl, key };
@@ -72,9 +73,10 @@ export const accountRouter = router({
       }
 
       const { user } = ctx;
+      const prefix = getAvatarKeyPrefix();
 
       // Validate key belongs to this user
-      if (!input.key.startsWith(`avatars/${user.id}/`)) {
+      if (!input.key.startsWith(`${prefix}${user.id}/`)) {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message: 'Invalid avatar key',

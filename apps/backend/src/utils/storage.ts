@@ -11,6 +11,11 @@ export const isStorageConfigured = (): boolean => {
   );
 };
 
+// Returns the key prefix for avatar storage (e.g., "avatars/" or "" for dedicated subdomain)
+export const getAvatarKeyPrefix = (): string => {
+  return process.env.AWS_S3_AVATARS_KEY_PREFIX ?? 'avatars/';
+};
+
 // Cached S3 client singleton
 let s3Client: S3Client | null = null;
 
@@ -64,7 +69,24 @@ export const storage = {
   },
 
   extractKeyFromUrl(url: string): string | null {
-    const match = url.match(/avatars\/[^?]+/);
-    return match ? match[0] : null;
+    const prefix = getAvatarKeyPrefix();
+    const publicUrl = process.env.AWS_S3_AVATARS_PUBLIC_URL;
+
+    if (!publicUrl) return null;
+
+    // Remove the public URL base to get the key
+    if (url.startsWith(publicUrl)) {
+      const key = url.slice(publicUrl.length + 1).split('?')[0]; // +1 for the slash
+      return key || null;
+    }
+
+    // Fallback: try to match the pattern with prefix
+    if (prefix) {
+      const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const match = url.match(new RegExp(`${escapedPrefix}[^?]+`));
+      return match ? match[0] : null;
+    }
+
+    return null;
   },
 };

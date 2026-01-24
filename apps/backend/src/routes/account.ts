@@ -5,9 +5,6 @@ import { logger } from '../utils/logger';
 import { isStorageConfigured, storage } from '../utils/storage';
 import { loggedInProcedure, router } from '../utils/trpc';
 
-// UUID v4 pattern for key validation
-const UUID_PATTERN = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
-
 export const accountRouter = router({
   settings: loggedInProcedure.query(async (opts) => {
     const { user } = opts.ctx;
@@ -78,15 +75,8 @@ export const accountRouter = router({
 
       const { user } = ctx;
 
-      // Validate key format: avatars/{userId}/{uuid}.webp
-      const keyParts = input.key.split('/');
-      if (
-        keyParts.length !== 3 ||
-        keyParts[0] !== 'avatars' ||
-        keyParts[1] !== user.id ||
-        !keyParts[2].endsWith('.webp') ||
-        !UUID_PATTERN.test(keyParts[2].replace('.webp', ''))
-      ) {
+      // Validate key belongs to this user
+      if (!input.key.startsWith(`avatars/${user.id}/`)) {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message: 'Invalid avatar key',

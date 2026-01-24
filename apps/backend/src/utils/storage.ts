@@ -11,9 +11,13 @@ export const isStorageConfigured = (): boolean => {
   );
 };
 
-// Returns the key prefix for avatar storage (e.g., "avatars/" or "" for dedicated subdomain)
+// Returns the key prefix for avatar storage
+// Set AWS_S3_AVATARS_KEY_PREFIX=none for no prefix (dedicated subdomain like avatars.example.com)
+// Defaults to "avatars/" for self-hosters using a shared bucket
 export const getAvatarKeyPrefix = (): string => {
-  return process.env.AWS_S3_AVATARS_KEY_PREFIX ?? 'avatars/';
+  const prefix = process.env.AWS_S3_AVATARS_KEY_PREFIX;
+  if (prefix === 'none') return '';
+  return prefix ?? 'avatars/';
 };
 
 // Cached S3 client singleton

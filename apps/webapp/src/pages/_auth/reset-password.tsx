@@ -1,5 +1,5 @@
 import { Stack, Heading, Input, Button, Text, Link, Field } from '@chakra-ui/react';
-import { createFileRoute, Link as RouterLink, useNavigate, Navigate } from '@tanstack/react-router';
+import { createFileRoute, Link as RouterLink, useNavigate, redirect } from '@tanstack/react-router';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { motion } from 'motion/react';
 import { useState } from 'react';
@@ -15,6 +15,11 @@ const resetPasswordSchema = z.object({
 
 export const Route = createFileRoute('/_auth/reset-password')({
   validateSearch: zodValidator(resetPasswordSchema),
+  beforeLoad: ({ search }) => {
+    if (!search.token) {
+      throw redirect({ to: '/', replace: true });
+    }
+  },
   component: Page,
 });
 
@@ -23,10 +28,6 @@ function Page() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [password, setPassword] = useState('');
-
-  if (!token) {
-    return <Navigate to="/login" />;
-  }
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();

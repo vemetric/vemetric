@@ -8,7 +8,13 @@ import { requireAnonymous } from '@/utils/auth-guards';
 import { getLandingPageUrl } from '@/utils/url';
 
 export const Route = createFileRoute('/_auth')({
-  beforeLoad: requireAnonymous,
+  beforeLoad: (ctx) => {
+    if (ctx.matches.some((match) => match.routeId === '/_auth/reset-password')) {
+      // Allow logged-in users to access reset-password page
+      return;
+    }
+    return requireAnonymous();
+  },
   pendingComponent: SplashScreen,
   component: RouteComponent,
 });

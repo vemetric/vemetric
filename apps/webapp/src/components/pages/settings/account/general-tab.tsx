@@ -94,26 +94,28 @@ const ProfileSection = ({ name: initialName, onUpdate }: ProfileSectionProps) =>
           <Text fontWeight="semibold">General Settings</Text>
         </Flex>
       </Card.Header>
-      <Card.Body p={4} pb={3} gap={6}>
-        <AvatarSection onUpdate={onUpdate} />
-        <Stack gap="4" as="form" onSubmit={handleNameUpdate}>
-          <Field.Root>
-            <Field.Label>Name</Field.Label>
-            <InputGroup startElement={<TbUser />} width="full">
-              <Input
-                placeholder="Your name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                disabled={isNameLoading}
-              />
-            </InputGroup>
-          </Field.Root>
-          <Flex justifyContent="flex-end">
-            <Button type="submit" size="sm" loading={isNameLoading} disabled={name === initialName}>
-              Update Name
-            </Button>
-          </Flex>
-        </Stack>
+      <Card.Body p={4} pt={6} pb={3} gap={5}>
+        <Flex gap="8" flexDirection="row">
+          <AvatarSection onUpdate={onUpdate} />
+          <Stack gap="4" as="form" onSubmit={handleNameUpdate} flexGrow="1">
+            <Field.Root>
+              <Field.Label>Name</Field.Label>
+              <InputGroup startElement={<TbUser />} width="full">
+                <Input
+                  placeholder="Your name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={isNameLoading}
+                />
+              </InputGroup>
+            </Field.Root>
+            <Flex justifyContent="flex-end">
+              <Button type="submit" size="sm" loading={isNameLoading} disabled={name === initialName}>
+                Update Name
+              </Button>
+            </Flex>
+          </Stack>
+        </Flex>
       </Card.Body>
     </Card.Root>
   );

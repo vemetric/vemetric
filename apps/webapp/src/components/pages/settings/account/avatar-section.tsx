@@ -1,9 +1,10 @@
-import { Button, Flex, Stack, Text } from '@chakra-ui/react';
+import { Box, Flex, IconButton } from '@chakra-ui/react';
 import { useRef, useState } from 'react';
-import { TbCamera, TbTrash } from 'react-icons/tb';
+import { TbCamera, TbPencil, TbTrash } from 'react-icons/tb';
 import { AccountAvatar } from '@/components/account-avatar';
 import { AvatarCropper } from '@/components/avatar-cropper';
 import { toaster } from '@/components/ui/toaster';
+import { Tooltip } from '@/components/ui/tooltip';
 import { trpc } from '@/utils/trpc';
 
 export interface AvatarSectionProps {
@@ -92,46 +93,57 @@ export const AvatarSection = ({ onUpdate }: AvatarSectionProps) => {
 
   return (
     <>
-      <Flex align="center" gap={4}>
-        <AccountAvatar />
-
-        {avatarUploadsEnabled ? (
-          <Stack gap={2}>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handleFileSelect}
-              style={{ display: 'none' }}
-            />
-            <Button
-              variant="outline"
-              size="sm"
+      <Flex mt="2">
+        <Box pos="relative">
+          <AccountAvatar boxSize="56px" fontSize="xl" />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleFileSelect}
+            style={{ display: 'none' }}
+          />
+          <Tooltip
+            content={
+              avatarUploadsEnabled ? `${image ? 'Change Avatar' : 'Upload Avatar'}` : 'Avatar uploads are not enabled.'
+            }
+          >
+            <IconButton
+              pos="absolute"
+              size="xs"
+              boxSize="24px"
+              minW="0"
+              top="-6px"
+              right="-8px"
+              rounded="full"
+              variant="surface"
+              disabled={!avatarUploadsEnabled || isUploading || isDeleting}
               onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading || isDeleting}
             >
-              <TbCamera />
-              Change Avatar
-            </Button>
-            {image && (
-              <Button
-                variant="ghost"
-                size="sm"
+              {image ? <TbPencil /> : <TbCamera />}
+            </IconButton>
+          </Tooltip>
+          {image && (
+            <Tooltip content="Remove Avatar">
+              <IconButton
+                pos="absolute"
+                size="xs"
+                boxSize="24px"
+                minW="0"
+                top="-6px"
+                left="-8px"
+                rounded="full"
+                variant="surface"
                 colorPalette="red"
-                onClick={handleDeleteAvatar}
-                disabled={isUploading}
+                disabled={!avatarUploadsEnabled || isUploading}
                 loading={isDeleting}
+                onClick={handleDeleteAvatar}
               >
                 <TbTrash />
-                Remove
-              </Button>
-            )}
-          </Stack>
-        ) : (
-          <Text fontSize="sm" color="fg.muted">
-            Avatar uploads are not enabled.
-          </Text>
-        )}
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
       </Flex>
 
       {selectedImage && (

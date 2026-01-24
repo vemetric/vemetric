@@ -22,7 +22,7 @@ function BraveLogo() {
       <g>
         <path
           fill="none"
-          stroke="#000"
+          stroke="currentColor"
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeWidth="12px"
@@ -33,7 +33,7 @@ function BraveLogo() {
 
       <path
         fill="none"
-        stroke="#000"
+        stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="12px"

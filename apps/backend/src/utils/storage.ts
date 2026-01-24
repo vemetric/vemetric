@@ -5,19 +5,15 @@ export const isStorageConfigured = (): boolean => {
   return !!(
     process.env.AWS_ACCESS_KEY_ID &&
     process.env.AWS_SECRET_ACCESS_KEY &&
+    process.env.AWS_S3_ENDPOINT &&
     process.env.AWS_S3_AVATARS_BUCKET &&
-    process.env.AWS_S3_AVATARS_ENDPOINT &&
     process.env.AWS_S3_AVATARS_PUBLIC_URL
   );
 };
 
-// Returns the key prefix for avatar storage
-// Set AWS_S3_AVATARS_KEY_PREFIX=none for no prefix (dedicated subdomain like avatars.example.com)
-// Defaults to "avatars/" for self-hosters using a shared bucket
+// Returns the key prefix for avatar storage (e.g., "avatars/" or "" for dedicated subdomain)
 export const getAvatarKeyPrefix = (): string => {
-  const prefix = process.env.AWS_S3_AVATARS_KEY_PREFIX;
-  if (prefix === 'none') return '';
-  return prefix ?? 'avatars/';
+  return process.env.AWS_S3_AVATARS_KEY_PREFIX ?? 'avatars/';
 };
 
 // Cached S3 client singleton
@@ -31,7 +27,7 @@ const getS3Client = (): S3Client => {
   if (!s3Client) {
     s3Client = new S3Client({
       region: process.env.AWS_S3_AVATARS_REGION || 'auto',
-      endpoint: process.env.AWS_S3_AVATARS_ENDPOINT,
+      endpoint: process.env.AWS_S3_ENDPOINT,
       credentials: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
@@ -69,7 +65,7 @@ export const storage = {
       return `${process.env.AWS_S3_AVATARS_PUBLIC_URL}/${key}`;
     }
     // Default R2 public URL format
-    return `https://${process.env.AWS_S3_AVATARS_BUCKET}.${process.env.AWS_S3_AVATARS_ENDPOINT?.replace('https://', '')}/${key}`;
+    return `https://${process.env.AWS_S3_AVATARS_BUCKET}.${process.env.AWS_S3_ENDPOINT?.replace('https://', '')}/${key}`;
   },
 
   extractKeyFromUrl(url: string): string | null {

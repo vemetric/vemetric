@@ -1,8 +1,12 @@
 import { TRPCError } from '@trpc/server';
 import { dbAuthUser } from 'database';
+import { logger } from '@vemetric/logger';
 import { z } from 'zod';
 import { isStorageConfigured, storage } from '../utils/storage';
 import { loggedInProcedure, router } from '../utils/trpc';
+
+// UUID v4 pattern for key validation
+const UUID_PATTERN = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 
 export const accountRouter = router({
   settings: loggedInProcedure.query(async (opts) => {
@@ -38,7 +42,8 @@ export const accountRouter = router({
   getAvatarUploadUrl: loggedInProcedure
     .input(
       z.object({
-        contentType: z.enum(['image/jpeg', 'image/png', 'image/webp']),
+        // Only accept webp since frontend always converts to webp
+        contentType: z.literal('image/webp'),
         fileSize: z.number().max(5 * 1024 * 1024), // 5MB max
       }),
     )
@@ -73,8 +78,15 @@ export const accountRouter = router({
 
       const { user } = ctx;
 
-      // Validate key belongs to this user
-      if (!input.key.startsWith(`avatars/${user.id}/`)) {
+      // Validate key format: avatars/{userId}/{uuid}.webp
+      const keyParts = input.key.split('/');
+      if (
+        keyParts.length !== 3 ||
+        keyParts[0] !== 'avatars' ||
+        keyParts[1] !== user.id ||
+        !keyParts[2].endsWith('.webp') ||
+        !UUID_PATTERN.test(keyParts[2].replace('.webp', ''))
+      ) {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message: 'Invalid avatar key',
@@ -87,8 +99,8 @@ export const accountRouter = router({
       if (user.image) {
         const oldKey = storage.extractKeyFromUrl(user.image);
         if (oldKey) {
-          await storage.delete(oldKey).catch(() => {
-            // Log but don't fail if old avatar deletion fails
+          await storage.delete(oldKey).catch((error) => {
+            logger.warn({ error, oldKey, userId: user.id }, 'Failed to delete old avatar');
           });
         }
       }
@@ -104,7 +116,9 @@ export const accountRouter = router({
       if (isStorageConfigured()) {
         const key = storage.extractKeyFromUrl(user.image);
         if (key) {
-          await storage.delete(key).catch(() => {});
+          await storage.delete(key).catch((error) => {
+            logger.warn({ error, key, userId: user.id }, 'Failed to delete avatar from storage');
+          });
         }
       }
       await dbAuthUser.update(user.id, { image: null });

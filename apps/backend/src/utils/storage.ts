@@ -1,23 +1,31 @@
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { logger } from '@vemetric/logger';
 
 export const isStorageConfigured = (): boolean => {
   return !!(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY && process.env.AWS_S3_BUCKET);
 };
 
-const getS3Client = () => {
+// Cached S3 client singleton
+let s3Client: S3Client | null = null;
+
+const getS3Client = (): S3Client => {
   if (!isStorageConfigured()) {
     throw new Error('Storage is not configured');
   }
 
-  return new S3Client({
-    region: process.env.AWS_S3_REGION || 'auto',
-    endpoint: process.env.AWS_S3_ENDPOINT,
-    credentials: {
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-    },
-  });
+  if (!s3Client) {
+    s3Client = new S3Client({
+      region: process.env.AWS_S3_REGION || 'auto',
+      endpoint: process.env.AWS_S3_ENDPOINT,
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+      },
+    });
+  }
+
+  return s3Client;
 };
 
 export const storage = {
@@ -46,12 +54,23 @@ export const storage = {
     if (process.env.AWS_S3_PUBLIC_URL) {
       return `${process.env.AWS_S3_PUBLIC_URL}/${key}`;
     }
-    // Default R2 public URL format
-    return `https://${process.env.AWS_S3_BUCKET}.${process.env.AWS_S3_ENDPOINT?.replace('https://', '')}/${key}`;
+
+    // Require AWS_S3_PUBLIC_URL for production use
+    // Fallback for development only
+    const endpoint = process.env.AWS_S3_ENDPOINT || '';
+    const bucket = process.env.AWS_S3_BUCKET || '';
+    const cleanEndpoint = endpoint.replace(/^https?:\/\//, '');
+
+    if (!cleanEndpoint || !bucket) {
+      logger.warn('AWS_S3_PUBLIC_URL not configured, using constructed URL');
+    }
+
+    return `https://${bucket}.${cleanEndpoint}/${key}`;
   },
 
   extractKeyFromUrl(url: string): string | null {
-    const match = url.match(/avatars\/[^?]+/);
+    // Match avatar keys with UUID pattern: avatars/{userId}/{uuid}.webp
+    const match = url.match(/avatars\/[a-zA-Z0-9_-]+\/[a-f0-9-]+\.webp/);
     return match ? match[0] : null;
   },
 };

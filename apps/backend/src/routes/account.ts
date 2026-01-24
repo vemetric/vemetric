@@ -1,7 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { dbAuthUser } from 'database';
-import { logger } from '@vemetric/logger';
 import { z } from 'zod';
+import { logger } from '../utils/logger';
 import { isStorageConfigured, storage } from '../utils/storage';
 import { loggedInProcedure, router } from '../utils/trpc';
 
@@ -99,8 +99,8 @@ export const accountRouter = router({
       if (user.image) {
         const oldKey = storage.extractKeyFromUrl(user.image);
         if (oldKey) {
-          await storage.delete(oldKey).catch((error) => {
-            logger.warn({ error, oldKey, userId: user.id }, 'Failed to delete old avatar');
+          await storage.delete(oldKey).catch((err) => {
+            logger.warn({ err, oldKey, userId: user.id }, 'Failed to delete old avatar');
           });
         }
       }
@@ -116,8 +116,8 @@ export const accountRouter = router({
       if (isStorageConfigured()) {
         const key = storage.extractKeyFromUrl(user.image);
         if (key) {
-          await storage.delete(key).catch((error) => {
-            logger.warn({ error, key, userId: user.id }, 'Failed to delete avatar from storage');
+          await storage.delete(key).catch((err) => {
+            logger.warn({ err, key, userId: user.id }, 'Failed to delete avatar from storage');
           });
         }
       }

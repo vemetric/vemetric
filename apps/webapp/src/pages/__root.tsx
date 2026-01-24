@@ -71,12 +71,13 @@ function RootLayout() {
       vemetric.identify({
         identifier: session.user.id,
         displayName: session.user.name,
+        avatarUrl: session.user.image ?? undefined,
       });
     } else if (session === null && identifiedUserIdRef.current !== null) {
       identifiedUserIdRef.current = null;
       vemetric.resetUser();
     }
-  }, [isSessionLoading, session, session?.user?.id, session?.user?.name]);
+  }, [isSessionLoading, session, session?.user?.id, session?.user?.name, session?.user?.image]);
 
   useEffect(() => {
     if (changeEmail) {

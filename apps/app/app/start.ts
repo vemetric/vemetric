@@ -1,5 +1,5 @@
 // TanStack Start configuration
-// This file is referenced by the generated routeTree but may not need actual config
+// This file is referenced by the generated routeTree
 export const startInstance = {
   getOptions: () => ({}),
 };

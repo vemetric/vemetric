@@ -31,7 +31,10 @@ Migrate from the current architecture (Vite SPA + Hono backend as separate servi
 - [ ] Check Better Auth integration patterns for TanStack Start
 - [ ] Verify tRPC adapter availability for TanStack Start/Vinxi
 - [ ] Review Chakra UI v3 SSR compatibility (emotion, color mode)
-- [ ] Check VitePWA compatibility or alternative for TanStack Start
+- [ ] **PWA Support**: Research VitePWA integration with TanStack Start/Vinxi
+  - VitePWA should work since TanStack Start uses Vite under the hood
+  - Ensure service worker registration works with SSR
+  - Verify manifest and icons are properly served
 
 ### 0.2 Local Environment Setup
 - [ ] Create feature branch for migration
@@ -196,22 +199,22 @@ export const authClient = createAuthClient({
 Create catch-all API routes in TanStack Start:
 
 ```typescript
-// app/routes/api/trpc/$.tsx
+// app/routes/trpc/$.tsx
 import { createAPIFileRoute } from '@tanstack/react-start/api';
 import { handleTRPCRequest } from '~/server/trpc';
 
-export const APIRoute = createAPIFileRoute('/api/trpc/$')({
+export const APIRoute = createAPIFileRoute('/trpc/$')({
   GET: ({ request }) => handleTRPCRequest(request),
   POST: ({ request }) => handleTRPCRequest(request),
 });
 ```
 
 ```typescript
-// app/routes/api/auth/$.tsx
+// app/routes/auth/$.tsx
 import { createAPIFileRoute } from '@tanstack/react-start/api';
 import { authHandler } from '~/server/auth';
 
-export const APIRoute = createAPIFileRoute('/api/auth/$')({
+export const APIRoute = createAPIFileRoute('/auth/$')({
   GET: ({ request }) => authHandler(request),
   POST: ({ request }) => authHandler(request),
 });
@@ -311,7 +314,7 @@ import type { AppRouter } from '~/server/trpc/router';
 export const trpc = createTRPCReact<AppRouter>();
 
 // Client setup - URL changes to relative
-const url = '/api/trpc';
+const url = '/trpc';
 ```
 
 ### 3.6 Migrate Static Assets
@@ -335,6 +338,68 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 }
 ```
+
+### 3.8 SSR Routes Configuration
+
+**Routes with SSR enabled (for SEO):**
+
+```typescript
+// app/routes/public/$domain.tsx
+import { createFileRoute } from '@tanstack/react-router';
+import { createServerFn } from '@tanstack/react-start';
+
+// Server function for SSR data loading
+const getPublicDashboardData = createServerFn({ method: 'GET' })
+  .validator((input: { domain: string }) => input)
+  .handler(async ({ data }) => {
+    // Fetch public dashboard data on server
+    return await fetchPublicDashboard(data.domain);
+  });
+
+export const Route = createFileRoute('/public/$domain')({
+  // Enable SSR for this route
+  loader: async ({ params }) => {
+    return getPublicDashboardData({ data: { domain: params.domain } });
+  },
+  // Meta tags for SEO
+  meta: ({ loaderData }) => [
+    { title: `${loaderData.projectName} Analytics - Vemetric` },
+    { name: 'description', content: `Public analytics dashboard for ${loaderData.domain}` },
+  ],
+  component: PublicDashboard,
+});
+```
+
+```typescript
+// app/routes/_auth/login.tsx
+export const Route = createFileRoute('/_auth/login')({
+  // SSR for SEO
+  meta: () => [
+    { title: 'Login - Vemetric' },
+    { name: 'description', content: 'Sign in to your Vemetric analytics dashboard' },
+  ],
+  component: LoginPage,
+});
+```
+
+```typescript
+// app/routes/_auth/signup.tsx
+export const Route = createFileRoute('/_auth/signup')({
+  // SSR for SEO
+  meta: () => [
+    { title: 'Sign Up - Vemetric' },
+    { name: 'description', content: 'Create your free Vemetric analytics account' },
+  ],
+  component: SignupPage,
+});
+```
+
+**Client-only routes (authenticated, no SSR needed):**
+
+All routes under `/_layout/` remain client-side only since they:
+- Require authentication (no SEO benefit)
+- Fetch data via tRPC after client hydration
+- Show loading states during data fetching
 
 ---
 
@@ -386,7 +451,7 @@ AXIOM_TOKEN=
 
 # App Config (new/modified)
 DOMAIN=vemetric.com
-PORT=4003
+PORT=4000
 NODE_ENV=production
 
 # Frontend-only (from webapp, now server-accessible too)
@@ -439,6 +504,56 @@ export default defineConfig({
 }
 ```
 
+### 4.4 PWA Configuration
+
+**VitePWA integration with TanStack Start:**
+
+```typescript
+// app.config.ts
+import { defineConfig } from '@tanstack/react-start/config';
+import { VitePWA } from 'vite-plugin-pwa';
+
+export default defineConfig({
+  vite: {
+    plugins: [
+      VitePWA({
+        registerType: 'autoUpdate',
+        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+        manifest: {
+          name: 'Vemetric',
+          short_name: 'Vemetric',
+          description: 'Web and Product Analytics',
+          theme_color: '#7c3aed',
+          background_color: '#ffffff',
+          display: 'standalone',
+          icons: [
+            { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+            { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png' },
+            { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          ],
+        },
+        workbox: {
+          // Don't cache API routes
+          navigateFallbackDenylist: [/^\/trpc/, /^\/auth/, /^\/paddle/, /^\/email/],
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/hub\.vemetric\.com\/.*/i,
+              handler: 'NetworkOnly', // Don't cache analytics calls
+            },
+          ],
+        },
+      }),
+    ],
+  },
+});
+```
+
+**Key PWA considerations:**
+- Service worker must not intercept tRPC/auth API calls
+- Existing PWA installations will auto-update with new service worker
+- Keep same manifest name/icons for continuity
+- Copy existing PWA assets from `webapp/public/` to `app/public/`
+
 ---
 
 ## Phase 5: Development Environment
@@ -448,10 +563,10 @@ export default defineConfig({
 **Modify `apps/dev-proxy/src/index.ts`:**
 
 ```typescript
-// Remove backend proxy, update app proxy
+// Remove backend proxy, app stays on same port
 const routes: Record<string, string> = {
   'vemetric.localhost': 'http://localhost:4001',      // Landing page
-  'app.vemetric.localhost': 'http://localhost:4003',  // TanStack Start app (was 4000)
+  'app.vemetric.localhost': 'http://localhost:4000',  // TanStack Start app (same port as before)
   // 'backend.vemetric.localhost' - REMOVED
   'hub.vemetric.localhost': 'http://localhost:4004',  // Hub (unchanged)
   'bullboard.vemetric.localhost': 'http://localhost:4121', // Bullboard
@@ -521,8 +636,8 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/packages ./packages
 
 ENV NODE_ENV=production
-ENV PORT=4003
-EXPOSE 4003
+ENV PORT=4000
+EXPOSE 4000
 
 CMD ["bun", "run", ".output/server/index.mjs"]
 ```
@@ -536,7 +651,7 @@ services:
       context: .
       dockerfile: apps/app/Dockerfile
     ports:
-      - "4003:4003"
+      - "4000:4000"
     environment:
       - DATABASE_URL
       - REDIS_HOST
@@ -577,13 +692,18 @@ services:
 *.js, *.css        Cache: 1 year (with hash in filename)
 
 # API routes - no cache
-/api/*             Cache: bypass
 /trpc/*            Cache: bypass
 /auth/*            Cache: bypass
+/paddle/*          Cache: bypass
+/email/*           Cache: bypass
 
 # HTML pages - short cache or bypass
 /                  Cache: bypass or short TTL
 /*                 Cache: bypass (for SSR pages)
+
+# PWA assets - cache with revalidation
+/manifest.webmanifest    Cache: 1 day
+/sw.js                   Cache: bypass (service worker must always be fresh)
 ```
 
 ### 7.3 Cloudflare Page Rules / Redirects
@@ -601,7 +721,7 @@ Or simply remove and let it 404 (cleaner).
 1. Create new service in Coolify
 2. Source: Git repository, `apps/app` directory
 3. Build: Dockerfile (`apps/app/Dockerfile`)
-4. Port: 4003
+4. Port: 4000
 5. Domain: `app.vemetric.com`
 6. Environment variables: Copy from backend + add new ones
 
@@ -612,7 +732,7 @@ labels:
   - "traefik.http.routers.app.rule=Host(`app.vemetric.com`)"
   - "traefik.http.routers.app.entrypoints=websecure"
   - "traefik.http.routers.app.tls.certresolver=letsencrypt"
-  - "traefik.http.services.app.loadbalancer.server.port=4003"
+  - "traefik.http.services.app.loadbalancer.server.port=4000"
 ```
 
 ### 7.5 Coolify Cleanup
@@ -670,6 +790,14 @@ labels:
 - [ ] Firefox
 - [ ] Safari
 - [ ] Mobile browsers
+
+### 8.4 PWA Testing
+- [ ] Service worker registers successfully
+- [ ] App can be installed as PWA
+- [ ] Offline fallback page works
+- [ ] PWA icon and name display correctly
+- [ ] Existing PWA installations update properly
+- [ ] API calls (tRPC, auth) are NOT cached by service worker
 
 ---
 
@@ -796,19 +924,21 @@ labels:
 
 ---
 
-## Open Questions / Decisions Needed
+## Architectural Decisions (Confirmed)
 
-1. **PWA Support**: Keep VitePWA or drop PWA functionality? TanStack Start has different PWA patterns.
+1. **PWA Support**: ✅ Keep PWA functionality - users have installed it as PWA. Integrate VitePWA or equivalent in TanStack Start.
 
-2. **SSR Strategy**: Which routes should be SSR vs client-only?
-   - Candidates for SSR: `/public/$domain` (SEO), `/login`, `/signup` (SEO)
-   - Client-only: Dashboard routes (authenticated, no SEO benefit)
+2. **SSR Strategy**:
+   - **SSR routes**: `/public/$domain`, `/_auth/login`, `/_auth/signup` (SEO benefits)
+   - **Client-only**: All authenticated dashboard routes (no SEO benefit)
 
-3. **Port Number**: Keep 4003 (current backend) or use different port?
+3. **Port Number**: ✅ Use port `4000` (previously webapp port)
 
-4. **API Path**: Use `/api/trpc` or `/trpc` for tRPC endpoint?
+4. **API Path**: ✅ Mount tRPC at `/trpc` (not `/api/trpc`)
 
-5. **Monitoring**: Keep same Sentry project or create new one for unified app?
+5. **Monitoring**: ✅ Keep same Sentry project for unified app
+
+6. **tRPC vs Server Functions**: ✅ Keep tRPC for now - migrate to server functions later if desired (reduces migration risk)
 
 ---
 
@@ -856,6 +986,6 @@ apps/webapp/tsr.config.json         → (not needed, integrated in app.config.ts
 | `SENTRY_DSN` | backend | Optional |
 | `AXIOM_*` | backend | Optional |
 | `DOMAIN` | common | Yes |
-| `PORT` | new | Yes (default: 4003) |
+| `PORT` | new | Yes (default: 4000) |
 | `VITE_PADDLE_*` | webapp | Yes (client-side) |
 | `VITE_GOOGLE_MAPS_*` | webapp | Optional |

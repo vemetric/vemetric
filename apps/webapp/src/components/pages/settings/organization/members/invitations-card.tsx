@@ -9,6 +9,7 @@ import { trpc } from '@/utils/trpc';
 import { getAppUrl } from '@/utils/url';
 import { CreateInvitationMenu } from './create-invitation-menu';
 import { MemberBadge } from './member-badge';
+import { ProjectAccessBadge } from './project-access-badge';
 import { RevokeInvitationDialog } from './revoke-invitation-dialog';
 
 interface Props {
@@ -109,7 +110,10 @@ export const InvitationsCard = (props: Props) => {
                         </Button>
                       </Table.Cell>
                       <Table.Cell>
-                        <MemberBadge role={invitation.role} />
+                        <Flex direction="column" gap={1} align="flex-start">
+                          <MemberBadge role={invitation.role} />
+                          <ProjectAccessBadge projectAccess={invitation.projectAccess} />
+                        </Flex>
                       </Table.Cell>
                       <Table.Cell>
                         {expired ? (

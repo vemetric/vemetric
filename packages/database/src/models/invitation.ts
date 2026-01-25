@@ -42,7 +42,7 @@ export const dbInvitation = {
       },
     }),
 
-  listByOrganization: (organizationId: string) =>
+  listByOrganizationWithProjectAccess: (organizationId: string) =>
     prismaClient.invitation.findMany({
       where: { organizationId },
       include: {
@@ -51,6 +51,11 @@ export const dbInvitation = {
             id: true,
             name: true,
             email: true,
+          },
+        },
+        projectAccess: {
+          select: {
+            projectId: true,
           },
         },
       },

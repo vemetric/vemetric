@@ -1,5 +1,6 @@
-import { Button, Text } from '@chakra-ui/react';
+import { Box, Button, Text } from '@chakra-ui/react';
 import { INVITATION_EXPIRY_MS } from '@vemetric/common/organization';
+import { useState } from 'react';
 import {
   DialogRoot,
   DialogContent,
@@ -10,10 +11,12 @@ import {
   DialogCloseTrigger,
 } from '@/components/ui/dialog';
 import { toaster } from '@/components/ui/toaster';
+import { useCurrentOrganization } from '@/hooks/use-current-organization';
 import { trpc } from '@/utils/trpc';
 import { getAppUrl } from '@/utils/url';
 import { MemberBadge } from './member-badge';
 import { MemberRoleAlert } from './member-role-alert';
+import { ProjectAccessSelector } from './project-access-selector';
 
 interface Props {
   organizationId: string;
@@ -24,6 +27,10 @@ interface Props {
 
 export const CreateInvitationDialog = (props: Props) => {
   const { organizationId, role, onClose, onSuccess } = props;
+  const { currentOrgaProjects: projects } = useCurrentOrganization();
+
+  const [hasRestrictions, setHasRestrictions] = useState(false);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
 
   const { mutate: createInvitation, isPending } = trpc.organization.createInvitation.useMutation({
     onSuccess: async (data) => {
@@ -44,9 +51,25 @@ export const CreateInvitationDialog = (props: Props) => {
     },
   });
 
+  const handleRestrictionsChange = (enabled: boolean) => {
+    setHasRestrictions(enabled);
+    if (!enabled) {
+      setSelectedProjectIds([]);
+    }
+  };
+
+  const handleCreate = () => {
+    // For MEMBER with restrictions, pass the selected project IDs
+    // For ADMIN or MEMBER without restrictions, don't pass projectIds (full access)
+    const projectIds = role === 'MEMBER' && hasRestrictions ? selectedProjectIds : [];
+    createInvitation({ organizationId, role: role!, projectIds, hasRestrictions });
+  };
+
   if (!role) {
     return null;
   }
+
+  const showProjectSelection = role === 'MEMBER' && projects.length > 0;
 
   return (
     <DialogRoot open onOpenChange={onClose}>
@@ -60,18 +83,26 @@ export const CreateInvitationDialog = (props: Props) => {
             and expires in {INVITATION_EXPIRY_MS / (1000 * 60 * 60 * 24)} days.
           </Text>
           <MemberRoleAlert role={role} />
+
+          {showProjectSelection && (
+            <Box mt={4} pt={4} borderTop="1px solid" borderColor="border.muted">
+              <ProjectAccessSelector
+                projects={projects}
+                selectedProjectIds={selectedProjectIds}
+                onSelectionChange={setSelectedProjectIds}
+                hasRestrictions={hasRestrictions}
+                onRestrictionsChange={handleRestrictionsChange}
+                fullAccessText="The invited user will have access to all projects in the organization."
+                restrictTooltip="When enabled, the invited user will only have access to the selected projects. Newly created projects won't be automatically added."
+              />
+            </Box>
+          )}
         </DialogBody>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button
-            colorPalette="purple"
-            loading={isPending}
-            onClick={() => {
-              createInvitation({ organizationId, role });
-            }}
-          >
+          <Button colorPalette="purple" loading={isPending} onClick={handleCreate}>
             Create & Copy Link
           </Button>
         </DialogFooter>

@@ -82,11 +82,12 @@ model Organization {
   pricingOnboarded Boolean  @default(false)
   customPlanEvents Int? // Custom event limit override (null = use regular billing)
 
-  users             UserOrganization[]
-  project           Project[]
-  billingInfo       BillingInfo?
-  userProjectAccess UserProjectAccess[]
-  invitations       Invitation[]
+  users                   UserOrganization[]
+  project                 Project[]
+  billingInfo             BillingInfo?
+  userProjectAccess       UserProjectAccess[]
+  invitations             Invitation[]
+  invitationProjectAccess InvitationProjectAccess[]
 
   @@map("organization")
 }
@@ -98,10 +99,25 @@ model Invitation {
   createdById    String
   createdAt      DateTime         @default(now())
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  createdBy    User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  organization  Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy     User                      @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  projectAccess InvitationProjectAccess[]
 
   @@map("invitation")
+}
+
+model InvitationProjectAccess {
+  invitationToken String
+  projectId       String
+  organizationId  String
+
+  invitation   Invitation   @relation(fields: [invitationToken], references: [token], onDelete: Cascade)
+  project      Project      @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@id([invitationToken, projectId])
+  @@index([invitationToken, organizationId])
+  @@map("invitation_project_access")
 }
 
 model BillingInfo {
@@ -133,8 +149,9 @@ model UserOrganization {
   role           OrganizationRole
   createdAt      DateTime         @default(now())
 
-  user         User         @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user              User                @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  userProjectAccess UserProjectAccess[]
 
   @@id([userId, organizationId])
   @@map("user_organization")
@@ -153,11 +170,12 @@ model Project {
   excludedIps       String?   @db.Text
   excludedCountries String?   @db.Text
 
-  organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  dripSequences     EmailDripSequence[]
-  emailDripHistory  EmailDripHistory[]
-  funnels           Funnel[]
-  userProjectAccess UserProjectAccess[]
+  organization            Organization              @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  dripSequences           EmailDripSequence[]
+  emailDripHistory        EmailDripHistory[]
+  funnels                 Funnel[]
+  userProjectAccess       UserProjectAccess[]
+  invitationProjectAccess InvitationProjectAccess[]
 
   @@unique([id, organizationId])
   @@map("project")
@@ -168,9 +186,10 @@ model UserProjectAccess {
   projectId      String
   organizationId String
 
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project      Project      @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Cascade)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project          Project          @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userOrganization UserOrganization @relation(fields: [userId, organizationId], references: [userId, organizationId], onDelete: Cascade)
 
   @@id([userId, projectId])
   @@index([userId, organizationId])

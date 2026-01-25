@@ -1,7 +1,9 @@
 import { formatClickhouseDate } from '@vemetric/common/date';
 import type { IFilterConfig } from '@vemetric/common/filters';
 import type { FunnelStep } from '@vemetric/common/funnel';
-import { escape } from 'sqlstring';
+import sqlstring from 'sqlstring';
+
+const { escape } = sqlstring;
 import { buildBrowserFilterQuery } from './browser-filter';
 import { buildDeviceFilterQuery } from './device-filter';
 import { buildEventFilterQuery } from './event-filter';

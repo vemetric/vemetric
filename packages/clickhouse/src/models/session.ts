@@ -3,7 +3,9 @@ import { formatClickhouseDate, getClickhouseDateNow } from '@vemetric/common/dat
 import type { IFilterConfig } from '@vemetric/common/filters';
 import { jsonStringify } from '@vemetric/common/json';
 import type { ISources } from '@vemetric/common/sources';
-import { escape } from 'sqlstring';
+import sqlstring from 'sqlstring';
+
+const { escape } = sqlstring;
 import { clickhouseClient, clickhouseInsert } from '../client';
 import { formatDateExpression } from '../utils/date';
 import { buildLocationFilterQueries } from '../utils/filters/location-filter';

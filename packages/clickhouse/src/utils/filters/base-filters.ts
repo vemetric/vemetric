@@ -1,5 +1,7 @@
 import type { IStringFilter, IListFilter } from '@vemetric/common/filters';
-import { escape } from 'sqlstring';
+import sqlstring from 'sqlstring';
+
+const { escape } = sqlstring;
 
 export const buildStringFilterQuery = (columnName: string, filter?: IStringFilter) => {
   if (!filter || filter.operator === 'any') {

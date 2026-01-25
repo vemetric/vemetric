@@ -3,7 +3,9 @@ import type { IFilterConfig, stringOperatorsSchema } from '@vemetric/common/filt
 import type { FunnelStep } from '@vemetric/common/funnel';
 import { jsonStringify } from '@vemetric/common/json';
 import type { IUserSortConfig } from '@vemetric/common/sort';
-import { escape } from 'sqlstring';
+import sqlstring from 'sqlstring';
+
+const { escape } = sqlstring;
 import type { z } from 'zod';
 import { clickhouseClient, clickhouseInsert } from '../client';
 import type { DeviceData } from './device';

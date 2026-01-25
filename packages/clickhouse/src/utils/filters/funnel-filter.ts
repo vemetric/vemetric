@@ -1,6 +1,8 @@
 import type { IFunnelFilter } from '@vemetric/common/filters';
 import type { FunnelStep } from '@vemetric/common/funnel';
-import { escape } from 'sqlstring';
+import sqlstring from 'sqlstring';
+
+const { escape } = sqlstring;
 import { buildFunnelStepConditions, buildWindowFunnelSubquery } from '../funnel';
 
 export const buildFunnelFilterQuery = (

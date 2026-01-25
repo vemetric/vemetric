@@ -173,7 +173,7 @@ async function processEmailSequenceStep(data: EmailDripQueueProps) {
     throw new Error(`No active sequence found for step: ${stepNumber}`);
   }
 
-  const unsubscribeLink = `https://backend.vemetric.com/email/unsubscribe?token=${createUnsubscribeToken(user.id)}`;
+  const unsubscribeLink = `https://app.vemetric.com/email/unsubscribe?token=${createUnsubscribeToken(user.id)}`;
   const context: SequenceContext = {
     project,
     user,

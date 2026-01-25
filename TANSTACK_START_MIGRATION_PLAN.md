@@ -1,5 +1,13 @@
 # TanStack Start Migration Plan
 
+## Remaining Work (Quick View)
+
+- Reserve `/api/*` for future public REST API (confirm routing + middleware structure)
+- Configure static asset handling details (cache headers, asset prefix verification in prod)
+- Review/adjust Docker compose + deployment envs for unified app service
+- Run full validation checklist (auth flows, tRPC, Paddle, email unsubscribe, PWA)
+- Remove deprecated `apps/webapp` + `apps/backend` after production cutover
+
 ## Executive Summary
 
 Migrate from the current architecture (Vite SPA + Hono backend as separate services) to a unified TanStack Start full-stack application. This consolidates `apps/webapp` and `apps/backend` into a single `apps/app` service.
@@ -27,11 +35,11 @@ Migrate from the current architecture (Vite SPA + Hono backend as separate servi
 ## Phase 0: Preparation & Research
 
 ### 0.1 Dependency Audit
-- [ ] Verify TanStack Start compatibility with current dependencies
-- [ ] Check Better Auth integration patterns for TanStack Start
-- [ ] Verify tRPC adapter availability for TanStack Start/Vinxi
-- [ ] Review Chakra UI v3 SSR compatibility (emotion, color mode)
-- [ ] **PWA Support**: Research VitePWA integration with TanStack Start/Vinxi
+- [x] Verify TanStack Start compatibility with current dependencies (RC 1.157.9 in use)
+- [x] Check Better Auth integration patterns for TanStack Start (client base URL adjusted for SSR)
+- [x] Verify tRPC adapter availability for TanStack Start (tRPC fetch handler in place)
+- [x] Review Chakra UI v3 SSR compatibility (provider moved into root layout)
+- [x] **PWA Support**: VitePWA integration confirmed with TanStack Start/Vite
   - VitePWA should work since TanStack Start uses Vite under the hood
   - Ensure service worker registration works with SSR
   - Verify manifest and icons are properly served
@@ -39,12 +47,12 @@ Migrate from the current architecture (Vite SPA + Hono backend as separate servi
 ### 0.2 Local Environment Setup
 - [ ] Create feature branch for migration
 - [ ] Document current environment variables for both apps
-- [ ] Backup current `apps/webapp` and `apps/backend` (git handles this)
+- [x] Backup current `apps/webapp` and `apps/backend` (git handles this)
 
 ### 0.3 TanStack Start Version Decision
-- [ ] Evaluate TanStack Start stable version vs latest
-- [ ] Review breaking changes and migration guides
-- [ ] Decision: Use `@tanstack/react-start` (currently in beta, but stable enough)
+- [x] Use latest RC: `@tanstack/react-start@1.157.9`
+- [x] Use bundled runtime (Nitro) via Vite plugin; no separate version pinning needed
+- [x] Review RC output paths and API router changes (using `.output/server/index.mjs`)
 
 ---
 
@@ -54,7 +62,7 @@ Migrate from the current architecture (Vite SPA + Hono backend as separate servi
 ```
 apps/
 ├── app/                    # NEW: TanStack Start application
-│   ├── app/
+│   ├── src/
 │   │   ├── routes/         # File-based routing (migrated from webapp/src/pages)
 │   │   ├── components/     # React components (from webapp/src/components)
 │   │   ├── utils/          # Utilities (merged from both)
@@ -66,10 +74,10 @@ apps/
 │   │   │   ├── auth/       # Better Auth setup (from backend/src/utils/auth.ts)
 │   │   │   └── utils/      # Server utilities
 │   │   ├── client.tsx      # Client entry
-│   │   ├── router.tsx      # Router configuration
-│   │   └── ssr.tsx         # SSR entry
+│   │   ├── server.ts       # Server entry
+│   │   └── router.tsx      # Router configuration
 │   ├── public/             # Static assets
-│   ├── app.config.ts       # TanStack Start config
+│   ├── vite.config.ts      # TanStack Start (Vite) config
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── Dockerfile
@@ -95,12 +103,11 @@ bun create @tanstack/start app
     "@tanstack/react-start": "^1.x",
     "@tanstack/react-router": "^1.x",
     "@tanstack/react-query": "^5.x",
-    "vinxi": "^0.5.x",
+    "vite": "^7.x",
     "@trpc/server": "^11.x",
     "@trpc/client": "^11.x",
     "@trpc/tanstack-react-query": "^11.x",
     "better-auth": "^1.x",
-    "hono": "^4.x",
     "superjson": "^2.x",
     "@chakra-ui/react": "^3.x"
   }
@@ -108,10 +115,11 @@ bun create @tanstack/start app
 ```
 
 ### 1.3 Configure Build System
-- [ ] Create `app.config.ts` with Vinxi configuration
-- [ ] Configure server runtime (bun)
-- [ ] Set up environment variable handling
+- [x] Create `vite.config.ts` with TanStack Start Vite plugin
+- [x] Configure server runtime (bun) with `.output/server/index.mjs`
+- [x] Set up environment variable handling (root env loaded via `loadEnv`)
 - [ ] Configure static asset handling
+- [x] Verify build output paths and asset URL prefix for RC 1.157.9 (`.output` + `dist/client`)
 
 ---
 
@@ -142,10 +150,10 @@ export async function handleTRPCRequest(request: Request) {
 **Decision: Use Option A** - Minimal changes to existing tRPC setup, proven pattern.
 
 ### 2.2 Migrate tRPC Router
-- [ ] Copy `apps/backend/src/routes/*.ts` → `apps/app/app/server/trpc/routes/`
-- [ ] Copy `apps/backend/src/utils/trpc.ts` → `apps/app/app/server/trpc/trpc.ts`
-- [ ] Update imports to use new paths
-- [ ] Adapt context creation for TanStack Start request handling
+- [x] Copy `apps/backend/src/routes/*.ts` → `apps/app/src/server/trpc/routes/`
+- [x] Copy `apps/backend/src/utils/trpc.ts` → `apps/app/src/server/trpc/trpc.ts`
+- [x] Update imports to use new paths
+- [x] Adapt context creation for TanStack Start request handling
 
 **Files to migrate:**
 ```
@@ -185,7 +193,7 @@ export const authHandler = auth.handler;
 import { createAuthClient } from 'better-auth/client';
 
 export const authClient = createAuthClient({
-  baseURL: '/auth', // Same origin now!
+  baseURL: '/auth', // Same origin now (use absolute base URL on SSR)
 });
 ```
 
@@ -200,30 +208,41 @@ Create catch-all API routes in TanStack Start:
 
 ```typescript
 // app/routes/trpc/$.tsx
-import { createAPIFileRoute } from '@tanstack/react-start/api';
+import { createFileRoute } from '@tanstack/react-router';
 import { handleTRPCRequest } from '~/server/trpc';
 
-export const APIRoute = createAPIFileRoute('/trpc/$')({
-  GET: ({ request }) => handleTRPCRequest(request),
-  POST: ({ request }) => handleTRPCRequest(request),
+export const Route = createFileRoute('/trpc/$')({
+  server: {
+    handlers: {
+      GET: ({ request }) => handleTRPCRequest(request),
+      POST: ({ request }) => handleTRPCRequest(request),
+    },
+  },
 });
 ```
 
 ```typescript
 // app/routes/auth/$.tsx
-import { createAPIFileRoute } from '@tanstack/react-start/api';
+import { createFileRoute } from '@tanstack/react-router';
 import { authHandler } from '~/server/auth';
 
-export const APIRoute = createAPIFileRoute('/auth/$')({
-  GET: ({ request }) => authHandler(request),
-  POST: ({ request }) => authHandler(request),
+export const Route = createFileRoute('/auth/$')({
+  server: {
+    handlers: {
+      GET: ({ request }) => authHandler(request),
+      POST: ({ request }) => authHandler(request),
+    },
+  },
 });
 ```
 
+**Status:** Implemented for `trpc` and `auth` routes.
+
 ### 2.5 Additional API Routes
-- [ ] Migrate `/email/unsubscribe` endpoint
-- [ ] Migrate Paddle webhook handler (`/paddle/webhook`)
-- [ ] Health check endpoint (`/up` or `/health`)
+- [x] Migrate `/email/unsubscribe` endpoint
+- [x] Migrate Paddle webhook handler (`/takeapaddle`)
+- [x] Health check endpoint (`/up`)
+- [ ] Reserve `/api/*` for future public REST API (avoid collisions with `/trpc` and `/auth`)
 
 ---
 
@@ -249,9 +268,9 @@ export const APIRoute = createAPIFileRoute('/auth/$')({
 - File-based routing structure is similar but with enhanced capabilities
 
 ### 3.2 Migrate Route Files
-- [ ] Copy all route files from `webapp/src/pages/` → `app/routes/`
-- [ ] Update imports (relative paths change)
-- [ ] Keep routes as client-side initially (add `'use client'` or configure in router)
+- [x] Copy all route files from `webapp/src/pages/` → `app/routes/`
+- [x] Update imports (relative paths change)
+- [x] Explicitly disable SSR on authenticated routes (`ssr: false`) to avoid accidental server rendering
 
 **Route migration checklist:**
 ```
@@ -277,15 +296,15 @@ webapp/src/pages/
 ```
 
 ### 3.3 Migrate Components
-- [ ] Copy `webapp/src/components/` → `app/components/`
-- [ ] Update all import paths
-- [ ] Verify Chakra UI components work in SSR context
+- [x] Copy `webapp/src/components/` → `app/components/`
+- [x] Update all import paths
+- [x] Verify Chakra UI components work in SSR context
 
 ### 3.4 Migrate Utilities & Hooks
-- [ ] Copy `webapp/src/utils/` → `app/utils/`
-- [ ] Copy `webapp/src/hooks/` → `app/hooks/`
-- [ ] Copy `webapp/src/stores/` → `app/stores/`
-- [ ] **Critical:** Update `url.ts` - backend URL no longer needed
+- [x] Copy `webapp/src/utils/` → `app/utils/`
+- [x] Copy `webapp/src/hooks/` → `app/hooks/`
+- [x] Copy `webapp/src/stores/` → `app/stores/`
+- [x] **Critical:** Update `url.ts` - backend URL no longer needed
 
 **URL utility changes:**
 ```typescript
@@ -318,9 +337,9 @@ const url = '/trpc';
 ```
 
 ### 3.6 Migrate Static Assets
-- [ ] Copy `webapp/public/` → `app/public/`
-- [ ] Update `index.html` equivalent in TanStack Start
-- [ ] Verify favicon, manifest, and PWA assets
+- [x] Copy `webapp/public/` → `app/public/`
+- [x] Update `index.html` equivalent in TanStack Start (root route handles `HeadContent/Scripts`)
+- [x] Verify favicon, manifest, and PWA assets
 
 ### 3.7 Chakra UI SSR Setup
 ```typescript
@@ -341,7 +360,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
 ### 3.8 SSR Routes Configuration
 
-**Routes with SSR enabled (for SEO):**
+**SSR meta tags only (no server data fetching):**
 
 ```typescript
 // app/routes/public/$domain.tsx
@@ -357,14 +376,10 @@ const getPublicDashboardData = createServerFn({ method: 'GET' })
   });
 
 export const Route = createFileRoute('/public/$domain')({
-  // Enable SSR for this route
-  loader: async ({ params }) => {
-    return getPublicDashboardData({ data: { domain: params.domain } });
-  },
-  // Meta tags for SEO
-  meta: ({ loaderData }) => [
-    { title: `${loaderData.projectName} Analytics - Vemetric` },
-    { name: 'description', content: `Public analytics dashboard for ${loaderData.domain}` },
+  // SSR meta only; keep content client-driven for now
+  meta: ({ params }) => [
+    { title: `${params.domain} Analytics - Vemetric` },
+    { name: 'description', content: `Public analytics dashboard for ${params.domain}` },
   ],
   component: PublicDashboard,
 });
@@ -373,7 +388,6 @@ export const Route = createFileRoute('/public/$domain')({
 ```typescript
 // app/routes/_auth/login.tsx
 export const Route = createFileRoute('/_auth/login')({
-  // SSR for SEO
   meta: () => [
     { title: 'Login - Vemetric' },
     { name: 'description', content: 'Sign in to your Vemetric analytics dashboard' },
@@ -385,7 +399,6 @@ export const Route = createFileRoute('/_auth/login')({
 ```typescript
 // app/routes/_auth/signup.tsx
 export const Route = createFileRoute('/_auth/signup')({
-  // SSR for SEO
   meta: () => [
     { title: 'Sign Up - Vemetric' },
     { name: 'description', content: 'Create your free Vemetric analytics account' },
@@ -400,6 +413,8 @@ All routes under `/_layout/` remain client-side only since they:
 - Require authentication (no SEO benefit)
 - Fetch data via tRPC after client hydration
 - Show loading states during data fetching
+
+**Status:** SSR disabled on `_layout`, `_auth`, `public/$domain` (per current request). Meta-only SSR can be re-enabled later.
 
 ---
 
@@ -462,32 +477,18 @@ VITE_GOOGLE_MAPS_API_KEY=
 
 ### 4.2 TanStack Start Configuration
 ```typescript
-// app.config.ts
-import { defineConfig } from '@tanstack/react-start/config';
-import viteTsConfigPaths from 'vite-tsconfig-paths';
+// vite.config.ts
+import { defineConfig } from 'vite';
+import tsconfigPaths from 'vite-tsconfig-paths';
+import { tanstackStart } from '@tanstack/react-start/plugin/vite';
+import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  server: {
-    preset: 'bun',
-    // or 'node' if bun has issues
-  },
-  vite: {
-    plugins: [viteTsConfigPaths()],
-    // PWA plugin if needed
-  },
-  routers: {
-    client: {
-      entry: './app/client.tsx',
-    },
-    server: {
-      entry: './app/ssr.tsx',
-    },
-    api: {
-      entry: './app/api.tsx',
-    },
-  },
+  plugins: [tsconfigPaths(), tanstackStart({ srcDirectory: 'src' }), react(), nitro()],
 });
 ```
+
+**Note:** `envDir` removed from Vite config; root envs are loaded via `loadEnv` only.
 
 ### 4.3 TypeScript Configuration
 ```json
@@ -496,11 +497,10 @@ export default defineConfig({
   "extends": "@vemetric/tsconfig/react.json",
   "compilerOptions": {
     "paths": {
-      "~/*": ["./app/*"]
-    },
-    "types": ["vinxi/types/client", "vinxi/types/server"]
+      "~/*": ["./src/*"]
+    }
   },
-  "include": ["app/**/*", "app.config.ts"]
+  "include": ["src/**/*", "vite.config.ts"]
 }
 ```
 
@@ -509,42 +509,44 @@ export default defineConfig({
 **VitePWA integration with TanStack Start:**
 
 ```typescript
-// app.config.ts
-import { defineConfig } from '@tanstack/react-start/config';
+// vite.config.ts
+import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { tanstackStart } from '@tanstack/react-start/plugin/vite';
+import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  vite: {
-    plugins: [
-      VitePWA({
-        registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
-        manifest: {
-          name: 'Vemetric',
-          short_name: 'Vemetric',
-          description: 'Web and Product Analytics',
-          theme_color: '#7c3aed',
-          background_color: '#ffffff',
-          display: 'standalone',
-          icons: [
-            { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
-            { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png' },
-            { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-          ],
-        },
-        workbox: {
-          // Don't cache API routes
-          navigateFallbackDenylist: [/^\/trpc/, /^\/auth/, /^\/paddle/, /^\/email/],
-          runtimeCaching: [
-            {
-              urlPattern: /^https:\/\/hub\.vemetric\.com\/.*/i,
-              handler: 'NetworkOnly', // Don't cache analytics calls
-            },
-          ],
-        },
-      }),
-    ],
-  },
+  plugins: [
+    tanstackStart(),
+    react(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      manifest: {
+        name: 'Vemetric',
+        short_name: 'Vemetric',
+        description: 'Web and Product Analytics',
+        theme_color: '#7c3aed',
+        background_color: '#ffffff',
+        display: 'standalone',
+        icons: [
+          { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
+      },
+      workbox: {
+        // Don't cache API routes
+        navigateFallbackDenylist: [/^\/trpc/, /^\/auth/, /^\/paddle/, /^\/email/, /^\/api/],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/hub\.vemetric\.com\/.*/i,
+            handler: 'NetworkOnly', // Don't cache analytics calls
+          },
+        ],
+      },
+    }),
+  ],
 });
 ```
 
@@ -573,6 +575,8 @@ const routes: Record<string, string> = {
 };
 ```
 
+**Status:** Backend proxy removed.
+
 ### 5.2 Update Root package.json
 
 ```json
@@ -583,6 +587,8 @@ const routes: Record<string, string> = {
   }
 }
 ```
+
+**Status:** Updated.
 
 ### 5.3 Turbo Configuration
 ```json
@@ -597,11 +603,17 @@ const routes: Record<string, string> = {
 }
 ```
 
+**Status:** Updated.
+
 ---
 
 ## Phase 6: Docker & Deployment
 
 ### 6.1 Create Dockerfile for TanStack Start App
+
+**Expected build output paths (fill after scaffold):**
+- Server entry: `.output/server/index.mjs`
+- Static assets prefix: `dist/client`
 
 ```dockerfile
 # apps/app/Dockerfile
@@ -639,8 +651,10 @@ ENV NODE_ENV=production
 ENV PORT=4000
 EXPOSE 4000
 
-CMD ["bun", "run", ".output/server/index.mjs"]
+CMD ["bun", "run", ".output/server/index.mjs"] # Verify output path for RC 1.157.9
 ```
+
+**Status:** Dockerfile updated to `.output/server/index.mjs` and `dist/client` output.
 
 ### 6.2 Docker Compose Update (if using)
 
@@ -708,12 +722,7 @@ services:
 
 ### 7.3 Cloudflare Page Rules / Redirects
 
-**Redirect old backend URLs (optional, for transition):**
-```
-backend.vemetric.com/* → app.vemetric.com/api/$1 (301)
-```
-
-Or simply remove and let it 404 (cleaner).
+No redirects needed. Keep the old backend service running temporarily while traffic shifts.
 
 ### 7.4 Coolify Deployment Setup
 
@@ -929,12 +938,12 @@ labels:
 1. **PWA Support**: ✅ Keep PWA functionality - users have installed it as PWA. Integrate VitePWA or equivalent in TanStack Start.
 
 2. **SSR Strategy**:
-   - **SSR routes**: `/public/$domain`, `/_auth/login`, `/_auth/signup` (SEO benefits)
+   - **SSR meta only**: `/public/$domain`, `/_auth/login`, `/_auth/signup`
    - **Client-only**: All authenticated dashboard routes (no SEO benefit)
 
 3. **Port Number**: ✅ Use port `4000` (previously webapp port)
 
-4. **API Path**: ✅ Mount tRPC at `/trpc` (not `/api/trpc`)
+4. **API Path**: ✅ Mount tRPC at `/trpc` (not `/api/trpc`); reserve `/api/*` for future public REST API
 
 5. **Monitoring**: ✅ Keep same Sentry project for unified app
 
@@ -946,26 +955,26 @@ labels:
 
 ### Backend Files → App Server Files
 ```
-apps/backend/src/index.ts           → apps/app/app/server/index.ts (partial)
-apps/backend/src/routes/*.ts        → apps/app/app/server/trpc/routes/*.ts
-apps/backend/src/utils/trpc.ts      → apps/app/app/server/trpc/trpc.ts
-apps/backend/src/utils/auth.ts      → apps/app/app/server/auth/index.ts
-apps/backend/src/utils/billing.ts   → apps/app/app/server/utils/billing.ts
-apps/backend/types.ts               → apps/app/app/server/trpc/types.ts
+apps/backend/src/index.ts           → apps/app/src/server/index.ts (partial)
+apps/backend/src/routes/*.ts        → apps/app/src/server/trpc/routes/*.ts
+apps/backend/src/utils/trpc.ts      → apps/app/src/server/trpc/trpc.ts
+apps/backend/src/utils/auth.ts      → apps/app/src/server/auth/index.ts
+apps/backend/src/utils/billing.ts   → apps/app/src/server/utils/billing.ts
+apps/backend/types.ts               → apps/app/src/server/trpc/types.ts
 ```
 
 ### Webapp Files → App Client Files
 ```
-apps/webapp/src/pages/*             → apps/app/app/routes/*
-apps/webapp/src/components/*        → apps/app/app/components/*
-apps/webapp/src/hooks/*             → apps/app/app/hooks/*
-apps/webapp/src/utils/*             → apps/app/app/utils/*
-apps/webapp/src/stores/*            → apps/app/app/stores/*
-apps/webapp/src/consts/*            → apps/app/app/consts/*
-apps/webapp/src/theme/*             → apps/app/app/theme/*
+apps/webapp/src/pages/*             → apps/app/src/routes/*
+apps/webapp/src/components/*        → apps/app/src/components/*
+apps/webapp/src/hooks/*             → apps/app/src/hooks/*
+apps/webapp/src/utils/*             → apps/app/src/utils/*
+apps/webapp/src/stores/*            → apps/app/src/stores/*
+apps/webapp/src/consts/*            → apps/app/src/consts/*
+apps/webapp/src/theme/*             → apps/app/src/theme/*
 apps/webapp/public/*                → apps/app/public/*
 apps/webapp/index.html              → (handled by TanStack Start)
-apps/webapp/tsr.config.json         → (not needed, integrated in app.config.ts)
+apps/webapp/tsr.config.json         → apps/app/tsr.config.json
 ```
 
 ---

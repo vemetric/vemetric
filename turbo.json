@@ -4,7 +4,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^db:generate", "^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", ".output/**", "dist/**"]
     },
     "test": {},
     "test:watch": {},

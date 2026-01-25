@@ -1,5 +1,7 @@
 import { jsonStringify } from '@vemetric/common/json';
-import { escape } from 'sqlstring';
+import sqlstring from 'sqlstring';
+
+const { escape } = sqlstring;
 import { clickhouseClient, clickhouseInsert } from '../client';
 import type { ClickhouseDevice } from './device';
 import type { GeoData, ReferrerData, UrlData } from './session';

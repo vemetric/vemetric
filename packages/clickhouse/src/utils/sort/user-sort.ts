@@ -1,5 +1,7 @@
 import type { IUserSortConfig } from '@vemetric/common/sort';
-import { escape } from 'sqlstring';
+import sqlstring from 'sqlstring';
+
+const { escape } = sqlstring;
 import { buildEventFilterQueries } from '../filters/event-filter';
 
 export const buildUserSortQueries = (sortConfig: IUserSortConfig, projectId: bigint) => {

@@ -1,6 +1,8 @@
 import { formatClickhouseDate } from '@vemetric/common/date';
 import type { FunnelStep } from '@vemetric/common/funnel';
-import { escape } from 'sqlstring';
+import sqlstring from 'sqlstring';
+
+const { escape } = sqlstring;
 import { buildEventFilterQuery } from './filters/event-filter';
 import { buildPageFilterQuery } from './filters/page-filter';
 

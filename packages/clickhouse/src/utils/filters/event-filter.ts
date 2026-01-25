@@ -1,5 +1,7 @@
 import type { IEventFilter, IFilterConfig } from '@vemetric/common/filters';
-import { escape } from 'sqlstring';
+import sqlstring from 'sqlstring';
+
+const { escape } = sqlstring;
 import { buildStringFilterQuery } from './base-filters';
 
 export const buildEventFilterQuery = (filter: IEventFilter) => {

@@ -31,12 +31,9 @@ const proxies: ProxyConfig[] = [
   },
   {
     host: `app.vemetric.localhost${PORT_EXTENSION}`,
-    target: 'http://localhost:4000',
+    target: 'http://localhost:4000', // TanStack Start app (unified frontend + backend)
   },
-  {
-    host: `backend.vemetric.localhost${PORT_EXTENSION}`,
-    target: 'http://localhost:4003',
-  },
+  // backend.vemetric.localhost removed - now served by app on /trpc, /auth, etc.
   {
     host: `hub.vemetric.localhost${PORT_EXTENSION}`,
     target: 'http://localhost:4004',

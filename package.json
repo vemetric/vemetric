@@ -4,8 +4,9 @@
   "private": true,
   "author": "Vemetric <info@vemetric.com> (https://vemetric.com/)",
   "scripts": {
-    "build": "turbo run build --filter=!./apps/dev-proxy",
-    "dev": "turbo run dev --filter=!./apps/health-check",
+    "build": "turbo run build --filter=!./apps/dev-proxy --filter=!./apps/webapp --filter=!./apps/backend",
+    "dev": "turbo run dev --filter=!./apps/health-check --filter=!./apps/webapp --filter=!./apps/backend",
+    "dev:old": "turbo run dev --filter=!./apps/health-check --filter=!./apps/app",
     "lint": "turbo run lint",
     "tsc": "turbo run tsc",
     "test": "turbo run test",

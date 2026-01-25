@@ -18,3 +18,6 @@ ALTER TABLE "invitation_project_access" ADD CONSTRAINT "invitation_project_acces
 
 -- AddForeignKey
 ALTER TABLE "invitation_project_access" ADD CONSTRAINT "invitation_project_access_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_project_access" ADD CONSTRAINT "user_project_access_userId_organizationId_fkey" FOREIGN KEY ("userId", "organizationId") REFERENCES "user_organization"("userId", "organizationId") ON DELETE CASCADE ON UPDATE CASCADE;

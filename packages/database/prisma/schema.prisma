@@ -149,8 +149,9 @@ model UserOrganization {
   role           OrganizationRole
   createdAt      DateTime         @default(now())
 
-  user         User         @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user              User                @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  userProjectAccess UserProjectAccess[]
 
   @@id([userId, organizationId])
   @@map("user_organization")
@@ -185,9 +186,10 @@ model UserProjectAccess {
   projectId      String
   organizationId String
 
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project      Project      @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Cascade)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project          Project          @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userOrganization UserOrganization @relation(fields: [userId, organizationId], references: [userId, organizationId], onDelete: Cascade)
 
   @@id([userId, projectId])
   @@index([userId, organizationId])

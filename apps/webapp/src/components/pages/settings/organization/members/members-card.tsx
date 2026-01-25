@@ -1,6 +1,6 @@
 import { Card, Box, Button, Flex, Text, Table, Badge, Avatar, AbsoluteCenter, Spinner } from '@chakra-ui/react';
 import React, { useState } from 'react';
-import { TbUsers, TbTrash, TbChevronDown, TbChevronRight, TbFolders, TbShieldLock, TbUserPlus } from 'react-icons/tb';
+import { TbUsers, TbTrash, TbChevronDown, TbChevronRight, TbFolders, TbUserPlus } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from '@/components/ui/menu';
 import { useCurrentOrganization } from '@/hooks/use-current-organization';
@@ -8,10 +8,11 @@ import { trpc } from '@/utils/trpc';
 import { ChangeRoleDialog } from './change-role-dialog';
 import { CreateInvitationMenu } from './create-invitation-menu';
 import { MemberProjectAccess } from './member-project-access';
+import { ProjectAccessBadge } from './project-access-badge';
 import { RemoveMemberDialog } from './remove-member-dialog';
 
 export const MembersCard = () => {
-  const { organizationId, currentOrgaProjects } = useCurrentOrganization();
+  const { organizationId } = useCurrentOrganization();
   const [memberToRemove, setMemberToRemove] = useState<{ userId: string; name: string; email: string } | null>(null);
   const [memberToChangeRole, setMemberToChangeRole] = useState<{
     userId: string;
@@ -171,18 +172,7 @@ export const MembersCard = () => {
                                 )}
                               </MenuContent>
                             </MenuRoot>
-                            <Badge
-                              size="xs"
-                              variant="subtle"
-                              colorPalette={member.projectAccess.hasFullAccess ? 'green' : 'orange'}
-                            >
-                              {!member.projectAccess.hasFullAccess && (
-                                <TbShieldLock style={{ display: 'inline', verticalAlign: 'middle' }} />
-                              )}
-                              {member.projectAccess.hasFullAccess
-                                ? 'All projects'
-                                : `${member.projectAccess.accessibleCount}/${currentOrgaProjects.length} projects`}
-                            </Badge>
+                            <ProjectAccessBadge projectAccess={member.projectAccess} />
                           </Flex>
                         </Table.Cell>
                         <Table.Cell>

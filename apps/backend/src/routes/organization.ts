@@ -3,6 +3,7 @@ import {
   OrganizationRole,
   dbAuthUser,
   dbInvitation,
+  dbInvitationProjectAccess,
   dbOrganization,
   dbProject,
   dbUserProjectAccess,
@@ -254,15 +255,33 @@ export const organizationRouter = router({
       input: { organizationId },
     } = opts;
 
-    const invitations = await dbInvitation.listByOrganization(organizationId);
-    return { invitations };
+    const invitations = await dbInvitation.listByOrganizationWithProjectAccess(organizationId);
+
+    return {
+      invitations: invitations.map((inv) => {
+        const hasFullAccess = inv.role === 'ADMIN' || inv.projectAccess.length === 0;
+        return {
+          ...inv,
+          projectAccess: {
+            hasFullAccess,
+            accessibleCount: inv.projectAccess.length,
+          },
+        };
+      }),
+    };
   }),
 
   createInvitation: organizationAdminProcedure
-    .input(z.object({ role: z.enum(['ADMIN', 'MEMBER']) }))
+    .input(
+      z.object({
+        role: z.enum(['ADMIN', 'MEMBER']),
+        projectIds: z.array(z.string()),
+        hasRestrictions: z.boolean(),
+      }),
+    )
     .mutation(async (opts) => {
       const {
-        input: { organizationId, role },
+        input: { organizationId, role, projectIds, hasRestrictions },
         ctx: { user, subscriptionStatus },
       } = opts;
 
@@ -281,12 +300,51 @@ export const organizationRouter = router({
           }
         }
 
-        return dbInvitation.create({
+        if (role === 'ADMIN' && (hasRestrictions || projectIds.length > 0)) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message:
+              'Cannot set project access restrictions for ADMIN role. Admins always have full access to all projects.',
+          });
+        }
+
+        // Validate project IDs belong to this organization
+        if (projectIds.length > 0) {
+          const projects = await dbProject.findByOrganizationId({ organizationId, client });
+          const validProjectIds = new Set(projects.map((p) => p.id));
+          const invalidIds = projectIds.filter((id) => !validProjectIds.has(id));
+
+          if (invalidIds.length > 0) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'Only projects within the organization can be assigned for access.',
+            });
+          }
+        } else if (hasRestrictions) {
+          // If hasRestrictions is true but no projectIds provided, it's invalid
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Select at least one project or disable restrictions to give full access.',
+          });
+        }
+
+        const inv = await dbInvitation.create({
           organizationId,
           createdById: user.id,
           role: role as OrganizationRole,
           client,
         });
+
+        if (projectIds.length > 0) {
+          await dbInvitationProjectAccess.setProjectAccess({
+            invitationToken: inv.token,
+            organizationId,
+            projectIds,
+            client,
+          });
+        }
+
+        return inv;
       });
 
       return { invitation };
@@ -388,6 +446,20 @@ export const organizationRouter = router({
         role: invitation.role,
         client,
       });
+
+      // Copy project access restrictions from invitation to user (only for MEMBER role)
+      if (invitation.role === 'MEMBER') {
+        const invitationProjectIds = await dbInvitationProjectAccess.getProjectIds(token, invitation.organizationId);
+
+        if (invitationProjectIds.length > 0) {
+          await dbUserProjectAccess.setUserProjectAccess({
+            userId: user.id,
+            organizationId: invitation.organizationId,
+            projectIds: invitationProjectIds,
+            client,
+          });
+        }
+      }
 
       await dbInvitation.delete({ token, client });
 

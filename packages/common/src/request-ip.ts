@@ -147,3 +147,78 @@ export function getClientIp(context: Context) {
 
   return null;
 }
+
+/**
+ * Determine client IP address from a web Request object.
+ *
+ * @param request - The web Request object
+ * @returns {string | null} ip - The IP address if known, null if unknown.
+ */
+export function getClientIpFromRequest(request: Request): string | null {
+  const headers = request.headers;
+
+  // Standard headers used by Amazon EC2, Heroku, and others.
+  if (isValidIp(headers.get('x-client-ip'))) {
+    return headers.get('x-client-ip');
+  }
+
+  // Load-balancers (AWS ELB) or proxies.
+  const xForwardedFor = getClientIpFromXForwardedFor(headers.get('x-forwarded-for') ?? undefined);
+  if (isValidIp(xForwardedFor)) {
+    return xForwardedFor;
+  }
+
+  // Cloudflare.
+  if (isValidIp(headers.get('cf-connecting-ip'))) {
+    return headers.get('cf-connecting-ip');
+  }
+
+  // DigitalOcean.
+  if (isValidIp(headers.get('do-connecting-ip'))) {
+    return headers.get('do-connecting-ip');
+  }
+
+  // Fastly and Firebase hosting header
+  if (isValidIp(headers.get('fastly-client-ip'))) {
+    return headers.get('fastly-client-ip');
+  }
+
+  // Akamai and Cloudflare: True-Client-IP.
+  if (isValidIp(headers.get('true-client-ip'))) {
+    return headers.get('true-client-ip');
+  }
+
+  // Default nginx proxy/fcgi; alternative to x-forwarded-for
+  if (isValidIp(headers.get('x-real-ip'))) {
+    return headers.get('x-real-ip');
+  }
+
+  // Rackspace LB and Riverbed's Stingray
+  if (isValidIp(headers.get('x-cluster-client-ip'))) {
+    return headers.get('x-cluster-client-ip');
+  }
+
+  if (isValidIp(headers.get('x-forwarded'))) {
+    return headers.get('x-forwarded');
+  }
+
+  if (isValidIp(headers.get('forwarded-for'))) {
+    return headers.get('forwarded-for');
+  }
+
+  if (isValidIp(headers.get('forwarded'))) {
+    return headers.get('forwarded');
+  }
+
+  // Google Cloud App Engine
+  if (isValidIp(headers.get('x-appengine-user-ip'))) {
+    return headers.get('x-appengine-user-ip');
+  }
+
+  // Cloudflare fallback
+  if (isValidIp(headers.get('Cf-Pseudo-IPv4'))) {
+    return headers.get('Cf-Pseudo-IPv4');
+  }
+
+  return null;
+}

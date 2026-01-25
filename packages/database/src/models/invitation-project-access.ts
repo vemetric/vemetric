@@ -2,8 +2,16 @@ import type { DbClient } from '../client';
 import { prismaClient } from '../client';
 
 export const dbInvitationProjectAccess = {
-  getProjectIds: async (invitationToken: string, organizationId: string): Promise<string[]> => {
-    const access = await prismaClient.invitationProjectAccess.findMany({
+  getProjectIds: async ({
+    invitationToken,
+    organizationId,
+    client = prismaClient,
+  }: {
+    invitationToken: string;
+    organizationId: string;
+    client?: DbClient;
+  }): Promise<string[]> => {
+    const access = await client.invitationProjectAccess.findMany({
       where: { invitationToken, organizationId },
       select: { projectId: true },
     });

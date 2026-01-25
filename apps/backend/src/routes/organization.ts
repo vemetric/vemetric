@@ -449,7 +449,11 @@ export const organizationRouter = router({
 
       // Copy project access restrictions from invitation to user (only for MEMBER role)
       if (invitation.role === 'MEMBER') {
-        const invitationProjectIds = await dbInvitationProjectAccess.getProjectIds(token, invitation.organizationId);
+        const invitationProjectIds = await dbInvitationProjectAccess.getProjectIds({
+          invitationToken: token,
+          organizationId: invitation.organizationId,
+          client,
+        });
 
         if (invitationProjectIds.length > 0) {
           await dbUserProjectAccess.setUserProjectAccess({

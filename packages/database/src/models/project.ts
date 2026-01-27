@@ -78,4 +78,9 @@ export const dbProject = {
 
     return userProjectAccess.some((access) => access.projectId === projectId);
   },
+
+  delete: (id: string) =>
+    prismaClient.project.delete({
+      where: { id },
+    }),
 };

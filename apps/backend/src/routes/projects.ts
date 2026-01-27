@@ -6,7 +6,7 @@ import { getDripSequence, getStepDelay } from '@vemetric/email/email-drip-sequen
 import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
 import { addToQueue } from '@vemetric/queues/queue-utils';
 import { clickhouseEvent } from 'clickhouse';
-import { dbProject, serializableTransaction } from 'database';
+import { dbOrganization, dbProject, OrganizationRole, serializableTransaction } from 'database';
 import { z } from 'zod';
 import { logger } from '../utils/logger';
 import { fillTimeSeries, getTimeSpanStartDate } from '../utils/timeseries';
@@ -344,4 +344,49 @@ export const projectsRouter = router({
 
     return { excludedCountries: updatedCountries };
   }),
+
+  delete: projectProcedure
+    .input(z.object({ confirmationName: z.string() }))
+    .mutation(async (opts) => {
+      const {
+        input: { confirmationName },
+        ctx: { user, project },
+      } = opts;
+
+      // Verify user is organization admin
+      const isAdmin = await dbOrganization.hasUserAccess(project.organizationId, user.id, OrganizationRole.ADMIN);
+      if (!isAdmin) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only organization admins can delete projects',
+        });
+      }
+
+      // Verify confirmation name matches project name
+      if (confirmationName !== project.name) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Project name confirmation does not match',
+        });
+      }
+
+      try {
+        await dbProject.delete(project.id);
+
+        try {
+          await vemetric.trackEvent('ProjectDeleted', {
+            userIdentifier: user.id,
+            userDisplayName: user.name,
+            eventData: { projectId: project.id, domain: project.domain },
+          });
+        } catch (err) {
+          logger.error({ err, projectId: project.id }, 'Track event error');
+        }
+
+        return { success: true };
+      } catch (err) {
+        logger.error({ err, projectId: project.id }, 'Project deletion error');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to delete project' });
+      }
+    }),
 });

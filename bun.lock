@@ -85,6 +85,10 @@
     "apps/e2e": {
       "name": "e2e",
       "version": "0.0.0",
+      "dependencies": {
+        "database": "workspace:*",
+        "nanoid": "^5.0.4",
+      },
       "devDependencies": {
         "@playwright/test": "^1.57.0",
         "@vemetric/eslint-config": "workspace:*",

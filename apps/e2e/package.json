@@ -10,6 +10,9 @@
     "lint": "eslint . --max-warnings 0",
     "tsc": "tsc --noEmit"
   },
+  "dependencies": {
+    "database": "workspace:*"
+  },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
     "@vemetric/eslint-config": "workspace:*",

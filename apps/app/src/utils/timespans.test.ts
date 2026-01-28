@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { timeSpanSearchMiddleware } from '../../src/utils/timespans';
+import { timeSpanSearchMiddleware } from './timespans';
 
 describe('timespans', () => {
   describe('formatTimeSpanDateRange', () => {
@@ -11,7 +11,7 @@ describe('timespans', () => {
 
       // Re-import the module to get fresh currentYear value
       vi.resetModules();
-      const module = await import('../../src/utils/timespans');
+      const module = await import('./timespans');
       formatTimeSpanDateRange = module.formatTimeSpanDateRange;
     });
 
@@ -233,7 +233,7 @@ describe('timespans', () => {
       it('should fallback to 24hrs if start date is after maximum range', async () => {
         // Reset modules and re-import to get fresh timeSpanRangeMax
         vi.resetModules();
-        const { timeSpanSearchMiddleware: freshMiddleware } = await import('../../src/utils/timespans');
+        const { timeSpanSearchMiddleware: freshMiddleware } = await import('./timespans');
 
         // The maximum range is end of current month (Jan 2024), so Feb 1 is after max
         const search = { t: 'custom' as const, sd: '2024-02-01', ed: '2024-02-15' };
@@ -247,7 +247,7 @@ describe('timespans', () => {
       it('should remove end date if it is after maximum range', async () => {
         // Reset modules and re-import to get fresh timeSpanRangeMax
         vi.resetModules();
-        const { timeSpanSearchMiddleware: freshMiddleware } = await import('../../src/utils/timespans');
+        const { timeSpanSearchMiddleware: freshMiddleware } = await import('./timespans');
 
         // The maximum range is end of current month (Jan 2024), so Feb 1 is after max
         const search = { t: 'custom' as const, sd: '2024-01-01', ed: '2024-02-01' };
@@ -271,7 +271,7 @@ describe('timespans', () => {
       it('should handle malformed date strings', async () => {
         // Reset modules and re-import to get fresh timeSpanRangeMax
         vi.resetModules();
-        const { timeSpanSearchMiddleware: freshMiddleware } = await import('../../src/utils/timespans');
+        const { timeSpanSearchMiddleware: freshMiddleware } = await import('./timespans');
 
         // Month 13 doesn't exist, this creates invalid date (rolls over to next year)
         const search = { t: 'custom' as const, sd: '2024-13-01', ed: '2024-01-15' };

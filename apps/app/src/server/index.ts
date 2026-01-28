@@ -3,6 +3,7 @@ import * as Sentry from '@sentry/bun';
 import { getClientIp } from '@vemetric/common/request-ip';
 import { clickhouseClient } from 'clickhouse';
 import { Hono } from 'hono';
+import { serveStatic } from 'hono/bun';
 import { cors } from 'hono/cors';
 import { csrf } from 'hono/csrf';
 import { HTTPException } from 'hono/http-exception';
@@ -46,7 +47,7 @@ export const appRouter = router({
   up: publicProcedure.query(() => {}),
 });
 
-const app = new Hono<{ Variables: HonoContextVars }>();
+export const app = new Hono<{ Variables: HonoContextVars }>();
 
 app.use(
   honoPino({
@@ -128,6 +129,13 @@ app.use(
   }),
 );
 
+app.use('*', async (c, next) => {
+  await next();
+  if (!c.res.headers.has('Cache-Control')) {
+    c.header('Cache-Control', 'no-store');
+  }
+});
+
 app.get('/up', ({ text }) => text('', 200));
 
 useEmailRoutes(app);
@@ -161,6 +169,37 @@ app.use(
   }),
 );
 
+if (process.env.NODE_ENV === 'production' || process.env.VEMETRIC_SERVE_WEBAPP === 'true') {
+  const webappDist = `${import.meta.dir}/../dist`;
+  const indexHtmlPath = `${webappDist}/index.html`;
+  app.use(
+    '*',
+    serveStatic({
+      root: webappDist,
+      onFound: (_path, c) => {
+        const pathname = new URL(c.req.url).pathname;
+        if (pathname.startsWith('/assets/')) {
+          c.header('Cache-Control', 'public, max-age=31536000, immutable');
+        } else if (pathname === '/' || pathname === '/index.html') {
+          c.header('Cache-Control', 'no-cache');
+        }
+      },
+    }),
+  );
+
+  app.get('*', async (c) => {
+    const pathname = new URL(c.req.url).pathname;
+    if (pathname.startsWith('/trpc') || pathname.startsWith('/auth') || pathname.startsWith('/takeapaddle')) {
+      return c.notFound();
+    }
+    if (pathname === '/metrics' || pathname === '/email/unsubscribe' || pathname === '/up') {
+      return c.notFound();
+    }
+    c.header('Cache-Control', 'no-cache');
+    return c.html(await Bun.file(indexHtmlPath).text());
+  });
+}
+
 export default {
   port: 4003,
   fetch: app.fetch,
@@ -177,4 +216,4 @@ process.on('beforeExit', () => {
   clickhouseClient.close();
 });
 
-logger.info('Starting backend');
+logger.info('Starting app');

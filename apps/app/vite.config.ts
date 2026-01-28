@@ -1,19 +1,28 @@
+import devServer, { defaultOptions } from '@hono/vite-dev-server';
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   // Load env from parent directory for local development
   const env = loadEnv(mode, '../../', '');
-
+  Object.assign(process.env, env);
   return {
     envDir: '../../',
     define: {
       'import.meta.env.VEMETRIC_TOKEN': JSON.stringify(env.VEMETRIC_TOKEN),
     },
     plugins: [
+      command === 'serve' &&
+        devServer({
+          entry: 'src/server/vite.ts',
+          exclude: [
+            new RegExp('^/(?!trpc|auth|takeapaddle|metrics|email\\\\/unsubscribe|up).*'),
+            ...defaultOptions.exclude,
+          ],
+        }),
       tsconfigPaths(),
       TanStackRouterVite({ target: 'react', autoCodeSplitting: true }),
       react(),

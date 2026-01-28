@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { getTimeSpanStartDate, fillTimeSeries } from '../../src/utils/timeseries';
+import { getTimeSpanStartDate, fillTimeSeries } from './timeseries';
 
 describe('getStartDate', () => {
   beforeEach(() => {

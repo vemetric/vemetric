@@ -1,10 +1,10 @@
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useFeatureFlags } from '../../src/hooks/use-feature-flags';
-import { authClient } from '../../src/utils/auth';
+import { useFeatureFlags } from './use-feature-flags';
+import { authClient } from '../utils/auth';
 
 // Mock the auth client
-vi.mock('../../src/utils/auth', () => ({
+vi.mock('../utils/auth', () => ({
   authClient: {
     useSession: vi.fn(),
   },

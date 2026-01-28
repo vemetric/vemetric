@@ -2,7 +2,7 @@ export function getHostname() {
   return location.hostname.split('.').slice(-2).join('.');
 }
 
-type SubDomain = 'app' | 'backend' | 'hub';
+type SubDomain = 'app' | 'hub';
 
 function getUrl(subDomain?: SubDomain) {
   const hostname = getHostname();
@@ -24,7 +24,7 @@ export function getAppUrl() {
 }
 
 export function getBackendUrl() {
-  return getUrl('backend');
+  return location.origin;
 }
 
 export function getHubUrl() {

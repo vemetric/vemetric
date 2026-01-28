@@ -1,6 +1,6 @@
 import { createTRPCReact } from '@trpc/react-query';
 import type { inferRouterOutputs } from '@trpc/server';
-import type { AppRouter } from 'backend';
+import type { AppRouter } from '../../types';
 
 // Augment tRPC's types to include our custom context
 declare module '@trpc/client' {

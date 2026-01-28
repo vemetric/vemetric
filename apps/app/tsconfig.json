@@ -9,6 +9,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["vite-env.d.ts", "./src"],
+  "include": ["vite-env.d.ts", "./src", "types.ts"],
   "exclude": ["node_modules"]
 }

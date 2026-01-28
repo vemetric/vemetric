@@ -34,10 +34,6 @@ const proxies: ProxyConfig[] = [
     target: 'http://localhost:4000',
   },
   {
-    host: `backend.vemetric.localhost${PORT_EXTENSION}`,
-    target: 'http://localhost:4003',
-  },
-  {
     host: `hub.vemetric.localhost${PORT_EXTENSION}`,
     target: 'http://localhost:4004',
   },

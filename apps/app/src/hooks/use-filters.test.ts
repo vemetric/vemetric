@@ -3,8 +3,8 @@ import { renderHook } from '@testing-library/react';
 import type { IFilter, IFilterConfig } from '@vemetric/common/filters';
 import { createElement, type ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { FilterContextProvider } from '../../src/components/filter/filter-context';
-import { useFilters } from '../../src/hooks/use-filters';
+import { FilterContextProvider } from '../components/filter/filter-context';
+import { useFilters } from './use-filters';
 
 // Mock useNavigate hook
 vi.mock('@tanstack/react-router', () => ({

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getFaviconUrl } from '../../src/utils/favicon';
+import { getFaviconUrl } from './favicon';
 
 describe('getFaviconUrl', () => {
   it('should handle URLs with https protocol', () => {

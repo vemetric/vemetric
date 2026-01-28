@@ -7,5 +7,6 @@
     "moduleResolution": "Bundler",
     "types": ["bun"],
     "skipLibCheck": true
-  }
+  },
+  "include": ["src/server", "types.ts"]
 }

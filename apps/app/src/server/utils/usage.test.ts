@@ -1,7 +1,7 @@
 import { clickhouseEvent } from 'clickhouse';
 import { dbProject } from 'database';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { getUsageForPeriod, getCurrentCycleDates } from '../../src/utils/usage';
+import { getUsageForPeriod, getCurrentCycleDates } from './usage';
 
 // Mock the database and clickhouse modules
 vi.mock('database', () => ({

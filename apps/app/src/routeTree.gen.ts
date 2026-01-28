@@ -26,6 +26,7 @@ import { Route as OOrganizationIdRouteImport } from './routes/o/$organizationId'
 import { Route as InviteTokenRouteImport } from './routes/invite/$token'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as AuthSplatRouteImport } from './routes/auth/$'
+import { Route as ApiSplatRouteImport } from './routes/api/$'
 import { Route as AuthSignupRouteImport } from './routes/_auth/signup'
 import { Route as AuthResetPasswordRouteImport } from './routes/_auth/reset-password'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
@@ -122,6 +123,11 @@ const AuthSplatRoute = AuthSplatRouteImport.update({
   path: '/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSplatRoute = ApiSplatRouteImport.update({
+  id: '/api/$',
+  path: '/api/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthSignupRoute = AuthSignupRouteImport.update({
   id: '/signup',
   path: '/signup',
@@ -199,6 +205,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof AuthLoginRoute
   '/reset-password': typeof AuthResetPasswordRoute
   '/signup': typeof AuthSignupRoute
+  '/api/$': typeof ApiSplatRoute
   '/auth/$': typeof AuthSplatRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -228,6 +235,7 @@ export interface FileRoutesByTo {
   '/login': typeof AuthLoginRoute
   '/reset-password': typeof AuthResetPasswordRoute
   '/signup': typeof AuthSignupRoute
+  '/api/$': typeof ApiSplatRoute
   '/auth/$': typeof AuthSplatRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -259,6 +267,7 @@ export interface FileRoutesById {
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/reset-password': typeof AuthResetPasswordRoute
   '/_auth/signup': typeof AuthSignupRoute
+  '/api/$': typeof ApiSplatRoute
   '/auth/$': typeof AuthSplatRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -290,6 +299,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/signup'
+    | '/api/$'
     | '/auth/$'
     | '/email/unsubscribe'
     | '/invite/$token'
@@ -319,6 +329,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/signup'
+    | '/api/$'
     | '/auth/$'
     | '/email/unsubscribe'
     | '/invite/$token'
@@ -349,6 +360,7 @@ export interface FileRouteTypes {
     | '/_auth/login'
     | '/_auth/reset-password'
     | '/_auth/signup'
+    | '/api/$'
     | '/auth/$'
     | '/email/unsubscribe'
     | '/invite/$token'
@@ -378,6 +390,7 @@ export interface RootRouteChildren {
   MetricsRoute: typeof MetricsRoute
   TakeapaddleRoute: typeof TakeapaddleRoute
   UpRoute: typeof UpRoute
+  ApiSplatRoute: typeof ApiSplatRoute
   AuthSplatRoute: typeof AuthSplatRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   InviteTokenRoute: typeof InviteTokenRoute
@@ -509,6 +522,13 @@ declare module '@tanstack/react-router' {
       path: '/auth/$'
       fullPath: '/auth/$'
       preLoaderRoute: typeof AuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/$': {
+      id: '/api/$'
+      path: '/api/$'
+      fullPath: '/api/$'
+      preLoaderRoute: typeof ApiSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_auth/signup': {
@@ -656,6 +676,7 @@ const rootRouteChildren: RootRouteChildren = {
   MetricsRoute: MetricsRoute,
   TakeapaddleRoute: TakeapaddleRoute,
   UpRoute: UpRoute,
+  ApiSplatRoute: ApiSplatRoute,
   AuthSplatRoute: AuthSplatRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   InviteTokenRoute: InviteTokenRoute,

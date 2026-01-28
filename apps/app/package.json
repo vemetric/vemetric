@@ -86,6 +86,6 @@
     "vite": "7.3.1",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.3",
-    "nitro": "3.0.1-alpha.2"
+    "nitro": "npm:nitro-nightly@latest"
   }
 }

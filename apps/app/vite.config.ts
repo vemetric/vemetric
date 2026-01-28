@@ -15,9 +15,11 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       tsconfigPaths(),
-      tanstackStart({ srcDirectory: 'src' }),
-      react(),
       nitro(),
+      tanstackStart({
+        srcDirectory: 'src',
+      }),
+      react(),
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon-196.png', 'apple-touch-icon-180x180.png', 'logo.svg', 'favicon.ico'],

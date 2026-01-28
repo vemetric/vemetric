@@ -6,13 +6,12 @@ import { VemetricScript, vemetric } from '@vemetric/react';
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { z } from 'zod';
+import { ClientProviders } from '@/components/client-providers';
 import { CrispChat } from '@/components/crisp-chat';
 import { CrispScript } from '@/components/crisp-script';
-import { ClientProviders } from '@/components/client-providers';
-import { Provider } from '@/components/ui/provider';
-import { Toaster } from '@/components/ui/toaster';
 import { useColorMode } from '@/components/ui/color-mode';
-import { toaster } from '@/components/ui/toaster';
+import { Provider } from '@/components/ui/provider';
+import { Toaster, toaster } from '@/components/ui/toaster';
 import { authClient } from '@/utils/auth';
 import { getHubUrl } from '@/utils/url';
 
@@ -50,10 +49,7 @@ const vemetricToken = import.meta.env.VITE_VEMETRIC_TOKEN || import.meta.env.VEM
 export const Route = createRootRoute({
   validateSearch: zodValidator(rootSearchSchema),
   head: () => ({
-    meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-    ],
+    meta: [{ charSet: 'utf-8' }, { name: 'viewport', content: 'width=device-width, initial-scale=1' }],
   }),
   component: RootLayout,
 });
@@ -189,7 +185,7 @@ function RootLayoutInner() {
 
 function RootDocument({ children }: { children: ReactNode }) {
   return (
-    <html suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>

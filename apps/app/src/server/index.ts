@@ -188,11 +188,8 @@ if (process.env.NODE_ENV === 'production' || process.env.VEMETRIC_SERVE_WEBAPP =
   );
 
   app.get('*', async (c) => {
-    const pathname = new URL(c.req.url).pathname;
-    if (pathname.startsWith('/trpc') || pathname.startsWith('/auth') || pathname.startsWith('/takeapaddle')) {
-      return c.notFound();
-    }
-    if (pathname === '/metrics' || pathname === '/email/unsubscribe' || pathname === '/up') {
+    const accept = c.req.header('accept') ?? '';
+    if (!accept.includes('text/html')) {
       return c.notFound();
     }
     c.header('Cache-Control', 'no-cache');

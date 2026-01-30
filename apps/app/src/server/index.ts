@@ -141,10 +141,7 @@ app.get('/up', ({ text }) => text('', 200));
 useEmailRoutes(app);
 useLandingPageMetrics(app);
 
-app.use('/auth/*', (c) => {
-  return auth.handler(c.req.raw);
-});
-app.use('/auth', (c) => {
+app.on(['POST', 'GET'], '/auth/**', (c) => {
   return auth.handler(c.req.raw);
 });
 

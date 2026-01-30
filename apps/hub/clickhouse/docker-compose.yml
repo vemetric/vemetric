@@ -6,11 +6,9 @@ services:
     container_name: clickhouse
     restart: always
     entrypoint:
-      [
-        '/bin/sh',
-        '-c',
-        'chmod 644 /etc/clickhouse-server/config.d/*.xml /etc/clickhouse-server/users.d/*.xml && /entrypoint.sh',
-      ]
+      - /bin/sh
+      - '-c'
+      - 'chown -R clickhouse:clickhouse /var/lib/clickhouse /var/log/clickhouse-server && chmod 644 /etc/clickhouse-server/config.d/*.xml /etc/clickhouse-server/users.d/*.xml && /entrypoint.sh'
     environment:
       - CLICKHOUSE_DB=vemetric
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}

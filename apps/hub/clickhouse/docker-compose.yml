@@ -5,6 +5,7 @@ services:
     image: clickhouse/clickhouse-server:23.11.3.23
     container_name: clickhouse
     restart: always
+    user: '0:0'
     environment:
       - CLICKHOUSE_DB=vemetric
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}

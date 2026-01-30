@@ -187,13 +187,13 @@ if (process.env.NODE_ENV === 'production') {
     }),
   );
 
-  app.get('*', async (c) => {
+  app.notFound(async (c) => {
     const accept = c.req.header('accept') ?? '';
-    if (!accept.includes('text/html')) {
-      return c.notFound();
+    if (accept.includes('text/html')) {
+      c.header('Cache-Control', 'no-cache');
+      return c.html(await Bun.file(indexHtmlPath).text());
     }
-    c.header('Cache-Control', 'no-cache');
-    return c.html(await Bun.file(indexHtmlPath).text());
+    return c.text('Not Found', 404);
   });
 }
 

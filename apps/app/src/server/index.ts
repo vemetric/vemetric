@@ -198,7 +198,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 export default {
-  port: 4003,
+  port: 4000,
   fetch: app.fetch,
 };
 

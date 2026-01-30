@@ -36,6 +36,6 @@ COPY . .
 
 RUN bun run build
 
-EXPOSE 4003
+EXPOSE 4000
  
 CMD [ "bun", "run", "apps/app/src/server/index.ts" ]

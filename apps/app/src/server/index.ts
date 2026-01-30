@@ -170,7 +170,7 @@ app.use(
 );
 
 if (process.env.NODE_ENV === 'production') {
-  const webappDist = `${import.meta.dir}/../dist`;
+  const webappDist = `${import.meta.dir}/../../dist`;
   const indexHtmlPath = `${webappDist}/index.html`;
   app.use(
     '*',

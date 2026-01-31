@@ -1,4 +1,4 @@
-import { Box, Button, Card, Container, Flex, Heading, Spinner, Stack, Text, Link } from '@chakra-ui/react';
+import { Avatar, Box, Button, Card, Container, Flex, Heading, Spinner, Stack, Text, Link } from '@chakra-ui/react';
 import { createFileRoute, Link as RouterLink, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { TbBuilding, TbCheck } from 'react-icons/tb';
@@ -104,7 +104,7 @@ function InvitePage() {
 
           <Card.Root w="full">
             <Card.Body>
-              <Stack gap={6} align="center" textAlign="center" py={4}>
+              <Stack gap={6} align="center" textAlign="center" pt={3}>
                 <Box p={4} bg="purple.subtle" borderRadius="full">
                   <TbBuilding size={32} />
                 </Box>
@@ -132,9 +132,20 @@ function InvitePage() {
                     <Button asChild variant="outline">
                       <RouterLink to="/">Go to Dashboard</RouterLink>
                     </Button>
-                    <Text fontSize="sm" color="fg.muted">
-                      Signed in as {session.user.email}
-                    </Text>
+                    <Flex align="center" gap={2} justify="center" flexWrap="wrap" mt={2}>
+                      <Text fontSize="sm" color="fg.muted" flexShrink="0">
+                        Signed in as
+                      </Text>
+                      <Flex align="center" gap={1} justify="center">
+                        <Avatar.Root boxSize="24px" bg="linear-gradient(45deg, #7e48f850, #a086ff50)">
+                          <Avatar.Fallback name={session.user.name || '?'} color="gray.fg" fontSize="xs" />
+                          {session.user.image && <Avatar.Image src={session.user.image} />}
+                        </Avatar.Root>
+                        <Text fontSize="sm" color="fg.muted" lineClamp={1} textAlign="left">
+                          {session.user.name || session.user.email}
+                        </Text>
+                      </Flex>
+                    </Flex>
                   </Stack>
                 ) : (
                   <Stack gap={3} w="full">
@@ -146,7 +157,7 @@ function InvitePage() {
                     >
                       <RouterLink to="/login">Sign in to Accept</RouterLink>
                     </Button>
-                    <Text fontSize="sm" color="fg.muted">
+                    <Text fontSize="sm" color="fg.muted" mt={2}>
                       Don&apos;t have an account?{' '}
                       <Link asChild variant="underline" onClick={() => redirectPath.set(`/invite/${token}`)}>
                         <RouterLink to="/signup">Sign up</RouterLink>

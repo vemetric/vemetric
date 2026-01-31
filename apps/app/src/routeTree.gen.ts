@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './pages/__root'
+import { Route as RedirectRouteImport } from './pages/redirect'
 import { Route as BillingRouteImport } from './pages/billing'
 import { Route as LayoutRouteImport } from './pages/_layout'
 import { Route as AuthRouteImport } from './pages/_auth'
@@ -34,6 +35,11 @@ import { Route as LayoutPProjectIdUsersUserIdRouteImport } from './pages/_layout
 import { Route as LayoutPProjectIdUserIdentifierRouteImport } from './pages/_layout/p/$projectId/user/$identifier'
 import { Route as LayoutPProjectIdFunnelsFunnelIdRouteImport } from './pages/_layout/p/$projectId/funnels/$funnelId'
 
+const RedirectRoute = RedirectRouteImport.update({
+  id: '/redirect',
+  path: '/redirect',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BillingRoute = BillingRouteImport.update({
   id: '/billing',
   path: '/billing',
@@ -163,6 +169,7 @@ const LayoutPProjectIdFunnelsFunnelIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/billing': typeof BillingRoute
+  '/redirect': typeof RedirectRoute
   '/login': typeof AuthLoginRoute
   '/reset-password': typeof AuthResetPasswordRoute
   '/signup': typeof AuthSignupRoute
@@ -187,6 +194,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/billing': typeof BillingRoute
+  '/redirect': typeof RedirectRoute
   '/login': typeof AuthLoginRoute
   '/reset-password': typeof AuthResetPasswordRoute
   '/signup': typeof AuthSignupRoute
@@ -213,6 +221,7 @@ export interface FileRoutesById {
   '/_auth': typeof AuthRouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
   '/billing': typeof BillingRoute
+  '/redirect': typeof RedirectRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/reset-password': typeof AuthResetPasswordRoute
   '/_auth/signup': typeof AuthSignupRoute
@@ -239,6 +248,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/billing'
+    | '/redirect'
     | '/login'
     | '/reset-password'
     | '/signup'
@@ -263,6 +273,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/billing'
+    | '/redirect'
     | '/login'
     | '/reset-password'
     | '/signup'
@@ -288,6 +299,7 @@ export interface FileRouteTypes {
     | '/_auth'
     | '/_layout'
     | '/billing'
+    | '/redirect'
     | '/_auth/login'
     | '/_auth/reset-password'
     | '/_auth/signup'
@@ -315,6 +327,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren
   BillingRoute: typeof BillingRoute
+  RedirectRoute: typeof RedirectRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   InviteTokenRoute: typeof InviteTokenRoute
   OOrganizationIdRoute: typeof OOrganizationIdRoute
@@ -327,6 +340,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/redirect': {
+      id: '/redirect'
+      path: '/redirect'
+      fullPath: '/redirect'
+      preLoaderRoute: typeof RedirectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/billing': {
       id: '/billing'
       path: '/billing'
@@ -553,6 +573,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
   BillingRoute: BillingRoute,
+  RedirectRoute: RedirectRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   InviteTokenRoute: InviteTokenRoute,
   OOrganizationIdRoute: OOrganizationIdRoute,

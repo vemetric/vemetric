@@ -1,9 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
-import type { Auth } from '../../types';
 import { customSessionClient, lastLoginMethodClient } from 'better-auth/client/plugins';
 import { createAuthClient } from 'better-auth/react';
 import { toaster } from '@/components/ui/toaster';
 import { getAppUrl, getBackendUrl } from './url';
+import type { Auth } from '../../types';
 
 export const authClient = createAuthClient({
   baseURL: getBackendUrl() + '/auth',
@@ -25,7 +25,7 @@ export const loginWithProvider = async (provider: 'google' | 'github', setIsLoad
   await authClient.signIn.social(
     {
       provider,
-      callbackURL: getAppUrl() + '/',
+      callbackURL: getAppUrl() + '/redirect',
     },
     {
       onRequest: () => {

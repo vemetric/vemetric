@@ -19,7 +19,7 @@ export default defineConfig(({ command, mode }) => {
         devServer({
           entry: 'src/server/vite.ts',
           exclude: [
-            new RegExp('^/(?!trpc|auth|takeapaddle|metrics|email\\\\/unsubscribe|up).*'),
+            new RegExp('^/(?!trpc|auth|api|takeapaddle|metrics|email\\\\/unsubscribe|up).*'),
             ...defaultOptions.exclude,
           ],
         }),
@@ -68,7 +68,14 @@ export default defineConfig(({ command, mode }) => {
           cleanupOutdatedCaches: true,
           clientsClaim: true,
           skipWaiting: true,
-          navigateFallbackDenylist: [/^\/auth\//, /^\/trpc\//, /^\/metrics/, /^\/email\/unsubscribe/],
+          navigateFallbackDenylist: [
+            /^\/auth\//,
+            /^\/trpc\//,
+            /^\/api\//,
+            /^\/takeapaddle/,
+            /^\/metrics/,
+            /^\/email\/unsubscribe/,
+          ],
         },
       }),
     ],

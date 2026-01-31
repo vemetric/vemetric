@@ -169,6 +169,10 @@ app.use(
   }),
 );
 
+app.all('/api*', (c) => {
+  return c.json({ error: 'Not Implemented' }, 501);
+});
+
 if (process.env.NODE_ENV === 'production') {
   const webappDist = `${import.meta.dir}/../../dist`;
   const indexHtmlPath = `${webappDist}/index.html`;

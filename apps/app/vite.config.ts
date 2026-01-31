@@ -76,6 +76,17 @@ export default defineConfig(({ command, mode }) => {
             /^\/metrics/,
             /^\/email\/unsubscribe/,
           ],
+          runtimeCaching: [
+            {
+              urlPattern: ({ request, url }) =>
+                request.mode === 'navigate' || url.pathname === '/index.html',
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'html',
+                networkTimeoutSeconds: 5,
+              },
+            },
+          ],
         },
       }),
     ],

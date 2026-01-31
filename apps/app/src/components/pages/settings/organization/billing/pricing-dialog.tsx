@@ -262,7 +262,10 @@ export const PricingDialog = ({ open, onOpenChange, currentPlan, organizationId 
                       newPriceId: isYearly ? pricingPlan.yearlyId : pricingPlan.monthlyId,
                     });
                     onOpenChange({ open: false });
-                    window.location.reload();
+                    toaster.success({
+                      title: 'Subscription updated successfully.',
+                      description: 'It may take a few moments for the changes to take effect.',
+                    });
                   }}
                 >
                   Confirm

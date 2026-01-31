@@ -19,7 +19,7 @@ export default defineConfig(({ command, mode }) => {
         devServer({
           entry: 'src/server/vite.ts',
           exclude: [
-            new RegExp('^/(?!trpc|auth|api|takeapaddle|metrics|email\\\\/unsubscribe|up).*'),
+            new RegExp('^/(?!trpc|auth|api|takeapaddle|metrics|email|up).*'),
             ...defaultOptions.exclude,
           ],
         }),
@@ -74,7 +74,7 @@ export default defineConfig(({ command, mode }) => {
             /^\/api\//,
             /^\/takeapaddle/,
             /^\/metrics/,
-            /^\/email\/unsubscribe/,
+            /^\/email\//,
           ],
           runtimeCaching: [
             {

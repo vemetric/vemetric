@@ -1,4 +1,5 @@
 import { createUnsubscribeToken } from '@vemetric/common/email-token';
+import { getVemetricUrl } from '@vemetric/common/env';
 import { getSequenceStep, getStepDelay, isSequenceComplete } from '@vemetric/email/email-drip-sequences';
 import { emailDripQueue, type EmailDripQueueProps } from '@vemetric/queues/email-drip-queue';
 import { addToQueue } from '@vemetric/queues/queue-utils';
@@ -173,7 +174,7 @@ async function processEmailSequenceStep(data: EmailDripQueueProps) {
     throw new Error(`No active sequence found for step: ${stepNumber}`);
   }
 
-  const unsubscribeLink = `https://app.vemetric.com/email/unsubscribe?token=${createUnsubscribeToken(user.id)}`;
+  const unsubscribeLink = `${getVemetricUrl('app')}/email/unsubscribe?token=${createUnsubscribeToken(user.id)}`;
   const context: SequenceContext = {
     project,
     user,

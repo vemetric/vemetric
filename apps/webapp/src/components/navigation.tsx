@@ -194,7 +194,7 @@ export const Navigation = (props: CardRootProps) => {
           <HStack gap="3">
             <AccountAvatar />
             <Box>
-              <Text textStyle="sm" fontWeight="medium">
+              <Text textStyle="sm" fontWeight="medium" lineClamp={1}>
                 {user?.name || 'Unknown'}
               </Text>
               <Text textStyle="sm" color="fg.muted">

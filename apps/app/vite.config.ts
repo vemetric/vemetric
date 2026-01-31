@@ -66,6 +66,8 @@ export default defineConfig(({ command, mode }) => {
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
           cleanupOutdatedCaches: true,
+          clientsClaim: true,
+          skipWaiting: true,
           navigateFallbackDenylist: [/^\/auth\//, /^\/trpc\//, /^\/metrics/, /^\/email\/unsubscribe/],
         },
       }),

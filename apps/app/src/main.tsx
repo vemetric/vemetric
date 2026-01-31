@@ -2,6 +2,7 @@ import { RouterProvider, createRouter, parseSearchWith, stringifySearchWith } fr
 import { VemetricScript } from '@vemetric/react';
 import { parse, stringify } from 'jsurl2';
 import { createRoot } from 'react-dom/client';
+import { registerSW } from 'virtual:pwa-register';
 import { ClientProviders } from './components/client-providers';
 import { errorRoute } from './components/error-route';
 import { notFoundRoute } from './components/not-found-route';
@@ -30,6 +31,13 @@ declare module '@tanstack/react-router' {
 // reloads the app if there is an error fetching an outdated chunk due to a new build deployed
 window.addEventListener('vite:preloadError', () => {
   window.location.reload();
+});
+
+const updateSW = registerSW({
+  immediate: true,
+  onNeedRefresh() {
+    updateSW(true);
+  },
 });
 
 createRoot(document.getElementById('root')!).render(

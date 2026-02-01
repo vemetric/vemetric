@@ -3,8 +3,8 @@ import { renderHook } from '@testing-library/react';
 import type { IFilter, IFilterConfig } from '@vemetric/common/filters';
 import { createElement, type ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { FilterContextProvider } from '../components/filter/filter-context';
 import { useFilters } from './use-filters';
+import { FilterContextProvider } from '../components/filter/filter-context';
 
 // Mock useNavigate hook
 vi.mock('@tanstack/react-router', () => ({
@@ -29,6 +29,7 @@ const createWrapper = () => {
           utmMediums: [],
           utmSources: [],
           utmTerms: [],
+          funnels: [],
           browserNames: ['chrome', 'firefox'],
           deviceTypes: ['desktop', 'mobile'],
           osNames: ['windows', 'mac'],

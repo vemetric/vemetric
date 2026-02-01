@@ -1,5 +1,5 @@
-import { getVemetricUrl } from '@vemetric/common/env';
 import { verifyUnsubscribeToken } from '@vemetric/common/email-token';
+import { getVemetricUrl } from '@vemetric/common/env';
 import { dbAuthUser } from 'database';
 import type { Hono } from 'hono';
 import type { HonoContextVars } from '../types';

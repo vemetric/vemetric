@@ -6,7 +6,7 @@ import { getAppUrl, getBackendUrl } from './url';
 import type { Auth } from '../../types';
 
 export const authClient = createAuthClient({
-  baseURL: getBackendUrl() + '/auth',
+  baseURL: getBackendUrl() + '/_api/auth',
   plugins: [lastLoginMethodClient(), customSessionClient<Auth>()],
 });
 

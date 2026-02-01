@@ -15,7 +15,7 @@ export const TRUSTED_ORIGINS = [getVemetricUrl('app'), getVemetricUrl()];
 const emailVerificationTimestamps = new Map<string, number>();
 
 export const auth = betterAuth({
-  basePath: '/auth',
+  basePath: '/_api/auth',
   trustedOrigins: TRUSTED_ORIGINS,
   database: prismaAdapter(prismaClient, {
     provider: 'postgresql',

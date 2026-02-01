@@ -20,8 +20,8 @@ import { Route as OnboardingProjectRouteImport } from './pages/onboarding/projec
 import { Route as OnboardingPricingRouteImport } from './pages/onboarding/pricing'
 import { Route as OnboardingOrganizationRouteImport } from './pages/onboarding/organization'
 import { Route as OOrganizationIdRouteImport } from './pages/o/$organizationId'
-import { Route as MailUnsubscribeRouteImport } from './pages/mail/unsubscribe'
 import { Route as InviteTokenRouteImport } from './pages/invite/$token'
+import { Route as EmailUnsubscribeRouteImport } from './pages/email/unsubscribe'
 import { Route as AuthSignupRouteImport } from './pages/_auth/signup'
 import { Route as AuthResetPasswordRouteImport } from './pages/_auth/reset-password'
 import { Route as AuthLoginRouteImport } from './pages/_auth/login'
@@ -88,14 +88,14 @@ const OOrganizationIdRoute = OOrganizationIdRouteImport.update({
   path: '/o/$organizationId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MailUnsubscribeRoute = MailUnsubscribeRouteImport.update({
-  id: '/mail/unsubscribe',
-  path: '/mail/unsubscribe',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const InviteTokenRoute = InviteTokenRouteImport.update({
   id: '/invite/$token',
   path: '/invite/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
+  id: '/email/unsubscribe',
+  path: '/email/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthSignupRoute = AuthSignupRouteImport.update({
@@ -173,8 +173,8 @@ export interface FileRoutesByFullPath {
   '/login': typeof AuthLoginRoute
   '/reset-password': typeof AuthResetPasswordRoute
   '/signup': typeof AuthSignupRoute
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/invite/$token': typeof InviteTokenRoute
-  '/mail/unsubscribe': typeof MailUnsubscribeRoute
   '/o/$organizationId': typeof OOrganizationIdRoute
   '/onboarding/organization': typeof OnboardingOrganizationRoute
   '/onboarding/pricing': typeof OnboardingPricingRoute
@@ -198,8 +198,8 @@ export interface FileRoutesByTo {
   '/login': typeof AuthLoginRoute
   '/reset-password': typeof AuthResetPasswordRoute
   '/signup': typeof AuthSignupRoute
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/invite/$token': typeof InviteTokenRoute
-  '/mail/unsubscribe': typeof MailUnsubscribeRoute
   '/o/$organizationId': typeof OOrganizationIdRoute
   '/onboarding/organization': typeof OnboardingOrganizationRoute
   '/onboarding/pricing': typeof OnboardingPricingRoute
@@ -225,8 +225,8 @@ export interface FileRoutesById {
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/reset-password': typeof AuthResetPasswordRoute
   '/_auth/signup': typeof AuthSignupRoute
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/invite/$token': typeof InviteTokenRoute
-  '/mail/unsubscribe': typeof MailUnsubscribeRoute
   '/o/$organizationId': typeof OOrganizationIdRoute
   '/onboarding/organization': typeof OnboardingOrganizationRoute
   '/onboarding/pricing': typeof OnboardingPricingRoute
@@ -252,8 +252,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/signup'
+    | '/email/unsubscribe'
     | '/invite/$token'
-    | '/mail/unsubscribe'
     | '/o/$organizationId'
     | '/onboarding/organization'
     | '/onboarding/pricing'
@@ -277,8 +277,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/signup'
+    | '/email/unsubscribe'
     | '/invite/$token'
-    | '/mail/unsubscribe'
     | '/o/$organizationId'
     | '/onboarding/organization'
     | '/onboarding/pricing'
@@ -303,8 +303,8 @@ export interface FileRouteTypes {
     | '/_auth/login'
     | '/_auth/reset-password'
     | '/_auth/signup'
+    | '/email/unsubscribe'
     | '/invite/$token'
-    | '/mail/unsubscribe'
     | '/o/$organizationId'
     | '/onboarding/organization'
     | '/onboarding/pricing'
@@ -328,8 +328,8 @@ export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
   BillingRoute: typeof BillingRoute
   RedirectRoute: typeof RedirectRoute
+  EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   InviteTokenRoute: typeof InviteTokenRoute
-  MailUnsubscribeRoute: typeof MailUnsubscribeRoute
   OOrganizationIdRoute: typeof OOrganizationIdRoute
   OnboardingOrganizationRoute: typeof OnboardingOrganizationRoute
   OnboardingPricingRoute: typeof OnboardingPricingRoute
@@ -417,18 +417,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OOrganizationIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/mail/unsubscribe': {
-      id: '/mail/unsubscribe'
-      path: '/mail/unsubscribe'
-      fullPath: '/mail/unsubscribe'
-      preLoaderRoute: typeof MailUnsubscribeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/invite/$token': {
       id: '/invite/$token'
       path: '/invite/$token'
       fullPath: '/invite/$token'
       preLoaderRoute: typeof InviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/email/unsubscribe': {
+      id: '/email/unsubscribe'
+      path: '/email/unsubscribe'
+      fullPath: '/email/unsubscribe'
+      preLoaderRoute: typeof EmailUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_auth/signup': {
@@ -574,8 +574,8 @@ const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
   BillingRoute: BillingRoute,
   RedirectRoute: RedirectRoute,
+  EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   InviteTokenRoute: InviteTokenRoute,
-  MailUnsubscribeRoute: MailUnsubscribeRoute,
   OOrganizationIdRoute: OOrganizationIdRoute,
   OnboardingOrganizationRoute: OnboardingOrganizationRoute,
   OnboardingPricingRoute: OnboardingPricingRoute,

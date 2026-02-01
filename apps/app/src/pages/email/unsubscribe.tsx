@@ -8,7 +8,7 @@ const searchSchema = z.object({
   error: z.boolean().optional(),
 });
 
-export const Route = createFileRoute('/mail/unsubscribe')({
+export const Route = createFileRoute('/email/unsubscribe')({
   component: UnsubscribePage,
   validateSearch: zodValidator(searchSchema),
 });

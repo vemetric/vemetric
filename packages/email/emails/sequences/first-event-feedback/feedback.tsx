@@ -43,7 +43,7 @@ export const FirstEventFeedbackMail = ({ userName, unsubscribeLink }: Props) => 
 FirstEventFeedbackMail.PreviewProps = {
   userName: 'John',
   projectName: 'snappify',
-  unsubscribeLink: 'https://app.vemetric.com/email/unsubscribe?token=123',
+  unsubscribeLink: 'https://app.vemetric.com/_api/email/unsubscribe?token=123',
 } as Props;
 
 export default FirstEventFeedbackMail;

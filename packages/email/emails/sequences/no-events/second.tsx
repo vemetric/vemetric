@@ -39,7 +39,7 @@ export const NoEventsSecondMail = ({ userName, projectName, unsubscribeLink }: P
 NoEventsSecondMail.PreviewProps = {
   userName: 'John',
   projectName: 'My Awesome App',
-  unsubscribeLink: 'https://app.vemetric.com/email/unsubscribe?token=123',
+  unsubscribeLink: 'https://app.vemetric.com/_api/email/unsubscribe?token=123',
 } as Props;
 
 export default NoEventsSecondMail;

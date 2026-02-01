@@ -5,7 +5,7 @@ import type { Hono } from 'hono';
 import type { HonoContextVars } from '../types';
 import { logger } from '../utils/logger';
 
-const redirectUrl = `${getVemetricUrl('app')}/mail/unsubscribe`;
+const redirectUrl = `${getVemetricUrl('app')}/email/unsubscribe`;
 
 export async function useEmailRoutes(app: Hono<{ Variables: HonoContextVars }>) {
   app.get('/email/unsubscribe', async (c) => {

@@ -24,7 +24,7 @@ export const ClientProviders = ({ children }: PropsWithChildren) => {
     });
   });
 
-  const url = getBackendUrl() + '/trpc';
+  const url = getBackendUrl() + '/_api/trpc';
 
   const fetchOptions = {
     fetch: async (input: RequestInfo | URL, init?: RequestInit) => {

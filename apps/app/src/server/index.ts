@@ -186,6 +186,16 @@ if (process.env.NODE_ENV === 'production') {
           c.header('Cache-Control', 'public, max-age=31536000, immutable');
         } else if (pathname === '/' || pathname === '/index.html') {
           c.header('Cache-Control', 'no-cache');
+          c.header('X-Frame-Options', 'DENY');
+        } else if (
+          pathname === '/manifest.webmanifest' ||
+          pathname === '/sw.js' ||
+          pathname === '/registerSW.js' ||
+          pathname.startsWith('/workbox-')
+        ) {
+          c.header('Cache-Control', 'no-cache');
+        } else {
+          c.header('Cache-Control', 'public, max-age=3600');
         }
       },
     }),
@@ -195,6 +205,7 @@ if (process.env.NODE_ENV === 'production') {
     const accept = c.req.header('accept') ?? '';
     if (accept.includes('text/html')) {
       c.header('Cache-Control', 'no-cache');
+      c.header('X-Frame-Options', 'DENY');
       return c.html(await Bun.file(indexHtmlPath).text());
     }
     return c.text('Not Found', 404);

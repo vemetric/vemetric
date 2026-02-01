@@ -1,27 +1,60 @@
-# React + TypeScript + Vite
+# Vemetric App (SPA + API)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This app combines the Vite SPA and Hono backend into a single deployable service.
+The Hono server serves the built SPA in production and exposes backend routes under `/_api`.
 
-Currently, two official plugins are available:
+## Structure
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- `src/` — frontend React SPA (TanStack Router + Chakra UI)
+- `src/server/` — Hono backend (tRPC, Better Auth, Paddle, metrics)
 
-## Expanding the ESLint configuration
+## Routes
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+- SPA: all non-API routes fall back to `index.html`
+- Backend: `/_api/*`
+- Public API (reserved): `/api/*` (currently `501 Not Implemented`)
+- Health: `/_api/up`
 
-- Configure the top-level `parserOptions` property like this:
+## Development
 
-```js
-   parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    project: ['./tsconfig.json', './tsconfig.node.json'],
-    tsconfigRootDir: __dirname,
-   },
+Single dev server with HMR + API routes:
+
+```
+bun run dev
 ```
 
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
+Vite uses `@hono/vite-dev-server` to mount the backend as middleware. The app runs on port `4000` by default.
+
+## Production
+
+Build:
+
+```
+bun run build
+```
+
+Run (Bun):
+
+```
+bun run start
+```
+
+Static assets are served from `dist/` by Hono. Cache headers:
+
+- `/assets/*`: `public, max-age=31536000, immutable`
+- `/workbox-*`: `public, max-age=31536000, immutable`
+- `index.html`: `no-cache`, `X-Frame-Options: DENY`
+- `sw.js` + `manifest.webmanifest`: `no-cache`
+- All backend routes: `no-store`
+
+## PWA
+
+The PWA uses `vite-plugin-pwa` with:
+
+- `autoUpdate`
+- navigation fallback denylist for `/_api` and `/api`
+- `NetworkFirst` for HTML navigations to keep the SPA in sync after deploys
+
+## Docker
+
+Use `apps/app/Dockerfile` to build a single container for the combined service.

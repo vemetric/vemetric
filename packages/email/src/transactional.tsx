@@ -1,8 +1,7 @@
 import { render } from '@react-email/render';
-import { Message } from 'postmark';
 import type { MessageSendingResponse } from 'postmark/dist/client/models';
 import type { ComponentProps } from 'react';
-import { postmarkClient } from './postmark-client';
+import { getPostmarkClient } from './postmark-client';
 import EmailChangeMail from '../emails/email-change';
 import EmailVerificationMail from '../emails/email-verification';
 import PasswordResetMail from '../emails/password-reset';
@@ -79,6 +78,9 @@ export const sendTransactionalMail = async <T extends TemplateName>(
   if (messageStreamId === 'tips') {
     fromAddress = TIPS_FROM_EMAIL;
   }
+
+  const { Message } = await import('postmark');
+  const postmarkClient = await getPostmarkClient();
 
   const message = new Message(fromAddress, template.subject, emailHtml, emailPlainText, toAddress);
   message.MessageStream = messageStreamId;

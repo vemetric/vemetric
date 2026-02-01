@@ -9,12 +9,11 @@ FROM base AS install
 WORKDIR /usr/src/app
 
 COPY package.json bun.lock .npmrc ./
-COPY apps/backend/package.json ./apps/backend/
+COPY apps/app/package.json ./apps/app/
 COPY apps/bullboard/package.json ./apps/bullboard/
 COPY apps/dev-proxy/package.json ./apps/dev-proxy/
 COPY apps/health-check/package.json ./apps/health-check/
 COPY apps/hub/package.json ./apps/hub/
-COPY apps/webapp/package.json ./apps/webapp/
 COPY apps/worker/package.json ./apps/worker/
 COPY apps/e2e/package.json ./apps/e2e/
 COPY packages/clickhouse/package.json ./packages/clickhouse/
@@ -33,7 +32,6 @@ FROM install AS release
 WORKDIR /usr/src/app
 
 COPY . .
-RUN rm -r apps/webapp
 
 RUN bun run build
  

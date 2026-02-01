@@ -122,7 +122,7 @@ export const referrers = ${JSON.stringify({ ...transformedData, ...customReferre
 export const REFERRER_URL_MAP = ${JSON.stringify(referrerUrlMap)};
 export const REFERRER_TYPES = ${JSON.stringify([...Array.from(referrerTypes), 'direct'])};`;
 
-    const outputPathTypes = join(process.cwd(), '..', 'webapp', 'src', 'consts', 'referrer-types.ts');
+    const outputPathTypes = join(process.cwd(), '..', 'app', 'src', 'consts', 'referrer-types.ts');
     writeFileSync(outputPathTypes, tsContentTypes, 'utf-8');
   } catch (error) {
     console.error('Error fetching referrers:', error);

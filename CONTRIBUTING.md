@@ -81,8 +81,7 @@ By default, Vemetric boots up a Proxy for local development that runs at port 40
 
 Therefore, once everything is running, you can access:
 
-- **Web Application**: http://app.vemetric.localhost:4050
-- **Backend API**: http://backend.vemetric.localhost:4050
+- **Web App & Backend**: http://app.vemetric.localhost:4050
 - **Hub (Event Ingestion)**: http://hub.vemetric.localhost:4050
 
 In case you want to have the Dev Proxy running on a different port, just specify `VEMETRIC_DEV_PROXY_PORT` in your `.env` file in the root of the monorepo.
@@ -126,8 +125,7 @@ Now Vemetric will track itself and you should see data flowing in on your Dashbo
 ```
 vemetric/
 ├── apps/                  # Applications
-│   ├── webapp/            # React frontend
-│   ├── backend/           # Bun + Hono API server
+│   ├── app/               # Vite SPA + Hono API server (single deployable service)
 │   ├── hub/               # Event collection service
 │   ├── worker/            # Background job processor
 │   ├── bullboard/         # Queue monitoring dashboard
@@ -156,8 +154,7 @@ vemetric/
 
 ### Architecture Overview
 
-- **webapp**: React frontend (Static SPA) - Analytics dashboard and user interface
-- **backend**: Bun + Hono API server - Main application API with tRPC
+- **app**: Vite SPA + Hono API server - Single deployable web app + API service
 - **hub**: Bun + Hono - Event collection service (e.g. `/e` for events, `/i` for identification)
 - **worker**: Background job processor using BullMQ and Redis
 - **bullboard**: Queue monitoring dashboard
@@ -178,10 +175,10 @@ vemetric/
 bun run test
 
 # Run tests for specific package
-bun --filter webapp test
+bun --filter app test
 
 # Run tests in watch mode
-bun --filter webapp test:watch
+bun --filter app test:watch
 ```
 
 ### Writing Tests

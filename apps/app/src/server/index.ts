@@ -21,6 +21,7 @@ import { paddleWebhookHandler } from './routes/paddle';
 import { projectsRouter } from './routes/projects';
 import { usersRouter } from './routes/users';
 import type { HonoContext, HonoContextVars } from './types';
+import { isNoCachePath, isStaticAssetPath } from './route-config';
 import { auth, TRUSTED_ORIGINS } from './utils/auth';
 import { logger } from './utils/logger';
 import { publicProcedure, router } from './utils/trpc';
@@ -108,6 +109,11 @@ app.use('*', async (context, next) => {
 });
 
 app.use('*', async (context, next) => {
+  const path = context.req.path;
+  if (isStaticAssetPath(path)) {
+    return next();
+  }
+
   const session = await auth.api.getSession({ headers: context.req.raw.headers });
 
   if (!session) {
@@ -187,12 +193,7 @@ if (process.env.NODE_ENV === 'production') {
         } else if (pathname === '/' || pathname === '/index.html') {
           c.header('Cache-Control', 'no-cache');
           c.header('X-Frame-Options', 'DENY');
-        } else if (
-          pathname === '/manifest.webmanifest' ||
-          pathname === '/sw.js' ||
-          pathname === '/registerSW.js' ||
-          pathname.startsWith('/workbox-')
-        ) {
+        } else if (isNoCachePath(pathname)) {
           c.header('Cache-Control', 'no-cache');
         } else {
           c.header('Cache-Control', 'public, max-age=3600');

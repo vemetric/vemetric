@@ -14,7 +14,7 @@ export function createStaticApp() {
       root: webappDist,
       onFound: (_path, c) => {
         const pathname = new URL(c.req.url).pathname;
-        if (pathname.startsWith('/assets/')) {
+        if (pathname.startsWith('/assets/') || pathname.startsWith('/workbox-')) {
           c.header('Cache-Control', 'public, max-age=31536000, immutable');
         } else if (pathname === '/' || pathname === '/index.html') {
           c.header('Cache-Control', 'no-cache');

@@ -1,13 +1,9 @@
 export const API_PREFIXES = ['_api', 'api'] as const;
 
 export const NO_CACHE_PATHS = new Set<string>(['/manifest.webmanifest', '/sw.js', '/registerSW.js']);
-export const NO_CACHE_PREFIXES = ['/workbox-'] as const;
 
 export function isNoCachePath(pathname: string): boolean {
-  if (NO_CACHE_PATHS.has(pathname)) {
-    return true;
-  }
-  return NO_CACHE_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  return NO_CACHE_PATHS.has(pathname);
 }
 
 export function toPathPrefixRegex(prefix: string): RegExp {

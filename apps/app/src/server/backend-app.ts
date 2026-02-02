@@ -22,7 +22,7 @@ import { auth, TRUSTED_ORIGINS } from './utils/auth';
 import { logger } from './utils/logger';
 import { publicProcedure, router } from './utils/trpc';
 
-export const appRouter = router({
+export const trpcRouter = router({
   account: accountRouter,
   dashboard: dashboardRouter,
   events: eventsRouter,
@@ -141,7 +141,7 @@ export function createBackendApp() {
     '/trpc/*',
     trpcServer({
       endpoint: '/_api/trpc',
-      router: appRouter,
+      router: trpcRouter,
       createContext: (_opts, c: HonoContext) => ({
         var: {
           ipAddress: getClientIp(c) ?? null,

@@ -1,6 +1,6 @@
 import { createTRPCReact } from '@trpc/react-query';
 import type { inferRouterOutputs } from '@trpc/server';
-import type { AppRouter } from '../../types';
+import type { TrpcRouter } from '../../types';
 
 // Augment tRPC's types to include our custom context
 declare module '@trpc/client' {
@@ -13,7 +13,7 @@ declare module '@trpc/client' {
   }
 }
 
-export const trpc = createTRPCReact<AppRouter>({
+export const trpc = createTRPCReact<TrpcRouter>({
   overrides: {
     useMutation: {
       /**
@@ -34,7 +34,7 @@ export const trpc = createTRPCReact<AppRouter>({
   },
 });
 
-type RouterOutput = inferRouterOutputs<AppRouter>;
+type RouterOutput = inferRouterOutputs<TrpcRouter>;
 
 export type DashboardData = RouterOutput['dashboard']['getData'];
 export type FunnelData = RouterOutput['funnels']['list']['funnels'][0];

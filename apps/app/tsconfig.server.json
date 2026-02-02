@@ -8,5 +8,5 @@
     "types": ["bun"],
     "skipLibCheck": true
   },
-  "include": ["src/server", "types.ts"]
+  "include": ["src/backend", "types.ts"]
 }

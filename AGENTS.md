@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `apps/` contains runnable services: `webapp` (React dashboard), `backend` (API), `hub` (event ingestion), `worker` (jobs), `bullboard` (queue UI), `health-check`, and `e2e` (Playwright tests).
+- `apps/` contains runnable services: `app` (Vite SPA + Hono API), `hub` (event ingestion), `worker` (jobs), `bullboard` (queue UI), `health-check`, and `e2e` (Playwright tests).
 - `packages/` holds shared libraries such as `common`, `database` (Prisma/Postgres), `clickhouse`, `logger`, `queues`, plus shared configs (`eslint-config`, `tsconfig`).
 - Root configs include `turbo.json`, `.env.example`, and `docker-compose.yml` for local services.
 

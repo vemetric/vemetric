@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import tsconfigPaths from 'vite-tsconfig-paths';
-import { API_PREFIXES, buildDevServerExcludeRegex, toPathPrefixRegex } from './src/server/route-config';
+import { API_PREFIXES, buildDevServerExcludeRegex, toPathPrefixRegex } from './src/backend/route-config';
 
 export default defineConfig(({ command, mode }) => {
   // Load env from parent directory for local development
@@ -18,7 +18,7 @@ export default defineConfig(({ command, mode }) => {
     plugins: [
       command === 'serve' &&
         devServer({
-          entry: 'src/server/vite.ts',
+          entry: 'src/backend/vite.ts',
           exclude: [buildDevServerExcludeRegex(), ...defaultOptions.exclude],
         }),
       tsconfigPaths(),

@@ -5,11 +5,28 @@ import { config as nodeConfig } from '@vemetric/eslint-config/node';
 export default [
   ...reactConfig.map((entry) => ({
     ...entry,
-    files: ['src/**/*.{ts,tsx}'],
-    ignores: ['src/server/**'],
+    rules: {
+      ...entry.rules,
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: ['**/src/backend/**', '**/backend/**', '@/backend/**'],
+        },
+      ],
+    },
+    files: ['src/frontend/**/*.{ts,tsx}'],
   })),
   ...nodeConfig.map((entry) => ({
     ...entry,
-    files: ['src/server/**/*.{ts,tsx}'],
+    rules: {
+      ...entry.rules,
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: ['**/src/frontend/**', '**/frontend/**', '@/**'],
+        },
+      ],
+    },
+    files: ['src/backend/**/*.{ts,tsx}'],
   })),
 ];

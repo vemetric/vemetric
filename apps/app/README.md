@@ -5,8 +5,8 @@ The Hono server serves the built SPA in production and exposes backend routes un
 
 ## Structure
 
-- `src/` — frontend React SPA (TanStack Router + Chakra UI)
-- `src/server/` — Hono backend (tRPC, Better Auth, Paddle, metrics)
+- `src/frontend/` — frontend React SPA (TanStack Router + Chakra UI)
+- `src/backend/` — Hono backend (tRPC, Better Auth, Paddle, metrics)
 
 ## Routes
 

@@ -14,9 +14,9 @@
     "tsc:server": "tsc --noEmit -p tsconfig.server.json",
     "lint": "eslint . --max-warnings 0",
     "preview": "bunx --bun vite preview",
-    "start": "bun run src/server/index.ts",
+    "start": "bun run src/backend/index.ts",
     "postinstall": "bun run chakra:build",
-    "chakra:build": "chakra typegen src/style/theme.ts --strict",
+    "chakra:build": "chakra typegen src/frontend/style/theme.ts --strict",
     "test": "vitest run",
     "test:watch": "vitest",
     "generate-pwa-assets": "pwa-assets-generator --preset minimal-2023 public/logo.svg"

@@ -38,4 +38,4 @@ RUN bun run build
 
 EXPOSE 4000
  
-CMD [ "bun", "run", "apps/app/src/server/index.ts" ]
+CMD [ "bun", "run", "apps/app/src/backend/index.ts" ]

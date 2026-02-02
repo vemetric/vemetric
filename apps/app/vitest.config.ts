@@ -7,7 +7,7 @@ export default defineConfig({
     include: ['src/**/*.{test,spec}.ts', 'src/**/*.{test,spec}.tsx'],
     globals: true,
     environment: 'jsdom',
-    environmentMatchGlobs: [['src/server/**', 'node']],
+    environmentMatchGlobs: [['src/backend/**', 'node']],
     reporters: ['verbose'],
   },
 });

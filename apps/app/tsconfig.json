@@ -6,9 +6,9 @@
     "moduleResolution": "Bundler",
     "skipLibCheck": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/frontend/*"]
     }
   },
-  "include": ["vite-env.d.ts", "./src", "types.ts"],
+  "include": ["vite-env.d.ts", "./src/frontend", "types.ts"],
   "exclude": ["node_modules"]
 }

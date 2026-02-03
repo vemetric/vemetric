@@ -3,6 +3,7 @@ import { renderHook } from '@testing-library/react';
 import type { IFilter, IFilterConfig } from '@vemetric/common/filters';
 import { createElement, type ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { DEFAULT_CHART_TOGGLES } from './use-chart-toggles';
 import { useFilters } from './use-filters';
 import { FilterContextProvider } from '../components/filter/filter-context';
 
@@ -49,7 +50,7 @@ describe('useFilters', () => {
       filters: [],
       operator: 'and' as const,
     },
-    e: undefined,
+    ch: undefined,
     p: undefined,
   };
 
@@ -92,7 +93,7 @@ describe('useFilters', () => {
 
     // Assert: Verify the search function correctly transformed the state
     expect(searchResult.f).toEqual(newFilters);
-    expect(searchResult.e).toBe(true); // Event filter was added
+    expect(searchResult.ch).toEqual([...DEFAULT_CHART_TOGGLES, 'events']); // Event filter was added, so events should be shown in chart
   });
 
   it('should remove all filters', () => {
@@ -200,7 +201,7 @@ describe('useFilters', () => {
     expect(searchResult.f).toBeUndefined();
   });
 
-  it('should preserve existing event flag when adding non-event filter', () => {
+  it('should preserve existing chart toggles when adding non-event filter', () => {
     // Setup: Create hook and test data
     const { result: hookResult } = renderHook(() => useFilters({ from: '/p/$projectId' }), {
       wrapper: createWrapper(),
@@ -212,7 +213,7 @@ describe('useFilters', () => {
         operator: 'oneOf',
       },
     };
-    const initialSearch = { ...mockSearch, e: true };
+    const initialSearch = { ...mockSearch, ch: ['users', 'pageViews', 'events'] };
 
     // Action: Call setFilters which internally calls navigate
     hookResult.current.setFilters({
@@ -224,7 +225,7 @@ describe('useFilters', () => {
     const searchFn = mockNavigate.mock.calls[0][0].search;
     const searchResult = searchFn(initialSearch);
 
-    // Assert: Verify the search function preserved the event flag
-    expect(searchResult.e).toBe(true);
+    // Assert: Verify the search function preserved the chart toggles
+    expect(searchResult.ch).toEqual(['users', 'pageViews', 'events']);
   });
 });

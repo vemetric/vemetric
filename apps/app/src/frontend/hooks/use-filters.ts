@@ -2,6 +2,7 @@ import { useNavigate } from '@tanstack/react-router';
 import type { IFilter, IFilterConfig } from '@vemetric/common/filters';
 import { isDeepEqual } from 'remeda';
 import { useFilterContext } from '@/components/filter/filter-context';
+import { DEFAULT_CHART_TOGGLES } from './use-chart-toggles';
 
 export type RoutesWithFiltering =
   | '/p/$projectId'
@@ -32,7 +33,16 @@ export const useFilters = ({ from }: Props) => {
           !previousFilters?.filters.some((f) => f.type === 'event') &&
           newFilters?.filters.some((f) => f.type === 'event');
 
-        return { ...prev, p: undefined, f: newFilters, e: addedEventFilter ? true : 'e' in prev ? prev.e : undefined };
+        // Add 'events' to chart toggles when an event filter is added
+        let chartToggles = 'ch' in prev ? prev.ch : undefined;
+        if (addedEventFilter) {
+          const currentToggles = chartToggles ?? DEFAULT_CHART_TOGGLES;
+          if (!currentToggles.includes('events')) {
+            chartToggles = [...currentToggles, 'events'];
+          }
+        }
+
+        return { ...prev, p: undefined, f: newFilters, ch: chartToggles };
       },
       params: (prev) => prev,
       resetScroll: false,

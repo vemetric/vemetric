@@ -6,7 +6,7 @@ export type ChartCategoryKey = (typeof CHART_CATEGORY_KEYS)[number];
 
 export const chartTogglesSchema = z.array(z.enum(CHART_CATEGORY_KEYS)).min(1).optional();
 
-const DEFAULT_CHART_TOGGLES: ChartCategoryKey[] = ['users', 'pageViews'];
+export const DEFAULT_CHART_TOGGLES: ChartCategoryKey[] = ['users', 'pageViews'];
 
 interface Props {
   publicDashboard?: boolean;

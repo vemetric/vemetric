@@ -3,7 +3,7 @@ import { customSessionClient, lastLoginMethodClient } from 'better-auth/client/p
 import { createAuthClient } from 'better-auth/react';
 import { toaster } from '@/components/ui/toaster';
 import { getAppUrl, getBackendUrl } from './url';
-import type { Auth } from '../../types';
+import type { Auth } from '../../../types';
 
 export const authClient = createAuthClient({
   baseURL: getBackendUrl() + '/_api/auth',

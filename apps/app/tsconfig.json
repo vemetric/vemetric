@@ -1,0 +1,14 @@
+{
+  "extends": "tsconfig/vite-react.json",
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "skipLibCheck": true,
+    "paths": {
+      "@/*": ["./src/frontend/*"]
+    }
+  },
+  "include": ["vite-env.d.ts", "./src/frontend", "types.ts"],
+  "exclude": ["node_modules"]
+}

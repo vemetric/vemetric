@@ -38,7 +38,7 @@ export const NoProjectFirstMail = ({ userName, unsubscribeLink }: Props) => {
 
 NoProjectFirstMail.PreviewProps = {
   userName: 'John',
-  unsubscribeLink: 'https://backend.vemetric.com/email/unsubscribe?token=123',
+  unsubscribeLink: 'https://app.vemetric.com/_api/email/unsubscribe?token=123',
 } as Props;
 
 export default NoProjectFirstMail;

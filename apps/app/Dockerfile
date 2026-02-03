@@ -30,11 +30,12 @@ RUN bun install --ignore-scripts --frozen-lockfile
 
 FROM install AS release
 WORKDIR /usr/src/app
+ENV NODE_ENV=production
 
 COPY . .
 
 RUN bun run build
+
+EXPOSE 4000
  
-EXPOSE 4004
- 
-CMD [ "bun", "run", "apps/hub/src/index.ts" ]
+CMD [ "bun", "run", "apps/app/src/backend/index.ts" ]

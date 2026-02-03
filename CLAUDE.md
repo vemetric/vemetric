@@ -10,8 +10,7 @@ Vemetric is an open-source web and product analytics platform built as a monorep
 
 **Microservices Structure:**
 
-- **webapp**: React frontend (port 4000) - Analytics dashboard and user interface
-- **backend**: Bun + Hono API server - Main application API with tRPC
+- **app**: Vite SPA + Hono API server (port 4000 in dev) - Single deployable web app + API service
 - **hub**: Bun + Hono - Event collection service (`/e` for events, `/i` for identification)
 - **worker**: Background job processor using BullMQ and Redis
 - **bullboard**: Queue monitoring dashboard
@@ -93,11 +92,11 @@ Database packages:
 - **Build System**: Turborepo orchestrates builds across all packages
 - **Package Manager**: bun
 - **Containerization**: Docker support available
-- **Hot Reload**: Bun's `--hot` flag for backend development
+- **Hot Reload**: Vite dev server with @hono/vite-dev-server (run via `bunx --bun vite`)
 
 ## Important Notes
 
-- **Port 4000**: Frontend webapp default port
+- **Port 4000**: Combined app dev server (SPA + API)
 - **Monorepo**: Use workspace dependencies (`workspace:*`) for internal packages
 - **Code Style**: ESLint enforced with max 0 warnings
 - **Event Tracking**: Core functionality revolves around `/e` (events) and `/i` (identification) endpoints

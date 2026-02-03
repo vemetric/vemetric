@@ -16,15 +16,17 @@ import {
 } from '@chakra-ui/react';
 import { Link as RouterLink, Navigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { TbDashboard, TbSettings, TbBrowserShare, TbLockX, TbKey, TbWorldQuestion } from 'react-icons/tb';
+import { TbDashboard, TbSettings, TbBrowserShare, TbLockX, TbKey, TbWorldQuestion, TbAlertTriangle } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import { CodeBox } from '@/components/code-box';
 import { LoadingImage } from '@/components/loading-image';
+import { DeleteProjectDialog } from '@/components/pages/settings/project/delete-project-dialog';
 import { ExcludedCountriesCard } from '@/components/pages/settings/project/excluded-countries-card';
 import { ExcludedIpsCard } from '@/components/pages/settings/project/excluded-ips-card';
 import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
+import { useCurrentOrganization } from '@/hooks/use-current-organization';
 import { getFaviconUrl } from '@/utils/favicon';
 import { trpc } from '@/utils/trpc';
 import { InstallationCard } from './installation-card';
@@ -36,6 +38,8 @@ interface Props {
 export const ProjectGeneralTab = (props: Props) => {
   const { projectId } = props;
   const [isLoading, setIsLoading] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const { organizationId, isAdmin } = useCurrentOrganization();
 
   const {
     data: projectSettings,
@@ -236,6 +240,42 @@ export const ProjectGeneralTab = (props: Props) => {
       />
       <ExcludedCountriesCard projectId={projectId} initialExcludedCountries={projectSettings.excludedCountries} />
       {projectSettings.isActive && <InstallationCard />}
+      {isAdmin && (
+        <>
+          <Card.Root borderColor="red.500" borderWidth={1}>
+            <Card.Header>
+              <Flex align="center" gap={2}>
+                <CardIcon bg="red.100" color="red.600">
+                  <TbAlertTriangle />
+                </CardIcon>
+                <Text fontWeight="semibold" color="red.600">
+                  Danger Zone
+                </Text>
+              </Flex>
+            </Card.Header>
+            <Card.Body>
+              <Flex justify="space-between" align="center">
+                <Box>
+                  <Text fontWeight="medium">Delete this project</Text>
+                  <Text fontSize="sm" color="fg.muted">
+                    Once you delete a project, there is no going back. Please be certain.
+                  </Text>
+                </Box>
+                <Button colorPalette="red" variant="outline" onClick={() => setIsDeleteDialogOpen(true)}>
+                  Delete Project
+                </Button>
+              </Flex>
+            </Card.Body>
+          </Card.Root>
+          <DeleteProjectDialog
+            organizationId={organizationId}
+            projectId={projectId}
+            projectName={projectSettings.name}
+            isOpen={isDeleteDialogOpen}
+            onClose={() => setIsDeleteDialogOpen(false)}
+          />
+        </>
+      )}
     </Flex>
   );
 };

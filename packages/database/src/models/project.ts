@@ -30,8 +30,8 @@ export const dbProject = {
       where: { token },
     }),
 
-  findById: (id: string) =>
-    prismaClient.project.findFirst({
+  findById: (id: string, client: DbClient = prismaClient) =>
+    client.project.findFirst({
       where: { id },
     }),
 
@@ -78,8 +78,8 @@ export const dbProject = {
 
     return userProjectAccess.some((access) => access.projectId === projectId);
   },
-  delete: (id: string) =>
-    prismaClient.project.delete({
+  delete: (id: string, client: DbClient = prismaClient) =>
+    client.project.delete({
       where: { id },
     }),
 };

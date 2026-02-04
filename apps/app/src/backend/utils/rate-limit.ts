@@ -1,9 +1,24 @@
 /**
  * Simple in-memory rate limiter for email sending.
  * Uses a Map to track timestamps of last sent emails per key.
+ * Cleanup of expired entries happens lazily on record.
  */
 export function createRateLimiter(cooldownMs: number) {
   const timestamps = new Map<string, number>();
+  let lastCleanup = Date.now();
+
+  const cleanup = () => {
+    const now = Date.now();
+    // Only cleanup once per cooldown period to avoid overhead
+    if (now - lastCleanup < cooldownMs) return;
+
+    lastCleanup = now;
+    timestamps.forEach((timestamp, key) => {
+      if (now - timestamp >= cooldownMs) {
+        timestamps.delete(key);
+      }
+    });
+  };
 
   return {
     /**
@@ -23,6 +38,7 @@ export function createRateLimiter(cooldownMs: number) {
      */
     record(key: string): void {
       timestamps.set(key, Date.now());
+      cleanup();
     },
 
     /**

@@ -346,10 +346,10 @@ export const projectsRouter = router({
   }),
 
   delete: organizationAdminProcedure
-    .input(z.object({ projectId: z.string(), confirmName: z.string() }))
+    .input(z.object({ projectId: z.string(), confirmDomain: z.string() }))
     .mutation(async (opts) => {
       const {
-        input: { projectId, confirmName },
+        input: { projectId, confirmDomain },
         ctx: { user, organization },
       } = opts;
 
@@ -363,9 +363,9 @@ export const projectsRouter = router({
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Project does not belong to this organization' });
       }
 
-      // Verify the confirmation name matches
-      if (confirmName !== project.name) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Project name does not match' });
+      // Verify the confirmation domain matches
+      if (confirmDomain !== project.domain) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Project domain does not match' });
       }
 
       try {

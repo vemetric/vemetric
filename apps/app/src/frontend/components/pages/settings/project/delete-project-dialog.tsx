@@ -1,4 +1,4 @@
-import { Button, Text, Input, Field, VStack } from '@chakra-ui/react';
+import { Button, Text, Input, Field, VStack, Span, Flex } from '@chakra-ui/react';
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import {
@@ -11,29 +11,33 @@ import {
   DialogCloseTrigger,
 } from '@/components/ui/dialog';
 import { toaster } from '@/components/ui/toaster';
+import { authClient } from '@/utils/auth';
 import { trpc } from '@/utils/trpc';
 
 interface Props {
   organizationId: string;
   projectId: string;
   projectName: string;
+  projectDomain: string;
   isOpen: boolean;
   onClose: () => void;
 }
 
 export const DeleteProjectDialog = (props: Props) => {
-  const { organizationId, projectId, projectName, isOpen, onClose } = props;
-  const [confirmName, setConfirmName] = useState('');
+  const { organizationId, projectId, projectName, projectDomain, isOpen, onClose } = props;
+  const [confirmDomain, setConfirmDomain] = useState('');
   const navigate = useNavigate();
   const trpcUtils = trpc.useUtils();
+  const { refetch: refetchAuth } = authClient.useSession();
 
   const { mutate: deleteProject, isPending } = trpc.projects.delete.useMutation({
     onSuccess: async () => {
+      trpcUtils.invalidate();
+      refetchAuth();
       toaster.create({
         title: 'Project deleted successfully',
         type: 'success',
       });
-      await trpcUtils.invalidate();
       navigate({ to: '/' });
     },
     onError: (error) => {
@@ -46,15 +50,16 @@ export const DeleteProjectDialog = (props: Props) => {
   });
 
   const handleClose = () => {
-    setConfirmName('');
+    setConfirmDomain('');
     onClose();
   };
 
-  const handleDelete = () => {
-    deleteProject({ organizationId, projectId, confirmName });
+  const handleDelete = (e: React.FormEvent) => {
+    e.preventDefault();
+    deleteProject({ organizationId, projectId, confirmDomain });
   };
 
-  const isConfirmDisabled = confirmName !== projectName;
+  const isConfirmDisabled = confirmDomain !== projectDomain;
 
   return (
     <DialogRoot open={isOpen} onOpenChange={handleClose}>
@@ -63,19 +68,28 @@ export const DeleteProjectDialog = (props: Props) => {
           <DialogTitle>Delete Project</DialogTitle>
         </DialogHeader>
         <DialogBody>
-          <VStack align="stretch" gap={4}>
-            <Text>
-              Are you sure you want to delete <strong>{projectName}</strong>? This action cannot be undone and will
-              permanently delete all project data including funnels and email sequences.
-            </Text>
+          <VStack align="stretch" gap={4} as="form" id="delete-project-form" onSubmit={handleDelete}>
+            <Flex flexDir="column" gap={2}>
+              <Text>
+                Are you sure you want to delete <strong>{projectName}</strong>{' '}
+                <Span fontSize="sm" fontStyle="italic">
+                  ({projectDomain})
+                </Span>
+                ?
+              </Text>
+              <Text>
+                This action cannot be undone and will <strong>permanently delete</strong> all the data associated with
+                this project.
+              </Text>
+            </Flex>
             <Field.Root>
-              <Field.Label>
-                Type <strong>{projectName}</strong> to confirm
+              <Field.Label fontWeight="normal">
+                Type <strong>{projectDomain}</strong> to confirm
               </Field.Label>
               <Input
-                placeholder="Enter project name"
-                value={confirmName}
-                onChange={(e) => setConfirmName(e.target.value)}
+                placeholder="Enter project domain"
+                value={confirmDomain}
+                onChange={(e) => setConfirmDomain(e.target.value)}
                 autoComplete="off"
               />
             </Field.Root>
@@ -85,7 +99,13 @@ export const DeleteProjectDialog = (props: Props) => {
           <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
-          <Button colorPalette="red" loading={isPending} disabled={isConfirmDisabled} onClick={handleDelete}>
+          <Button
+            colorPalette="red"
+            loading={isPending}
+            disabled={isConfirmDisabled}
+            form="delete-project-form"
+            type="submit"
+          >
             Delete Project
           </Button>
         </DialogFooter>

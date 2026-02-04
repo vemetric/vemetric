@@ -16,7 +16,15 @@ import {
 } from '@chakra-ui/react';
 import { Link as RouterLink, Navigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { TbDashboard, TbSettings, TbBrowserShare, TbLockX, TbKey, TbWorldQuestion, TbAlertTriangle } from 'react-icons/tb';
+import {
+  TbDashboard,
+  TbSettings,
+  TbBrowserShare,
+  TbLockX,
+  TbKey,
+  TbWorldQuestion,
+  TbAlertTriangle,
+} from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import { CodeBox } from '@/components/code-box';
 import { LoadingImage } from '@/components/loading-image';
@@ -242,10 +250,10 @@ export const ProjectGeneralTab = (props: Props) => {
       {projectSettings.isActive && <InstallationCard />}
       {isAdmin && (
         <>
-          <Card.Root borderColor="red.500" borderWidth={1}>
+          <Card.Root borderColor="red.muted" borderWidth={1}>
             <Card.Header>
               <Flex align="center" gap={2}>
-                <CardIcon bg="red.100" color="red.600">
+                <CardIcon bg="red.subtle" color="red.600" borderColor="red.muted">
                   <TbAlertTriangle />
                 </CardIcon>
                 <Text fontWeight="semibold" color="red.600">
@@ -253,14 +261,14 @@ export const ProjectGeneralTab = (props: Props) => {
                 </Text>
               </Flex>
             </Card.Header>
-            <Card.Body>
-              <Flex justify="space-between" align="center">
-                <Box>
+            <Card.Body pt={4}>
+              <Flex justify="space-between" align="flex-end" gap={5}>
+                <Flex flexDirection="column" gap={1}>
                   <Text fontWeight="medium">Delete this project</Text>
                   <Text fontSize="sm" color="fg.muted">
-                    Once you delete a project, there is no going back. Please be certain.
+                    This will permanently delete the project and all of its data. This action cannot be undone.
                   </Text>
-                </Box>
+                </Flex>
                 <Button colorPalette="red" variant="outline" onClick={() => setIsDeleteDialogOpen(true)}>
                   Delete Project
                 </Button>
@@ -271,6 +279,7 @@ export const ProjectGeneralTab = (props: Props) => {
             organizationId={organizationId}
             projectId={projectId}
             projectName={projectSettings.name}
+            projectDomain={projectSettings.domain}
             isOpen={isDeleteDialogOpen}
             onClose={() => setIsDeleteDialogOpen(false)}
           />

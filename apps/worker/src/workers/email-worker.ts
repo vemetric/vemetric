@@ -122,7 +122,8 @@ async function getUserAndProject(data: EmailDripQueueProps): Promise<{ user: Use
   });
 
   if (!project) {
-    throw new Error(`Project not found: ${data.projectId}`);
+    // Project was deleted, gracefully skip this sequence
+    return null;
   }
 
   if (project.organization.users.length === 0) {

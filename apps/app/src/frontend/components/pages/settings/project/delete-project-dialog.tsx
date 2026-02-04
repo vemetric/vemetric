@@ -32,13 +32,13 @@ export const DeleteProjectDialog = (props: Props) => {
 
   const { mutate: deleteProject, isPending } = trpc.projects.delete.useMutation({
     onSuccess: () => {
+      navigate({ to: '/' });
+      trpcUtils.invalidate();
+      refetchAuth();
       toaster.create({
         title: 'Project deleted successfully',
         type: 'success',
       });
-      navigate({ to: '/' });
-      trpcUtils.invalidate();
-      refetchAuth();
     },
     onError: (error) => {
       toaster.create({

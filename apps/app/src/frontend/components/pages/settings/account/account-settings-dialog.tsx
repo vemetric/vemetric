@@ -1,8 +1,9 @@
 import { Tabs } from '@chakra-ui/react';
-import { TbSettings, TbShieldLock } from 'react-icons/tb';
+import { TbBell, TbSettings, TbShieldLock } from 'react-icons/tb';
 import { useAccountSettingsDialog } from '@/hooks/use-account-settings-dialog';
 import { AccountAuthenticationTab } from './auth-tab';
 import { AccountGeneralTab } from './general-tab';
+import { AccountNotificationsTab } from './notifications-tab';
 import {
   DialogRoot,
   DialogContent,
@@ -43,7 +44,7 @@ export const AccountSettingsDialog = () => {
         <DialogBody p={0} pt={2} m="1px" bg="gray.subtle" rounded="md" overflow="hidden">
           <Tabs.Root
             value={tab ?? 'general'}
-            onValueChange={({ value }) => setTab(value as 'general' | 'auth')}
+            onValueChange={({ value }) => setTab(value as 'general' | 'auth' | 'notifications')}
             variant="outline"
             css={{
               '& > [data-part="content"]': {
@@ -65,12 +66,19 @@ export const AccountSettingsDialog = () => {
                 <TbShieldLock />
                 Authentication
               </Tabs.Trigger>
+              <Tabs.Trigger value="notifications">
+                <TbBell />
+                Notifications
+              </Tabs.Trigger>
             </Tabs.List>
             <Tabs.Content value="general">
               <AccountGeneralTab />
             </Tabs.Content>
             <Tabs.Content value="auth">
               <AccountAuthenticationTab />
+            </Tabs.Content>
+            <Tabs.Content value="notifications">
+              <AccountNotificationsTab />
             </Tabs.Content>
           </Tabs.Root>
         </DialogBody>

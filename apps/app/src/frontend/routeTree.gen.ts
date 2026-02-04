@@ -22,6 +22,7 @@ import { Route as OnboardingOrganizationRouteImport } from './pages/onboarding/o
 import { Route as OOrganizationIdRouteImport } from './pages/o/$organizationId'
 import { Route as InviteTokenRouteImport } from './pages/invite/$token'
 import { Route as EmailUnsubscribeRouteImport } from './pages/email/unsubscribe'
+import { Route as EmailConfirmProjectDeletionRouteImport } from './pages/email/confirm-project-deletion'
 import { Route as AuthSignupRouteImport } from './pages/_auth/signup'
 import { Route as AuthResetPasswordRouteImport } from './pages/_auth/reset-password'
 import { Route as AuthLoginRouteImport } from './pages/_auth/login'
@@ -98,6 +99,12 @@ const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
   path: '/email/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EmailConfirmProjectDeletionRoute =
+  EmailConfirmProjectDeletionRouteImport.update({
+    id: '/email/confirm-project-deletion',
+    path: '/email/confirm-project-deletion',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthSignupRoute = AuthSignupRouteImport.update({
   id: '/signup',
   path: '/signup',
@@ -173,6 +180,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof AuthLoginRoute
   '/reset-password': typeof AuthResetPasswordRoute
   '/signup': typeof AuthSignupRoute
+  '/email/confirm-project-deletion': typeof EmailConfirmProjectDeletionRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/invite/$token': typeof InviteTokenRoute
   '/o/$organizationId': typeof OOrganizationIdRoute
@@ -198,6 +206,7 @@ export interface FileRoutesByTo {
   '/login': typeof AuthLoginRoute
   '/reset-password': typeof AuthResetPasswordRoute
   '/signup': typeof AuthSignupRoute
+  '/email/confirm-project-deletion': typeof EmailConfirmProjectDeletionRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/invite/$token': typeof InviteTokenRoute
   '/o/$organizationId': typeof OOrganizationIdRoute
@@ -225,6 +234,7 @@ export interface FileRoutesById {
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/reset-password': typeof AuthResetPasswordRoute
   '/_auth/signup': typeof AuthSignupRoute
+  '/email/confirm-project-deletion': typeof EmailConfirmProjectDeletionRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/invite/$token': typeof InviteTokenRoute
   '/o/$organizationId': typeof OOrganizationIdRoute
@@ -252,6 +262,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/signup'
+    | '/email/confirm-project-deletion'
     | '/email/unsubscribe'
     | '/invite/$token'
     | '/o/$organizationId'
@@ -277,6 +288,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/signup'
+    | '/email/confirm-project-deletion'
     | '/email/unsubscribe'
     | '/invite/$token'
     | '/o/$organizationId'
@@ -303,6 +315,7 @@ export interface FileRouteTypes {
     | '/_auth/login'
     | '/_auth/reset-password'
     | '/_auth/signup'
+    | '/email/confirm-project-deletion'
     | '/email/unsubscribe'
     | '/invite/$token'
     | '/o/$organizationId'
@@ -328,6 +341,7 @@ export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
   BillingRoute: typeof BillingRoute
   RedirectRoute: typeof RedirectRoute
+  EmailConfirmProjectDeletionRoute: typeof EmailConfirmProjectDeletionRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   InviteTokenRoute: typeof InviteTokenRoute
   OOrganizationIdRoute: typeof OOrganizationIdRoute
@@ -429,6 +443,13 @@ declare module '@tanstack/react-router' {
       path: '/email/unsubscribe'
       fullPath: '/email/unsubscribe'
       preLoaderRoute: typeof EmailUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/email/confirm-project-deletion': {
+      id: '/email/confirm-project-deletion'
+      path: '/email/confirm-project-deletion'
+      fullPath: '/email/confirm-project-deletion'
+      preLoaderRoute: typeof EmailConfirmProjectDeletionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_auth/signup': {
@@ -574,6 +595,7 @@ const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
   BillingRoute: BillingRoute,
   RedirectRoute: RedirectRoute,
+  EmailConfirmProjectDeletionRoute: EmailConfirmProjectDeletionRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   InviteTokenRoute: InviteTokenRoute,
   OOrganizationIdRoute: OOrganizationIdRoute,

@@ -5,6 +5,7 @@ import { getPostmarkClient } from './postmark-client';
 import EmailChangeMail from '../emails/email-change';
 import EmailVerificationMail from '../emails/email-verification';
 import PasswordResetMail from '../emails/password-reset';
+import ProjectDeletionMail from '../emails/project-deletion';
 import FirstEventFeedback from '../emails/sequences/first-event-feedback/feedback';
 import NoEventsFirst from '../emails/sequences/no-events/first';
 import NoEventsSecond from '../emails/sequences/no-events/second';
@@ -29,6 +30,10 @@ export const TRANSACTIONAL_TEMPLATE_MAP = {
   passwordReset: {
     subject: 'Reset your password',
     email: PasswordResetMail,
+  },
+  projectDeletion: {
+    subject: 'Confirm project deletion',
+    email: ProjectDeletionMail,
   },
   noEventsFirst: {
     subject: 'Need help getting started?',

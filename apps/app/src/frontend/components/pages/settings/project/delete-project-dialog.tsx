@@ -1,5 +1,4 @@
 import { Button, Text, Input, Field, VStack, Span, Flex } from '@chakra-ui/react';
-import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import {
   DialogRoot,
@@ -11,7 +10,6 @@ import {
   DialogCloseTrigger,
 } from '@/components/ui/dialog';
 import { toaster } from '@/components/ui/toaster';
-import { authClient } from '@/utils/auth';
 import { trpc } from '@/utils/trpc';
 
 interface Props {
@@ -26,18 +24,16 @@ interface Props {
 export const DeleteProjectDialog = (props: Props) => {
   const { organizationId, projectId, projectName, projectDomain, isOpen, onClose } = props;
   const [confirmDomain, setConfirmDomain] = useState('');
-  const navigate = useNavigate();
-  const trpcUtils = trpc.useUtils();
-  const { refetch: refetchAuth } = authClient.useSession();
 
-  const { mutate: deleteProject, isPending } = trpc.projects.delete.useMutation({
+  const { mutate: requestDeletion, isPending } = trpc.projects.requestDeletion.useMutation({
     onSuccess: () => {
-      navigate({ to: '/' });
-      trpcUtils.invalidate();
-      refetchAuth();
+      handleClose();
       toaster.create({
-        title: 'Project deleted successfully',
-        type: 'success',
+        title: 'Check your email',
+        description: `We've sent a confirmation link to delete "${projectName}". The link expires in 1 hour.`,
+        type: 'info',
+        duration: 10000,
+        meta: { closable: true },
       });
     },
     onError: (error) => {
@@ -56,7 +52,7 @@ export const DeleteProjectDialog = (props: Props) => {
 
   const handleDelete = (e: React.FormEvent) => {
     e.preventDefault();
-    deleteProject({ organizationId, projectId, confirmDomain });
+    requestDeletion({ organizationId, projectId, confirmDomain });
   };
 
   const isConfirmDisabled = confirmDomain !== projectDomain;

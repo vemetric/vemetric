@@ -31,14 +31,14 @@ export const DeleteProjectDialog = (props: Props) => {
   const { refetch: refetchAuth } = authClient.useSession();
 
   const { mutate: deleteProject, isPending } = trpc.projects.delete.useMutation({
-    onSuccess: async () => {
-      trpcUtils.invalidate();
-      refetchAuth();
+    onSuccess: () => {
       toaster.create({
         title: 'Project deleted successfully',
         type: 'success',
       });
       navigate({ to: '/' });
+      trpcUtils.invalidate();
+      refetchAuth();
     },
     onError: (error) => {
       toaster.create({

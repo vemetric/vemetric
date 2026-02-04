@@ -6,7 +6,7 @@ import { getDripSequence, getStepDelay } from '@vemetric/email/email-drip-sequen
 import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
 import { addToQueue } from '@vemetric/queues/queue-utils';
 import { clickhouseEvent } from 'clickhouse';
-import { dbProject, serializableTransaction } from 'database';
+import { dbProject, dbUserIdentificationMap, serializableTransaction } from 'database';
 import { z } from 'zod';
 import { logger } from '../utils/logger';
 import { fillTimeSeries, getTimeSpanStartDate } from '../utils/timeseries';
@@ -369,6 +369,10 @@ export const projectsRouter = router({
       }
 
       try {
+        // Clean up related data not covered by Prisma cascades
+        await dbUserIdentificationMap.deleteByProjectId(projectId);
+
+        // Delete the project (Prisma handles cascade deletes for funnels, email sequences, etc.)
         await dbProject.delete(projectId);
 
         try {

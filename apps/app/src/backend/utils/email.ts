@@ -31,7 +31,7 @@ export async function sendProjectDeletionConfirmation(
   userId: string,
 ) {
   const token = createProjectDeletionToken(projectId, userId);
-  const confirmationLink = `${getVemetricUrl('app')}/api/email/confirm-project-deletion?token=${encodeURIComponent(token)}`;
+  const confirmationLink = `${getVemetricUrl('app')}/_api/email/confirm-project-deletion?token=${encodeURIComponent(token)}`;
 
   await sendTransactionalMail(userEmail, {
     template: 'projectDeletion',

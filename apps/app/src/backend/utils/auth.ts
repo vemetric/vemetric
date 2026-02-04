@@ -24,6 +24,12 @@ export const auth = betterAuth({
     changeEmail: {
       enabled: true,
     },
+    additionalFields: {
+      receiveEmailTips: {
+        type: 'boolean',
+        input: false,
+      },
+    },
   },
   account: {
     accountLinking: {

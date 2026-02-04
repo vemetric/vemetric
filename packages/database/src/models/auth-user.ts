@@ -5,7 +5,7 @@ export type { User, Account };
 
 export const dbAuthUser = {
   updateName: (userId: string, name: string) => prismaClient.user.update({ where: { id: userId }, data: { name } }),
-  update: (id: string, data: Partial<Omit<User, 'id' | 'createdAt' | 'updatedAt'>>) =>
+  update: (id: string, data: Partial<Omit<User, 'id' | 'createdAt' | 'updatedAt' | 'receiveEmailTips'>>) =>
     prismaClient.user.update({
       where: { id },
       data,

@@ -262,7 +262,7 @@ export const ProjectGeneralTab = (props: Props) => {
               </Flex>
             </Card.Header>
             <Card.Body pt={4}>
-              <Flex justify="space-between" align="flex-end" gap={5}>
+              <Flex justify="space-between" align="flex-end" gap={5} flexDir={{ base: 'column', md: 'row' }}>
                 <Flex flexDirection="column" gap={1}>
                   <Text fontWeight="medium">Delete this project</Text>
                   <Text fontSize="sm" color="fg.muted">

@@ -72,7 +72,7 @@ const EmailNotificationsSection = ({ receiveEmailTips }: EmailNotificationsSecti
               <TbBulb size={18} />
               <Box>
                 <Text fontWeight="medium">Tips & Best Practices</Text>
-                <Text fontSize="sm" color="fg.muted">
+                <Text fontSize="sm" color="fg.muted" maxW="350px">
                   Receive occasional emails with tips on how to get the most out of Vemetric
                 </Text>
               </Box>

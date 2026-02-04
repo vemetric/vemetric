@@ -29,6 +29,7 @@ export const accountRouter = router({
         email: user.email,
         emailVerified: user.emailVerified,
         image: user.image,
+        receiveEmailTips: user.receiveEmailTips,
       },
       accounts,
       hasPassword,
@@ -115,4 +116,16 @@ export const accountRouter = router({
     }
     return { success: true };
   }),
+
+  updateNotificationSettings: loggedInProcedure
+    .input(
+      z.object({
+        receiveEmailTips: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { user } = ctx;
+      await dbAuthUser.update(user.id, { receiveEmailTips: input.receiveEmailTips });
+      return { success: true };
+    }),
 });

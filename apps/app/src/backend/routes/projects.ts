@@ -125,6 +125,10 @@ export const projectsRouter = router({
     } catch (err) {
       logger.error({ err }, 'Project creation error');
 
+      if (err instanceof TRPCError) {
+        throw err;
+      }
+
       throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
     }
   }),

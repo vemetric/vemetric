@@ -2,6 +2,7 @@ import { getBaseDomain, getVemetricUrl } from '@vemetric/common/env';
 import { getDripSequence, getStepDelay } from '@vemetric/email/email-drip-sequences';
 import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
 import { addToQueue } from '@vemetric/queues/queue-utils';
+import type { BetterAuthOptions } from 'better-auth';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { createAuthMiddleware, customSession, lastLoginMethod } from 'better-auth/plugins';
@@ -13,7 +14,7 @@ import { vemetric } from './vemetric-client';
 
 export const TRUSTED_ORIGINS = [getVemetricUrl('app'), getVemetricUrl()];
 
-export const auth = betterAuth({
+const options = {
   basePath: '/_api/auth',
   trustedOrigins: TRUSTED_ORIGINS,
   database: prismaAdapter(prismaClient, {
@@ -22,6 +23,12 @@ export const auth = betterAuth({
   user: {
     changeEmail: {
       enabled: true,
+    },
+    additionalFields: {
+      receiveEmailTips: {
+        type: 'boolean',
+        input: false,
+      },
     },
   },
   account: {
@@ -104,8 +111,20 @@ export const auth = betterAuth({
   onAPIError: {
     errorURL: getVemetricUrl('app'),
   },
+  plugins: [lastLoginMethod()],
+  advanced: {
+    cookiePrefix: 'auth',
+    crossSubDomainCookies: {
+      enabled: true,
+      domain: getBaseDomain().split(':')[0], // remove port if present
+    },
+  },
+} satisfies BetterAuthOptions;
+
+export const auth = betterAuth({
+  ...options,
   plugins: [
-    lastLoginMethod(),
+    ...options.plugins,
     customSession(async ({ user, session }) => {
       const userOrganizations = await dbOrganization.getUserOrganizationsWithProjects(user.id);
       const allProjects = userOrganizations.flatMap(({ organization }) => {
@@ -127,13 +146,6 @@ export const auth = betterAuth({
         })),
         projects: allProjects,
       };
-    }),
+    }, options),
   ],
-  advanced: {
-    cookiePrefix: 'auth',
-    crossSubDomainCookies: {
-      enabled: true,
-      domain: getBaseDomain().split(':')[0], // remove port if present
-    },
-  },
 });

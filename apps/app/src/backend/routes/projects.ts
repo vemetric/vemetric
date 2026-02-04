@@ -344,4 +344,48 @@ export const projectsRouter = router({
 
     return { excludedCountries: updatedCountries };
   }),
+
+  delete: organizationAdminProcedure
+    .input(z.object({ projectId: z.string(), confirmDomain: z.string() }))
+    .mutation(async (opts) => {
+      const {
+        input: { projectId, confirmDomain },
+        ctx: { user, organization },
+      } = opts;
+
+      const project = await dbProject.findById(projectId);
+      if (!project) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Project not found' });
+      }
+
+      // Verify project belongs to this organization
+      if (project.organizationId !== organization.id) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Project does not belong to this organization' });
+      }
+
+      // Verify the confirmation domain matches
+      if (confirmDomain !== project.domain) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Project domain does not match' });
+      }
+
+      try {
+        // Delete the project (Prisma handles cascade deletes for related data)
+        await dbProject.delete(projectId);
+
+        try {
+          await vemetric.trackEvent('ProjectDeleted', {
+            userIdentifier: user.id,
+            userDisplayName: user.name,
+            eventData: { projectId, domain: project.domain },
+          });
+        } catch (err) {
+          logger.error({ err, projectId, domain: project.domain }, 'Track event error');
+        }
+
+        return { success: true };
+      } catch (err) {
+        logger.error({ err, projectId }, 'Project deletion error');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to delete project' });
+      }
+    }),
 });

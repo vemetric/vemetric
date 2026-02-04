@@ -8,11 +8,10 @@ import { createAuthMiddleware, customSession, lastLoginMethod } from 'better-aut
 import { dbOrganization, prismaClient } from 'database';
 import { sendEmailVerificationLink, sendPasswordResetLink } from './email';
 import { logger } from './logger';
+import { emailVerificationRateLimiter } from './rate-limit';
 import { vemetric } from './vemetric-client';
 
 export const TRUSTED_ORIGINS = [getVemetricUrl('app'), getVemetricUrl()];
-
-const emailVerificationTimestamps = new Map<string, number>();
 
 export const auth = betterAuth({
   basePath: '/_api/auth',
@@ -60,14 +59,10 @@ export const auth = betterAuth({
     sendOnSignUp: true,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
-      const lastSent = emailVerificationTimestamps.get(user.email);
-      if (lastSent && Date.now() - lastSent < 1000 * 60 * 5) {
-        // 5 minutes rate limit
+      if (!emailVerificationRateLimiter.tryAcquire(user.email)) {
         return;
       }
-
       await sendEmailVerificationLink(user.email, url);
-      emailVerificationTimestamps.set(user.email, Date.now());
     },
   },
   hooks: {

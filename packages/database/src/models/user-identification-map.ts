@@ -23,4 +23,8 @@ export const dbUserIdentificationMap = {
     prismaClient.userIdentificationMap.findUnique({
       where: { projectId_userId: { projectId, userId } },
     }),
+  deleteByProjectId: (projectId: string) =>
+    prismaClient.userIdentificationMap.deleteMany({
+      where: { projectId },
+    }),
 };

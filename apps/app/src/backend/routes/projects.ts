@@ -8,7 +8,9 @@ import { addToQueue } from '@vemetric/queues/queue-utils';
 import { clickhouseEvent } from 'clickhouse';
 import { dbProject, serializableTransaction } from 'database';
 import { z } from 'zod';
+import { sendProjectDeletionConfirmation } from '../utils/email';
 import { logger } from '../utils/logger';
+import { projectDeletionRateLimiter } from '../utils/rate-limit';
 import { fillTimeSeries, getTimeSpanStartDate } from '../utils/timeseries';
 import {
   organizationAdminProcedure,
@@ -344,4 +346,48 @@ export const projectsRouter = router({
 
     return { excludedCountries: updatedCountries };
   }),
+
+  requestDeletion: organizationAdminProcedure
+    .input(z.object({ projectId: z.string(), confirmDomain: z.string() }))
+    .mutation(async (opts) => {
+      const {
+        input: { projectId, confirmDomain },
+        ctx: { user, organization },
+      } = opts;
+
+      const project = await dbProject.findById(projectId);
+      if (!project) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Project not found' });
+      }
+
+      // Verify project belongs to this organization
+      if (project.organizationId !== organization.id) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Project does not belong to this organization' });
+      }
+
+      // Verify the confirmation domain matches
+      if (confirmDomain !== project.domain) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Project domain does not match' });
+      }
+
+      // Rate limit: one email per project per 5 minutes
+      const rateLimitKey = `${projectId}:${user.id}`;
+      if (!projectDeletionRateLimiter.tryAcquire(rateLimitKey)) {
+        throw new TRPCError({
+          code: 'TOO_MANY_REQUESTS',
+          message: 'Please wait a few minutes before requesting another deletion email',
+        });
+      }
+
+      try {
+        await sendProjectDeletionConfirmation(user.email, user.name, projectId, project.name, project.domain, user.id);
+
+        logger.info({ projectId, userId: user.id, domain: project.domain }, 'Project deletion email sent');
+
+        return { success: true };
+      } catch (err) {
+        logger.error({ err, projectId }, 'Failed to send project deletion email');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to send confirmation email' });
+      }
+    }),
 });

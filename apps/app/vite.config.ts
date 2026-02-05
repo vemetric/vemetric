@@ -25,7 +25,6 @@ export default defineConfig(({ command, mode }) => {
       TanStackRouterVite({ target: 'react', autoCodeSplitting: true }),
       react(),
       VitePWA({
-        injectRegister: false, // Manual registration in main.tsx (mobile only)
         registerType: 'autoUpdate',
         includeAssets: ['favicon-196.png', 'apple-touch-icon-180x180.png', 'logo.svg', 'favicon.ico'],
         manifest: {

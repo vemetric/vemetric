@@ -33,24 +33,12 @@ window.addEventListener('vite:preloadError', () => {
   window.location.reload();
 });
 
-const isMobile =
-  (navigator as any)?.userAgentData?.mobile === true ||
-  (matchMedia('(pointer: coarse)').matches && matchMedia('(max-width: 768px)').matches);
-if (isMobile) {
-  const updateSW = registerSW({
-    immediate: true,
-    onNeedRefresh() {
-      updateSW(true);
-    },
-  });
-} else {
-  // Unregister existing service workers on desktop for faster updates
-  navigator.serviceWorker?.getRegistrations().then((registrations) => {
-    for (const registration of registrations) {
-      registration.unregister();
-    }
-  });
-}
+const updateSW = registerSW({
+  immediate: true,
+  onNeedRefresh() {
+    updateSW(true);
+  },
+});
 
 createRoot(document.getElementById('root')!).render(
   <Provider>

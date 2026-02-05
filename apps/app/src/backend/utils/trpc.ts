@@ -178,6 +178,19 @@ export const projectProcedure = loggedInProcedure.input(z.object({ projectId: z.
   });
 });
 
+export const projectAdminProcedure = projectProcedure.use(async (opts) => {
+  const { ctx } = opts;
+  const isAdmin = await dbOrganization.hasUserAccess(
+    ctx.project.organizationId,
+    ctx.var.user!.id,
+    OrganizationRole.ADMIN,
+  );
+  if (!isAdmin) {
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'Only organization admins can perform this action' });
+  }
+  return opts.next();
+});
+
 export const projectOrPublicProcedure = publicProcedure
   .input(z.object({ projectId: z.string().optional(), domain: z.string().optional() }))
   .use(async (opts) => {

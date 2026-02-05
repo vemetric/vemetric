@@ -1,15 +1,18 @@
 import { Button, Tabs, Text } from '@chakra-ui/react';
 import { useNavigate, createFileRoute } from '@tanstack/react-router';
 import { fallback, zodValidator } from '@tanstack/zod-adapter';
-import { TbSettings, TbCreditCard } from 'react-icons/tb';
+import { TbSettings, TbCreditCard, TbKey } from 'react-icons/tb';
 import { z } from 'zod';
+import { ProjectApiTab } from '@/components/pages/settings/project/api-tab';
 import { ProjectGeneralTab } from '@/components/pages/settings/project/general-tab';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useOrgSettingsDialog } from '@/hooks/use-org-settings-dialog';
 import { useSetBreadcrumbs } from '@/stores/header-store';
 
+type SettingsTab = 'general' | 'billing' | 'api';
+
 const settingsSearchSchema = z.object({
-  tab: fallback(z.enum(['general', 'billing']), 'general').default('general'),
+  tab: fallback(z.enum(['general', 'billing', 'api']), 'general').default('general'),
 });
 
 export const Route = createFileRoute('/_layout/p/$projectId/settings/')({
@@ -29,7 +32,7 @@ function Page() {
     <Tabs.Root
       value={tab}
       onValueChange={({ value }) => {
-        navigate({ resetScroll: false, search: { tab: value as 'general' | 'billing' } });
+        navigate({ resetScroll: false, search: { tab: value as SettingsTab } });
       }}
       variant="outline"
       maxW="600px"
@@ -42,6 +45,10 @@ function Page() {
         <Tabs.Trigger value="billing">
           <TbCreditCard />
           Billing & Usage
+        </Tabs.Trigger>
+        <Tabs.Trigger value="api">
+          <TbKey />
+          API
         </Tabs.Trigger>
       </Tabs.List>
       <Tabs.Content value="general">
@@ -62,6 +69,9 @@ function Page() {
             <TbSettings /> Open Organization Settings
           </Button>
         </EmptyState>
+      </Tabs.Content>
+      <Tabs.Content value="api">
+        <ProjectApiTab projectId={projectId} />
       </Tabs.Content>
     </Tabs.Root>
   );

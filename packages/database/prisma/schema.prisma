@@ -177,9 +177,25 @@ model Project {
   userProjectAccess       UserProjectAccess[]
   invitationProjectAccess InvitationProjectAccess[]
   userIdentificationMaps  UserIdentificationMap[]
+  apiKeys                 ApiKey[]
 
   @@unique([id, organizationId])
   @@map("project")
+}
+
+model ApiKey {
+  id        String    @id // 'key_' + nanoid
+  projectId String
+  name      String    @db.VarChar
+  keyHash   String    @unique
+  keyPrefix String    @db.VarChar
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("api_key")
 }
 
 model UserProjectAccess {

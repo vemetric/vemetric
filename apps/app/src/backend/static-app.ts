@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { serveStatic } from 'hono/bun';
 import { isNoCachePath } from './route-config';
+import { logger } from './utils/logger';
 
 export function createStaticApp() {
   const staticApp = new Hono();
@@ -29,13 +30,10 @@ export function createStaticApp() {
   );
 
   staticApp.notFound(async (c) => {
-    const accept = c.req.header('accept') ?? '';
-    if (accept.includes('text/html')) {
-      c.header('Cache-Control', 'no-cache');
-      c.header('X-Frame-Options', 'DENY');
-      return c.html(await Bun.file(indexHtmlPath).text());
-    }
-    return c.text('Not Found', 404);
+    logger.warn(`Static file not found: ${new URL(c.req.url).pathname} accept: ${c.req.header('accept')}`);
+    c.header('Cache-Control', 'no-cache');
+    c.header('X-Frame-Options', 'DENY');
+    return c.html(await Bun.file(indexHtmlPath).text());
   });
 
   return staticApp;

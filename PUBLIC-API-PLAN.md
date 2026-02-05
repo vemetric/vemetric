@@ -1,288 +1,349 @@
 # Vemetric Public API v1 — Implementation Plan
 
-*For execution with Codex or similar coding agents.*
-
 ---
 
 ## Overview
 
 Build the first version of Vemetric's public API with:
+
 - Project-scoped API keys
-- Flat URL structure (`/v1/events`, not `/v1/projects/{id}/events`)
-- Hono + Zod OpenAPI for type-safe routes with auto-generated docs
-- Axiom for request logging
-- Rate limiting per API key
+- Flat URL structure (`/api/v1/...`, not `/api/v1/projects/{id}/...`)
+- Read-only in v1 — starting with ping route, stats routes to follow (see `PUBLIC-API-STATS-PLAN.md`)
+- Hono + Zod OpenAPI for type-safe routes with auto-generated docs (https://hono.dev/examples/zod-openapi)
+- Redis-based rate limiting per project
+- Axiom request logging via existing Pino setup
+- Available on all plans (including free)
 
 ---
 
 ## Phase 1: Infrastructure
 
-### 1.1 Database Schema — API Keys
+### 1.1 Database Schema — API Keys (Prisma)
 
-```sql
-CREATE TABLE api_keys (
-  id TEXT PRIMARY KEY,                    -- 'key_' + nanoid
-  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,                     -- user-provided label
-  key_hash TEXT NOT NULL,                 -- SHA-256 hash of the full key
-  key_prefix TEXT NOT NULL,               -- first 8 chars for display (e.g., 'vem_abc1...')
-  last_used_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT NOW(),
-  revoked_at TIMESTAMP                    -- soft delete
-);
+Add to `packages/database/prisma/schema.prisma`:
 
-CREATE INDEX idx_api_keys_project ON api_keys(project_id);
-CREATE INDEX idx_api_keys_hash ON api_keys(key_hash);
+```prisma
+model ApiKey {
+  id        String    @id              // 'key_' + nanoid
+  projectId String
+  name      String    @db.VarChar      // user-provided label
+  keyHash   String    @unique          // SHA-256 hash of the full key
+  keyPrefix String    @db.VarChar      // first 12 chars for display (e.g., 'vem_a1b2c3d4...')
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?                  // soft delete
+
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
 ```
 
-**Key format:** `vem_` + 32 random chars (e.g., `vem_a1b2c3d4e5f6...`)
+Also add to the `Project` model:
 
-### 1.2 API Key Management (tRPC or internal routes)
+```prisma
+model Project {
+  // ... existing fields ...
+  apiKeys ApiKey[]
+}
+```
 
-Implement in existing app (not public API):
+**Key format:** `vem_` + 32 random chars (36 total, e.g., `vem_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6`)
+
+Run `bunx prisma migrate dev --name add_api_keys` after adding the model.
+
+### 1.2 API Key Management (tRPC routes)
+
+Add to existing tRPC router in `apps/app/src/backend/routes/` as a new `apiKeys.ts` router. Uses `projectProcedure` + an additional admin role check on the parent organization — only org admins can view and manage API keys.
+
+First, add `projectAdminProcedure` to `apps/app/src/backend/utils/trpc.ts` alongside the existing procedures:
 
 ```typescript
-// Create key
-async function createApiKey(projectId: string, name: string) {
-  const rawKey = `vem_${nanoid(32)}`
-  const keyHash = sha256(rawKey)
-  const keyPrefix = rawKey.slice(0, 12) + '...'
-  
-  await db.insert(apiKeys).values({
-    id: `key_${nanoid()}`,
-    projectId,
-    name,
-    keyHash,
-    keyPrefix,
-  })
-  
-  // Return raw key ONCE — never stored/retrievable again
-  return { rawKey, keyPrefix }
+// apps/app/src/backend/utils/trpc.ts (add after projectProcedure)
+export const projectAdminProcedure = projectProcedure.use(async (opts) => {
+  const { ctx } = opts;
+  const isAdmin = await dbOrganization.hasUserAccess(
+    ctx.project.organizationId,
+    ctx.user.id,
+    OrganizationRole.ADMIN,
+  );
+  if (!isAdmin) {
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'Only organization admins can perform this action' });
+  }
+  return opts.next();
+});
+```
+
+Then use it in the api-keys router:
+
+```typescript
+// apps/app/src/backend/routes/api-keys.ts
+import { router, projectAdminProcedure } from '../utils/trpc';
+import { z } from 'zod';
+import { nanoid } from 'nanoid';
+import { createHash } from 'crypto';
+
+function sha256(input: string): string {
+  return createHash('sha256').update(input).digest('hex');
 }
 
-// List keys (for UI)
-async function listApiKeys(projectId: string) {
-  return db.select({
-    id: apiKeys.id,
-    name: apiKeys.name,
-    keyPrefix: apiKeys.keyPrefix,
-    lastUsedAt: apiKeys.lastUsedAt,
-    createdAt: apiKeys.createdAt,
-  })
-  .from(apiKeys)
-  .where(eq(apiKeys.projectId, projectId))
-  .where(isNull(apiKeys.revokedAt))
-}
+export const apiKeysRouter = router({
+  create: projectAdminProcedure
+    .input(z.object({ name: z.string().min(1).max(100) }))
+    .mutation(async ({ ctx, input }) => {
+      const rawKey = `vem_${nanoid(32)}`;
+      const keyHash = sha256(rawKey);
+      const keyPrefix = rawKey.slice(0, 12) + '...';
 
-// Revoke key
-async function revokeApiKey(keyId: string) {
-  await db.update(apiKeys)
-    .set({ revokedAt: new Date() })
-    .where(eq(apiKeys.id, keyId))
-}
+      await prismaClient.apiKey.create({
+        data: {
+          id: `key_${nanoid()}`,
+          projectId: ctx.projectId,
+          name: input.name,
+          keyHash,
+          keyPrefix,
+        },
+      });
+
+      // Return raw key ONCE — never stored/retrievable again
+      return { rawKey, keyPrefix };
+    }),
+
+  list: projectAdminProcedure.query(async ({ ctx }) => {
+    return prismaClient.apiKey.findMany({
+      where: { projectId: ctx.projectId, revokedAt: null },
+      select: {
+        id: true,
+        name: true,
+        keyPrefix: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }),
+
+  revoke: projectAdminProcedure
+    .input(z.object({ keyId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await prismaClient.apiKey.update({
+        where: { id: input.keyId, projectId: ctx.projectId },
+        data: { revokedAt: new Date() },
+      });
+    }),
+});
+```
+
+Register in the main tRPC router:
+
+```typescript
+export const trpcRouter = router({
+  // ... existing routes ...
+  apiKeys: apiKeysRouter,
+});
 ```
 
 ### 1.3 API Key UI
 
-Add to project settings:
-- [ ] "API Keys" section
+Add a new "API" tab in project settings (admin-only):
+
+- [ ] New "API" tab in project settings — only visible to org admins
 - [ ] Create key form (name input)
-- [ ] Show raw key once in modal with copy button + warning
-- [ ] List existing keys (prefix, name, last used, created)
-- [ ] Revoke button with confirmation
+- [ ] Show raw key once in modal with copy button + "you won't see this again" warning
+- [ ] List existing keys (prefix, name, created)
+- [ ] Revoke button with confirmation dialog
 
 ---
 
 ## Phase 2: Hono API Setup
 
-### 2.1 File Structure
+### 2.1 Mount Point
+
+The public API mounts in the existing app server at `apps/app/src/backend/index.ts`, replacing the current `/api*` 501 placeholder:
+
+```typescript
+// apps/app/src/backend/index.ts
+import { createPublicApi } from './api';
+
+// Replace the existing:
+//   app.all('/api*', (c) => c.json({ error: 'Not implemented' }, 501));
+// With:
+app.route('/api', createPublicApi());
+```
+
+### 2.2 File Structure
 
 ```
-src/
+apps/app/src/backend/
 ├── api/
-│   ├── index.ts              # Main Hono app, mounts routes
+│   ├── index.ts              # createPublicApi() — mounts routes + middleware
 │   ├── middleware/
 │   │   ├── auth.ts           # API key validation
-│   │   ├── rateLimit.ts      # Rate limiting
-│   │   └── logging.ts        # Axiom request logging
+│   │   ├── logging.ts        # Axiom request logging
+│   │   └── rate-limit.ts     # Redis-based rate limiting
 │   ├── routes/
-│   │   ├── ping.ts           # GET /v1/ping
-│   │   ├── events.ts         # POST /v1/events, GET /v1/events
-│   │   └── stats.ts          # GET /v1/stats/*
-│   ├── schemas/
-│   │   ├── common.ts         # Shared schemas (error, pagination)
-│   │   ├── events.ts         # Event schemas
-│   │   └── stats.ts          # Stats schemas
-│   └── lib/
-│       └── errors.ts         # Error response helpers
+│   │   └── ping.ts           # GET /v1/ping
+│   └── schemas/
+│       └── common.ts         # Shared schemas (error responses)
+├── backend-app.ts            # Existing tRPC app (unchanged)
+└── ...
 ```
 
-### 2.2 Main App Setup
+### 2.3 Main App Setup
 
 ```typescript
-// src/api/index.ts
-import { OpenAPIHono } from '@hono/zod-openapi'
-import { swaggerUI } from '@hono/swagger-ui'
-import { authMiddleware } from './middleware/auth'
-import { loggingMiddleware } from './middleware/logging'
-import { rateLimitMiddleware } from './middleware/rateLimit'
-import { pingRoute } from './routes/ping'
-import { eventsRoutes } from './routes/events'
-import { statsRoutes } from './routes/stats'
+// apps/app/src/backend/api/index.ts
+import { OpenAPIHono } from '@hono/zod-openapi';
+import { swaggerUI } from '@hono/swagger-ui';
+import { authMiddleware } from './middleware/auth';
+import { loggingMiddleware } from './middleware/logging';
+import { rateLimitMiddleware } from './middleware/rate-limit';
+import { pingRoute } from './routes/ping';
 
-const api = new OpenAPIHono()
+export function createPublicApi() {
+  const api = new OpenAPIHono();
 
-// Global middleware
-api.use('/v1/*', loggingMiddleware)
-api.use('/v1/*', authMiddleware)
-api.use('/v1/*', rateLimitMiddleware)
+  // Docs — mounted outside /v1/* so no auth required
+  api.doc('/openapi.json', {
+    openapi: '3.0.0',
+    info: {
+      title: 'Vemetric API',
+      version: '1.0.0',
+      description: 'Privacy-first analytics API (read-only)',
+    },
+  });
+  api.get('/docs', swaggerUI({ url: '/api/openapi.json' }));
 
-// Mount routes
-api.route('/v1', pingRoute)
-api.route('/v1', eventsRoutes)
-api.route('/v1', statsRoutes)
+  // Middleware stack for /v1/* (order matters)
+  api.use('/v1/*', loggingMiddleware);    // 1. Log request + response to Axiom
+  api.use('/v1/*', authMiddleware);       // 2. Authenticate (resolve API key + project)
+  api.use('/v1/*', rateLimitMiddleware);  // 3. Rate limit (by API key, needs auth first)
 
-// OpenAPI docs
-api.doc('/v1/openapi.json', {
-  openapi: '3.0.0',
-  info: {
-    title: 'Vemetric API',
-    version: '1.0.0',
-    description: 'Privacy-first analytics API',
-  },
-})
-api.get('/v1/docs', swaggerUI({ url: '/v1/openapi.json' }))
+  // Routes
+  api.route('/v1', pingRoute);
 
-export { api }
+  // Global error handler
+  api.onError(errorHandler);
+
+  return api;
+}
 ```
 
-### 2.3 Auth Middleware
+### 2.4 Auth Middleware
 
 ```typescript
-// src/api/middleware/auth.ts
-import { createMiddleware } from 'hono/factory'
-import { HTTPException } from 'hono/http-exception'
+// apps/app/src/backend/api/middleware/auth.ts
+import { createMiddleware } from 'hono/factory';
+import { HTTPException } from 'hono/http-exception';
+import { createHash } from 'crypto';
+import { prismaClient } from '@vemetric/database';
+
+function sha256(input: string): string {
+  return createHash('sha256').update(input).digest('hex');
+}
 
 export const authMiddleware = createMiddleware(async (c, next) => {
-  // Skip auth for docs
-  if (c.req.path.includes('/docs') || c.req.path.includes('/openapi.json')) {
-    return next()
-  }
-  
-  const authHeader = c.req.header('Authorization')
+  const authHeader = c.req.header('Authorization');
   if (!authHeader?.startsWith('Bearer ')) {
-    throw new HTTPException(401, { message: 'Missing API key' })
+    throw new HTTPException(401, { message: 'Missing API key. Use Authorization: Bearer <key>' });
   }
-  
-  const rawKey = authHeader.replace('Bearer ', '')
-  const keyHash = sha256(rawKey)
-  
-  const apiKey = await db.query.apiKeys.findFirst({
-    where: and(
-      eq(apiKeys.keyHash, keyHash),
-      isNull(apiKeys.revokedAt)
-    ),
-    with: { project: true }
-  })
-  
+
+  const rawKey = authHeader.slice(7); // 'Bearer '.length
+  const keyHash = sha256(rawKey);
+
+  const apiKey = await prismaClient.apiKey.findFirst({
+    where: { keyHash, revokedAt: null },
+    include: { project: true },
+  });
+
   if (!apiKey) {
-    throw new HTTPException(401, { message: 'Invalid API key' })
+    throw new HTTPException(401, { message: 'Invalid or revoked API key' });
   }
-  
-  // Update last used (fire and forget)
-  db.update(apiKeys)
-    .set({ lastUsedAt: new Date() })
-    .where(eq(apiKeys.id, apiKey.id))
-    .execute()
-  
-  // Set context for routes
-  c.set('apiKey', apiKey)
-  c.set('project', apiKey.project)
-  
-  await next()
-})
+
+  c.set('apiKey', apiKey);
+  c.set('project', apiKey.project);
+
+  await next();
+});
 ```
 
-### 2.4 Logging Middleware (Axiom)
+### 2.5 Logging Middleware (Axiom)
+
+Logs every API request to Axiom for usage monitoring. Runs before auth so failed auth attempts are also captured.
 
 ```typescript
-// src/api/middleware/logging.ts
-import { createMiddleware } from 'hono/factory'
+// apps/app/src/backend/api/middleware/logging.ts
+import { createMiddleware } from 'hono/factory';
+import { logger } from '../../utils/logger';
 
 export const loggingMiddleware = createMiddleware(async (c, next) => {
-  const start = Date.now()
-  
-  await next()
-  
-  const latencyMs = Date.now() - start
-  const apiKey = c.get('apiKey')
-  
-  // Log to Axiom (adjust to your Axiom setup)
-  logger.info('api.request', {
+  const start = Date.now();
+
+  await next();
+
+  const apiKey = c.get('apiKey');
+
+  logger.info({
+    type: 'api.request',
     method: c.req.method,
     path: c.req.path,
-    statusCode: c.res.status,
-    latencyMs,
+    status: c.res.status,
+    latencyMs: Date.now() - start,
     apiKeyId: apiKey?.id,
     projectId: apiKey?.projectId,
-  })
-})
+  });
+});
 ```
 
-### 2.5 Rate Limiting
+### 2.6 Rate Limiting (Redis)
 
 ```typescript
-// src/api/middleware/rateLimit.ts
-import { createMiddleware } from 'hono/factory'
-import { HTTPException } from 'hono/http-exception'
+// apps/app/src/backend/api/middleware/rate-limit.ts
+import { createMiddleware } from 'hono/factory';
+import { HTTPException } from 'hono/http-exception';
+import { Redis } from 'ioredis';
 
-// Simple in-memory rate limiter (replace with Redis for production)
-const rateLimits = new Map<string, { count: number; resetAt: number }>()
+const redis = new Redis(process.env.REDIS_URL);
 
-const LIMIT = 1000        // requests per window
-const WINDOW_MS = 60_000  // 1 minute
+const LIMIT = 1000;       // requests per window
+const WINDOW_SEC = 60;    // 1 minute
 
 export const rateLimitMiddleware = createMiddleware(async (c, next) => {
-  const apiKey = c.get('apiKey')
-  if (!apiKey) return next()
-  
-  const now = Date.now()
-  const key = apiKey.id
-  const current = rateLimits.get(key)
-  
-  if (!current || now > current.resetAt) {
-    rateLimits.set(key, { count: 1, resetAt: now + WINDOW_MS })
-  } else if (current.count >= LIMIT) {
-    c.res.headers.set('X-RateLimit-Limit', String(LIMIT))
-    c.res.headers.set('X-RateLimit-Remaining', '0')
-    c.res.headers.set('X-RateLimit-Reset', String(current.resetAt))
-    throw new HTTPException(429, { message: 'Rate limit exceeded' })
-  } else {
-    current.count++
+  const project = c.get('project');
+  if (!project) return next();
+
+  const redisKey = `ratelimit:api:${project.id}`;
+  const current = await redis.incr(redisKey);
+
+  if (current === 1) {
+    await redis.expire(redisKey, WINDOW_SEC);
   }
-  
-  await next()
-  
-  const limit = rateLimits.get(key)
-  if (limit) {
-    c.res.headers.set('X-RateLimit-Limit', String(LIMIT))
-    c.res.headers.set('X-RateLimit-Remaining', String(LIMIT - limit.count))
-    c.res.headers.set('X-RateLimit-Reset', String(limit.resetAt))
+
+  const ttl = await redis.ttl(redisKey);
+  const remaining = Math.max(0, LIMIT - current);
+
+  // Set rate limit headers on all responses
+  await next();
+
+  c.header('X-RateLimit-Limit', String(LIMIT));
+  c.header('X-RateLimit-Remaining', String(remaining));
+  c.header('X-RateLimit-Reset', String(Math.ceil(Date.now() / 1000) + ttl));
+
+  if (current > LIMIT) {
+    throw new HTTPException(429, { message: 'Rate limit exceeded. Try again shortly.' });
   }
-})
+});
 ```
 
 ---
 
 ## Phase 3: First Routes
 
-### 3.1 Ping Route (test everything works)
+### 3.1 Ping Route
 
 ```typescript
-// src/api/routes/ping.ts
-import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
+// apps/app/src/backend/api/routes/ping.ts
+import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
 
-const pingRoute = new OpenAPIHono()
+const pingRoute = new OpenAPIHono();
 
 const route = createRoute({
   method: 'get',
@@ -305,280 +366,29 @@ const route = createRoute({
       },
     },
   },
-})
+});
 
 pingRoute.openapi(route, (c) => {
-  const project = c.get('project')
+  const project = c.get('project');
   return c.json({
     status: 'ok' as const,
-    project: {
-      id: project.id,
-      name: project.name,
-    },
-  })
-})
+    project: { id: project.id, name: project.name },
+  });
+});
 
-export { pingRoute }
-```
-
-### 3.2 Events Routes
-
-```typescript
-// src/api/routes/events.ts
-import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
-
-const eventsRoutes = new OpenAPIHono()
-
-// --- POST /v1/events (track single event) ---
-const trackEventSchema = z.object({
-  name: z.string().min(1).max(255),
-  userId: z.string().optional(),
-  properties: z.record(z.unknown()).optional(),
-  timestamp: z.string().datetime().optional(),
-})
-
-const trackRoute = createRoute({
-  method: 'post',
-  path: '/events',
-  summary: 'Track event',
-  request: {
-    body: {
-      content: {
-        'application/json': { schema: trackEventSchema },
-      },
-    },
-  },
-  responses: {
-    200: {
-      description: 'Event tracked',
-      content: {
-        'application/json': {
-          schema: z.object({ success: z.literal(true) }),
-        },
-      },
-    },
-  },
-})
-
-eventsRoutes.openapi(trackRoute, async (c) => {
-  const project = c.get('project')
-  const body = c.req.valid('json')
-  
-  // Insert event (adapt to your event ingestion logic)
-  await trackEvent({
-    projectId: project.id,
-    name: body.name,
-    userId: body.userId,
-    properties: body.properties,
-    timestamp: body.timestamp ? new Date(body.timestamp) : new Date(),
-  })
-  
-  return c.json({ success: true as const })
-})
-
-// --- POST /v1/events/batch (track multiple events) ---
-const batchSchema = z.object({
-  events: z.array(trackEventSchema).min(1).max(100),
-})
-
-const batchRoute = createRoute({
-  method: 'post',
-  path: '/events/batch',
-  summary: 'Track multiple events',
-  request: {
-    body: {
-      content: {
-        'application/json': { schema: batchSchema },
-      },
-    },
-  },
-  responses: {
-    200: {
-      description: 'Events tracked',
-      content: {
-        'application/json': {
-          schema: z.object({
-            success: z.literal(true),
-            count: z.number(),
-          }),
-        },
-      },
-    },
-  },
-})
-
-eventsRoutes.openapi(batchRoute, async (c) => {
-  const project = c.get('project')
-  const { events } = c.req.valid('json')
-  
-  await trackEventsBatch(project.id, events)
-  
-  return c.json({ success: true as const, count: events.length })
-})
-
-export { eventsRoutes }
+export { pingRoute };
 ```
 
 ---
 
-## Phase 4: Stats Routes (Read Endpoints)
+## Phase 4: Error Handling
 
-### 4.1 Common Query Params
-
-```typescript
-// src/api/schemas/common.ts
-import { z } from '@hono/zod-openapi'
-
-export const dateRangeSchema = z.object({
-  start: z.string().datetime().optional(),
-  end: z.string().datetime().optional(),
-  period: z.enum(['today', '7d', '30d', '90d', '12m', 'all']).optional(),
-})
-
-export const paginationSchema = z.object({
-  limit: z.coerce.number().min(1).max(100).default(20),
-  cursor: z.string().optional(),
-})
-
-export const errorSchema = z.object({
-  error: z.object({
-    code: z.string(),
-    message: z.string(),
-  }),
-})
-```
-
-### 4.2 Stats Routes
+### 4.1 Consistent Error Responses
 
 ```typescript
-// src/api/routes/stats.ts
-import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
-import { dateRangeSchema } from '../schemas/common'
-
-const statsRoutes = new OpenAPIHono()
-
-// --- GET /v1/stats/aggregate ---
-const aggregateRoute = createRoute({
-  method: 'get',
-  path: '/stats/aggregate',
-  summary: 'Get aggregate stats',
-  request: {
-    query: dateRangeSchema.extend({
-      metrics: z.string().optional(), // comma-separated: visitors,pageviews,events
-    }),
-  },
-  responses: {
-    200: {
-      description: 'Aggregate stats',
-      content: {
-        'application/json': {
-          schema: z.object({
-            visitors: z.number(),
-            pageviews: z.number(),
-            events: z.number(),
-            bounceRate: z.number(),
-            avgSessionDuration: z.number(),
-          }),
-        },
-      },
-    },
-  },
-})
-
-statsRoutes.openapi(aggregateRoute, async (c) => {
-  const project = c.get('project')
-  const query = c.req.valid('query')
-  
-  const stats = await getAggregateStats(project.id, query)
-  return c.json(stats)
-})
-
-// --- GET /v1/stats/timeseries ---
-const timeseriesRoute = createRoute({
-  method: 'get',
-  path: '/stats/timeseries',
-  summary: 'Get stats over time',
-  request: {
-    query: dateRangeSchema.extend({
-      metric: z.enum(['visitors', 'pageviews', 'events']).default('visitors'),
-      granularity: z.enum(['hour', 'day', 'week', 'month']).default('day'),
-    }),
-  },
-  responses: {
-    200: {
-      description: 'Time series data',
-      content: {
-        'application/json': {
-          schema: z.object({
-            data: z.array(z.object({
-              timestamp: z.string(),
-              value: z.number(),
-            })),
-          }),
-        },
-      },
-    },
-  },
-})
-
-statsRoutes.openapi(timeseriesRoute, async (c) => {
-  const project = c.get('project')
-  const query = c.req.valid('query')
-  
-  const data = await getTimeseriesStats(project.id, query)
-  return c.json({ data })
-})
-
-// --- GET /v1/stats/breakdown ---
-const breakdownRoute = createRoute({
-  method: 'get',
-  path: '/stats/breakdown',
-  summary: 'Get stats broken down by property',
-  request: {
-    query: dateRangeSchema.extend({
-      property: z.enum(['page', 'referrer', 'country', 'browser', 'os', 'device']),
-      metric: z.enum(['visitors', 'pageviews', 'events']).default('visitors'),
-      limit: z.coerce.number().min(1).max(100).default(10),
-    }),
-  },
-  responses: {
-    200: {
-      description: 'Breakdown data',
-      content: {
-        'application/json': {
-          schema: z.object({
-            data: z.array(z.object({
-              value: z.string(),
-              count: z.number(),
-              percentage: z.number(),
-            })),
-          }),
-        },
-      },
-    },
-  },
-})
-
-statsRoutes.openapi(breakdownRoute, async (c) => {
-  const project = c.get('project')
-  const query = c.req.valid('query')
-  
-  const data = await getBreakdownStats(project.id, query)
-  return c.json({ data })
-})
-
-export { statsRoutes }
-```
-
----
-
-## Phase 5: Error Handling
-
-### 5.1 Consistent Error Responses
-
-```typescript
-// src/api/lib/errors.ts
-import { HTTPException } from 'hono/http-exception'
+// apps/app/src/backend/api/lib/errors.ts
+import { HTTPException } from 'hono/http-exception';
+import type { Context } from 'hono';
 
 export class ApiError extends HTTPException {
   constructor(
@@ -586,87 +396,135 @@ export class ApiError extends HTTPException {
     public code: string,
     message: string,
   ) {
-    super(status, { message })
+    super(status, { message });
   }
 }
 
-// Global error handler
 export function errorHandler(err: Error, c: Context) {
   if (err instanceof ApiError) {
-    return c.json({
-      error: {
-        code: err.code,
-        message: err.message,
-      },
-    }, err.status)
+    return c.json(
+      { error: { code: err.code, message: err.message } },
+      err.status,
+    );
   }
-  
+
   if (err instanceof HTTPException) {
-    return c.json({
-      error: {
-        code: 'ERROR',
-        message: err.message,
-      },
-    }, err.status)
+    return c.json(
+      { error: { code: 'ERROR', message: err.message } },
+      err.status,
+    );
   }
-  
-  console.error(err)
-  return c.json({
-    error: {
-      code: 'INTERNAL_ERROR',
-      message: 'An unexpected error occurred',
-    },
-  }, 500)
+
+  // Unexpected error — log full details, return generic message
+  console.error('Unhandled API error:', err);
+  return c.json(
+    { error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } },
+    500,
+  );
 }
+```
+
+### 4.2 Zod Validation Errors
+
+Configure OpenAPI to return structured 422 responses for validation failures:
+
+```typescript
+// In api/index.ts, configure the OpenAPI app:
+const api = new OpenAPIHono({
+  defaultHook: (result, c) => {
+    if (!result.success) {
+      return c.json(
+        {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid request parameters',
+            details: result.error.issues.map((issue) => ({
+              field: issue.path.join('.'),
+              message: issue.message,
+            })),
+          },
+        },
+        422,
+      );
+    }
+  },
+});
 ```
 
 ---
 
-## Phase 6: Testing & Docs
+## Phase 5: Testing & Docs
 
-### 6.1 Manual Testing Checklist
+### 5.1 Automated Tests (Vitest)
+
+Add tests in `apps/app/src/backend/api/__tests__/`:
+
+- [ ] **Auth middleware tests**: valid key, invalid key, revoked key, missing header, malformed header
+- [ ] **Rate limit tests**: under limit passes, over limit returns 429, headers are set correctly
+- [ ] **Ping route test**: returns project info with valid key
+
+### 5.2 Manual Testing Checklist
 
 - [ ] Create API key in UI, copy raw key
-- [ ] `GET /v1/ping` with key → returns project info
-- [ ] `GET /v1/ping` without key → 401
-- [ ] `GET /v1/ping` with revoked key → 401
-- [ ] `POST /v1/events` → event appears in dashboard
-- [ ] `POST /v1/events/batch` → multiple events tracked
-- [ ] `GET /v1/stats/aggregate` → returns correct numbers
-- [ ] Rate limit test → 429 after limit
-- [ ] Check Axiom logs for requests
+- [ ] `GET /api/v1/ping` with key → returns project info
+- [ ] `GET /api/v1/ping` without key → 401
+- [ ] `GET /api/v1/ping` with revoked key → 401
+- [ ] Rate limit test → 429 after 1000 requests/minute
+- [ ] Verify `X-RateLimit-*` headers on all responses
+- [ ] Check Axiom logs for API requests
+- [ ] Revoke key, verify subsequent requests return 401
 
-### 6.2 Documentation
+### 5.3 Documentation
 
-- [ ] OpenAPI spec auto-generated ✓
-- [ ] Swagger UI at `/v1/docs` ✓
+- [ ] OpenAPI spec auto-generated at `/api/openapi.json`
+- [ ] Swagger UI at `/api/docs`
 - [ ] Add markdown docs page to vemetric.com/docs/api
-- [ ] Include: Authentication, Rate limits, Endpoints, Examples
+- [ ] Include: Authentication, Rate limits, Endpoints, Filter format, Error codes, Examples
 
 ---
 
 ## Implementation Order
 
-1. **Database + Key Management** — schema, create/list/revoke, UI
-2. **Hono Setup** — file structure, main app, mount point
-3. **Auth Middleware** — key validation
-4. **Ping Route** — verify auth works
-5. **Logging Middleware** — Axiom integration
-6. **Rate Limiting** — basic in-memory, add Redis later if needed
-7. **Events Routes** — track single + batch
-8. **Stats Routes** — aggregate, timeseries, breakdown
-9. **Error Handling** — consistent format
-10. **Docs** — verify Swagger UI works, add external docs
+1. **Prisma schema + migration** — add `ApiKey` model, run migration
+2. **tRPC key management** — create/list/revoke routes
+3. **API Key UI** — new "API" tab in project settings
+4. **Hono app scaffold** — file structure, mount at `/api`, OpenAPI setup, docs
+5. **Auth middleware** — key validation, context setup
+6. **Logging middleware** — Axiom request logging
+7. **Rate limiting** — Redis-based, per project, with headers
+8. **Error handling** — consistent format, Zod validation hook
+9. **Ping route** — verify end-to-end flow works
+10. **Automated tests** — Vitest suite for middleware + ping route
+11. **Docs** — verify Swagger UI, add external docs page
+
+---
+
+## Key Architecture Decisions
+
+| Decision | Choice | Rationale |
+|---|---|---|
+| Mount point | `/api/v1/*` in `apps/app` | Reuse existing server, replace 501 placeholder |
+| Scope | Ping route only for now | Stats routes planned separately (`PUBLIC-API-STATS-PLAN.md`) |
+| Auth | Bearer token (API key hash lookup) | Simple, stateless, no session needed |
+| Rate limiting | Redis fixed window, per project | All keys for a project share one bucket |
+| Docs | Swagger UI at `/api/docs` (no auth) | Outside `/v1/*` prefix, publicly accessible |
+| Validation errors | Structured 422 with field-level details | Developer-friendly error messages |
 
 ---
 
 ## Future Enhancements (not v1)
 
-- `POST /v1/query` — flexible query endpoint for agents
+- Stats routes (`GET /v1/stats/aggregate`, `timeseries`, `breakdown`) — see `PUBLIC-API-STATS-PLAN.md`
+- Event ingestion via API (`POST /v1/events`, `POST /v1/events/batch`) — reuse hub's BullMQ pipeline
+- `POST /v1/query` — flexible query endpoint for AI agents
 - User tokens + `X-Vemetric-Project` header (CLI support)
 - Webhook subscriptions
 - SDK generation from OpenAPI spec
+- Per-key scope enforcement (`events:write`, `stats:read`, etc.)
+- Per-key custom rate limits
+- API usage dashboard (requests over time, by endpoint)
 
 ---
 
-*Created: 2026-02-05*
+_Created: 2026-02-05_
+_Updated: 2026-02-05 — Refined to align with existing codebase architecture_

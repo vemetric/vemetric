@@ -68,10 +68,10 @@ export function createStaticApp() {
     return next();
   });
 
-  staticApp.notFound(async (c) => {
+  staticApp.get('*', async (c) => {
     const accept = c.req.header('accept') ?? '';
     const pathname = new URL(c.req.url).pathname;
-    logger.info({ pathname, accept }, 'Static app notFound handler');
+    logger.info({ pathname, accept }, 'Static app fallback handler');
     if (accept.includes('text/html')) {
       applyIndexHtmlCacheHeaders(c);
       logger.info({ pathname }, 'Serving index.html for SPA fallback');

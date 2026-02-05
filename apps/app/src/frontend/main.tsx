@@ -45,11 +45,17 @@ if (isMobile) {
   });
 } else {
   // Unregister existing service workers on desktop for faster updates
-  navigator.serviceWorker?.getRegistrations().then((registrations) => {
-    for (const registration of registrations) {
-      registration.unregister();
-    }
-  });
+  navigator.serviceWorker
+    ?.getRegistrations()
+    .then((registrations) => {
+      for (const registration of registrations) {
+        registration.unregister();
+      }
+    })
+    .catch((err) => {
+      // eslint-disable-next-line no-console
+      console.warn('Failed to unregister service workers:', err);
+    });
 }
 
 createRoot(document.getElementById('root')!).render(

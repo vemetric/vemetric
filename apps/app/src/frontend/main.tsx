@@ -33,12 +33,30 @@ window.addEventListener('vite:preloadError', () => {
   window.location.reload();
 });
 
-const updateSW = registerSW({
-  immediate: true,
-  onNeedRefresh() {
-    updateSW(true);
-  },
-});
+const isMobile =
+  (navigator as any)?.userAgentData?.mobile === true ||
+  (matchMedia('(pointer: coarse)').matches && matchMedia('(max-width: 768px)').matches);
+if (isMobile) {
+  const updateSW = registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      updateSW(true);
+    },
+  });
+} else {
+  // Unregister existing service workers on desktop for faster updates
+  navigator.serviceWorker
+    ?.getRegistrations()
+    .then((registrations) => {
+      for (const registration of registrations) {
+        registration.unregister();
+      }
+    })
+    .catch((err) => {
+      // eslint-disable-next-line no-console
+      console.warn('Failed to unregister service workers:', err);
+    });
+}
 
 createRoot(document.getElementById('root')!).render(
   <Provider>

@@ -43,16 +43,16 @@ function Page() {
           <TbSettings />
           General
         </Tabs.Trigger>
-        <Tabs.Trigger value="billing">
-          <TbCreditCard />
-          Billing & Usage
-        </Tabs.Trigger>
         {isAdmin && (
           <Tabs.Trigger value="api">
             <TbKey />
             API
           </Tabs.Trigger>
         )}
+        <Tabs.Trigger value="billing">
+          <TbCreditCard />
+          Billing & Usage
+        </Tabs.Trigger>
       </Tabs.List>
       <Tabs.Content value="general">
         <ProjectGeneralTab projectId={projectId} />

@@ -128,7 +128,7 @@ export const ProjectApiTab = ({ projectId }: Props) => {
             <Field.Root flex={1}>
               <Field.Label>Key Name</Field.Label>
               <Input
-                placeholder="Production integration"
+                placeholder="Enter a name..."
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 maxLength={100}

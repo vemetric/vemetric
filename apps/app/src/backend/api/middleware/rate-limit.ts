@@ -7,10 +7,17 @@ const LIMIT = 1000;
 const WINDOW_SEC = 60;
 
 export type RateLimitRedisClient = {
-  incr: (key: string) => Promise<number>;
-  expire: (key: string, seconds: number) => Promise<number>;
-  ttl: (key: string) => Promise<number>;
+  eval: (script: string, numkeys: number, ...args: Array<string | number>) => Promise<unknown>;
 };
+
+const RATE_LIMIT_SCRIPT = `
+local current = redis.call('INCR', KEYS[1])
+if current == 1 then
+  redis.call('EXPIRE', KEYS[1], ARGV[1])
+end
+local ttl = redis.call('TTL', KEYS[1])
+return { current, ttl }
+`;
 
 function getRedisClient(): RateLimitRedisClient {
   if (!process.env.REDIS_URL) {
@@ -29,13 +36,14 @@ export function createRateLimitMiddleware(redis: RateLimitRedisClient = getRedis
     }
 
     const redisKey = `ratelimit:api:${project.id}`;
-    const current = await redis.incr(redisKey);
-
-    if (current === 1) {
-      await redis.expire(redisKey, WINDOW_SEC);
+    const result = await redis.eval(RATE_LIMIT_SCRIPT, 1, redisKey, WINDOW_SEC);
+    if (!Array.isArray(result) || result.length < 2) {
+      throw new Error('Invalid rate-limit script response');
     }
 
-    const ttl = await redis.ttl(redisKey);
+    const [rawCurrent, rawTtl] = result as [number | string, number | string];
+    const current = Number(rawCurrent);
+    const ttl = Number(rawTtl);
     const ttlSec = ttl > 0 ? ttl : WINDOW_SEC;
     const remaining = Math.max(0, LIMIT - current);
     const resetAt = Math.ceil(Date.now() / 1000) + ttlSec;

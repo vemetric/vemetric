@@ -8,19 +8,15 @@ class FakeRedis implements RateLimitRedisClient {
   private counts = new Map<string, number>();
   private ttls = new Map<string, number>();
 
-  async incr(key: string): Promise<number> {
+  async eval(...args: Array<string | number>): Promise<[number, number]> {
+    const key = String(args[2]);
+    const windowSec = Number(args[3]);
     const current = (this.counts.get(key) ?? 0) + 1;
     this.counts.set(key, current);
-    return current;
-  }
-
-  async expire(key: string, seconds: number): Promise<number> {
-    this.ttls.set(key, seconds);
-    return 1;
-  }
-
-  async ttl(key: string): Promise<number> {
-    return this.ttls.get(key) ?? 60;
+    if (current === 1) {
+      this.ttls.set(key, windowSec);
+    }
+    return [current, this.ttls.get(key) ?? windowSec];
   }
 }
 

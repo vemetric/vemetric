@@ -16,9 +16,7 @@ vi.mock('database', () => ({
 describe('GET /api/v1/ping', () => {
   const findByKeyHash = findByKeyHashMock as Mock;
   const fakeRedis: RateLimitRedisClient = {
-    incr: async () => 1,
-    expire: async () => 1,
-    ttl: async () => 60,
+    eval: async (..._args) => [1, 60],
   };
 
   beforeEach(() => {

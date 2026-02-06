@@ -1,10 +1,11 @@
-import { Avatar, Box, Button, Card, Container, Flex, Heading, Spinner, Stack, Text, Link } from '@chakra-ui/react';
+import { Box, Button, Card, Container, Flex, Heading, Spinner, Stack, Text, Link } from '@chakra-ui/react';
 import { createFileRoute, Link as RouterLink, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { TbBuilding, TbCheck } from 'react-icons/tb';
 import { Logo } from '@/components/logo';
 import { ErrorState } from '@/components/ui/empty-state';
 import { toaster } from '@/components/ui/toaster';
+import { UserIdentity } from '@/components/user-identity';
 import { authClient } from '@/utils/auth';
 import { redirectPath } from '@/utils/local-storage';
 import { trpc } from '@/utils/trpc';
@@ -136,15 +137,14 @@ function InvitePage() {
                       <Text fontSize="sm" color="fg.muted" flexShrink="0">
                         Signed in as
                       </Text>
-                      <Flex align="center" gap={1} justify="center">
-                        <Avatar.Root boxSize="24px" bg="linear-gradient(45deg, #7e48f850, #a086ff50)">
-                          <Avatar.Fallback name={session.user.name || '?'} color="gray.fg" fontSize="xs" />
-                          {session.user.image && <Avatar.Image src={session.user.image} />}
-                        </Avatar.Root>
-                        <Text fontSize="sm" color="fg.muted" lineClamp={1} textAlign="left">
-                          {session.user.name || session.user.email}
-                        </Text>
-                      </Flex>
+                      <UserIdentity
+                        name={session.user.name}
+                        email={session.user.email}
+                        image={session.user.image}
+                        avatarSize="2xs"
+                        avatarBg="linear-gradient(45deg, #7e48f850, #a086ff50)"
+                        textColor="fg.muted"
+                      />
                     </Flex>
                   </Stack>
                 ) : (

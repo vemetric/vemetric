@@ -25,19 +25,24 @@ export const apiKeysRouter = router({
         name: input.name,
         keyHash,
         keyPrefix,
+        createdByUserId: ctx.user.id,
       });
 
       return { rawKey, keyPrefix };
     }),
 
   list: projectAdminProcedure.query(async ({ ctx }) => {
-    return dbApiKey.listActiveByProjectId({ projectId: ctx.project.id });
+    return dbApiKey.listByProjectId({ projectId: ctx.project.id });
   }),
 
   revoke: projectAdminProcedure
     .input(z.object({ keyId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const result = await dbApiKey.revoke({ id: input.keyId, projectId: ctx.project.id });
+      const result = await dbApiKey.revoke({
+        id: input.keyId,
+        projectId: ctx.project.id,
+        revokedByUserId: ctx.user.id,
+      });
 
       if (result.count === 0) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'API key not found' });

@@ -9,13 +9,15 @@ import {
   IconButton,
   Input,
   Spinner,
+  Switch,
   Table,
   Text,
 } from '@chakra-ui/react';
 import { useState } from 'react';
-import { TbAlertTriangle, TbKey, TbPlus, TbTrash } from 'react-icons/tb';
+import { TbAlertTriangle, TbApi, TbKey, TbPlus, TbTrash } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import { CodeBox } from '@/components/code-box';
+import { DocsButton } from '@/components/docs-button';
 import {
   DialogBody,
   DialogCloseTrigger,
@@ -25,7 +27,10 @@ import {
   DialogRoot,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { EmptyState } from '@/components/ui/empty-state';
 import { toaster } from '@/components/ui/toaster';
+import { Tooltip } from '@/components/ui/tooltip';
+import { UserIdentity } from '@/components/user-identity';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import { trpc } from '@/utils/trpc';
 
@@ -43,12 +48,26 @@ type ApiKeyItem = {
   name: string;
   keyPrefix: string;
   createdAt: Date;
+  createdBy: {
+    id: string;
+    name: string | null;
+    email: string;
+    image: string | null;
+  } | null;
+  revokedBy: {
+    id: string;
+    name: string | null;
+    email: string;
+    image: string | null;
+  } | null;
+  revokedAt: Date | null;
 };
 
 export const ProjectApiTab = ({ projectId }: Props) => {
   const [name, setName] = useState('');
   const [newKey, setNewKey] = useState<NewKey | null>(null);
   const [keyToRevoke, setKeyToRevoke] = useState<ApiKeyItem | null>(null);
+  const [showRevokedKeys, setShowRevokedKeys] = useState(false);
 
   const {
     data,
@@ -92,6 +111,9 @@ export const ProjectApiTab = ({ projectId }: Props) => {
   });
 
   const keys = data ?? [];
+  const activeKeys = keys.filter((key) => !key.revokedAt);
+  const revokedKeys = keys.filter((key) => Boolean(key.revokedAt));
+  const visibleKeys = showRevokedKeys ? [...activeKeys, ...revokedKeys] : activeKeys;
 
   const onCreateKey = (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,9 +140,11 @@ export const ProjectApiTab = ({ projectId }: Props) => {
         <Card.Header>
           <Flex align="center" gap={2}>
             <CardIcon>
-              <TbKey />
+              <TbApi />
             </CardIcon>
-            <Text fontWeight="semibold">Public API Keys</Text>
+            <Text fontWeight="semibold">Create new API Key</Text>
+            <Box flexGrow={1} />
+            <DocsButton href="https://vemetric.com/docs/api" text="API Docs" />
           </Flex>
         </Card.Header>
         <Card.Body as="form" onSubmit={onCreateKey}>
@@ -152,9 +176,9 @@ export const ProjectApiTab = ({ projectId }: Props) => {
             <CardIcon>
               <TbKey />
             </CardIcon>
-            <Text fontWeight="semibold">Active Keys</Text>
+            <Text fontWeight="semibold">Keys</Text>
             <Box flexGrow={1} />
-            {!isLoadingKeys && <Badge colorPalette="purple">{keys.length}</Badge>}
+            {!isLoadingKeys && <Badge colorPalette="purple">{activeKeys.length}</Badge>}
           </Flex>
         </Card.Header>
         <Card.Body overflow="auto">
@@ -164,11 +188,9 @@ export const ProjectApiTab = ({ projectId }: Props) => {
                 <Spinner />
               </AbsoluteCenter>
             </Box>
-          ) : keys.length === 0 ? (
+          ) : visibleKeys.length === 0 ? (
             <Box p={6} textAlign="center">
-              <Text color="fg.muted" fontSize="sm">
-                No API keys created yet.
-              </Text>
+              <EmptyState icon={<TbKey />} title="No API keys available for this project." />
             </Box>
           ) : (
             <Table.Root size="sm" variant="outline" rounded="md">
@@ -176,34 +198,87 @@ export const ProjectApiTab = ({ projectId }: Props) => {
                 <Table.Row>
                   <Table.ColumnHeader>Name</Table.ColumnHeader>
                   <Table.ColumnHeader>Prefix</Table.ColumnHeader>
-                  <Table.ColumnHeader>Created</Table.ColumnHeader>
+                  <Table.ColumnHeader>Status</Table.ColumnHeader>
                   <Table.ColumnHeader w="80px">Actions</Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
-                {keys.map((key) => (
-                  <Table.Row key={key.id} css={{ '&:last-of-type > td': { borderBottom: 'none' } }}>
+                {visibleKeys.map((key) => (
+                  <Table.Row
+                    key={key.id}
+                    css={{ '&:last-of-type > td': { borderBottom: 'none' } }}
+                    opacity={key.revokedAt ? 0.65 : 1}
+                  >
                     <Table.Cell>{key.name}</Table.Cell>
                     <Table.Cell>
                       <CodeBox size="sm">{key.keyPrefix}</CodeBox>
                     </Table.Cell>
-                    <Table.Cell>{dateTimeFormatter.formatDate(key.createdAt)}</Table.Cell>
-                    <Table.Cell>
-                      <IconButton
-                        aria-label="Revoke API key"
-                        variant="ghost"
-                        size="xs"
-                        colorPalette="red"
-                        onClick={() => setKeyToRevoke(key)}
+                    <Table.Cell w="100px">
+                      <Tooltip
+                        content={
+                          <Box py="1">
+                            <Text fontSize="xs" mb={2}>
+                              Created on {dateTimeFormatter.formatDate(key.createdAt)} by
+                            </Text>
+                            <UserIdentity
+                              name={key.createdBy?.name}
+                              email={key.createdBy?.email}
+                              image={key.createdBy?.image}
+                              avatarSize="2xs"
+                            />
+                            {key.revokedAt && (
+                              <>
+                                <Text fontSize="xs" mt={5} mb={2}>
+                                  Revoked on {dateTimeFormatter.formatDate(key.revokedAt)} by
+                                </Text>
+                                <UserIdentity
+                                  name={key.revokedBy?.name}
+                                  email={key.revokedBy?.email}
+                                  image={key.revokedBy?.image}
+                                  avatarSize="2xs"
+                                />
+                              </>
+                            )}
+                          </Box>
+                        }
                       >
-                        <TbTrash />
-                      </IconButton>
+                        <Badge colorPalette={key.revokedAt ? 'red' : 'green'} cursor="help">
+                          {key.revokedAt ? 'Revoked' : 'Active'}
+                        </Badge>
+                      </Tooltip>
+                    </Table.Cell>
+                    <Table.Cell>
+                      {!key.revokedAt && (
+                        <IconButton
+                          aria-label="Revoke API key"
+                          variant="ghost"
+                          size="xs"
+                          colorPalette="red"
+                          onClick={() => setKeyToRevoke(key)}
+                        >
+                          <TbTrash />
+                        </IconButton>
+                      )}
                     </Table.Cell>
                   </Table.Row>
                 ))}
               </Table.Body>
             </Table.Root>
           )}
+
+          <Flex mt={4} align="center" justify="flex-end" gap={2}>
+            <Switch.Root
+              size="sm"
+              checked={showRevokedKeys}
+              onCheckedChange={({ checked }) => setShowRevokedKeys(checked)}
+            >
+              <Switch.HiddenInput />
+              <Switch.Control />
+              <Switch.Label fontSize="xs" color="fg.subtle">
+                Show revoked keys
+              </Switch.Label>
+            </Switch.Root>
+          </Flex>
         </Card.Body>
       </Card.Root>
 
@@ -215,7 +290,9 @@ export const ProjectApiTab = ({ projectId }: Props) => {
           <DialogBody>
             <Flex direction="column" gap={3}>
               <Text fontSize="sm" color="fg.muted">
-                This is the only time the full key is shown. Copy it now and store it securely.
+                This is the only time the full key is shown.
+                <br />
+                Copy it now and store it securely.
               </Text>
               {newKey && <CodeBox>{newKey.rawKey}</CodeBox>}
             </Flex>

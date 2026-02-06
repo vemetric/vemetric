@@ -6,14 +6,28 @@ CREATE TABLE "api_key" (
   "keyPrefix" VARCHAR NOT NULL,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "revokedAt" TIMESTAMP(3),
+  "createdByUserId" TEXT,
+  "revokedByUserId" TEXT,
 
   CONSTRAINT "api_key_pkey" PRIMARY KEY ("id")
 );
 
 CREATE UNIQUE INDEX "api_key_keyHash_key" ON "api_key"("keyHash");
 CREATE INDEX "api_key_projectId_idx" ON "api_key"("projectId");
+CREATE INDEX "api_key_createdByUserId_idx" ON "api_key"("createdByUserId");
+CREATE INDEX "api_key_revokedByUserId_idx" ON "api_key"("revokedByUserId");
 
 ALTER TABLE "api_key"
 ADD CONSTRAINT "api_key_projectId_fkey"
 FOREIGN KEY ("projectId") REFERENCES "project"("id")
 ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "api_key"
+ADD CONSTRAINT "api_key_createdByUserId_fkey"
+FOREIGN KEY ("createdByUserId") REFERENCES "user"("id")
+ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE "api_key"
+ADD CONSTRAINT "api_key_revokedByUserId_fkey"
+FOREIGN KEY ("revokedByUserId") REFERENCES "user"("id")
+ON DELETE SET NULL ON UPDATE CASCADE;

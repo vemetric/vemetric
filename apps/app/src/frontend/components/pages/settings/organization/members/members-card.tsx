@@ -1,8 +1,9 @@
-import { Card, Box, Button, Flex, Text, Table, Badge, Avatar, AbsoluteCenter, Spinner } from '@chakra-ui/react';
+import { Card, Box, Button, Flex, Text, Table, Badge, AbsoluteCenter, Spinner } from '@chakra-ui/react';
 import React, { useState } from 'react';
 import { TbUsers, TbTrash, TbChevronDown, TbChevronRight, TbFolders, TbUserPlus } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from '@/components/ui/menu';
+import { UserIdentity } from '@/components/user-identity';
 import { useCurrentOrganization } from '@/hooks/use-current-organization';
 import { trpc } from '@/utils/trpc';
 import { ChangeRoleDialog } from './change-role-dialog';
@@ -94,26 +95,15 @@ export const MembersCard = () => {
                             {canExpand && (
                               <Box color="fg.muted">{isExpanded ? <TbChevronDown /> : <TbChevronRight />}</Box>
                             )}
-                            <Avatar.Root size="sm">
-                              <Avatar.Fallback>
-                                {member.user.name?.charAt(0) || member.user.email.charAt(0).toUpperCase() || '?'}
-                              </Avatar.Fallback>
-                              {member.user.image && <Avatar.Image src={member.user.image} />}
-                            </Avatar.Root>
-                            <Box>
-                              <Text fontWeight="medium">
-                                {member.user.name || 'Unnamed'}
-                                {isCurrentUser && (
-                                  <Text as="span" color="fg.muted" fontWeight="normal">
-                                    {' '}
-                                    (you)
-                                  </Text>
-                                )}
-                              </Text>
-                              <Text fontSize="sm" color="fg.muted">
-                                {member.user.email}
-                              </Text>
-                            </Box>
+                            <UserIdentity
+                              mode="stacked"
+                              avatarSize="sm"
+                              name={member.user.name}
+                              email={member.user.email}
+                              image={member.user.image}
+                              primaryLabel={member.user.name || 'Unnamed'}
+                              isCurrentUser={isCurrentUser}
+                            />
                           </Flex>
                         </Table.Cell>
                         <Table.Cell>

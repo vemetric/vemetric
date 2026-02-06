@@ -24,6 +24,8 @@ model User {
   emailDripSequences EmailDripSequence[]
   projectAccess      UserProjectAccess[]
   createdInvitations Invitation[]
+  createdApiKeys     ApiKey[]  @relation("ApiKeyCreatedBy")
+  revokedApiKeys     ApiKey[]  @relation("ApiKeyRevokedBy")
 
   @@map("user")
 }
@@ -184,17 +186,23 @@ model Project {
 }
 
 model ApiKey {
-  id        String    @id
-  projectId String
-  name      String    @db.VarChar
-  keyHash   String    @unique
-  keyPrefix String    @db.VarChar
-  createdAt DateTime  @default(now())
-  revokedAt DateTime?
+  id              String    @id
+  projectId       String
+  name            String    @db.VarChar
+  keyHash         String    @unique
+  keyPrefix       String    @db.VarChar
+  createdAt       DateTime  @default(now())
+  revokedAt       DateTime?
+  createdByUserId String?
+  revokedByUserId String?
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation("ApiKeyCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  revokedBy User?   @relation("ApiKeyRevokedBy", fields: [revokedByUserId], references: [id], onDelete: SetNull)
 
   @@index([projectId])
+  @@index([createdByUserId])
+  @@index([revokedByUserId])
   @@map("api_key")
 }
 

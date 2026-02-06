@@ -13,11 +13,12 @@ import {
   Box,
   Skeleton,
   For,
+  Button,
 } from '@chakra-ui/react';
 import { Link } from '@tanstack/react-router';
 import { formatNumber } from '@vemetric/common/math';
 import { motion } from 'motion/react';
-import { TbPlus } from 'react-icons/tb';
+import { TbPlus, TbWorldPlus } from 'react-icons/tb';
 import { ResponsiveContainer, AreaChart as RechartsAreaChart, XAxis, YAxis, Area, CartesianGrid } from 'recharts';
 import { BaseLayout } from '@/components/base-layout';
 import { CreateProjectDialog } from '@/components/create-project-dialog';
@@ -179,11 +180,21 @@ export const ProjectOverviewPage = ({ organizationId }: ProjectOverviewPageProps
   return (
     <BaseLayout>
       <VStack flex="1" gap="7" px={4} py="12" align="flex-start">
-        <Heading asChild size="2xl" textAlign="left">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-            Projects
+        <Flex align="center" justify="space-between" w="100%">
+          <Heading asChild size="2xl" textAlign="left">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+              Projects
+            </motion.div>
+          </Heading>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.4 }}>
+            <CreateProjectDialog organizationId={organizationId}>
+              <Button size="xs" variant="surface">
+                <TbWorldPlus />
+                New Project
+              </Button>
+            </CreateProjectDialog>
           </motion.div>
-        </Heading>
+        </Flex>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

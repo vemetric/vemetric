@@ -18,7 +18,7 @@ import {
 import { Link } from '@tanstack/react-router';
 import { formatNumber } from '@vemetric/common/math';
 import { motion } from 'motion/react';
-import { TbPlus, TbWorldPlus } from 'react-icons/tb';
+import { TbWorldPlus } from 'react-icons/tb';
 import { ResponsiveContainer, AreaChart as RechartsAreaChart, XAxis, YAxis, Area, CartesianGrid } from 'recharts';
 import { BaseLayout } from '@/components/base-layout';
 import { CreateProjectDialog } from '@/components/create-project-dialog';
@@ -237,8 +237,8 @@ export const ProjectOverviewPage = ({ organizationId }: ProjectOverviewPageProps
                       rounded="l3"
                       overflow="hidden"
                     >
-                      <Center w="full" h="full" bg="bg.card/70" color="fg.subtle" fontSize="5xl">
-                        <TbPlus />
+                      <Center w="full" h="full" bg="bg.card/70" color="fg.subtle" fontSize={{ base: '4xl', md: '5xl' }}>
+                        <TbWorldPlus />
 
                         <Box
                           pos="absolute"

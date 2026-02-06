@@ -1,10 +1,10 @@
 import type { Mock } from 'vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPublicApi } from '../index';
-import type { RateLimitRedisClient } from '../middleware/rate-limit';
 
-const { findByKeyHashMock } = vi.hoisted(() => ({
+const { findByKeyHashMock, getRedisClientMock } = vi.hoisted(() => ({
   findByKeyHashMock: vi.fn(),
+  getRedisClientMock: vi.fn(),
 }));
 
 vi.mock('database', () => ({
@@ -13,15 +13,20 @@ vi.mock('database', () => ({
   },
 }));
 
+vi.mock('../../utils/redis', () => ({
+  getRedisClient: getRedisClientMock,
+}));
+
 describe('GET /api/v1/ping', () => {
   const findByKeyHash = findByKeyHashMock as Mock;
-  const fakeRedis: RateLimitRedisClient = {
-    eval: async (..._args) => [1, 60],
-  };
+  const getRedisClient = getRedisClientMock as Mock;
 
   beforeEach(() => {
-    delete process.env.REDIS_URL;
     findByKeyHash.mockReset();
+    getRedisClient.mockReset();
+    getRedisClient.mockResolvedValue({
+      eval: vi.fn().mockResolvedValue([1, 60]),
+    });
   });
 
   it('returns associated project info for a valid API key', async () => {
@@ -34,7 +39,7 @@ describe('GET /api/v1/ping', () => {
       },
     });
 
-    const app = createPublicApi({ rateLimitRedisClient: fakeRedis });
+    const app = createPublicApi();
 
     const response = await app.request('/v1/ping', {
       headers: {

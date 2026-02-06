@@ -1,14 +1,10 @@
 import { createMiddleware } from 'hono/factory';
-import Redis from 'ioredis';
+import { getRedisClient } from '../../utils/redis';
 import { ApiError } from '../lib/errors';
 import type { PublicApiEnv } from '../types';
 
 const LIMIT = 1000;
 const WINDOW_SEC = 60;
-
-export type RateLimitRedisClient = {
-  eval: (script: string, numkeys: number, ...args: Array<string | number>) => Promise<unknown>;
-};
 
 const RATE_LIMIT_SCRIPT = `
 local current = redis.call('INCR', KEYS[1])
@@ -19,15 +15,7 @@ local ttl = redis.call('TTL', KEYS[1])
 return { current, ttl }
 `;
 
-function getRedisClient(): RateLimitRedisClient {
-  if (!process.env.REDIS_URL) {
-    throw new Error('REDIS_URL is required to start the public API');
-  }
-
-  return new Redis(process.env.REDIS_URL);
-}
-
-export function createRateLimitMiddleware(redis: RateLimitRedisClient = getRedisClient()) {
+export function createRateLimitMiddleware() {
   return createMiddleware<PublicApiEnv>(async (c, next) => {
     const project = c.get('project');
     if (!project) {
@@ -36,7 +24,11 @@ export function createRateLimitMiddleware(redis: RateLimitRedisClient = getRedis
     }
 
     const redisKey = `ratelimit:api:${project.id}`;
-    const result = await redis.eval(RATE_LIMIT_SCRIPT, 1, redisKey, WINDOW_SEC);
+    const redisClient = await getRedisClient();
+    const result = await redisClient.eval(RATE_LIMIT_SCRIPT, {
+      keys: [redisKey],
+      arguments: [String(WINDOW_SEC)],
+    });
     if (!Array.isArray(result) || result.length < 2) {
       throw new Error('Invalid rate-limit script response');
     }

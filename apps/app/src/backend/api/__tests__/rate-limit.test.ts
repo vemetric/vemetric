@@ -1,16 +1,24 @@
 import { Hono } from 'hono';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../lib/errors';
-import { createRateLimitMiddleware, type RateLimitRedisClient } from '../middleware/rate-limit';
+import { createRateLimitMiddleware } from '../middleware/rate-limit';
 import type { PublicApiEnv } from '../types';
 
-class FakeRedis implements RateLimitRedisClient {
+const { getRedisClientMock } = vi.hoisted(() => ({
+  getRedisClientMock: vi.fn(),
+}));
+
+vi.mock('../../utils/redis', () => ({
+  getRedisClient: getRedisClientMock,
+}));
+
+class FakeRedis {
   private counts = new Map<string, number>();
   private ttls = new Map<string, number>();
 
-  async eval(...args: Array<string | number>): Promise<[number, number]> {
-    const key = String(args[2]);
-    const windowSec = Number(args[3]);
+  async eval(_script: string, options: { keys: string[]; arguments: string[] }): Promise<[number, number]> {
+    const key = options.keys[0];
+    const windowSec = Number(options.arguments[0]);
     const current = (this.counts.get(key) ?? 0) + 1;
     this.counts.set(key, current);
     if (current === 1) {
@@ -20,7 +28,7 @@ class FakeRedis implements RateLimitRedisClient {
   }
 }
 
-function createTestApp(redis: RateLimitRedisClient) {
+function createTestApp() {
   const app = new Hono<PublicApiEnv>();
   app.onError(errorHandler);
 
@@ -33,15 +41,20 @@ function createTestApp(redis: RateLimitRedisClient) {
     await next();
   });
 
-  app.use('/v1/*', createRateLimitMiddleware(redis));
+  app.use('/v1/*', createRateLimitMiddleware());
   app.get('/v1/ping', (c) => c.json({ status: 'ok' }));
 
   return app;
 }
 
 describe('public API rate limit middleware', () => {
+  beforeEach(() => {
+    getRedisClientMock.mockReset();
+  });
+
   it('allows requests under limit and sets rate limit headers', async () => {
-    const app = createTestApp(new FakeRedis());
+    getRedisClientMock.mockResolvedValue(new FakeRedis());
+    const app = createTestApp();
 
     const response = await app.request('/v1/ping');
 
@@ -52,8 +65,8 @@ describe('public API rate limit middleware', () => {
   });
 
   it('returns 429 when over limit', async () => {
-    const redis = new FakeRedis();
-    const app = createTestApp(redis);
+    getRedisClientMock.mockResolvedValue(new FakeRedis());
+    const app = createTestApp();
 
     let response: Response | null = null;
     for (let i = 0; i < 1001; i++) {
@@ -69,6 +82,22 @@ describe('public API rate limit middleware', () => {
       error: {
         code: 'RATE_LIMIT_EXCEEDED',
         message: 'Rate limit exceeded. Try again shortly.',
+      },
+    });
+  });
+
+  it('fails hard when redis is unavailable', async () => {
+    getRedisClientMock.mockRejectedValue(new Error('Redis unavailable'));
+    const app = createTestApp();
+
+    const response = await app.request('/v1/ping');
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(body).toEqual({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'An unexpected error occurred',
       },
     });
   });

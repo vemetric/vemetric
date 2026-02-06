@@ -1,10 +1,10 @@
 import type { Mock } from 'vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPublicApi } from '../index';
-import type { RateLimitRedisClient } from '../middleware/rate-limit';
 
-const { findByKeyHashMock } = vi.hoisted(() => ({
+const { findByKeyHashMock, getRedisClientMock } = vi.hoisted(() => ({
   findByKeyHashMock: vi.fn(),
+  getRedisClientMock: vi.fn(),
 }));
 
 vi.mock('database', () => ({
@@ -13,23 +13,24 @@ vi.mock('database', () => ({
   },
 }));
 
+vi.mock('../../utils/redis', () => ({
+  getRedisClient: getRedisClientMock,
+}));
+
 describe('public API auth middleware', () => {
   const findByKeyHash = findByKeyHashMock as Mock;
-  const fakeRedis: RateLimitRedisClient = {
-    eval: async (..._args) => [1, 60],
-  };
+  const getRedisClient = getRedisClientMock as Mock;
 
   beforeEach(() => {
-    delete process.env.REDIS_URL;
     findByKeyHash.mockReset();
-  });
-
-  it('throws during startup when REDIS_URL is missing', () => {
-    expect(() => createPublicApi()).toThrow('REDIS_URL is required to start the public API');
+    getRedisClient.mockReset();
+    getRedisClient.mockResolvedValue({
+      eval: vi.fn().mockResolvedValue([1, 60]),
+    });
   });
 
   it('returns 401 for missing authorization header', async () => {
-    const app = createPublicApi({ rateLimitRedisClient: fakeRedis });
+    const app = createPublicApi();
 
     const response = await app.request('/v1/ping');
     const body = await response.json();
@@ -44,7 +45,7 @@ describe('public API auth middleware', () => {
   });
 
   it('returns 401 for malformed authorization header', async () => {
-    const app = createPublicApi({ rateLimitRedisClient: fakeRedis });
+    const app = createPublicApi();
 
     const response = await app.request('/v1/ping', {
       headers: {
@@ -63,7 +64,7 @@ describe('public API auth middleware', () => {
   });
 
   it('returns 401 for invalid API key format and skips db lookup', async () => {
-    const app = createPublicApi({ rateLimitRedisClient: fakeRedis });
+    const app = createPublicApi();
 
     const response = await app.request('/v1/ping', {
       headers: {
@@ -83,7 +84,7 @@ describe('public API auth middleware', () => {
   });
 
   it('returns 401 for overlong API key and skips db lookup', async () => {
-    const app = createPublicApi({ rateLimitRedisClient: fakeRedis });
+    const app = createPublicApi();
     const veryLongKey = `vem_${'a'.repeat(5000)}`;
 
     const response = await app.request('/v1/ping', {
@@ -106,7 +107,7 @@ describe('public API auth middleware', () => {
   it('returns 401 for invalid or revoked key', async () => {
     findByKeyHash.mockResolvedValueOnce(null);
 
-    const app = createPublicApi({ rateLimitRedisClient: fakeRedis });
+    const app = createPublicApi();
 
     const response = await app.request('/v1/ping', {
       headers: {
@@ -134,7 +135,7 @@ describe('public API auth middleware', () => {
       },
     });
 
-    const app = createPublicApi({ rateLimitRedisClient: fakeRedis });
+    const app = createPublicApi();
 
     const response = await app.request('/v1/ping', {
       headers: {

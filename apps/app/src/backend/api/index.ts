@@ -4,12 +4,11 @@ import { errorHandler } from './lib/errors';
 import { authMiddleware } from './middleware/auth';
 import { loggingMiddleware } from './middleware/logging';
 import { createRateLimitMiddleware } from './middleware/rate-limit';
-import type { RateLimitRedisClient } from './middleware/rate-limit';
 import { pingRoute } from './routes/ping';
 import type { PublicApiEnv } from './types';
 
-export function createPublicApi(options?: { rateLimitRedisClient?: RateLimitRedisClient }) {
-  const rateLimitMiddleware = createRateLimitMiddleware(options?.rateLimitRedisClient);
+export function createPublicApi() {
+  const rateLimitMiddleware = createRateLimitMiddleware();
 
   const api = new OpenAPIHono<PublicApiEnv>({
     defaultHook: (result, c) => {

@@ -201,6 +201,7 @@ model ApiKey {
   revokedBy User?   @relation("ApiKeyRevokedBy", fields: [revokedByUserId], references: [id], onDelete: SetNull)
 
   @@index([projectId])
+  @@index([keyHash, revokedAt])
   @@index([createdByUserId])
   @@index([revokedByUserId])
   @@map("api_key")

@@ -8,6 +8,9 @@ function sha256(input: string): string {
   return createHash('sha256').update(input).digest('hex');
 }
 
+const API_KEY_LENGTH = 36;
+const API_KEY_PREFIX = 'vem_';
+
 export const authMiddleware = createMiddleware<PublicApiEnv>(async (c, next) => {
   const authHeader = c.req.header('Authorization');
   if (!authHeader) {
@@ -19,8 +22,8 @@ export const authMiddleware = createMiddleware<PublicApiEnv>(async (c, next) => 
   }
 
   const rawKey = authHeader.slice(7).trim();
-  if (!rawKey) {
-    throw new ApiError(401, 'UNAUTHORIZED', 'API key cannot be empty');
+  if (!rawKey || rawKey.length !== API_KEY_LENGTH || !rawKey.startsWith(API_KEY_PREFIX)) {
+    throw new ApiError(401, 'UNAUTHORIZED', 'Invalid API key format');
   }
 
   const keyHash = sha256(rawKey);

@@ -62,6 +62,47 @@ describe('public API auth middleware', () => {
     });
   });
 
+  it('returns 401 for invalid API key format and skips db lookup', async () => {
+    const app = createPublicApi({ rateLimitRedisClient: fakeRedis });
+
+    const response = await app.request('/v1/ping', {
+      headers: {
+        Authorization: 'Bearer invalid-format',
+      },
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body).toEqual({
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Invalid API key format',
+      },
+    });
+    expect(findByKeyHash).not.toHaveBeenCalled();
+  });
+
+  it('returns 401 for overlong API key and skips db lookup', async () => {
+    const app = createPublicApi({ rateLimitRedisClient: fakeRedis });
+    const veryLongKey = `vem_${'a'.repeat(5000)}`;
+
+    const response = await app.request('/v1/ping', {
+      headers: {
+        Authorization: `Bearer ${veryLongKey}`,
+      },
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body).toEqual({
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Invalid API key format',
+      },
+    });
+    expect(findByKeyHash).not.toHaveBeenCalled();
+  });
+
   it('returns 401 for invalid or revoked key', async () => {
     findByKeyHash.mockResolvedValueOnce(null);
 
@@ -69,7 +110,7 @@ describe('public API auth middleware', () => {
 
     const response = await app.request('/v1/ping', {
       headers: {
-        Authorization: 'Bearer vem_invalid',
+        Authorization: 'Bearer vem_abcdefghijklmnopqrstuvwxyz123456',
       },
     });
     const body = await response.json();
@@ -97,7 +138,7 @@ describe('public API auth middleware', () => {
 
     const response = await app.request('/v1/ping', {
       headers: {
-        Authorization: 'Bearer vem_valid_key',
+        Authorization: 'Bearer vem_abcdefghijklmnopqrstuvwxyz123456',
       },
     });
     const body = await response.json();

@@ -59,8 +59,8 @@ describe('public API rate limit middleware', () => {
     const response = await app.request('/v1/project');
 
     expect(response.status).toBe(200);
-    expect(response.headers.get('X-RateLimit-Limit')).toBe('1000');
-    expect(response.headers.get('X-RateLimit-Remaining')).toBe('999');
+    expect(response.headers.get('X-RateLimit-Limit')).toBe('100');
+    expect(response.headers.get('X-RateLimit-Remaining')).toBe('99');
     expect(response.headers.get('X-RateLimit-Reset')).toBeTruthy();
   });
 

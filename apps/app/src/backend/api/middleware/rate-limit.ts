@@ -3,7 +3,7 @@ import { getRedisClient } from '../../utils/redis';
 import type { PublicApiEnv } from '../types';
 import { ApiError } from '../utils/errors';
 
-const DEFAULT_LIMIT = 1000;
+const DEFAULT_LIMIT = 100;
 const DEFAULT_WINDOW_SEC = 60;
 
 const RATE_LIMIT_SCRIPT = `

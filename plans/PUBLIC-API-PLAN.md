@@ -161,7 +161,7 @@ Implemented in `apps/app/src/backend/api/middleware/rate-limit.ts`.
 - Uses atomic Lua script (`INCR` + `EXPIRE` + `TTL`) via `eval`
 - Emits `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`
 - Defaults:
-  - `limit = 1000`
+  - `limit = 100`
   - `windowSec = 60`
 - Middleware is configurable for tests and future flexibility:
   - `createRateLimitMiddleware({ limit?, windowSec? })`
@@ -244,7 +244,7 @@ Implemented tests:
 - [ ] `GET /api/v1/project` with key → returns project info
 - [ ] `GET /api/v1/project` without key → 401
 - [ ] `GET /api/v1/project` with revoked key → 401
-- [ ] Rate limit test → 429 after 1000 requests/minute
+- [ ] Rate limit test → 429 after 100 requests/minute
 - [ ] Verify `X-RateLimit-*` headers on all responses
 - [ ] Check Axiom logs for API requests
 - [ ] Revoke key, verify subsequent requests return 401

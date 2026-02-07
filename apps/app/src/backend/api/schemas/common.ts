@@ -19,3 +19,24 @@ export const validationErrorResponseSchema = z.object({
     ),
   }),
 });
+
+const jsonErrorResponseContent = {
+  'application/json': {
+    schema: errorResponseSchema,
+  },
+} as const;
+
+export const commonOpenApiErrorResponses = {
+  401: {
+    description: 'Unauthorized - missing, malformed, invalid, or revoked API key',
+    content: jsonErrorResponseContent,
+  },
+  429: {
+    description: 'Rate limit exceeded',
+    content: jsonErrorResponseContent,
+  },
+  500: {
+    description: 'Unexpected internal error',
+    content: jsonErrorResponseContent,
+  },
+} as const;

@@ -477,9 +477,38 @@ Add tests in `apps/app/src/backend/api/__tests__/`:
 ### 5.3 Documentation
 
 - [ ] OpenAPI spec auto-generated at `/api/openapi.json`
-- [ ] Swagger UI at `/api/docs`
+- [ ] `/api/docs` redirects to `https://vemetric.com/docs/api`
 - [ ] Add markdown docs page to vemetric.com/docs/api
 - [ ] Include: Authentication, Rate limits, Endpoints, Filter format, Error codes, Examples
+
+### 5.4 Production Routing (Cloudflare)
+
+Use explicit host-based rules so `api.vemetric.com` is the canonical API domain, while direct use of `app.vemetric.com/api/*` is blocked or redirected. This avoids loops because each rule matches a different incoming host.
+
+1. `api.vemetric.com/*` -> proxy/rewrite to app origin `/api/*`
+- Type: Origin/Transform rewrite (or Worker proxy)
+- Match expression:
+```txt
+(http.host eq "api.vemetric.com" and starts_with(http.request.uri.path, "/"))
+```
+- Action:
+  - Forward to origin host `app.vemetric.com`
+  - Rewrite path to `/api${http.request.uri.path}`
+  - Preserve query string
+
+2. `app.vemetric.com/api/*` -> redirect/block direct access
+- Type: Redirect rule (recommended first)
+- Match expression:
+```txt
+(http.host eq "app.vemetric.com" and starts_with(http.request.uri.path, "/api/"))
+```
+- Action:
+  - Status: `308`
+  - Destination: `https://api.vemetric.com${substring(http.request.uri.path, 4)}`
+  - Preserve query string
+
+Optional stricter variant:
+- Allow redirect only for `GET`/`HEAD`, return `404` (or `410`) for other methods to discourage non-canonical writes on app domain.
 
 ---
 

@@ -34,7 +34,7 @@ export function createPublicApi() {
     info: {
       title: 'Vemetric API',
       version: '1.0.0',
-      description: 'Privacy-first analytics API (read-only)',
+      description: 'Privacy-first analytics API',
     },
   });
 

@@ -1,4 +1,5 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
+import { commonOpenApiErrorResponses } from '../schemas/common';
 import type { PublicApiEnv } from '../types';
 
 const pingRoute = new OpenAPIHono<PublicApiEnv>();
@@ -23,6 +24,7 @@ const route = createRoute({
         },
       },
     },
+    ...commonOpenApiErrorResponses,
   },
 });
 
@@ -35,7 +37,7 @@ pingRoute.openapi(route, (c) => {
       id: project.id,
       name: project.name,
     },
-  });
+  }, 200);
 });
 
 export { pingRoute };

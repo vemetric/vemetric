@@ -1,7 +1,7 @@
 import type { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
-import { logger } from '../../utils/logger';
+import { logger } from './api-logger';
 
 export class ApiError extends HTTPException {
   code: string;

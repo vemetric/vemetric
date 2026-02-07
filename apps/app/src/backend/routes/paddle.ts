@@ -5,7 +5,7 @@ import { sendTransactionalMail } from '@vemetric/email/transactional';
 import type { BillingInfo } from 'database';
 import { dbBillingInfo, dbOrganization } from 'database';
 import type { HonoContext } from '../types';
-import { logger } from '../utils/logger';
+import { logger } from '../utils/backend-logger';
 import { paddleApi } from '../utils/paddle';
 import { vemetric } from '../utils/vemetric-client';
 

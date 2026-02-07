@@ -1,6 +1,6 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import { logger } from '../utils/logger';
+import { logger } from '../utils/backend-logger';
 import { paddleApi } from '../utils/paddle';
 import { organizationProcedure, organizationAdminProcedure, router, projectOrPublicProcedure } from '../utils/trpc';
 import { getUsageCycles } from '../utils/usage';

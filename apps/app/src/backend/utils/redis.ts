@@ -1,5 +1,5 @@
 import { createClient } from 'redis';
-import { logger } from './logger';
+import { logger } from './backend-logger';
 
 type RedisNativeClient = ReturnType<typeof createClient>;
 

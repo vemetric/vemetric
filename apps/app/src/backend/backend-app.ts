@@ -20,7 +20,7 @@ import { projectsRouter } from './routes/projects';
 import { usersRouter } from './routes/users';
 import type { HonoContext, HonoContextVars } from './types';
 import { auth, TRUSTED_ORIGINS } from './utils/auth';
-import { logger } from './utils/logger';
+import { logger } from './utils/backend-logger';
 import { publicProcedure, router } from './utils/trpc';
 
 export const trpcRouter = router({

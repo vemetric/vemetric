@@ -3,7 +3,7 @@ import { TRPCError } from '@trpc/server';
 import { dbApiKey } from 'database';
 import { customAlphabet, nanoid } from 'nanoid';
 import { z } from 'zod';
-import { logger } from '../utils/logger';
+import { logger } from '../utils/backend-logger';
 import { projectAdminProcedure, router } from '../utils/trpc';
 import { vemetric } from '../utils/vemetric-client';
 

@@ -10,7 +10,12 @@ export default [
       'no-restricted-imports': [
         'error',
         {
-          patterns: ['**/src/backend/**', '**/backend/**', '@/backend/**'],
+          patterns: [
+            {
+              group: ['**/src/backend/**', '**/backend/**', '@/backend/**'],
+              message: 'Frontend modules must not import backend code. Move shared logic to a common module instead.',
+            },
+          ],
         },
       ],
     },
@@ -23,10 +28,49 @@ export default [
       'no-restricted-imports': [
         'error',
         {
-          patterns: ['**/src/frontend/**', '**/frontend/**', '@/**'],
+          patterns: [
+            {
+              group: ['**/src/frontend/**', '**/frontend/**', '@/**'],
+              message:
+                'Backend modules must not import frontend code or frontend-only aliases. Keep backend runtime dependencies server-only.',
+            },
+          ],
         },
       ],
     },
     files: ['src/backend/**/*.{ts,tsx}'],
   })),
+  {
+    files: ['src/backend/api/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/backend-logger'],
+              message: 'Public API code must use api-logger.ts to keep API logs separated from backend logs.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/backend/**/*.{ts,tsx}'],
+    ignores: ['src/backend/api/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/api-logger'],
+              message: 'Non-API backend code must use backend-logger.ts and must not write to the API logger stream.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];

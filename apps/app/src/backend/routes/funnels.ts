@@ -5,8 +5,8 @@ import { funnelStepSchema } from '@vemetric/common/funnel';
 import { clickhouseEvent, getUserFilterQueries } from 'clickhouse';
 import { dbFunnel } from 'database';
 import { z } from 'zod';
+import { logger } from '../utils/backend-logger';
 import { getFilterFunnelsData } from '../utils/filter';
-import { logger } from '../utils/logger';
 import { projectProcedure, router, timespanProcedure } from '../utils/trpc';
 import { vemetric } from '../utils/vemetric-client';
 

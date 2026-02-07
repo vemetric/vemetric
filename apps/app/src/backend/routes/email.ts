@@ -3,7 +3,7 @@ import { getVemetricUrl } from '@vemetric/common/env';
 import { dbAuthUser, dbOrganization, dbProject, OrganizationRole, serializableTransaction } from 'database';
 import type { Hono } from 'hono';
 import type { HonoContextVars } from '../types';
-import { logger } from '../utils/logger';
+import { logger } from '../utils/backend-logger';
 import { buildUrl } from '../utils/url';
 import { vemetric } from '../utils/vemetric-client';
 

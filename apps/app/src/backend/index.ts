@@ -4,7 +4,7 @@ import { Hono } from 'hono';
 import { createPublicApi } from './api';
 import { createBackendApp } from './backend-app';
 import { createStaticApp } from './static-app';
-import { logger } from './utils/logger';
+import { logger } from './utils/backend-logger';
 
 if (process.env.SENTRY_URL) {
   Sentry.init({

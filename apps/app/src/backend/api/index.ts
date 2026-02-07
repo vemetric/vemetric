@@ -4,7 +4,7 @@ import { loggingMiddleware } from './middleware/logging';
 import { createRateLimitMiddleware } from './middleware/rate-limit';
 import { pingRoute } from './routes/ping';
 import type { PublicApiEnv } from './types';
-import { errorHandler } from './utils/errors';
+import { createValidationErrorResponse, errorHandler } from './utils/errors';
 
 export function createPublicApi() {
   const rateLimitMiddleware = createRateLimitMiddleware();
@@ -12,19 +12,7 @@ export function createPublicApi() {
   const api = new OpenAPIHono<PublicApiEnv>({
     defaultHook: (result, c) => {
       if (!result.success) {
-        return c.json(
-          {
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: 'Invalid request parameters',
-              details: result.error.issues.map((issue) => ({
-                field: issue.path.join('.'),
-                message: issue.message,
-              })),
-            },
-          },
-          422,
-        );
+        return c.json(createValidationErrorResponse(result.error.issues), 422);
       }
     },
   });
@@ -51,7 +39,7 @@ export function createPublicApi() {
       {
         error: {
           code: 'NOT_FOUND',
-          message: 'Route not found',
+          message: 'Route not found. See https://vemetric.com/docs/api',
         },
       },
       404,

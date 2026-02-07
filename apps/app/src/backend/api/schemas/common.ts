@@ -26,10 +26,20 @@ const jsonErrorResponseContent = {
   },
 } as const;
 
+const jsonValidationErrorResponseContent = {
+  'application/json': {
+    schema: validationErrorResponseSchema,
+  },
+} as const;
+
 export const commonOpenApiErrorResponses = {
   401: {
     description: 'Unauthorized - missing, malformed, invalid, or revoked API key',
     content: jsonErrorResponseContent,
+  },
+  422: {
+    description: 'Validation error',
+    content: jsonValidationErrorResponseContent,
   },
   429: {
     description: 'Rate limit exceeded',

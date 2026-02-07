@@ -1,6 +1,7 @@
 import type { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
+import type { ZodIssue } from 'zod';
 import { logger } from './api-logger';
 
 export class ApiError extends HTTPException {
@@ -10,6 +11,19 @@ export class ApiError extends HTTPException {
     super(status, { message });
     this.code = code;
   }
+}
+
+export function createValidationErrorResponse(issues: ZodIssue[]) {
+  return {
+    error: {
+      code: 'VALIDATION_ERROR' as const,
+      message: 'Invalid request parameters',
+      details: issues.map((issue) => ({
+        field: issue.path.join('.'),
+        message: issue.message,
+      })),
+    },
+  };
 }
 
 export function errorHandler(err: Error, c: Context) {

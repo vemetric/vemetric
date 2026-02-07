@@ -6,6 +6,7 @@ import {
   dialogAnatomy,
   emptyStateAnatomy,
   menuAnatomy,
+  pinInputAnatomy,
   selectAnatomy,
   tableAnatomy,
   tabsAnatomy,
@@ -362,6 +363,16 @@ export const vemetricTheme = createSystem(defaultConfig, {
                 py: 2.5,
                 px: 3,
               },
+            },
+          },
+        },
+      }),
+      pinInput: defineSlotRecipe({
+        slots: pinInputAnatomy.keys(),
+        base: {
+          input: {
+            _placeholder: {
+              opacity: 0.2,
             },
           },
         },

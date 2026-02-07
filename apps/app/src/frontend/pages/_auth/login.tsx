@@ -59,10 +59,11 @@ function Page() {
           setIsLoading(false);
           if (ctx.error.code === 'EMAIL_NOT_VERIFIED') {
             toaster.create({
-              title: 'Please verify your email before signing in.',
-              description: 'We just sent you another verification link.',
+              title: 'Please verify your email before signing in',
+              description: 'Enter the verification code we sent to your email.',
               type: 'error',
             });
+            navigate({ to: '/verify-email', search: { email } });
           } else {
             toaster.create({
               title: ctx.error.message,

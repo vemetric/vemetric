@@ -2,12 +2,25 @@ import { createProjectDeletionToken } from '@vemetric/common/email-token';
 import { getVemetricUrl } from '@vemetric/common/env';
 import { sendTransactionalMail } from '@vemetric/email/transactional';
 
-export async function sendEmailVerificationLink(userEmail: string, url: string) {
+export async function sendEmailVerificationLink(userEmail: string, url: string, verificationCode?: string) {
   const changeEmail = url.includes('changeEmail');
+  const verificationLink = url.replace('callbackURL=/', `callbackURL=${getVemetricUrl('app')}/`);
+
+  if (changeEmail) {
+    await sendTransactionalMail(userEmail, {
+      template: 'emailChange',
+      props: {
+        verificationLink,
+      },
+    });
+    return;
+  }
+
   await sendTransactionalMail(userEmail, {
-    template: changeEmail ? 'emailChange' : 'emailVerification',
+    template: 'emailVerification',
     props: {
-      verificationLink: url.replace('callbackURL=/', `callbackURL=${getVemetricUrl('app')}/`),
+      verificationLink,
+      verificationCode,
     },
   });
 }

@@ -42,7 +42,7 @@ function createTestApp(options?: Parameters<typeof createRateLimitMiddleware>[0]
   });
 
   app.use('/v1/*', createRateLimitMiddleware(options));
-  app.get('/v1/ping', (c) => c.json({ status: 'ok' }));
+  app.get('/v1/project', (c) => c.json({ status: 'ok' }));
 
   return app;
 }
@@ -56,7 +56,7 @@ describe('public API rate limit middleware', () => {
     getRedisClientMock.mockResolvedValue(new FakeRedis());
     const app = createTestApp();
 
-    const response = await app.request('/v1/ping');
+    const response = await app.request('/v1/project');
 
     expect(response.status).toBe(200);
     expect(response.headers.get('X-RateLimit-Limit')).toBe('1000');
@@ -70,7 +70,7 @@ describe('public API rate limit middleware', () => {
 
     let response: Response | null = null;
     for (let i = 0; i < 3; i++) {
-      response = await app.request('/v1/ping');
+      response = await app.request('/v1/project');
     }
 
     const body = await response!.json();
@@ -90,7 +90,7 @@ describe('public API rate limit middleware', () => {
     getRedisClientMock.mockRejectedValue(new Error('Redis unavailable'));
     const app = createTestApp();
 
-    const response = await app.request('/v1/ping');
+    const response = await app.request('/v1/project');
     const body = await response.json();
 
     expect(response.status).toBe(500);

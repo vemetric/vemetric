@@ -2,7 +2,7 @@ import { OpenAPIHono } from '@hono/zod-openapi';
 import { authMiddleware } from './middleware/auth';
 import { loggingMiddleware } from './middleware/logging';
 import { createRateLimitMiddleware } from './middleware/rate-limit';
-import { pingRoute } from './routes/ping';
+import { projectRoutes } from './routes/projects';
 import type { PublicApiEnv } from './types';
 import { createValidationErrorResponse, errorHandler } from './utils/errors';
 
@@ -32,7 +32,7 @@ export function createPublicApi() {
   api.use('/v1/*', authMiddleware);
   api.use('/v1/*', rateLimitMiddleware);
 
-  api.route('/v1', pingRoute);
+  api.route('/v1', projectRoutes);
 
   api.notFound((c) => {
     return c.json(

@@ -32,7 +32,7 @@ describe('public API auth middleware', () => {
   it('returns 401 for missing authorization header', async () => {
     const app = createPublicApi();
 
-    const response = await app.request('/v1/ping');
+    const response = await app.request('/v1/project');
     const body = await response.json();
 
     expect(response.status).toBe(401);
@@ -47,7 +47,7 @@ describe('public API auth middleware', () => {
   it('returns 401 for malformed authorization header', async () => {
     const app = createPublicApi();
 
-    const response = await app.request('/v1/ping', {
+    const response = await app.request('/v1/project', {
       headers: {
         Authorization: 'Token abc',
       },
@@ -66,7 +66,7 @@ describe('public API auth middleware', () => {
   it('returns 401 for invalid API key format and skips db lookup', async () => {
     const app = createPublicApi();
 
-    const response = await app.request('/v1/ping', {
+    const response = await app.request('/v1/project', {
       headers: {
         Authorization: 'Bearer invalid-format',
       },
@@ -87,7 +87,7 @@ describe('public API auth middleware', () => {
     const app = createPublicApi();
     const veryLongKey = `vem_${'a'.repeat(5000)}`;
 
-    const response = await app.request('/v1/ping', {
+    const response = await app.request('/v1/project', {
       headers: {
         Authorization: `Bearer ${veryLongKey}`,
       },
@@ -109,7 +109,7 @@ describe('public API auth middleware', () => {
 
     const app = createPublicApi();
 
-    const response = await app.request('/v1/ping', {
+    const response = await app.request('/v1/project', {
       headers: {
         Authorization: 'Bearer vem_abcdefghijklmnopqrstuvwxyz123456',
       },
@@ -126,18 +126,28 @@ describe('public API auth middleware', () => {
   });
 
   it('passes for a valid key', async () => {
+    const createdAt = new Date('2026-02-07T12:00:00.000Z');
+    const firstEventAt = new Date('2026-02-07T12:30:00.000Z');
+
     findByKeyHash.mockResolvedValueOnce({
       id: 'key_1',
       projectId: '123',
       project: {
         id: '123',
         name: 'Demo Project',
+        domain: 'demo.example.com',
+        token: 'project_token_123',
+        createdAt,
+        firstEventAt,
+        publicDashboard: false,
+        excludedIps: null,
+        excludedCountries: null,
       },
     });
 
     const app = createPublicApi();
 
-    const response = await app.request('/v1/ping', {
+    const response = await app.request('/v1/project', {
       headers: {
         Authorization: 'Bearer vem_abcdefghijklmnopqrstuvwxyz123456',
       },
@@ -146,10 +156,16 @@ describe('public API auth middleware', () => {
 
     expect(response.status).toBe(200);
     expect(body).toEqual({
-      status: 'ok',
       project: {
         id: '123',
         name: 'Demo Project',
+        domain: 'demo.example.com',
+        token: 'project_token_123',
+        createdAt: createdAt.toISOString(),
+        firstEventAt: firstEventAt.toISOString(),
+        hasPublicDashboard: false,
+        excludedIps: [],
+        excludedCountries: [],
       },
     });
   });

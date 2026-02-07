@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createRateLimitMiddleware } from '../middleware/rate-limit';
+import { createRateLimitMiddleware } from './rate-limit';
 import type { PublicApiEnv } from '../types';
 import { errorHandler } from '../utils/errors';
 

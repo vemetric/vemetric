@@ -7,8 +7,8 @@ import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { createAuthMiddleware, customSession, lastLoginMethod } from 'better-auth/plugins';
 import { dbOrganization, prismaClient } from 'database';
+import { logger } from './backend-logger';
 import { sendEmailVerificationLink, sendPasswordResetLink } from './email';
-import { logger } from './logger';
 import { emailVerificationRateLimiter } from './rate-limit';
 import { vemetric } from './vemetric-client';
 

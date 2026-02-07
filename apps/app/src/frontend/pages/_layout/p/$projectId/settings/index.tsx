@@ -1,15 +1,17 @@
 import { Button, Tabs, Text } from '@chakra-ui/react';
 import { useNavigate, createFileRoute } from '@tanstack/react-router';
 import { fallback, zodValidator } from '@tanstack/zod-adapter';
-import { TbSettings, TbCreditCard } from 'react-icons/tb';
+import { TbSettings, TbCreditCard, TbKey } from 'react-icons/tb';
 import { z } from 'zod';
+import { ProjectApiTab } from '@/components/pages/settings/project/api-tab';
 import { ProjectGeneralTab } from '@/components/pages/settings/project/general-tab';
 import { EmptyState } from '@/components/ui/empty-state';
+import { useCurrentOrganization } from '@/hooks/use-current-organization';
 import { useOrgSettingsDialog } from '@/hooks/use-org-settings-dialog';
 import { useSetBreadcrumbs } from '@/stores/header-store';
 
 const settingsSearchSchema = z.object({
-  tab: fallback(z.enum(['general', 'billing']), 'general').default('general'),
+  tab: fallback(z.enum(['general', 'billing', 'api']), 'general').default('general'),
 });
 
 export const Route = createFileRoute('/_layout/p/$projectId/settings/')({
@@ -20,6 +22,8 @@ export const Route = createFileRoute('/_layout/p/$projectId/settings/')({
 function Page() {
   const { projectId } = Route.useParams();
   const { tab } = Route.useSearch();
+  const { isAdmin } = useCurrentOrganization();
+  const selectedTab = !isAdmin && tab === 'api' ? 'general' : tab;
   const navigate = useNavigate({ from: '/p/$projectId/settings' });
   useSetBreadcrumbs(['Settings']);
 
@@ -27,18 +31,24 @@ function Page() {
 
   return (
     <Tabs.Root
-      value={tab}
+      value={selectedTab}
       onValueChange={({ value }) => {
-        navigate({ resetScroll: false, search: { tab: value as 'general' | 'billing' } });
+        navigate({ resetScroll: false, search: { tab: value as 'general' | 'billing' | 'api' } });
       }}
       variant="outline"
-      maxW="600px"
+      maxW={selectedTab === 'api' ? '900px' : '600px'}
     >
       <Tabs.List>
         <Tabs.Trigger value="general">
           <TbSettings />
           General
         </Tabs.Trigger>
+        {isAdmin && (
+          <Tabs.Trigger value="api">
+            <TbKey />
+            API
+          </Tabs.Trigger>
+        )}
         <Tabs.Trigger value="billing">
           <TbCreditCard />
           Billing & Usage
@@ -63,6 +73,11 @@ function Page() {
           </Button>
         </EmptyState>
       </Tabs.Content>
+      {isAdmin && (
+        <Tabs.Content value="api">
+          <ProjectApiTab projectId={projectId} />
+        </Tabs.Content>
+      )}
     </Tabs.Root>
   );
 }

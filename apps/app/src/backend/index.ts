@@ -1,9 +1,10 @@
 import * as Sentry from '@sentry/bun';
 import { clickhouseClient } from 'clickhouse';
 import { Hono } from 'hono';
+import { createPublicApi } from './api';
 import { createBackendApp } from './backend-app';
 import { createStaticApp } from './static-app';
-import { logger } from './utils/logger';
+import { logger } from './utils/backend-logger';
 
 if (process.env.SENTRY_URL) {
   Sentry.init({
@@ -16,9 +17,10 @@ if (process.env.SENTRY_URL) {
 export const app = new Hono();
 
 const backendApp = createBackendApp();
+const publicApi = createPublicApi();
 
 app.route('/_api', backendApp);
-app.all('/api*', (c) => c.json({ error: 'Not Implemented' }, 501));
+app.route('/api', publicApi);
 
 if (process.env.NODE_ENV === 'production') {
   const staticApp = createStaticApp();

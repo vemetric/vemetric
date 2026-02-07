@@ -1,7 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { dbAuthUser } from 'database';
 import { z } from 'zod';
-import { logger } from '../utils/logger';
+import { logger } from '../utils/backend-logger';
 import { getAvatarKeyPrefix, isStorageConfigured, storage } from '../utils/storage';
 import { loggedInProcedure, router } from '../utils/trpc';
 

@@ -6,6 +6,7 @@ import { csrf } from 'hono/csrf';
 import { HTTPException } from 'hono/http-exception';
 import { pinoLogger as honoPino } from 'hono-pino';
 import { accountRouter } from './routes/account';
+import { apiKeysRouter } from './routes/api-keys';
 import { billingRouter } from './routes/billing';
 import { dashboardRouter } from './routes/dashboard';
 import { useEmailRoutes } from './routes/email';
@@ -19,11 +20,12 @@ import { projectsRouter } from './routes/projects';
 import { usersRouter } from './routes/users';
 import type { HonoContext, HonoContextVars } from './types';
 import { auth, TRUSTED_ORIGINS } from './utils/auth';
-import { logger } from './utils/logger';
+import { logger } from './utils/backend-logger';
 import { publicProcedure, router } from './utils/trpc';
 
 export const trpcRouter = router({
   account: accountRouter,
+  apiKeys: apiKeysRouter,
   dashboard: dashboardRouter,
   events: eventsRouter,
   filters: filtersRouter,

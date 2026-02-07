@@ -10,8 +10,8 @@ import {
   serializableTransaction,
 } from 'database';
 import { z } from 'zod';
+import { logger } from '../utils/backend-logger';
 import { getSubscriptionStatus } from '../utils/billing';
-import { logger } from '../utils/logger';
 import { loggedInProcedure, organizationAdminProcedure, publicProcedure, router } from '../utils/trpc';
 import { vemetric } from '../utils/vemetric-client';
 

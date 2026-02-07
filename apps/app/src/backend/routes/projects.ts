@@ -8,8 +8,8 @@ import { addToQueue } from '@vemetric/queues/queue-utils';
 import { clickhouseEvent } from 'clickhouse';
 import { dbProject, serializableTransaction } from 'database';
 import { z } from 'zod';
+import { logger } from '../utils/backend-logger';
 import { sendProjectDeletionConfirmation } from '../utils/email';
-import { logger } from '../utils/logger';
 import { projectDeletionRateLimiter } from '../utils/rate-limit';
 import { fillTimeSeries, getTimeSpanStartDate } from '../utils/timeseries';
 import {

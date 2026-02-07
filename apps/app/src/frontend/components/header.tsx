@@ -1,8 +1,7 @@
-import { Box, Flex, LinkOverlay, Card, Button, Icon, Link } from '@chakra-ui/react';
-import { vemetric } from '@vemetric/react';
-import { TbProgressHelp } from 'react-icons/tb';
+import { Box, Flex, LinkOverlay, Card } from '@chakra-ui/react';
 import { useSnapshot } from 'valtio';
 import { headerStore } from '@/stores/header-store';
+import { DocsButton } from './docs-button';
 import { Logo } from './logo';
 import { ProjectMenu } from './project-menu';
 
@@ -65,26 +64,7 @@ export const Header = () => {
         </Flex>
         {docsLink && (
           <Flex justify="flex-end" hideBelow="md" flexGrow={1}>
-            <Button
-              asChild
-              h="30px"
-              px={2}
-              mr="3px"
-              size="sm"
-              rounded="2xl"
-              variant="surface"
-              colorPalette="purple"
-              gap={1.5}
-              _hover={{ textDecoration: 'none' }}
-              onClick={() => {
-                vemetric.trackEvent('DocsButtonClicked');
-              }}
-            >
-              <Link href={docsLink} target="_blank">
-                <Icon as={TbProgressHelp} boxSize="18px" />
-                Docs
-              </Link>
-            </Button>
+            <DocsButton href={docsLink} />
           </Flex>
         )}
       </Card.Root>

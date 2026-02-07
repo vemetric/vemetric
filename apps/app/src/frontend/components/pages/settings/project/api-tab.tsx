@@ -32,36 +32,17 @@ import { toaster } from '@/components/ui/toaster';
 import { Tooltip } from '@/components/ui/tooltip';
 import { UserIdentity } from '@/components/user-identity';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
+import type { ApiKeyItem } from '@/utils/trpc';
 import { trpc } from '@/utils/trpc';
-
-interface Props {
-  projectId: string;
-}
 
 type NewKey = {
   rawKey: string;
   keyPrefix: string;
 };
 
-type ApiKeyItem = {
-  id: string;
-  name: string;
-  keyPrefix: string;
-  createdAt: Date;
-  createdBy: {
-    id: string;
-    name: string | null;
-    email: string;
-    image: string | null;
-  } | null;
-  revokedBy: {
-    id: string;
-    name: string | null;
-    email: string;
-    image: string | null;
-  } | null;
-  revokedAt: Date | null;
-};
+interface Props {
+  projectId: string;
+}
 
 export const ProjectApiTab = ({ projectId }: Props) => {
   const [name, setName] = useState('');

@@ -1,4 +1,3 @@
-import { swaggerUI } from '@hono/swagger-ui';
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { authMiddleware } from './middleware/auth';
 import { loggingMiddleware } from './middleware/logging';
@@ -39,7 +38,7 @@ export function createPublicApi() {
     },
   });
 
-  api.get('/docs', swaggerUI({ url: '/api/openapi.json' }));
+  api.get('/docs', (c) => c.redirect('https://vemetric.com/docs/api', 302));
 
   api.use('/v1/*', loggingMiddleware);
   api.use('/v1/*', authMiddleware);

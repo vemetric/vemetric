@@ -3,7 +3,9 @@ import { TRPCError } from '@trpc/server';
 import { dbApiKey } from 'database';
 import { customAlphabet, nanoid } from 'nanoid';
 import { z } from 'zod';
+import { logger } from '../utils/logger';
 import { projectAdminProcedure, router } from '../utils/trpc';
+import { vemetric } from '../utils/vemetric-client';
 
 const createKeySuffix = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 32);
 
@@ -16,17 +18,32 @@ export const apiKeysRouter = router({
     .input(z.object({ name: z.string().min(1).max(100) }))
     .mutation(async ({ ctx, input }) => {
       const rawKey = `vem_${createKeySuffix()}`;
+      const keyId = `key_${nanoid()}`;
       const keyHash = sha256(rawKey);
       const keyPrefix = `${rawKey.slice(0, 12)}...`;
 
       await dbApiKey.create({
-        id: `key_${nanoid()}`,
+        id: keyId,
         projectId: ctx.project.id,
         name: input.name,
         keyHash,
         keyPrefix,
         createdByUserId: ctx.user.id,
       });
+
+      try {
+        await vemetric.trackEvent('ApiKeyCreated', {
+          userIdentifier: ctx.user.id,
+          userDisplayName: ctx.user.name,
+          eventData: {
+            keyId,
+            keyName: input.name,
+            projectId: ctx.project.id,
+          },
+        });
+      } catch (err) {
+        logger.error({ err, keyId, projectId: ctx.project.id }, 'Track event error');
+      }
 
       return { rawKey, keyPrefix };
     }),
@@ -46,6 +63,19 @@ export const apiKeysRouter = router({
 
       if (result.count === 0) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'API key not found' });
+      }
+
+      try {
+        await vemetric.trackEvent('ApiKeyRevoked', {
+          userIdentifier: ctx.user.id,
+          userDisplayName: ctx.user.name,
+          eventData: {
+            keyId: input.keyId,
+            projectId: ctx.project.id,
+          },
+        });
+      } catch (err) {
+        logger.error({ err, keyId: input.keyId, projectId: ctx.project.id }, 'Track event error');
       }
 
       return { success: true };

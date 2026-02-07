@@ -1,7 +1,7 @@
 import { createMiddleware } from 'hono/factory';
 import { getRedisClient } from '../../utils/redis';
-import { ApiError } from '../lib/errors';
 import type { PublicApiEnv } from '../types';
+import { ApiError } from '../utils/errors';
 
 const LIMIT = 1000;
 const WINDOW_SEC = 60;

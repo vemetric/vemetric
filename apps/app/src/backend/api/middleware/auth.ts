@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { dbApiKey } from 'database';
 import { createMiddleware } from 'hono/factory';
-import { ApiError } from '../lib/errors';
 import type { PublicApiEnv } from '../types';
+import { ApiError } from '../utils/errors';
 
 function sha256(input: string): string {
   return createHash('sha256').update(input).digest('hex');

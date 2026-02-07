@@ -1,11 +1,11 @@
 import { swaggerUI } from '@hono/swagger-ui';
 import { OpenAPIHono } from '@hono/zod-openapi';
-import { errorHandler } from './lib/errors';
 import { authMiddleware } from './middleware/auth';
 import { loggingMiddleware } from './middleware/logging';
 import { createRateLimitMiddleware } from './middleware/rate-limit';
 import { pingRoute } from './routes/ping';
 import type { PublicApiEnv } from './types';
+import { errorHandler } from './utils/errors';
 
 export function createPublicApi() {
   const rateLimitMiddleware = createRateLimitMiddleware();

@@ -221,8 +221,7 @@ export const ProjectApiTab = ({ projectId }: Props) => {
                               Created on {dateTimeFormatter.formatDate(key.createdAt)} by
                             </Text>
                             <UserIdentity
-                              name={key.createdBy?.name}
-                              email={key.createdBy?.email}
+                              displayName={key.createdBy?.name || key.createdBy?.email || 'Unknown'}
                               image={key.createdBy?.image}
                               avatarSize="2xs"
                             />
@@ -232,8 +231,7 @@ export const ProjectApiTab = ({ projectId }: Props) => {
                                   Revoked on {dateTimeFormatter.formatDate(key.revokedAt)} by
                                 </Text>
                                 <UserIdentity
-                                  name={key.revokedBy?.name}
-                                  email={key.revokedBy?.email}
+                                  displayName={key.revokedBy?.name || key.revokedBy?.email || 'Unknown'}
                                   image={key.revokedBy?.image}
                                   avatarSize="2xs"
                                 />

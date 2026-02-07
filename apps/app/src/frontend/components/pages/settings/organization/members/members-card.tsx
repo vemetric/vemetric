@@ -96,12 +96,10 @@ export const MembersCard = () => {
                               <Box color="fg.muted">{isExpanded ? <TbChevronDown /> : <TbChevronRight />}</Box>
                             )}
                             <UserIdentity
-                              mode="stacked"
                               avatarSize="sm"
-                              name={member.user.name}
+                              displayName={member.user.name || 'Unnamed'}
                               email={member.user.email}
                               image={member.user.image}
-                              primaryLabel={member.user.name || 'Unnamed'}
                               isCurrentUser={isCurrentUser}
                             />
                           </Flex>

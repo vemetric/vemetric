@@ -133,17 +133,14 @@ function InvitePage() {
                     <Button asChild variant="outline">
                       <RouterLink to="/">Go to Dashboard</RouterLink>
                     </Button>
-                    <Flex align="center" gap={2} justify="center" flexWrap="wrap" mt={2}>
-                      <Text fontSize="sm" color="fg.muted" flexShrink="0">
+                    <Flex align="center" gap={2} justify="center" flexWrap="wrap" mt={2} color="fg.muted">
+                      <Text fontSize="sm" flexShrink="0">
                         Signed in as
                       </Text>
                       <UserIdentity
-                        name={session.user.name}
-                        email={session.user.email}
+                        displayName={session.user.name || session.user.email || 'Unnamed'}
                         image={session.user.image}
                         avatarSize="2xs"
-                        avatarBg="linear-gradient(45deg, #7e48f850, #a086ff50)"
-                        textColor="fg.muted"
                       />
                     </Flex>
                   </Stack>

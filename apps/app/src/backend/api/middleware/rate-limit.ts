@@ -3,8 +3,8 @@ import { getRedisClient } from '../../utils/redis';
 import type { PublicApiEnv } from '../types';
 import { ApiError } from '../utils/errors';
 
-const LIMIT = 1000;
-const WINDOW_SEC = 60;
+const DEFAULT_LIMIT = 1000;
+const DEFAULT_WINDOW_SEC = 60;
 
 const RATE_LIMIT_SCRIPT = `
 local current = redis.call('INCR', KEYS[1])
@@ -15,7 +15,15 @@ local ttl = redis.call('TTL', KEYS[1])
 return { current, ttl }
 `;
 
-export function createRateLimitMiddleware() {
+type RateLimitMiddlewareOptions = {
+  limit?: number;
+  windowSec?: number;
+};
+
+export function createRateLimitMiddleware(options: RateLimitMiddlewareOptions = {}) {
+  const limit = options.limit ?? DEFAULT_LIMIT;
+  const windowSec = options.windowSec ?? DEFAULT_WINDOW_SEC;
+
   return createMiddleware<PublicApiEnv>(async (c, next) => {
     const project = c.get('project');
     if (!project) {
@@ -27,7 +35,7 @@ export function createRateLimitMiddleware() {
     const redisClient = await getRedisClient();
     const result = await redisClient.eval(RATE_LIMIT_SCRIPT, {
       keys: [redisKey],
-      arguments: [String(WINDOW_SEC)],
+      arguments: [String(windowSec)],
     });
     if (!Array.isArray(result) || result.length < 2) {
       throw new Error('Invalid rate-limit script response');
@@ -36,15 +44,15 @@ export function createRateLimitMiddleware() {
     const [rawCurrent, rawTtl] = result as [number | string, number | string];
     const current = Number(rawCurrent);
     const ttl = Number(rawTtl);
-    const ttlSec = ttl > 0 ? ttl : WINDOW_SEC;
-    const remaining = Math.max(0, LIMIT - current);
+    const ttlSec = ttl > 0 ? ttl : windowSec;
+    const remaining = Math.max(0, limit - current);
     const resetAt = Math.ceil(Date.now() / 1000) + ttlSec;
 
-    c.header('X-RateLimit-Limit', String(LIMIT));
+    c.header('X-RateLimit-Limit', String(limit));
     c.header('X-RateLimit-Remaining', String(remaining));
     c.header('X-RateLimit-Reset', String(resetAt));
 
-    if (current > LIMIT) {
+    if (current > limit) {
       throw new ApiError(429, 'RATE_LIMIT_EXCEEDED', 'Rate limit exceeded. Try again shortly.');
     }
 

@@ -28,7 +28,7 @@ class FakeRedis {
   }
 }
 
-function createTestApp() {
+function createTestApp(options?: Parameters<typeof createRateLimitMiddleware>[0]) {
   const app = new Hono<PublicApiEnv>();
   app.onError(errorHandler);
 
@@ -41,7 +41,7 @@ function createTestApp() {
     await next();
   });
 
-  app.use('/v1/*', createRateLimitMiddleware());
+  app.use('/v1/*', createRateLimitMiddleware(options));
   app.get('/v1/ping', (c) => c.json({ status: 'ok' }));
 
   return app;
@@ -66,17 +66,17 @@ describe('public API rate limit middleware', () => {
 
   it('returns 429 when over limit', async () => {
     getRedisClientMock.mockResolvedValue(new FakeRedis());
-    const app = createTestApp();
+    const app = createTestApp({ limit: 2 });
 
     let response: Response | null = null;
-    for (let i = 0; i < 1001; i++) {
+    for (let i = 0; i < 3; i++) {
       response = await app.request('/v1/ping');
     }
 
     const body = await response!.json();
 
     expect(response!.status).toBe(429);
-    expect(response!.headers.get('X-RateLimit-Limit')).toBe('1000');
+    expect(response!.headers.get('X-RateLimit-Limit')).toBe('2');
     expect(response!.headers.get('X-RateLimit-Remaining')).toBe('0');
     expect(body).toEqual({
       error: {

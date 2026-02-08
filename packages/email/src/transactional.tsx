@@ -12,6 +12,7 @@ import NoEventsSecond from '../emails/sequences/no-events/second';
 import NoProjectFirst from '../emails/sequences/no-project/first';
 import NoProjectSecond from '../emails/sequences/no-project/second';
 import SubscriptionCancelledMail from '../emails/subscription-cancelled';
+import SubscriptionStartedMail from '../emails/subscription-started';
 
 export const TRANSACTIONAL_FROM_EMAIL = 'Vemetric <info@vemetric.com>';
 export const TIPS_FROM_EMAIL = 'Vemetric <info@notifications.vemetric.com>';
@@ -58,6 +59,10 @@ export const TRANSACTIONAL_TEMPLATE_MAP = {
   subscriptionCancelled: {
     subject: 'Thanks for being part of our journey!',
     email: SubscriptionCancelledMail,
+  },
+  subscriptionStarted: {
+    subject: 'Welcome to Vemetric Pro!',
+    email: SubscriptionStartedMail,
   },
 };
 export type TemplateName = keyof typeof TRANSACTIONAL_TEMPLATE_MAP;

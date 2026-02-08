@@ -5,7 +5,7 @@ import { addToQueue } from '@vemetric/queues/queue-utils';
 import type { BetterAuthOptions } from 'better-auth';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
-import { createAuthMiddleware, customSession, lastLoginMethod } from 'better-auth/plugins';
+import { createAuthMiddleware, customSession, emailOTP, lastLoginMethod } from 'better-auth/plugins';
 import { dbOrganization, prismaClient } from 'database';
 import { logger } from './backend-logger';
 import { sendEmailVerificationLink, sendPasswordResetLink } from './email';
@@ -13,6 +13,7 @@ import { emailVerificationRateLimiter } from './rate-limit';
 import { vemetric } from './vemetric-client';
 
 export const TRUSTED_ORIGINS = [getVemetricUrl('app'), getVemetricUrl()];
+const isLocalhost = getBaseDomain().includes('localhost');
 
 const options = {
   basePath: '/_api/auth',
@@ -51,24 +52,31 @@ const options = {
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
-    requireEmailVerification: getBaseDomain().includes('localhost') ? false : true,
+    requireEmailVerification: isLocalhost ? false : true,
     sendResetPassword: async ({ user, url }) => {
       await sendPasswordResetLink(user.email, user.name, url);
     },
   },
   emailVerification: {
     sendOnSignUp: true,
+    sendOnSignIn: false,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
       if (!emailVerificationRateLimiter.tryAcquire(user.email)) {
         return;
       }
-      await sendEmailVerificationLink(user.email, url);
+      const isChangeEmailVerification = url.includes('changeEmail');
+      const verificationCode = isChangeEmailVerification ? undefined : await createEmailVerificationOtp(user.email);
+      if (!isChangeEmailVerification && !verificationCode) {
+        logger.error({ email: user.email }, 'Failed to resolve verification OTP for combined verification email');
+        throw new Error('Failed to resolve verification OTP');
+      }
+      await sendEmailVerificationLink(user.email, url, verificationCode);
     },
   },
   hooks: {
     after: createAuthMiddleware(async (ctx) => {
-      if (ctx.path === '/verify-email' && ctx.context.newSession !== null) {
+      if ((ctx.path === '/verify-email' || ctx.path === '/email-otp/verify-email') && ctx.context.newSession !== null) {
         const userId = ctx.context.newSession.user.id;
         try {
           const sequence = getDripSequence('NO_PROJECT');
@@ -111,7 +119,19 @@ const options = {
   onAPIError: {
     errorURL: getVemetricUrl('app'),
   },
-  plugins: [lastLoginMethod()],
+  plugins: [
+    lastLoginMethod(),
+    emailOTP({
+      sendVerificationOnSignUp: false,
+      sendVerificationOTP: async ({ email, type }) => {
+        logger.error(
+          { email, type },
+          'Unexpected OTP-only verification email request. Use sendVerificationEmail flow.',
+        );
+        throw new Error('OTP-only verification email flow is disabled.');
+      },
+    }),
+  ],
   advanced: {
     cookiePrefix: 'auth',
     crossSubDomainCookies: {
@@ -149,3 +169,29 @@ export const auth = betterAuth({
     }, options),
   ],
 });
+
+async function createEmailVerificationOtp(email: string): Promise<string | undefined> {
+  try {
+    return await auth.api.createVerificationOTP({
+      body: {
+        email,
+        type: 'email-verification',
+      },
+    });
+  } catch (err) {
+    logger.warn({ err, email }, 'Failed to create verification OTP, attempting to reuse existing OTP');
+  }
+
+  try {
+    const existing = await auth.api.getVerificationOTP({
+      query: {
+        email,
+        type: 'email-verification',
+      },
+    });
+    return existing.otp ?? undefined;
+  } catch (err) {
+    logger.error({ err, email }, 'Failed to read existing email verification OTP');
+    return undefined;
+  }
+}

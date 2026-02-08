@@ -45,10 +45,10 @@ function Page() {
         onSuccess: async () => {
           toaster.create({
             title: 'Signup successful 🎉',
-            description: 'Please verify your email before signing in. We just sent you a verification link.',
+            description: 'Please verify your email before signing in. We just sent you a verification code.',
             type: 'success',
           });
-          navigate({ to: '/login' });
+          navigate({ to: '/verify-email', search: { email } });
         },
         onError: (ctx) => {
           setIsLoading(false);

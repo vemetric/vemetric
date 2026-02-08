@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './pages/__root'
+import { Route as VerifyEmailRouteImport } from './pages/verify-email'
 import { Route as RedirectRouteImport } from './pages/redirect'
 import { Route as BillingRouteImport } from './pages/billing'
 import { Route as LayoutRouteImport } from './pages/_layout'
@@ -36,6 +37,11 @@ import { Route as LayoutPProjectIdUsersUserIdRouteImport } from './pages/_layout
 import { Route as LayoutPProjectIdUserIdentifierRouteImport } from './pages/_layout/p/$projectId/user/$identifier'
 import { Route as LayoutPProjectIdFunnelsFunnelIdRouteImport } from './pages/_layout/p/$projectId/funnels/$funnelId'
 
+const VerifyEmailRoute = VerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RedirectRoute = RedirectRouteImport.update({
   id: '/redirect',
   path: '/redirect',
@@ -177,6 +183,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/billing': typeof BillingRoute
   '/redirect': typeof RedirectRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/login': typeof AuthLoginRoute
   '/reset-password': typeof AuthResetPasswordRoute
   '/signup': typeof AuthSignupRoute
@@ -203,6 +210,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/billing': typeof BillingRoute
   '/redirect': typeof RedirectRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/login': typeof AuthLoginRoute
   '/reset-password': typeof AuthResetPasswordRoute
   '/signup': typeof AuthSignupRoute
@@ -231,6 +239,7 @@ export interface FileRoutesById {
   '/_layout': typeof LayoutRouteWithChildren
   '/billing': typeof BillingRoute
   '/redirect': typeof RedirectRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/reset-password': typeof AuthResetPasswordRoute
   '/_auth/signup': typeof AuthSignupRoute
@@ -259,6 +268,7 @@ export interface FileRouteTypes {
     | '/'
     | '/billing'
     | '/redirect'
+    | '/verify-email'
     | '/login'
     | '/reset-password'
     | '/signup'
@@ -285,6 +295,7 @@ export interface FileRouteTypes {
     | '/'
     | '/billing'
     | '/redirect'
+    | '/verify-email'
     | '/login'
     | '/reset-password'
     | '/signup'
@@ -312,6 +323,7 @@ export interface FileRouteTypes {
     | '/_layout'
     | '/billing'
     | '/redirect'
+    | '/verify-email'
     | '/_auth/login'
     | '/_auth/reset-password'
     | '/_auth/signup'
@@ -341,6 +353,7 @@ export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
   BillingRoute: typeof BillingRoute
   RedirectRoute: typeof RedirectRoute
+  VerifyEmailRoute: typeof VerifyEmailRoute
   EmailConfirmProjectDeletionRoute: typeof EmailConfirmProjectDeletionRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   InviteTokenRoute: typeof InviteTokenRoute
@@ -354,6 +367,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/redirect': {
       id: '/redirect'
       path: '/redirect'
@@ -595,6 +615,7 @@ const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
   BillingRoute: BillingRoute,
   RedirectRoute: RedirectRoute,
+  VerifyEmailRoute: VerifyEmailRoute,
   EmailConfirmProjectDeletionRoute: EmailConfirmProjectDeletionRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   InviteTokenRoute: InviteTokenRoute,

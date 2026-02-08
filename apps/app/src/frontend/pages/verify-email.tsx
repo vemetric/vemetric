@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { Logo } from '@/components/logo';
 import { toaster } from '@/components/ui/toaster';
 import { authClient } from '@/utils/auth';
+import { requireAnonymous } from '@/utils/auth-guards';
 import { redirectPath } from '@/utils/local-storage';
 import { getAppUrl, getLandingPageUrl } from '@/utils/url';
 
@@ -16,7 +17,8 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute('/verify-email')({
   validateSearch: zodValidator(searchSchema),
-  beforeLoad: ({ search }) => {
+  beforeLoad: async ({ search }) => {
+    await requireAnonymous();
     if (!search.email) {
       throw redirect({ to: '/login', replace: true });
     }

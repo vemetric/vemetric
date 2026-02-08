@@ -103,7 +103,7 @@ export const paddleWebhookHandler = async (context: HonoContext) => {
       await dbBillingInfo.upsert({ ...billingInfo, createdAt: new Date() });
 
       const organization = await dbOrganization.findById(organizationId);
-      const orgUser = (await dbOrganization.getOrganizationUsers(organizationId))[0];
+      const orgUser = (await dbOrganization.getOrganizationUsersWithDetails(organizationId))[0];
       if (orgUser) {
         await vemetric.trackEvent('SubscriptionCreated', {
           userIdentifier: orgUser.userId,
@@ -115,6 +115,13 @@ export const paddleWebhookHandler = async (context: HonoContext) => {
           },
           eventData: {
             pricingOnboarded: organization?.pricingOnboarded ?? false,
+          },
+        });
+
+        await sendTransactionalMail(orgUser.user.email, {
+          template: 'subscriptionStarted',
+          props: {
+            userName: orgUser.user.name,
           },
         });
       }

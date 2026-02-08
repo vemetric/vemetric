@@ -5,7 +5,7 @@ import { addToQueue } from '@vemetric/queues/queue-utils';
 import type { BetterAuthOptions } from 'better-auth';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
-import { createAuthMiddleware, customSession, emailOTP, lastLoginMethod } from 'better-auth/plugins';
+import { customSession, emailOTP, lastLoginMethod } from 'better-auth/plugins';
 import { dbOrganization, prismaClient } from 'database';
 import { logger } from './backend-logger';
 import { sendEmailVerificationLink, sendPasswordResetLink } from './email';
@@ -73,36 +73,32 @@ const options = {
       }
       await sendEmailVerificationLink(user.email, url, verificationCode);
     },
-  },
-  hooks: {
-    after: createAuthMiddleware(async (ctx) => {
-      if ((ctx.path === '/verify-email' || ctx.path === '/email-otp/verify-email') && ctx.context.newSession !== null) {
-        const userId = ctx.context.newSession.user.id;
-        try {
-          const sequence = getDripSequence('NO_PROJECT');
-          logger.info({ userId, queueName: emailDripQueue.name, sequence }, 'Queuing user for email drip sequence');
-          await addToQueue(
-            emailDripQueue,
-            {
-              userId,
-              sequenceType: sequence.type,
-              stepNumber: 0,
-            },
-            {
-              delay: getStepDelay(sequence.type, 0),
-            },
-          );
-        } catch (err) {
-          logger.error(
-            {
-              err,
-              userId,
-            },
-            'Failed to queue user for email drip sequence',
-          );
-        }
+    async afterEmailVerification(user) {
+      const userId = user.id;
+      try {
+        const sequence = getDripSequence('NO_PROJECT');
+        logger.info({ userId, queueName: emailDripQueue.name, sequence }, 'Queuing user for email drip sequence');
+        await addToQueue(
+          emailDripQueue,
+          {
+            userId,
+            sequenceType: sequence.type,
+            stepNumber: 0,
+          },
+          {
+            delay: getStepDelay(sequence.type, 0),
+          },
+        );
+      } catch (err) {
+        logger.error(
+          {
+            err,
+            userId,
+          },
+          'Failed to queue user for email drip sequence',
+        );
       }
-    }),
+    },
   },
   databaseHooks: {
     account: {

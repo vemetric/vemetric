@@ -123,8 +123,6 @@ export const projectsRouter = router({
 
       return { id: String(project.id) };
     } catch (err) {
-      logger.error({ err }, 'Project creation error');
-
       if (err instanceof TRPCError) {
         throw err;
       }

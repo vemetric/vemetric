@@ -91,6 +91,7 @@ function Page() {
         origins: filterableData?.origins ?? [],
         eventNames: filterableData?.eventNames ?? [],
         countryCodes: filterableData?.countryCodes ?? [],
+        cities: filterableData?.cities ?? [],
         referrers: filterableData?.referrers ?? [],
         referrerUrls: filterableData?.referrerUrls ?? [],
         utmCampaigns: filterableData?.utmCampaigns ?? [],

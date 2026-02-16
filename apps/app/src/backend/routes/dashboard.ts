@@ -228,9 +228,16 @@ export const dashboardRouter = router({
         filterQueries,
         filterConfig,
       });
+      const cities = await clickhouseSession.getCities(projectId, {
+        startDate,
+        endDate,
+        filterQueries,
+        filterConfig,
+      });
 
       return {
         countryCodes,
+        cities,
       };
     }),
   getBrowsers: timespanProcedure

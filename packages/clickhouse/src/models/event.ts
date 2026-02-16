@@ -150,7 +150,8 @@ export const clickhouseEvent = {
               groupArrayDistinct(utmMedium),
               groupArrayDistinct(utmSource),
               groupArrayDistinct(utmTerm),
-              groupArrayDistinct(countryCode)
+              groupArrayDistinct(countryCode),
+              groupArrayDistinct(city)
             FROM session 
             WHERE projectId = ${escape(projectId)} 
               AND startedAt >= '${formattedStartDate}'
@@ -163,7 +164,7 @@ export const clickhouseEvent = {
     const result = await resultSet.json<{
       eventNames: string[];
       pages: [string[], string[], string[], string[], string[]];
-      sources: [string[], string[], string[], string[], string[], string[], string[], string[]];
+      sources: [string[], string[], string[], string[], string[], string[], string[], string[], string[]];
     }>();
 
     // Return the first (and only) row of results

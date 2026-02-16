@@ -11,6 +11,7 @@ interface FilterContextType {
   pagePaths: string[];
   eventNames: string[];
   countryCodes: string[];
+  cities: string[];
   origins: string[];
   referrers: string[];
   referrerUrls: string[];

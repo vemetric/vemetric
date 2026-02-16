@@ -23,8 +23,8 @@ export const buildDeviceFilterQueries = (filterConfig: IFilterConfig) => {
 
   const deviceFilters = filterConfig.filters.filter((filter) => filter.type === 'device');
 
-  const positiveFilters = deviceFilters.filter((filter) => !filter.deviceFilter?.operator.includes('not'));
-  const negativeFilters = deviceFilters.filter((filter) => filter.deviceFilter?.operator.includes('not'));
+  const positiveFilters = deviceFilters.filter((filter) => filter.deviceFilter?.operator !== 'noneOf');
+  const negativeFilters = deviceFilters.filter((filter) => filter.deviceFilter?.operator === 'noneOf');
 
   const positiveQueries = positiveFilters
     .map((filter) => buildDeviceFilterQuery(filter))

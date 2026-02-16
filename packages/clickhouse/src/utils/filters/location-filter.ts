@@ -2,13 +2,17 @@ import type { IFilterConfig, ILocationFilter } from '@vemetric/common/filters';
 import { buildListFilterQuery } from './base-filters';
 
 export const buildLocationFilterQuery = (filter: ILocationFilter) => {
-  if (filter.countryFilter === undefined || filter.countryFilter.operator === 'any') {
+  const hasCountryFilter = filter.countryFilter !== undefined && filter.countryFilter.operator !== 'any';
+  const hasCityFilter = filter.cityFilter !== undefined && filter.cityFilter.operator !== 'any';
+
+  if (!hasCountryFilter && !hasCityFilter) {
     return '';
   }
 
-  const countryQuery = buildListFilterQuery('countryCode', filter.countryFilter);
+  const countryQuery = hasCountryFilter ? buildListFilterQuery('countryCode', filter.countryFilter!) : '';
+  const cityQuery = hasCityFilter ? buildListFilterQuery('city', filter.cityFilter!) : '';
 
-  const query = [countryQuery]
+  const query = [countryQuery, cityQuery]
     .map((s) => s.trim())
     .filter(Boolean)
     .join(' AND ');
@@ -23,8 +27,11 @@ export const buildLocationFilterQueries = (filterConfig: IFilterConfig) => {
 
   const locationFilters = filterConfig.filters.filter((filter) => filter.type === 'location');
 
-  const positiveFilters = locationFilters.filter((filter) => !filter.countryFilter?.operator.includes('not'));
-  const negativeFilters = locationFilters.filter((filter) => filter.countryFilter?.operator.includes('not'));
+  const isNegativeFilter = (filter: ILocationFilter) =>
+    filter.countryFilter?.operator === 'noneOf' || filter.cityFilter?.operator === 'noneOf';
+
+  const positiveFilters = locationFilters.filter((filter) => !isNegativeFilter(filter));
+  const negativeFilters = locationFilters.filter((filter) => isNegativeFilter(filter));
 
   const positiveQueries = positiveFilters
     .map((filter) => buildLocationFilterQuery(filter))

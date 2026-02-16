@@ -5,9 +5,26 @@ import { memo, useState } from 'react';
 import { TbUserSquareRounded } from 'react-icons/tb';
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from 'react-simple-maps';
 import { CountryFlag } from '@/components/country-flag';
+import { countriesMapViewState, type CountriesMapViewState } from '@/utils/local-storage';
 import { ChartTooltip } from './chart-tooltip';
 
 const geoUrl = 'https://assets.vemetric.com/topo.json';
+const DEFAULT_MAP_VIEW = {
+  center: [0, 40] as [number, number],
+  zoom: 0.85,
+};
+const MIN_ZOOM = 0.85;
+const MAX_ZOOM = 4;
+
+const readMapViewState = (): CountriesMapViewState => {
+  const state = countriesMapViewState.get();
+  if (!state) return DEFAULT_MAP_VIEW;
+
+  return {
+    center: state.center,
+    zoom: Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, state.zoom)),
+  };
+};
 
 interface CountryData {
   countryCode: string;
@@ -21,6 +38,7 @@ interface Props {
 
 export const CountriesWorldMap = memo(({ data, onCountryClick }: Props) => {
   const [hoveredCountryCode, setHoveredCountryCode] = useState<string | null>(null);
+  const [mapViewState, setMapViewState] = useState<CountriesMapViewState>(readMapViewState);
   const isTouch = useBreakpointValue({ base: true, md: true, lg: false });
   const maxUsers = Math.max(...data.map((d) => d.users), 1);
   const countryDataMap = new Map(data.map((d) => [d.countryCode, d.users]));
@@ -45,14 +63,23 @@ export const CountriesWorldMap = memo(({ data, onCountryClick }: Props) => {
       <Box position="relative" boxSize="100%" overflow="hidden" rounded="md">
         <ComposableMap projection="geoMercator" height={400} style={{ width: '100%', height: '100%' }}>
           <ZoomableGroup
-            center={[0, 40]}
-            zoom={0.85}
-            minZoom={0.85}
-            maxZoom={4}
+            center={mapViewState.center}
+            zoom={mapViewState.zoom}
+            minZoom={MIN_ZOOM}
+            maxZoom={MAX_ZOOM}
             translateExtent={[
               [-70, -240],
               [880, 630],
             ]}
+            onMoveEnd={(position) => {
+              const nextState = {
+                center: position.coordinates,
+                zoom: Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, position.zoom)),
+              } satisfies CountriesMapViewState;
+
+              setMapViewState(nextState);
+              countriesMapViewState.set(nextState);
+            }}
           >
             <Geographies geography={geoUrl}>
               {({ geographies }: { geographies: any[] }) =>

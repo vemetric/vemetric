@@ -23,6 +23,7 @@ const createWrapper = () => {
           origins: [],
           eventNames: ['page_view', 'click'],
           countryCodes: ['US', 'CA'],
+          cities: ['New York', 'Toronto'],
           referrers: [],
           referrerUrls: [],
           utmCampaigns: [],

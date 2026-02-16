@@ -259,6 +259,30 @@ export const clickhouseSession = {
       users: Number(row.users),
     }));
   },
+  getCities: async (projectId: bigint, filterOptions: Omit<FilterOptions, 'timeSpan'>) => {
+    const { startDate, endDate, filterQueries, filterConfig } = filterOptions;
+    const locationFilterQueries = buildLocationFilterQueries(filterConfig);
+
+    const resultSet = await clickhouseClient.query({
+      query: `SELECT city, countryCode, count(distinct userId) as users
+              FROM ${TABLE_NAME}
+              WHERE projectId=${escape(projectId)}
+              AND startedAt >= '${formatClickhouseDate(startDate)}'
+              ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
+              ${locationFilterQueries ? `AND (${locationFilterQueries})` : ''}
+              ${(filterQueries || '').replace('sessionId', 'id')}
+              AND deleted = 0
+              GROUP BY city, countryCode
+              ORDER BY users DESC;`,
+      format: 'JSONEachRow',
+    });
+    const result = (await resultSet.json()) as Array<any>;
+    return result.map((row) => ({
+      city: row.city as string,
+      countryCode: row.countryCode as string,
+      users: Number(row.users),
+    }));
+  },
   getTopSources: async (projectId: bigint, source: ISources, filterOptions: Omit<FilterOptions, 'timeSpan'>) => {
     const { startDate, endDate, filterQueries, filterConfig } = filterOptions;
     const sourceFilterQueries = buildSourceFilterQueries(filterConfig, source);

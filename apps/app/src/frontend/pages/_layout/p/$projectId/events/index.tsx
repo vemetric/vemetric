@@ -119,6 +119,7 @@ function RouteComponent() {
         value={{
           eventNames: filterableData?.eventNames ?? [],
           countryCodes: filterableData?.countryCodes ?? [],
+          cities: filterableData?.cities ?? [],
           browserNames: filterableData?.browserNames ?? [],
           deviceTypes: filterableData?.deviceTypes ?? [],
           osNames: filterableData?.osNames ?? [],

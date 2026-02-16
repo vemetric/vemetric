@@ -90,6 +90,7 @@ export type IUserFilter = z.infer<typeof userFilterSchema>;
 const locationFilterSchema = z.object({
   type: z.literal('location'),
   countryFilter: listFilterSchema.optional(),
+  cityFilter: listFilterSchema.optional(),
 });
 export type ILocationFilter = z.infer<typeof locationFilterSchema>;
 

@@ -74,6 +74,7 @@ export const filtersRouter = router({
         const countryB = COUNTRIES[b as keyof typeof COUNTRIES] || 'ZZ';
         return countryA.localeCompare(countryB);
       }),
+      cities: filterableData.sources[8].filter(Boolean).sort((a, b) => a.localeCompare(b)),
     };
   }),
 

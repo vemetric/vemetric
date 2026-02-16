@@ -264,7 +264,11 @@ export const clickhouseSession = {
     const locationFilterQueries = buildLocationFilterQueries(filterConfig);
 
     const resultSet = await clickhouseClient.query({
-      query: `SELECT city, countryCode, count(distinct userId) as users
+      query: `WITH lowerUTF8(trim(city)) as normalizedCity
+              SELECT
+                if(normalizedCity = '' OR normalizedCity = 'unknown', '', city) as cityGroup,
+                if(normalizedCity = '' OR normalizedCity = 'unknown', '', countryCode) as countryCodeGroup,
+                count(distinct userId) as users
               FROM ${TABLE_NAME}
               WHERE projectId=${escape(projectId)}
               AND startedAt >= '${formatClickhouseDate(startDate)}'
@@ -272,14 +276,14 @@ export const clickhouseSession = {
               ${locationFilterQueries ? `AND (${locationFilterQueries})` : ''}
               ${(filterQueries || '').replace('sessionId', 'id')}
               AND deleted = 0
-              GROUP BY city, countryCode
+              GROUP BY cityGroup, countryCodeGroup
               ORDER BY users DESC;`,
       format: 'JSONEachRow',
     });
     const result = (await resultSet.json()) as Array<any>;
     return result.map((row) => ({
-      city: row.city as string,
-      countryCode: row.countryCode as string,
+      city: row.cityGroup as string,
+      countryCode: row.countryCodeGroup as string,
       users: Number(row.users),
     }));
   },

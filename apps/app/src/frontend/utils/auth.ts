@@ -16,6 +16,7 @@ export const useLogout = () => {
   return {
     logout: async () => {
       await authClient.signOut();
+      sessionStorage.clear();
       queryClient.clear();
     },
   };

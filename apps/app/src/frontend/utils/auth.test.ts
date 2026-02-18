@@ -1,6 +1,7 @@
 
 import { renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useLogout } from './auth';
 
 const clearQueryClientMock = vi.fn();
 const signOutMock = vi.fn().mockResolvedValue(undefined);
@@ -19,8 +20,6 @@ vi.mock('better-auth/react', () => ({
     },
   })),
 }));
-
-import { useLogout } from './auth';
 
 describe('useLogout', () => {
   beforeEach(() => {

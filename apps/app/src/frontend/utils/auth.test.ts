@@ -1,8 +1,9 @@
+
 import { renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { authClient, useLogout } from './auth';
 
 const clearQueryClientMock = vi.fn();
+const signOutMock = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({
@@ -10,15 +11,25 @@ vi.mock('@tanstack/react-query', () => ({
   }),
 }));
 
+vi.mock('better-auth/react', () => ({
+  createAuthClient: vi.fn(() => ({
+    signOut: signOutMock,
+    signIn: {
+      social: vi.fn(),
+    },
+  })),
+}));
+
+import { useLogout } from './auth';
+
 describe('useLogout', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    signOutMock.mockResolvedValue(undefined);
     sessionStorage.clear();
   });
 
   it('should clear session storage and query cache after sign out', async () => {
-    const signOutMock = vi.spyOn(authClient, 'signOut').mockResolvedValue(undefined as never);
-
     sessionStorage.setItem('timespan', 'month');
 
     const { result } = renderHook(() => useLogout());

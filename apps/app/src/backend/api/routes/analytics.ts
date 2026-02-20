@@ -5,22 +5,22 @@ import { parseMetricsQueryGroupingToken } from 'clickhouse/src/utils/query-group
 import { getFilterFunnelsData } from '../../utils/filter';
 import { isRetentionRestricted, RETENTION_UPGRADE_MESSAGE } from '../../utils/retention';
 import { DEFAULT_METRICS } from '../consts/analytics';
-import { authorizationHeaderSchema, commonOpenApiErrorResponses } from '../schemas/common';
 import { analyticsQueryRequestSchema, analyticsQueryResponseSchema } from '../schemas/analytics';
+import { authorizationHeaderSchema, commonOpenApiErrorResponses } from '../schemas/common';
 import type { PublicApiHonoEnv } from '../types';
-import { mapApiFilterConfig } from '../utils/api-filter-mapper';
-import { resolveApiDateRange, formatApiDate } from '../utils/date';
-import { ApiError } from '../utils/errors';
 import { buildGroupObject } from '../utils/analytics/grouping';
 import { normalizeMetricValue } from '../utils/analytics/metrics';
 import { applyOrdering } from '../utils/analytics/ordering';
 import { queryMetricRows } from '../utils/analytics/queries';
+import { mapApiFilterConfig } from '../utils/api-filter-mapper';
+import { resolveApiDateRange, formatApiDate } from '../utils/date';
+import { ApiError } from '../utils/errors';
 
 const analyticsRoute = createRoute({
   method: 'post',
   path: '/v1/analytics/query',
   summary: 'Query analytics',
-  description: 'Query analytics metrics with optional grouping, sorting, pagination and filters.',
+  description: 'Query analytics metrics with optional grouping, sorting and filters.',
   request: {
     headers: authorizationHeaderSchema,
     body: {

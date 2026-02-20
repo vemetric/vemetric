@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from '@hono/zod-openapi';
 
 const anyOperator = z.literal('any');
 const andOperator = z.literal('and');
@@ -28,8 +28,10 @@ const stringOperators = [
 export const stringOperatorsSchema = z.union(stringOperators);
 export const stringOperatorValues = stringOperators.map((operator) => operator.value);
 export const stringFilterSchema = z.object({
-  value: z.string(),
-  operator: stringOperatorsSchema,
+  value: z.string().openapi({ description: 'Value to filter by' }),
+  operator: stringOperatorsSchema.openapi({
+    description: `Operator to apply for the filter. The "any" operator means that any value is accepted and effectively disables the filter.`,
+  }),
 });
 export type IStringFilterOperator = z.infer<typeof stringOperatorsSchema>;
 export type IStringFilter = z.infer<typeof stringFilterSchema>;
@@ -55,8 +57,12 @@ const listOperators = [anyOperator, oneOfOperator, noneOfOperator] as const;
 export const listOperatorValues = listOperators.map((operator) => operator.value);
 export const listOperatorsSchema = z.union(listOperators);
 export const listFilterSchema = z.object({
-  value: z.array(z.string()),
-  operator: listOperatorsSchema,
+  value: z.array(z.string()).openapi({
+    description: 'List of values to filter by',
+  }),
+  operator: listOperatorsSchema.openapi({
+    description: `Operator to apply for the list filter. The "any" operator means that any value is accepted and effectively disables the filter.`,
+  }),
 });
 export type IListFilter = z.infer<typeof listFilterSchema>;
 

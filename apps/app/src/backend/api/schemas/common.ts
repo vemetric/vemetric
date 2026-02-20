@@ -24,37 +24,74 @@ export const apiDateInputSchema = z
   });
 
 export const authorizationHeaderSchema = z.object({
-  authorization: z.string().openapi({
-    description: 'Bearer token for a project API key. This endpoint returns data for that project only.',
-    example: 'Bearer vem_abcdefghijklmnopqrstuvwxyz123456',
-  }),
+  authorization: z
+    .string()
+    .openapi({
+      description: 'Bearer token for a project API key. This endpoint returns data for that project only.',
+      example: 'Bearer vem_abcdefghijklmnopqrstuvwxyz123456',
+    }),
+}).openapi({
+  description: 'Authorization headers for public API requests.',
 });
 
 const getJsonErrorResponseContent = <T extends z.ZodLiteral<string>>(codeType: T) => ({
   'application/json': {
-    schema: z.object({
-      error: z.object({
-        code: codeType,
-        message: z.string(),
+    schema: z
+      .object({
+        error: z
+          .object({
+            code: codeType.openapi({
+              description: 'Machine-readable error code.',
+            }),
+            message: z.string().openapi({
+              description: 'Human-readable error message.',
+            }),
+          })
+          .openapi({
+            description: 'Error details.',
+          }),
+      })
+      .openapi({
+        description: 'Error response payload.',
       }),
-    }),
   },
 });
 
 const jsonValidationErrorResponseContent = {
   'application/json': {
-    schema: z.object({
-      error: z.object({
-        code: z.literal('VALIDATION_ERROR'),
-        message: z.string(),
-        details: z.array(
-          z.object({
-            field: z.string(),
-            message: z.string(),
+    schema: z
+      .object({
+        error: z
+          .object({
+            code: z.literal('VALIDATION_ERROR').openapi({
+              description: 'Machine-readable validation error code.',
+            }),
+            message: z.string().openapi({
+              description: 'Human-readable validation summary.',
+            }),
+            details: z
+              .array(
+                z.object({
+                  field: z.string().openapi({
+                    description: 'Path to the invalid request field.',
+                    example: 'group_by.0',
+                  }),
+                  message: z.string().openapi({
+                    description: 'Validation error message for the field.',
+                  }),
+                }),
+              )
+              .openapi({
+                description: 'Per-field validation issues.',
+              }),
+          })
+          .openapi({
+            description: 'Validation error details.',
           }),
-        ),
+      })
+      .openapi({
+        description: 'Validation error response payload.',
       }),
-    }),
   },
 } as const;
 

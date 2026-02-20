@@ -2,7 +2,7 @@ import type { IFilterConfig } from '@vemetric/common/filters';
 import { clickhouseEvent, clickhouseSession } from 'clickhouse';
 import type { MetricsQueryGrouping } from 'clickhouse/src/utils/query-group';
 import { normalizeGroupKeys } from './grouping';
-import type { Metric, MetricRow } from '../../consts/stats';
+import type { Metric, MetricRow } from '../../consts/analytics';
 
 export async function queryMetricRows(input: {
   metric: Metric;

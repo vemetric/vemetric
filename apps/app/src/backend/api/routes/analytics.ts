@@ -4,22 +4,22 @@ import { getUserFilterQueries } from 'clickhouse';
 import { parseMetricsQueryGroupingToken } from 'clickhouse/src/utils/query-group';
 import { getFilterFunnelsData } from '../../utils/filter';
 import { isRetentionRestricted, RETENTION_UPGRADE_MESSAGE } from '../../utils/retention';
-import { DEFAULT_METRICS } from '../consts/stats';
+import { DEFAULT_METRICS } from '../consts/analytics';
 import { authorizationHeaderSchema, commonOpenApiErrorResponses } from '../schemas/common';
-import { statsQueryRequestSchema, statsQueryResponseSchema } from '../schemas/stats';
+import { analyticsQueryRequestSchema, analyticsQueryResponseSchema } from '../schemas/analytics';
 import type { PublicApiHonoEnv } from '../types';
 import { mapApiFilterConfig } from '../utils/api-filter-mapper';
 import { resolveApiDateRange, formatApiDate } from '../utils/date';
 import { ApiError } from '../utils/errors';
-import { buildGroupObject } from '../utils/stats/grouping';
-import { normalizeMetricValue } from '../utils/stats/metrics';
-import { applyOrdering } from '../utils/stats/ordering';
-import { queryMetricRows } from '../utils/stats/queries';
+import { buildGroupObject } from '../utils/analytics/grouping';
+import { normalizeMetricValue } from '../utils/analytics/metrics';
+import { applyOrdering } from '../utils/analytics/ordering';
+import { queryMetricRows } from '../utils/analytics/queries';
 
-const statsRoute = createRoute({
+const analyticsRoute = createRoute({
   method: 'post',
-  path: '/v1/stats/query',
-  summary: 'Query stats',
+  path: '/v1/analytics/query',
+  summary: 'Query analytics',
   description: 'Query analytics metrics with optional grouping, sorting, pagination and filters.',
   request: {
     headers: authorizationHeaderSchema,
@@ -27,7 +27,7 @@ const statsRoute = createRoute({
       required: true,
       content: {
         'application/json': {
-          schema: statsQueryRequestSchema,
+          schema: analyticsQueryRequestSchema,
         },
       },
     },
@@ -37,7 +37,7 @@ const statsRoute = createRoute({
       description: 'Success',
       content: {
         'application/json': {
-          schema: statsQueryResponseSchema,
+          schema: analyticsQueryResponseSchema,
         },
       },
     },
@@ -58,8 +58,8 @@ const statsRoute = createRoute({
   },
 });
 
-export function registerStatsRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
-  api.openapi(statsRoute, async ({ req, json, var: { project, subscriptionStatus } }) => {
+export function registerAnalyticsRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
+  api.openapi(analyticsRoute, async ({ req, json, var: { project, subscriptionStatus } }) => {
     const payload = req.valid('json');
 
     const grouping = parseMetricsQueryGroupingToken(payload.group_by[0] ?? null);

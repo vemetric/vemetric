@@ -1,4 +1,4 @@
-import type { Metric } from '../../consts/stats';
+import type { Metric } from '../../consts/analytics';
 
 export function normalizeMetricValue(metric: Metric, value: number): number {
   if (metric === 'users' || metric === 'pageviews' || metric === 'events') {

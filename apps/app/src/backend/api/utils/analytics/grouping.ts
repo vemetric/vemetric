@@ -1,6 +1,6 @@
 import { clickhouseDateToISO } from 'clickhouse/src/utils/date';
 import type { MetricsQueryGrouping } from 'clickhouse/src/utils/query-group';
-import type { MetricRow } from '../../consts/stats';
+import type { MetricRow } from '../../consts/analytics';
 import { formatApiDate } from '../date';
 
 export function buildGroupObject(grouping: MetricsQueryGrouping, groupKey: string): Record<string, string> {

@@ -59,7 +59,7 @@ function createMockApiKey() {
   };
 }
 
-describe('POST /api/v1/stats/query (contract)', () => {
+describe('POST /api/v1/analytics/query (contract)', () => {
   const findByKeyHash = findByKeyHashMock as Mock;
   const getRedisClient = getRedisClientMock as Mock;
 
@@ -77,7 +77,7 @@ describe('POST /api/v1/stats/query (contract)', () => {
     it('rejects invalid group_by token', async () => {
       const app = createPublicApi();
 
-      const response = await app.request('/v1/stats/query', {
+      const response = await app.request('/v1/analytics/query', {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
@@ -102,7 +102,7 @@ describe('POST /api/v1/stats/query (contract)', () => {
     it('rejects group_by with more than one item', async () => {
       const app = createPublicApi();
 
-      const response = await app.request('/v1/stats/query', {
+      const response = await app.request('/v1/analytics/query', {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
@@ -127,7 +127,7 @@ describe('POST /api/v1/stats/query (contract)', () => {
     it('rejects custom date_range when start is after end', async () => {
       const app = createPublicApi();
 
-      const response = await app.request('/v1/stats/query', {
+      const response = await app.request('/v1/analytics/query', {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
@@ -152,7 +152,7 @@ describe('POST /api/v1/stats/query (contract)', () => {
     it('rejects non-UTC date input', async () => {
       const app = createPublicApi();
 
-      const response = await app.request('/v1/stats/query', {
+      const response = await app.request('/v1/analytics/query', {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
@@ -181,7 +181,7 @@ describe('POST /api/v1/stats/query (contract)', () => {
     it('rejects datetime input with milliseconds', async () => {
       const app = createPublicApi();
 
-      const response = await app.request('/v1/stats/query', {
+      const response = await app.request('/v1/analytics/query', {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
@@ -210,7 +210,7 @@ describe('POST /api/v1/stats/query (contract)', () => {
     it('rejects order_by metric that is not requested in metrics', async () => {
       const app = createPublicApi();
 
-      const response = await app.request('/v1/stats/query', {
+      const response = await app.request('/v1/analytics/query', {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
@@ -236,7 +236,7 @@ describe('POST /api/v1/stats/query (contract)', () => {
     it('rejects invalid order_by direction', async () => {
       const app = createPublicApi();
 
-      const response = await app.request('/v1/stats/query', {
+      const response = await app.request('/v1/analytics/query', {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
@@ -262,7 +262,7 @@ describe('POST /api/v1/stats/query (contract)', () => {
     it('rejects invalid event property group_by token format', async () => {
       const app = createPublicApi();
 
-      const response = await app.request('/v1/stats/query', {
+      const response = await app.request('/v1/analytics/query', {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
@@ -286,7 +286,7 @@ describe('POST /api/v1/stats/query (contract)', () => {
     it('accepts event property group_by token with dash and dollar', async () => {
       const app = createPublicApi();
 
-      const response = await app.request('/v1/stats/query', {
+      const response = await app.request('/v1/analytics/query', {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
@@ -311,7 +311,7 @@ describe('POST /api/v1/stats/query (contract)', () => {
     it('rejects invalid sort field for active grouping', async () => {
       const app = createPublicApi();
 
-      const response = await app.request('/v1/stats/query', {
+      const response = await app.request('/v1/analytics/query', {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
@@ -338,7 +338,7 @@ describe('POST /api/v1/stats/query (contract)', () => {
     it('rejects disallowed preset date_range (6months)', async () => {
       const app = createPublicApi();
 
-      const response = await app.request('/v1/stats/query', {
+      const response = await app.request('/v1/analytics/query', {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
@@ -360,7 +360,7 @@ describe('POST /api/v1/stats/query (contract)', () => {
       const app = createPublicApi();
 
       for (const dateRange of ['3months', '1year'] as const) {
-        const response = await app.request('/v1/stats/query', {
+        const response = await app.request('/v1/analytics/query', {
           method: 'POST',
           headers: AUTH_HEADERS,
           body: JSON.stringify({

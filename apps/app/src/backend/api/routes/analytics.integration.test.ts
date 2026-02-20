@@ -2,11 +2,11 @@ import type { Mock } from 'vitest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPublicApi } from '../index';
 import {
-  createIsolatedStatsSeedContext,
-  resetStatsFixtureData,
-  seedStatsFixtureData,
-  type IsolatedStatsSeedContext,
-} from './stats.integration.seeding';
+  createIsolatedAnalyticsSeedContext,
+  resetAnalyticsFixtureData,
+  seedAnalyticsFixtureData,
+  type IsolatedAnalyticsSeedContext,
+} from './analytics.integration.seeding';
 
 const { findByKeyHashMock, getRedisClientMock } = vi.hoisted(() => ({
   findByKeyHashMock: vi.fn(),
@@ -23,7 +23,7 @@ vi.mock('../../utils/redis', () => ({
   getRedisClient: getRedisClientMock,
 }));
 
-async function postStatsQuery(
+async function postAnalyticsQuery(
   body: unknown,
   headers: {
     Authorization: string;
@@ -32,7 +32,7 @@ async function postStatsQuery(
 ) {
   const app = createPublicApi();
 
-  return app.request('/v1/stats/query', {
+  return app.request('/v1/analytics/query', {
     method: 'POST',
     headers,
     body: JSON.stringify(body),
@@ -47,18 +47,18 @@ async function postStatsQuery(
  * Once full local/CI infra seeding is wired (Postgres + ClickHouse + Redis),
  * these mocks can be removed and replaced with real seeded auth data.
  */
-describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
+describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
   const findByKeyHash = findByKeyHashMock as Mock;
   const getRedisClient = getRedisClientMock as Mock;
-  let isolated: IsolatedStatsSeedContext;
+  let isolated: IsolatedAnalyticsSeedContext;
 
   beforeAll(async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-02-17T23:59:59.000Z'));
 
-    isolated = createIsolatedStatsSeedContext();
-    await resetStatsFixtureData(isolated);
-    await seedStatsFixtureData(isolated);
+    isolated = createIsolatedAnalyticsSeedContext();
+    await resetAnalyticsFixtureData(isolated);
+    await seedAnalyticsFixtureData(isolated);
   });
 
   afterAll(() => {
@@ -116,7 +116,7 @@ describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
         ],
       };
 
-      const response = await postStatsQuery(request, isolated.authHeaders);
+      const response = await postAnalyticsQuery(request, isolated.authHeaders);
 
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual(expected);
@@ -128,7 +128,7 @@ describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
         group_by: [],
       };
 
-      const response = await postStatsQuery(request, isolated.authHeaders);
+      const response = await postAnalyticsQuery(request, isolated.authHeaders);
 
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual({
@@ -173,7 +173,7 @@ describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
         offset: 50,
       };
 
-      const response = await postStatsQuery(request, isolated.authHeaders);
+      const response = await postAnalyticsQuery(request, isolated.authHeaders);
 
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual({
@@ -213,7 +213,7 @@ describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
         order_by: [],
       };
 
-      const response = await postStatsQuery(request, isolated.authHeaders);
+      const response = await postAnalyticsQuery(request, isolated.authHeaders);
 
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual({
@@ -298,7 +298,7 @@ describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
         ],
       };
 
-      const response = await postStatsQuery(request, isolated.authHeaders);
+      const response = await postAnalyticsQuery(request, isolated.authHeaders);
 
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual(expected);
@@ -314,7 +314,7 @@ describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
         offset: 0,
       };
 
-      const response = await postStatsQuery(request, isolated.authHeaders);
+      const response = await postAnalyticsQuery(request, isolated.authHeaders);
 
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual({
@@ -356,7 +356,7 @@ describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
         order_by: [['events', 'desc']],
       };
 
-      const response = await postStatsQuery(request, isolated.authHeaders);
+      const response = await postAnalyticsQuery(request, isolated.authHeaders);
 
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toMatchObject({
@@ -384,7 +384,7 @@ describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
         ],
       };
 
-      const response = await postStatsQuery(request, isolated.authHeaders);
+      const response = await postAnalyticsQuery(request, isolated.authHeaders);
 
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toMatchObject({
@@ -405,7 +405,7 @@ describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
         offset: 1,
       };
 
-      const response = await postStatsQuery(request, isolated.authHeaders);
+      const response = await postAnalyticsQuery(request, isolated.authHeaders);
 
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual({
@@ -452,7 +452,7 @@ describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
         ],
       };
 
-      const response = await postStatsQuery(request, isolated.authHeaders);
+      const response = await postAnalyticsQuery(request, isolated.authHeaders);
 
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual({
@@ -487,7 +487,7 @@ describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
     });
 
     it('applies event filters directly to event metric rows', async () => {
-      const response = await postStatsQuery(
+      const response = await postAnalyticsQuery(
         {
           date_range: '30days',
           metrics: ['events'],
@@ -525,7 +525,7 @@ describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
     });
 
     it('applies page filters directly to pageviews metric rows', async () => {
-      const response = await postStatsQuery(
+      const response = await postAnalyticsQuery(
         {
           date_range: '30days',
           metrics: ['pageviews'],
@@ -555,7 +555,7 @@ describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
     });
 
     it('applies page filters directly to grouped pageviews rows', async () => {
-      const response = await postStatsQuery(
+      const response = await postAnalyticsQuery(
         {
           date_range: '30days',
           metrics: ['pageviews'],
@@ -586,7 +586,7 @@ describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
     });
 
     it('applies event filters directly to grouped event rows', async () => {
-      const response = await postStatsQuery(
+      const response = await postAnalyticsQuery(
         {
           date_range: '30days',
           metrics: ['events'],
@@ -624,7 +624,7 @@ describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
     });
 
     it('does not expose __all__ placeholder for event property grouping', async () => {
-      const response = await postStatsQuery(
+      const response = await postAnalyticsQuery(
         {
           date_range: '30days',
           metrics: ['users', 'pageviews', 'events', 'bounce_rate', 'visit_duration'],
@@ -653,7 +653,7 @@ describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
     });
 
     it('returns only requested metrics in metrics object', async () => {
-      const response = await postStatsQuery(
+      const response = await postAnalyticsQuery(
         {
           date_range: '30days',
           metrics: ['users'],
@@ -698,7 +698,7 @@ describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
 
   describe('empty_result', () => {
     it('returns exact period for custom UTC datetime range with time components', async () => {
-      const response = await postStatsQuery(
+      const response = await postAnalyticsQuery(
         {
           date_range: ['2026-02-10T06:30:00Z', '2026-02-11T08:45:00Z'],
           metrics: ['users'],
@@ -732,7 +732,7 @@ describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
     });
 
     it('returns empty grouped result when date range has no matching data', async () => {
-      const response = await postStatsQuery(
+      const response = await postAnalyticsQuery(
         {
           date_range: ['2026-02-10', '2026-02-11'],
           metrics: ['users'],
@@ -766,7 +766,7 @@ describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
     });
 
     it('returns zeroed aggregate row when date range has no matching data', async () => {
-      const response = await postStatsQuery(
+      const response = await postAnalyticsQuery(
         {
           date_range: ['2026-02-10', '2026-02-11'],
           metrics: ['users', 'events'],
@@ -809,7 +809,7 @@ describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
 
   describe('validation', () => {
     it('allows event property grouping when event filter is missing', async () => {
-      const response = await postStatsQuery(
+      const response = await postAnalyticsQuery(
         {
           date_range: '30days',
           metrics: ['events'],
@@ -825,7 +825,7 @@ describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
     });
 
     it('allows event property grouping when event filter has no nameFilter', async () => {
-      const response = await postStatsQuery(
+      const response = await postAnalyticsQuery(
         {
           date_range: '30days',
           metrics: ['events'],
@@ -852,7 +852,7 @@ describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
     });
 
     it('rejects reversed custom date_range array', async () => {
-      const response = await postStatsQuery(
+      const response = await postAnalyticsQuery(
         {
           date_range: ['2026-02-17', '2026-01-18'],
           metrics: ['users'],
@@ -870,7 +870,7 @@ describe('POST /api/v1/stats/query (integration, seeded fixtures)', () => {
     });
 
     it('rejects invalid order_by direction', async () => {
-      const response = await postStatsQuery(
+      const response = await postAnalyticsQuery(
         {
           date_range: '30days',
           metrics: ['users'],

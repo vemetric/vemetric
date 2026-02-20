@@ -23,7 +23,7 @@ type ApiKeyProjectRecord = {
   };
 };
 
-export type IsolatedStatsSeedContext = {
+export type IsolatedAnalyticsSeedContext = {
   projectId: string;
   rawApiKey: string;
   keyHash: string;
@@ -34,9 +34,9 @@ export type IsolatedStatsSeedContext = {
   apiKeyRecord: ApiKeyProjectRecord;
 };
 
-const STATS_TEST_PROJECT_ID = '9000000000000001';
-const STATS_TEST_KEY_SEED = 1;
-const KEEP_STATS_TEST_DATA = process.env.KEEP_STATS_TEST_DATA === '1';
+const ANALYTICS_TEST_PROJECT_ID = '9000000000000001';
+const ANALYTICS_TEST_KEY_SEED = 1;
+const KEEP_ANALYTICS_TEST_DATA = process.env.KEEP_ANALYTICS_TEST_DATA === '1';
 
 function sha256(input: string): string {
   return createHash('sha256').update(input).digest('hex');
@@ -140,9 +140,9 @@ function baseEvent(input: {
   };
 }
 
-export function createIsolatedStatsSeedContext(): IsolatedStatsSeedContext {
-  const projectId = STATS_TEST_PROJECT_ID;
-  const rawApiKey = buildRawApiKey(STATS_TEST_KEY_SEED);
+export function createIsolatedAnalyticsSeedContext(): IsolatedAnalyticsSeedContext {
+  const projectId = ANALYTICS_TEST_PROJECT_ID;
+  const rawApiKey = buildRawApiKey(ANALYTICS_TEST_KEY_SEED);
   const keyHash = sha256(rawApiKey);
 
   return {
@@ -158,8 +158,8 @@ export function createIsolatedStatsSeedContext(): IsolatedStatsSeedContext {
       projectId,
       project: {
         id: projectId,
-        name: 'Stats Integration Test Project',
-        domain: 'stats-integration-test.example.com',
+        name: 'Analytics Integration Test Project',
+        domain: 'analytics-integration-test.example.com',
         token: `token_${projectId}`,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         firstEventAt: new Date('2026-01-18T09:00:00.000Z'),
@@ -171,8 +171,8 @@ export function createIsolatedStatsSeedContext(): IsolatedStatsSeedContext {
   };
 }
 
-async function truncateStatsFixtureData(projectId: string): Promise<void> {
-  if (KEEP_STATS_TEST_DATA) {
+async function truncateAnalyticsFixtureData(projectId: string): Promise<void> {
+  if (KEEP_ANALYTICS_TEST_DATA) {
     return;
   }
 
@@ -187,8 +187,8 @@ async function truncateStatsFixtureData(projectId: string): Promise<void> {
   });
 }
 
-export async function resetStatsFixtureData(context: IsolatedStatsSeedContext): Promise<void> {
-  await truncateStatsFixtureData(context.projectId);
+export async function resetAnalyticsFixtureData(context: IsolatedAnalyticsSeedContext): Promise<void> {
+  await truncateAnalyticsFixtureData(context.projectId);
 }
 
 /**
@@ -204,8 +204,8 @@ export async function resetStatsFixtureData(context: IsolatedStatsSeedContext): 
  * - visit_duration average: 120
  * - signup plan split: pro=2, starter=1
  */
-export async function seedStatsFixtureData(context: IsolatedStatsSeedContext): Promise<void> {
-  await truncateStatsFixtureData(context.projectId);
+export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedContext): Promise<void> {
+  await truncateAnalyticsFixtureData(context.projectId);
 
   const projectId = BigInt(context.projectId);
 

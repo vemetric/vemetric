@@ -3,9 +3,9 @@ import { TIME_SPAN_PRESETS } from '@vemetric/common/charts/timespans';
 import { eventPropertyTokenRegex, parseMetricsQueryGroupingToken } from 'clickhouse/src/utils/query-group';
 import { apiFiltersOperatorSchema, apiFilterSchema } from './api-filters';
 import { apiDateInputSchema, apiTimestampSchema } from './common';
-import type { Metric } from '../consts/stats';
-import { DEFAULT_METRICS, METRICS, METRICS_SET } from '../consts/stats';
-import { isSortingGroupField } from '../utils/stats/grouping';
+import type { Metric } from '../consts/analytics';
+import { DEFAULT_METRICS, METRICS, METRICS_SET } from '../consts/analytics';
+import { isSortingGroupField } from '../utils/analytics/grouping';
 
 const eventPropertyGroupByTokenSchema = z.string().regex(eventPropertyTokenRegex, 'Invalid grouping token').openapi({
   description: 'Group by event property token',
@@ -55,7 +55,7 @@ const responseMetricsSchema = z
     message: 'At least one metric value must be present',
   });
 
-export const statsQueryRequestSchema = z
+export const analyticsQueryRequestSchema = z
   .object({
     date_range: dateRangeSchema,
     metrics: z.array(z.enum(METRICS)).optional(),
@@ -121,9 +121,9 @@ export const statsQueryRequestSchema = z
     });
   });
 
-export type StatsRequest = z.infer<typeof statsQueryRequestSchema>;
+export type AnalyticsRequest = z.infer<typeof analyticsQueryRequestSchema>;
 
-export const statsQueryResponseSchema = z.object({
+export const analyticsQueryResponseSchema = z.object({
   period: z.object({
     from: apiTimestampSchema,
     to: apiTimestampSchema,

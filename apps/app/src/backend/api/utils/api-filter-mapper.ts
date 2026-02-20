@@ -1,24 +1,54 @@
-import type { IFilter, IFilterConfig, IFilterGroup } from '@vemetric/common/filters';
-import type { ApiFilter } from '../schemas/api-filters';
+import type { IFilter, IFilterConfig, IFilterGroup, IStringFilterOperator } from '@vemetric/common/filters';
+import type { ApiFilter, ApiStringOperator } from '../schemas/api-filters';
+
+function mapApiStringOperator(operator: ApiStringOperator): IStringFilterOperator {
+  if (operator === 'eq') {
+    return 'is';
+  }
+
+  if (operator === 'notEq') {
+    return 'isNot';
+  }
+
+  return operator;
+}
+
+function mapApiStringFilter(
+  filter:
+    | {
+        value: string;
+        operator: ApiStringOperator;
+      }
+    | undefined,
+): { value: string; operator: IStringFilterOperator } | undefined {
+  if (!filter) {
+    return undefined;
+  }
+
+  return {
+    value: filter.value,
+    operator: mapApiStringOperator(filter.operator),
+  };
+}
 
 function mapApiFilter(filter: ApiFilter): IFilter {
   switch (filter.type) {
     case 'page': {
       return {
         type: 'page',
-        originFilter: filter.origin,
-        pathFilter: filter.path,
-        hashFilter: filter.hash,
+        originFilter: mapApiStringFilter(filter.origin),
+        pathFilter: mapApiStringFilter(filter.path),
+        hashFilter: mapApiStringFilter(filter.hash),
       };
     }
     case 'event': {
       return {
         type: 'event',
-        nameFilter: filter.name,
+        nameFilter: mapApiStringFilter(filter.name),
         propertiesFilter: filter.properties?.map((property) => ({
           property: property.property,
           valueFilter: {
-            operator: property.operator,
+            operator: mapApiStringOperator(property.operator),
             value: property.value,
           },
         })),
@@ -40,13 +70,13 @@ function mapApiFilter(filter: ApiFilter): IFilter {
     case 'referrer': {
       return {
         type: 'referrer',
-        referrerFilter: filter,
+        referrerFilter: mapApiStringFilter(filter),
       };
     }
     case 'referrer_url': {
       return {
         type: 'referrerUrl',
-        referrerUrlFilter: filter,
+        referrerUrlFilter: mapApiStringFilter(filter),
       };
     }
     case 'referrer_type': {
@@ -58,11 +88,11 @@ function mapApiFilter(filter: ApiFilter): IFilter {
     case 'utm_tags': {
       return {
         type: 'utmTags',
-        utmCampaignFilter: filter.utm_campaign,
-        utmContentFilter: filter.utm_content,
-        utmMediumFilter: filter.utm_medium,
-        utmSourceFilter: filter.utm_source,
-        utmTermFilter: filter.utm_term,
+        utmCampaignFilter: mapApiStringFilter(filter.utm_campaign),
+        utmContentFilter: mapApiStringFilter(filter.utm_content),
+        utmMediumFilter: mapApiStringFilter(filter.utm_medium),
+        utmSourceFilter: mapApiStringFilter(filter.utm_source),
+        utmTermFilter: mapApiStringFilter(filter.utm_term),
       };
     }
     case 'browser': {

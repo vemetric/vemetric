@@ -259,6 +259,42 @@ describe('POST /api/v1/analytics/query (contract)', () => {
       expectValidationDetail(body, 'order_by.0.1', "Invalid enum value. Expected 'asc' | 'desc', received 'down'");
     });
 
+    it('rejects legacy string filter operator "is" (use "eq")', async () => {
+      const app = createPublicApi();
+
+      const response = await app.request('/v1/analytics/query', {
+        method: 'POST',
+        headers: AUTH_HEADERS,
+        body: JSON.stringify({
+          date_range: '30days',
+          metrics: ['users'],
+          group_by: [],
+          filters: [
+            {
+              type: 'referrer',
+              operator: 'is',
+              value: 'Google',
+            },
+          ],
+        }),
+      });
+
+      expect(response.status).toBe(400);
+      const body = await response.json();
+      expect(body).toMatchObject({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid request parameters',
+        },
+      });
+      expect(Array.isArray(body.error.details)).toBe(true);
+      expectValidationDetail(
+        body,
+        'filters.0.operator',
+        "Invalid enum value. Expected 'any' | 'eq' | 'notEq' | 'contains' | 'notContains' | 'startsWith' | 'endsWith', received 'is'",
+      );
+    });
+
     it('rejects invalid event property group_by token format', async () => {
       const app = createPublicApi();
 

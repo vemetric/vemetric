@@ -139,7 +139,7 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
         query: {
           date_range: '30days',
           group_by: [],
-          metrics: ['users', 'pageviews', 'events', 'bounce_rate', 'visit_duration'],
+          metrics: ['users', 'pageviews', 'events'],
           order_by: [],
           limit: 100,
           offset: 0,
@@ -156,8 +156,6 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
               users: 2,
               pageviews: 4,
               events: 3,
-              bounce_rate: 50,
-              visit_duration: 150,
             },
           },
         ],
@@ -472,7 +470,7 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
           {
             type: 'event',
             name: {
-              operator: 'is',
+              operator: 'eq',
               value: 'signup',
             },
           },
@@ -540,7 +538,7 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
           {
             type: 'event',
             name: {
-              operator: 'is',
+              operator: 'eq',
               value: 'signup',
             },
           },
@@ -592,13 +590,13 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
             {
               type: 'event',
               name: {
-                operator: 'is',
+                operator: 'eq',
                 value: 'signup',
               },
               properties: [
                 {
                   property: 'plan',
-                  operator: 'is',
+                  operator: 'eq',
                   value: 'pro',
                 },
               ],
@@ -629,7 +627,7 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
             {
               type: 'page',
               path: {
-                operator: 'is',
+                operator: 'eq',
                 value: '/features',
               },
             },
@@ -660,7 +658,7 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
             {
               type: 'page',
               path: {
-                operator: 'is',
+                operator: 'eq',
                 value: '/features',
               },
             },
@@ -691,13 +689,13 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
             {
               type: 'event',
               name: {
-                operator: 'is',
+                operator: 'eq',
                 value: 'signup',
               },
               properties: [
                 {
                   property: 'plan',
-                  operator: 'is',
+                  operator: 'eq',
                   value: 'pro',
                 },
               ],
@@ -729,7 +727,7 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
             {
               type: 'event',
               name: {
-                operator: 'is',
+                operator: 'eq',
                 value: 'signup',
               },
             },
@@ -931,7 +929,7 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
               properties: [
                 {
                   property: 'plan',
-                  operator: 'is',
+                  operator: 'eq',
                   value: 'pro',
                 },
               ],

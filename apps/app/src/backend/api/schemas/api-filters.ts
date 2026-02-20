@@ -1,16 +1,26 @@
 import { z } from '@hono/zod-openapi';
 import { filterGroupOperatorsSchema, listFilterSchema, stringFilterSchema } from '@vemetric/common/filters';
 
+const apiStringOperatorsSchema = z.enum(['any', 'eq', 'notEq', 'contains', 'notContains', 'startsWith', 'endsWith']);
+export type ApiStringOperator = z.infer<typeof apiStringOperatorsSchema>;
+
+const apiStringFilterSchema = z.object({
+  value: stringFilterSchema.shape.value,
+  operator: apiStringOperatorsSchema.openapi({
+    description: 'Operator to apply for the string filter. "eq" means equals, "notEq" means not equals.',
+  }),
+});
+
 const pageApiFilterSchema = z
   .object({
     type: z.literal('page'),
-    origin: stringFilterSchema.optional().openapi({
+    origin: apiStringFilterSchema.optional().openapi({
       description: 'Filter based on the page origin (protocol + host). For example, "https://example.com".',
     }),
-    path: stringFilterSchema.optional().openapi({
+    path: apiStringFilterSchema.optional().openapi({
       description: 'Filter based on the page path. For example, "/blog".',
     }),
-    hash: stringFilterSchema.optional().openapi({
+    hash: apiStringFilterSchema.optional().openapi({
       description: 'Filter based on the page hash. For example, "#section1".',
     }),
   })
@@ -19,7 +29,7 @@ const pageApiFilterSchema = z
       'Filter based on specific page view properties, like the full URL (origin + path + hash) or its individual parts.',
     example: {
       type: 'page',
-      origin: { value: 'https://example.com', operator: 'is' },
+      origin: { value: 'https://example.com', operator: 'eq' },
       path: { value: '/blog', operator: 'startsWith' },
     },
   });
@@ -29,7 +39,7 @@ const eventApiFilterSchema = z
     type: z.literal('event').openapi({
       description: 'Filter type identifier for event filters.',
     }),
-    name: stringFilterSchema.optional().openapi({
+    name: apiStringFilterSchema.optional().openapi({
       description: 'Filter by event name.',
     }),
     properties: z
@@ -39,13 +49,13 @@ const eventApiFilterSchema = z
             description: 'Event property key inside custom event data.',
             example: 'plan',
           }),
-          value: stringFilterSchema.shape.value.openapi({
+          value: apiStringFilterSchema.shape.value.openapi({
             description: 'Event property value to compare against.',
             example: 'pro',
           }),
-          operator: stringFilterSchema.shape.operator.openapi({
+          operator: apiStringFilterSchema.shape.operator.openapi({
             description: 'String matching operator for `value`.',
-            example: 'is',
+            example: 'eq',
           }),
         }),
       )
@@ -58,8 +68,8 @@ const eventApiFilterSchema = z
     description: 'Filter by event name and/or event property values.',
     example: {
       type: 'event',
-      name: { operator: 'is', value: 'signup' },
-      properties: [{ property: 'plan', operator: 'is', value: 'pro' }],
+      name: { operator: 'eq', value: 'signup' },
+      properties: [{ property: 'plan', operator: 'eq', value: 'pro' }],
     },
   });
 
@@ -112,20 +122,20 @@ const referrerApiFilterSchema = z
     type: z.literal('referrer').openapi({
       description: 'Filter type identifier for referrer filters.',
     }),
-    value: stringFilterSchema.shape.value.openapi({
+    value: apiStringFilterSchema.shape.value.openapi({
       description: 'Referrer value to match. Empty string represents direct/none referrer.',
       example: 'Google',
     }),
-    operator: stringFilterSchema.shape.operator.openapi({
+    operator: apiStringFilterSchema.shape.operator.openapi({
       description: 'String matching operator for `value`.',
-      example: 'is',
+      example: 'eq',
     }),
   })
   .openapi({
     description: 'Filter by referrer name.',
     example: {
       type: 'referrer',
-      operator: 'is',
+      operator: 'eq',
       value: 'Google',
     },
   });
@@ -135,11 +145,11 @@ const referrerUrlApiFilterSchema = z
     type: z.literal('referrer_url').openapi({
       description: 'Filter type identifier for referrer URL filters.',
     }),
-    value: stringFilterSchema.shape.value.openapi({
+    value: apiStringFilterSchema.shape.value.openapi({
       description: 'Referrer URL value to match.',
       example: 'https://google.com',
     }),
-    operator: stringFilterSchema.shape.operator.openapi({
+    operator: apiStringFilterSchema.shape.operator.openapi({
       description: 'String matching operator for `value`.',
       example: 'contains',
     }),
@@ -181,19 +191,19 @@ const utmTagsApiFilterSchema = z
     type: z.literal('utm_tags').openapi({
       description: 'Filter type identifier for UTM tag filters.',
     }),
-    utm_campaign: stringFilterSchema.optional().openapi({
+    utm_campaign: apiStringFilterSchema.optional().openapi({
       description: 'Filter by UTM campaign.',
     }),
-    utm_content: stringFilterSchema.optional().openapi({
+    utm_content: apiStringFilterSchema.optional().openapi({
       description: 'Filter by UTM content.',
     }),
-    utm_medium: stringFilterSchema.optional().openapi({
+    utm_medium: apiStringFilterSchema.optional().openapi({
       description: 'Filter by UTM medium.',
     }),
-    utm_source: stringFilterSchema.optional().openapi({
+    utm_source: apiStringFilterSchema.optional().openapi({
       description: 'Filter by UTM source.',
     }),
-    utm_term: stringFilterSchema.optional().openapi({
+    utm_term: apiStringFilterSchema.optional().openapi({
       description: 'Filter by UTM term.',
     }),
   })
@@ -201,8 +211,8 @@ const utmTagsApiFilterSchema = z
     description: 'Filter by one or more UTM parameters.',
     example: {
       type: 'utm_tags',
-      utm_source: { operator: 'is', value: 'google' },
-      utm_medium: { operator: 'is', value: 'cpc' },
+      utm_source: { operator: 'eq', value: 'google' },
+      utm_medium: { operator: 'eq', value: 'cpc' },
     },
   });
 

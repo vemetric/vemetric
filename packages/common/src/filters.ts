@@ -27,7 +27,7 @@ const stringOperators = [
 ] as const;
 export const stringOperatorsSchema = z.union(stringOperators);
 export const stringOperatorValues = stringOperators.map((operator) => operator.value);
-const stringFilterSchema = z.object({
+export const stringFilterSchema = z.object({
   value: z.string(),
   operator: stringOperatorsSchema,
 });
@@ -53,9 +53,10 @@ export type INumberFilter = z.infer<typeof numberFilterSchema>;
 
 const listOperators = [anyOperator, oneOfOperator, noneOfOperator] as const;
 export const listOperatorValues = listOperators.map((operator) => operator.value);
-const listFilterSchema = z.object({
+export const listOperatorsSchema = z.union(listOperators);
+export const listFilterSchema = z.object({
   value: z.array(z.string()),
-  operator: z.union(listOperators),
+  operator: listOperatorsSchema,
 });
 export type IListFilter = z.infer<typeof listFilterSchema>;
 
@@ -166,6 +167,7 @@ export type IFilter = z.infer<typeof filterSchema>;
 
 const filterGroupOperators = [andOperator, orOperator] as const;
 export const filterGroupOperatorValues = filterGroupOperators.map((operator) => operator.value);
+export const filterGroupOperatorsSchema = z.union(filterGroupOperators);
 export type IFilterGroup = {
   type: 'group';
   filters: Array<IFilter | IFilterGroup>;
@@ -175,13 +177,13 @@ export type IFilterGroup = {
 const filterGroupSchema: z.ZodType<IFilterGroup> = z.object({
   type: z.literal('group'),
   filters: z.array(z.union([filterSchema, z.lazy(() => filterGroupSchema)])),
-  operator: z.union(filterGroupOperators),
+  operator: filterGroupOperatorsSchema,
 });
 
 export const filterConfigSchema = z
   .object({
     filters: z.array(z.union([filterSchema, z.lazy(() => filterGroupSchema)])),
-    operator: z.union(filterGroupOperators),
+    operator: filterGroupOperatorsSchema,
   })
   .optional()
   .catch(undefined);
@@ -209,3 +211,19 @@ export const hasMultipleSubfiltersActive = (filter: IFilter) => {
   }
   return false;
 };
+
+export function hasEventNameFilter(filterConfig?: IFilterConfig): boolean {
+  if (!filterConfig || filterConfig.filters.length === 0) {
+    return false;
+  }
+
+  const hasFilter = (filter: IFilter | IFilterGroup): boolean => {
+    if (filter.type === 'group') {
+      return filter.filters.some((child) => hasFilter(child));
+    }
+
+    return filter.type === 'event' && Boolean(filter.nameFilter?.value);
+  };
+
+  return filterConfig.filters.some((filter) => hasFilter(filter));
+}

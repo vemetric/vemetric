@@ -1,9 +1,9 @@
 import { createMiddleware } from 'hono/factory';
 import { HTTPException } from 'hono/http-exception';
-import type { PublicApiEnv } from '../types';
+import type { PublicApiHonoEnv } from '../types';
 import { logger } from '../utils/api-logger';
 
-export const loggingMiddleware = createMiddleware<PublicApiEnv>(async (c, next) => {
+export const loggingMiddleware = createMiddleware<PublicApiHonoEnv>(async (c, next) => {
   const start = Date.now();
   let status = 200;
 

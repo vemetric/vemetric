@@ -2,7 +2,6 @@ import * as Sentry from '@sentry/bun';
 import { TRPCError, initTRPC } from '@trpc/server';
 import {
   getCustomDateRangeInterval,
-  isTimespanAllowed,
   TIME_SPAN_DATA,
   TIME_SPANS,
   getTimeSpanRangeMax,
@@ -14,6 +13,7 @@ import superjson from 'superjson';
 import { z } from 'zod';
 import type { HonoContext } from '../types';
 import { getSubscriptionStatus } from './billing';
+import { isRetentionRestricted, RETENTION_UPGRADE_MESSAGE } from './retention';
 import { getTimeSpanStartDate, getTimeSpanEndDate } from './timeseries';
 
 const t = initTRPC.context<HonoContext>().create({
@@ -305,16 +305,14 @@ export const timespanProcedure = projectOrPublicProcedure
       timeSpanData = { ...timeSpanData, interval };
     }
 
-    const upgradeMessage = 'Upgrade to the Professional plan for longer data retention';
-    if (input.timespan === 'custom' && !subscriptionStatus.isActive) {
-      if (isBefore(startDate, addDays(new Date(), -32))) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: upgradeMessage,
-        });
-      }
-    } else if (!isTimespanAllowed(input.timespan, subscriptionStatus.isActive)) {
-      throw new TRPCError({ code: 'FORBIDDEN', message: upgradeMessage });
+    if (
+      isRetentionRestricted({
+        timespan: input.timespan,
+        startDate,
+        isSubscriptionActive: subscriptionStatus.isActive,
+      })
+    ) {
+      throw new TRPCError({ code: 'FORBIDDEN', message: RETENTION_UPGRADE_MESSAGE });
     }
 
     return opts.next({

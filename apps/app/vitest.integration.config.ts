@@ -4,11 +4,9 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   plugins: [tsconfigPaths()],
   test: {
-    include: ['src/**/*.{test,spec}.ts', 'src/**/*.{test,spec}.tsx'],
-    exclude: ['src/**/*.integration.test.ts'],
+    include: ['src/**/*.integration.test.ts'],
     globals: true,
-    environment: 'jsdom',
-    environmentMatchGlobs: [['src/backend/**', 'node']],
+    environment: 'node',
     reporters: ['verbose'],
   },
 });

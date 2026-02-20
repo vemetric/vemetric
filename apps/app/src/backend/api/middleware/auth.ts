@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { dbApiKey } from 'database';
 import { createMiddleware } from 'hono/factory';
-import type { PublicApiEnv } from '../types';
+import { getSubscriptionStatus } from '../../utils/billing';
+import type { PublicApiHonoEnv } from '../types';
 import { ApiError } from '../utils/errors';
 
 function sha256(input: string): string {
@@ -11,7 +12,7 @@ function sha256(input: string): string {
 const API_KEY_LENGTH = 36;
 const API_KEY_PREFIX = 'vem_';
 
-export const authMiddleware = createMiddleware<PublicApiEnv>(async (c, next) => {
+export const authMiddleware = createMiddleware<PublicApiHonoEnv>(async (c, next) => {
   const authHeader = c.req.header('Authorization');
   if (!authHeader) {
     throw new ApiError(401, 'UNAUTHORIZED', 'Missing API key. Use Authorization: Bearer <key>');
@@ -35,6 +36,15 @@ export const authMiddleware = createMiddleware<PublicApiEnv>(async (c, next) => 
 
   c.set('apiKey', apiKey);
   c.set('project', apiKey.project);
+  const subscriptionStatus = apiKey.project.organization
+    ? await getSubscriptionStatus(apiKey.project.organization)
+    : {
+        isActive: false,
+        isPastDue: false,
+        priceId: undefined,
+        customPlanEvents: null,
+      };
+  c.set('subscriptionStatus', subscriptionStatus);
 
   await next();
 });

@@ -20,11 +20,13 @@ import { buildOsFilterQueries } from '../utils/filters/os-filter';
 import { buildPageFilterQueries } from '../utils/filters/page-filter';
 import { buildUserFilterQueries } from '../utils/filters/user-filter';
 import { buildFunnelStepConditions, buildWindowFunnelSubquery } from '../utils/funnel';
+import { getMetricsGroupExpression, type MetricsQueryGrouping } from '../utils/query-group';
 import { buildUserSortQueries } from '../utils/sort/user-sort';
 import { withSpan } from '../utils/with-span';
 
 // we round the current date to the nearest 30 seconds and subtract 4 minutes and 30 seconds
 const ONLINE_USERS_INTERVAL_QUERY = 'toStartOfInterval(NOW(), INTERVAL 30 SECOND) - INTERVAL 270 SECOND';
+const BOUNCE_RATE_CALCULATION_QUERY = 'round(countIf(pageViews = 1) / count() * 100, 2)';
 
 const TABLE_NAME = 'event';
 
@@ -111,6 +113,16 @@ const USER_LIMIT = 50;
 interface PaginationOptions {
   offset: number;
   limit: number;
+}
+
+function getApiEventMetricExpression(metric: 'users' | 'pageviews' | 'events'): string {
+  if (metric === 'users') {
+    return 'count(distinct userId)';
+  }
+  if (metric === 'pageviews') {
+    return 'countIf(isPageView = 1)';
+  }
+  return 'countIf(isPageView <> 1)';
 }
 
 export const clickhouseEvent = {
@@ -566,6 +578,94 @@ export const clickhouseEvent = {
       date: row['date'],
     }));
   }),
+  queryApiMetricRows: withSpan(
+    'queryApiMetricRows',
+    async (input: {
+      metric: 'users' | 'pageviews' | 'events';
+      projectId: bigint;
+      startDate: Date;
+      endDate?: Date;
+      grouping: MetricsQueryGrouping;
+      filterQueries: string;
+      filterConfig?: IFilterConfig;
+    }) => {
+      const { metric, projectId, startDate, endDate, grouping, filterQueries, filterConfig } = input;
+      const groupExpression = getMetricsGroupExpression(grouping);
+      const metricExpression = getApiEventMetricExpression(metric);
+      const eventPropConstraint =
+        grouping.kind === 'event_prop'
+          ? `AND isPageView <> 1 AND JSONExtractString(customData, ${escape(grouping.property ?? '')}) <> ''`
+          : '';
+      const { filterQueries: eventFilterQueries } =
+        metric === 'events' && filterConfig ? getEventFilterQueries({ filterConfig }) : { filterQueries: '' };
+      const pageFilterQueries = metric === 'pageviews' && filterConfig ? buildPageFilterQueries(filterConfig) : '';
+
+      const resultSet = await clickhouseClient.query({
+        query: `
+      SELECT ${groupExpression} as groupKey, ${metricExpression} as metricValue
+      FROM event
+      WHERE projectId = ${escape(projectId)}
+        AND createdAt >= '${formatClickhouseDate(startDate)}'
+        ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
+        ${eventPropConstraint}
+        ${eventFilterQueries}
+        ${pageFilterQueries ? `AND (${pageFilterQueries})` : ''}
+        ${filterQueries || ''}
+      GROUP BY groupKey
+    `,
+        format: 'JSONEachRow',
+      });
+
+      const rows = (await resultSet.json()) as Array<{ groupKey: string; metricValue: number | string }>;
+      return rows.map((row) => ({
+        groupKey: row.groupKey || '__all__',
+        value: Number(row.metricValue),
+      }));
+    },
+  ),
+  queryApiBounceRateRows: withSpan(
+    'queryApiBounceRateRows',
+    async (input: {
+      projectId: bigint;
+      startDate: Date;
+      endDate?: Date;
+      grouping: MetricsQueryGrouping;
+      filterQueries: string;
+    }) => {
+      const { projectId, startDate, endDate, grouping, filterQueries } = input;
+      const groupExpression = getMetricsGroupExpression(grouping);
+
+      const resultSet = await clickhouseClient.query({
+        query: `
+      WITH sessions AS (
+        SELECT
+          sessionId,
+          ${groupExpression} as groupKey,
+          count() as pageViews
+        FROM event
+        WHERE projectId = ${escape(projectId)}
+          AND isPageView = 1
+          AND createdAt >= '${formatClickhouseDate(startDate)}'
+          ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
+          ${filterQueries || ''}
+        GROUP BY sessionId, groupKey
+      )
+      SELECT
+        groupKey,
+        if(count() = 0, 0, ${BOUNCE_RATE_CALCULATION_QUERY}) as metricValue
+      FROM sessions
+      GROUP BY groupKey
+    `,
+        format: 'JSONEachRow',
+      });
+
+      const rows = (await resultSet.json()) as Array<{ groupKey: string; metricValue: number | string }>;
+      return rows.map((row) => ({
+        groupKey: row.groupKey || '__all__',
+        value: Number(row.metricValue),
+      }));
+    },
+  ),
   getBounceRateTimeSeries: withSpan(
     'getBounceRateTimeSeries',
     async (projectId: bigint, filterOptions: FilterOptions) => {
@@ -591,7 +691,7 @@ export const clickhouseEvent = {
           date,
           countIf(pageViews = 1) as bounces,
           count() as totalSessions,
-          round(countIf(pageViews = 1) / count() * 100, 2) as bounceRate
+          ${BOUNCE_RATE_CALCULATION_QUERY} as bounceRate
         FROM sessions
         GROUP BY date
         ORDER BY date;`,

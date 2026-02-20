@@ -1,4 +1,5 @@
 export type TimeSpan = 'live' | '1hr' | '24hrs' | '7days' | '30days' | '3months' | '6months' | '1year' | 'custom';
+export type PresetTimeSpan = Exclude<TimeSpan, 'custom'>;
 export type ChartInterval = 'thirty_seconds' | 'ten_minutes' | 'hourly' | 'daily' | 'weekly' | 'monthly';
 export type TimeSpanDateValue = { day: number; month: number; year: number };
 
@@ -22,6 +23,10 @@ export const TIME_SPANS: readonly [TimeSpan, ...TimeSpan[]] = [
   '6months',
   '1year',
   'custom',
+];
+export const TIME_SPAN_PRESETS = TIME_SPANS.filter((span) => span !== 'custom') as [
+  PresetTimeSpan,
+  ...PresetTimeSpan[],
 ];
 export const TIME_SPAN_DATA: Record<TimeSpan, { label: string; interval: ChartInterval }> = {
   live: { label: 'Live', interval: 'thirty_seconds' },

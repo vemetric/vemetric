@@ -8,6 +8,8 @@ import { clickhouseClient, clickhouseInsert } from '../client';
 import { formatDateExpression } from '../utils/date';
 import { buildLocationFilterQueries } from '../utils/filters/location-filter';
 import { buildSourceFilterQueries } from '../utils/filters/source-filter';
+import type { MetricsQueryGrouping } from '../utils/query-group';
+import { getMetricsGroupExpression } from '../utils/query-group';
 import { withSpan } from '../utils/with-span';
 
 export interface FilterOptions {
@@ -333,4 +335,44 @@ export const clickhouseSession = {
       users: Number(row.users),
     }));
   },
+  queryApiVisitDurationRows: withSpan(
+    'queryApiVisitDurationRows',
+    async (input: {
+      projectId: bigint;
+      startDate: Date;
+      endDate?: Date;
+      grouping: MetricsQueryGrouping;
+      filterQueries: string;
+    }) => {
+      const { projectId, startDate, endDate, grouping, filterQueries } = input;
+      const groupExpression = getMetricsGroupExpression(grouping);
+
+      const resultSet = await clickhouseClient.query({
+        query: `
+      SELECT groupKey, avg(maxDuration) as metricValue
+      FROM (
+        SELECT
+          id,
+          ${groupExpression} as groupKey,
+          argMax(duration, endedAt) as maxDuration
+        FROM session
+        WHERE projectId = ${escape(projectId)}
+          AND startedAt >= '${formatClickhouseDate(startDate)}'
+          ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
+          ${(filterQueries || '').replace(/sessionId/g, 'id')}
+        GROUP BY id, groupKey
+        HAVING argMax(deleted, endedAt) = 0 AND maxDuration > 0
+      )
+      GROUP BY groupKey
+    `,
+        format: 'JSONEachRow',
+      });
+
+      const rows = (await resultSet.json()) as Array<{ groupKey: string; metricValue: number | string }>;
+      return rows.map((row) => ({
+        groupKey: row.groupKey || '__all__',
+        value: Number(row.metricValue),
+      }));
+    },
+  ),
 };

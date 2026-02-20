@@ -1,8 +1,7 @@
-import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
-import { commonOpenApiErrorResponses } from '../schemas/common';
-import type { PublicApiEnv } from '../types';
-
-const projectRoutes = new OpenAPIHono<PublicApiEnv>();
+import type { OpenAPIHono } from '@hono/zod-openapi';
+import { createRoute, z } from '@hono/zod-openapi';
+import { authorizationHeaderSchema, commonOpenApiErrorResponses } from '../schemas/common';
+import type { PublicApiHonoEnv } from '../types';
 
 function splitCsv(value: string | null): string[] {
   if (!value) {
@@ -15,11 +14,14 @@ function splitCsv(value: string | null): string[] {
     .filter(Boolean);
 }
 
-const route = createRoute({
+const projectRoute = createRoute({
   method: 'get',
-  path: '/project',
+  path: '/v1/project',
   summary: 'Get project',
   description: 'Returns the data of the project associated with the provided API key.',
+  request: {
+    headers: authorizationHeaderSchema,
+  },
   responses: {
     200: {
       description: 'Success',
@@ -72,25 +74,23 @@ const route = createRoute({
   },
 });
 
-projectRoutes.openapi(route, (c) => {
-  const project = c.get('project');
-
-  return c.json(
-    {
-      project: {
-        id: project.id,
-        name: project.name,
-        domain: project.domain,
-        token: project.token,
-        createdAt: project.createdAt.toISOString(),
-        firstEventAt: project.firstEventAt ? project.firstEventAt.toISOString() : null,
-        hasPublicDashboard: project.publicDashboard,
-        excludedIps: splitCsv(project.excludedIps),
-        excludedCountries: splitCsv(project.excludedCountries),
+export function registerProjectRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
+  api.openapi(projectRoute, ({ json, var: { project } }) => {
+    return json(
+      {
+        project: {
+          id: project.id,
+          name: project.name,
+          domain: project.domain,
+          token: project.token,
+          createdAt: project.createdAt.toISOString(),
+          firstEventAt: project.firstEventAt ? project.firstEventAt.toISOString() : null,
+          hasPublicDashboard: project.publicDashboard,
+          excludedIps: splitCsv(project.excludedIps),
+          excludedCountries: splitCsv(project.excludedCountries),
+        },
       },
-    },
-    200,
-  );
-});
-
-export { projectRoutes };
+      200,
+    );
+  });
+}

@@ -308,6 +308,41 @@ describe('POST /api/v1/analytics/query (contract)', () => {
       expectValidationDetail(body, 'order_by.0.0', 'Sort metric must be included in metrics');
     });
 
+    it('accepts new predefined grouping tokens', async () => {
+      const app = createPublicApi();
+      const groupingTokens = [
+        'city',
+        'browser',
+        'device_type',
+        'os',
+        'referrer',
+        'referrer_type',
+        'utm_campaign',
+        'utm_content',
+        'utm_medium',
+        'utm_source',
+        'utm_term',
+        'event:name',
+      ];
+
+      for (const token of groupingTokens) {
+        const response = await app.request('/v1/analytics/query', {
+          method: 'POST',
+          headers: AUTH_HEADERS,
+          body: JSON.stringify({
+            date_range: '30days',
+            metrics: ['users'],
+            group_by: [token],
+            order_by: [['events', 'desc']],
+          }),
+        });
+
+        expect(response.status).toBe(400);
+        const body = await response.json();
+        expectValidationDetail(body, 'order_by.0.0', 'Sort metric must be included in metrics');
+      }
+    });
+
     it('rejects invalid sort field for active grouping', async () => {
       const app = createPublicApi();
 

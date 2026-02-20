@@ -348,6 +348,101 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
       });
     });
 
+    it.each([
+      [
+        'city',
+        { Berlin: 1, 'New York': 1, 'San Francisco': 1, Unknown: 1 },
+      ],
+      ['browser', { Chrome: 2, Firefox: 1, Safari: 1 }],
+      ['device_type', { desktop: 2, mobile: 1, tablet: 1 }],
+      ['os', { Linux: 1, Windows: 1, macOS: 2 }],
+      ['referrer', { Bing: 1, Google: 1, Newsletter: 1, 'Direct / None': 1 }],
+      ['referrer_type', { email: 1, search: 2, social: 1 }],
+      ['utm_campaign', { jan_push: 2, winter_launch: 2 }],
+      ['utm_content', { ad_1: 1, button: 1, hero_cta: 1, text_link: 1 }],
+      ['utm_medium', { cpc: 2, email: 1, social: 1 }],
+      ['utm_source', { bing: 1, google: 1, hn: 1, newsletter: 1 }],
+      ['utm_term', { analytics: 1, metrics: 1, opensource: 1, privacy: 1 }],
+      ['event:name', { click: 1, purchase: 1, signup: 2 }],
+    ] as const)('supports grouping by %s', async (groupBy, expectedUsersByGroup) => {
+      const response = await postAnalyticsQuery(
+        {
+          date_range: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+          metrics: ['users'],
+          group_by: [groupBy],
+          order_by: [[groupBy, 'asc']],
+          limit: 100,
+          offset: 0,
+        },
+        isolated.authHeaders,
+      );
+
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.query.group_by).toEqual([groupBy]);
+
+      const actual = Object.fromEntries(
+        body.data.map((row: { group: Record<string, string>; metrics: { users: number } }) => [
+          row.group[groupBy],
+          row.metrics.users,
+        ]),
+      );
+      expect(actual).toEqual(expectedUsersByGroup);
+    });
+
+    it('supports grouping by event:name for events metric values', async () => {
+      const response = await postAnalyticsQuery(
+        {
+          date_range: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+          metrics: ['events'],
+          group_by: ['event:name'],
+          order_by: [['event:name', 'asc']],
+          limit: 100,
+          offset: 0,
+        },
+        isolated.authHeaders,
+      );
+
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toMatchObject({
+        data: [
+          { group: { 'event:name': 'click' }, metrics: { events: 1 } },
+          { group: { 'event:name': 'purchase' }, metrics: { events: 1 } },
+          { group: { 'event:name': 'signup' }, metrics: { events: 3 } },
+        ],
+      });
+    });
+
+    it('never returns "__all__" as a grouped field value', async () => {
+      const cityResponse = await postAnalyticsQuery(
+        {
+          date_range: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+          metrics: ['users'],
+          group_by: ['city'],
+          order_by: [['city', 'asc']],
+        },
+        isolated.authHeaders,
+      );
+      expect(cityResponse.status).toBe(200);
+      const cityBody = await cityResponse.json();
+      expect(cityBody.data.every((row: { group: { city?: string } }) => row.group.city !== '__all__')).toBe(true);
+
+      const referrerResponse = await postAnalyticsQuery(
+        {
+          date_range: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+          metrics: ['users'],
+          group_by: ['referrer'],
+          order_by: [['referrer', 'asc']],
+        },
+        isolated.authHeaders,
+      );
+      expect(referrerResponse.status).toBe(200);
+      const referrerBody = await referrerResponse.json();
+      expect(
+        referrerBody.data.every((row: { group: { referrer?: string } }) => row.group.referrer !== '__all__'),
+      ).toBe(true);
+    });
+
     it('supports ordering by metric value', async () => {
       const request = {
         date_range: '30days',

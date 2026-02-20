@@ -1,6 +1,10 @@
 import { z } from '@hono/zod-openapi';
 import { TIME_SPAN_PRESETS } from '@vemetric/common/charts/timespans';
-import { eventPropertyTokenRegex, parseMetricsQueryGroupingToken } from 'clickhouse/src/utils/query-group';
+import {
+  eventPropertyTokenRegex,
+  metricsGroupFieldTokens,
+  parseMetricsQueryGroupingToken,
+} from 'clickhouse/src/utils/query-group';
 import { apiFiltersOperatorSchema, apiFilterSchema } from './api-filters';
 import { apiDateInputSchema, apiTimestampSchema } from './common';
 import type { Metric } from '../consts/analytics';
@@ -13,7 +17,12 @@ const eventPropertyGroupByTokenSchema = z.string().regex(eventPropertyTokenRegex
   pattern: eventPropertyTokenRegex.source,
 });
 
-const groupByTokenSchema = z.union([z.literal('country'), z.literal('interval:auto'), eventPropertyGroupByTokenSchema]);
+const fieldGroupByTokenSchema = z.enum(metricsGroupFieldTokens);
+const groupByTokenSchema = z.union([
+  fieldGroupByTokenSchema,
+  z.literal('interval:auto'),
+  eventPropertyGroupByTokenSchema,
+]);
 
 const orderByPropertyFieldSchema = z.string().regex(eventPropertyTokenRegex, 'Invalid sort field').openapi({
   description: 'Event property sort field token',
@@ -23,7 +32,7 @@ const orderByPropertyFieldSchema = z.string().regex(eventPropertyTokenRegex, 'In
 
 const orderByFieldSchema = z.union([
   z.enum(METRICS),
-  z.literal('country'),
+  fieldGroupByTokenSchema,
   z.literal('date'),
   orderByPropertyFieldSchema,
 ]);
@@ -35,8 +44,12 @@ const orderBySchema = z
 const dateRangeSchema = z.union([z.enum(TIME_SPAN_PRESETS), z.tuple([apiDateInputSchema, apiDateInputSchema])]);
 
 const aggregateGroupSchema = z.object({}).strict();
-const countryGroupSchema = z.object({ country: z.string() });
 const intervalGroupSchema = z.object({ date: apiTimestampSchema });
+const fieldGroupSchema = z
+  .record(fieldGroupByTokenSchema, z.string())
+  .refine((value) => Object.keys(value).length === 1, {
+    message: 'Grouping object must contain exactly one key',
+  });
 const eventPropertyGroupSchema = z
   .record(eventPropertyGroupByTokenSchema, z.string())
   .refine((value) => Object.keys(value).length === 1, {
@@ -63,7 +76,8 @@ export const analyticsQueryRequestSchema = z
       .array(groupByTokenSchema)
       .default([])
       .openapi({
-        description: 'Allowed values: "country", "interval:auto", or "event:prop:<property_name>".',
+        description:
+          'Allowed values: "interval:auto", "country", "city", "browser", "device_type", "os", "referrer", "referrer_type", "utm_*", "event:name", or "event:prop:<property_name>".',
         example: ['country'],
       }),
     order_by: orderBySchema.default([]),
@@ -143,7 +157,7 @@ export const analyticsQueryResponseSchema = z.object({
   }),
   data: z.array(
     z.object({
-      group: z.union([aggregateGroupSchema, countryGroupSchema, intervalGroupSchema, eventPropertyGroupSchema]),
+      group: z.union([aggregateGroupSchema, intervalGroupSchema, fieldGroupSchema, eventPropertyGroupSchema]),
       metrics: responseMetricsSchema,
     }),
   ),

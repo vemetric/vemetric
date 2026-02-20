@@ -3,20 +3,33 @@ import type { MetricsQueryGrouping } from 'clickhouse/src/utils/query-group';
 import type { MetricRow } from '../../consts/analytics';
 import { formatApiDate } from '../date';
 
+function formatGroupedFieldValue(token: string, groupKey: string): string {
+  if (groupKey !== '') {
+    return groupKey;
+  }
+
+  switch (token) {
+    case 'referrer':
+      return 'Direct / None';
+    case 'referrer_type':
+      return 'unknown';
+    case 'device_type':
+      return 'unknown';
+    default:
+      return 'Unknown';
+  }
+}
+
 export function buildGroupObject(grouping: MetricsQueryGrouping, groupKey: string): Record<string, string> {
   if (grouping.kind === 'none') {
     return {};
-  }
-
-  if (grouping.kind === 'country') {
-    return { country: groupKey };
   }
 
   if (grouping.kind === 'interval') {
     return { date: groupKey };
   }
 
-  return { [grouping.token as string]: groupKey };
+  return { [grouping.token]: formatGroupedFieldValue(grouping.token, groupKey) };
 }
 
 export function isSortingGroupField(field: string, grouping: MetricsQueryGrouping): boolean {
@@ -24,8 +37,8 @@ export function isSortingGroupField(field: string, grouping: MetricsQueryGroupin
     return false;
   }
 
-  if (grouping.kind === 'country' && field === 'country') {
-    return true;
+  if (grouping.kind === 'field') {
+    return field === grouping.token;
   }
 
   if (grouping.kind === 'interval' && field === 'date') {
@@ -36,8 +49,12 @@ export function isSortingGroupField(field: string, grouping: MetricsQueryGroupin
 }
 
 function normalizeGroupKey(grouping: MetricsQueryGrouping, rawGroupKey: string): string {
-  if (grouping.kind !== 'interval') {
+  if (grouping.kind === 'none') {
     return rawGroupKey || '__all__';
+  }
+
+  if (grouping.kind !== 'interval') {
+    return rawGroupKey;
   }
 
   const iso = rawGroupKey.includes('T') ? rawGroupKey : clickhouseDateToISO(rawGroupKey);

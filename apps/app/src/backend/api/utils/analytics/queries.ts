@@ -27,7 +27,14 @@ export async function queryMetricRows(input: {
       break;
     }
     case 'visit_duration': {
-      if (params.grouping.kind === 'event_prop') {
+      if (
+        params.grouping.kind === 'event_prop' ||
+        (params.grouping.kind === 'field' &&
+          (params.grouping.token === 'event:name' ||
+            params.grouping.token === 'browser' ||
+            params.grouping.token === 'device_type' ||
+            params.grouping.token === 'os'))
+      ) {
         return [];
       }
 
@@ -35,7 +42,7 @@ export async function queryMetricRows(input: {
       break;
     }
     case 'bounce_rate': {
-      if (params.grouping.kind === 'event_prop') {
+      if (params.grouping.kind === 'event_prop' || (params.grouping.kind === 'field' && params.grouping.token === 'event:name')) {
         return [];
       }
       rows = await clickhouseEvent.queryApiBounceRateRows(params);

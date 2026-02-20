@@ -590,12 +590,18 @@ export const clickhouseEvent = {
       filterConfig?: IFilterConfig;
     }) => {
       const { metric, projectId, startDate, endDate, grouping, filterQueries, filterConfig } = input;
-      const groupExpression = getMetricsGroupExpression(grouping);
+      const groupExpression = getMetricsGroupExpression(grouping, 'event');
+      if (!groupExpression) {
+        return [];
+      }
+
       const metricExpression = getApiEventMetricExpression(metric);
-      const eventPropConstraint =
+      const groupingConstraint =
         grouping.kind === 'event_prop'
           ? `AND isPageView <> 1 AND JSONExtractString(customData, ${escape(grouping.property ?? '')}) <> ''`
-          : '';
+          : grouping.kind === 'field' && grouping.token === 'event:name'
+            ? "AND isPageView <> 1 AND name <> ''"
+            : '';
       const { filterQueries: eventFilterQueries } =
         metric === 'events' && filterConfig ? getEventFilterQueries({ filterConfig }) : { filterQueries: '' };
       const pageFilterQueries = metric === 'pageviews' && filterConfig ? buildPageFilterQueries(filterConfig) : '';
@@ -607,7 +613,7 @@ export const clickhouseEvent = {
       WHERE projectId = ${escape(projectId)}
         AND createdAt >= '${formatClickhouseDate(startDate)}'
         ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
-        ${eventPropConstraint}
+        ${groupingConstraint}
         ${eventFilterQueries}
         ${pageFilterQueries ? `AND (${pageFilterQueries})` : ''}
         ${filterQueries || ''}
@@ -618,7 +624,7 @@ export const clickhouseEvent = {
 
       const rows = (await resultSet.json()) as Array<{ groupKey: string; metricValue: number | string }>;
       return rows.map((row) => ({
-        groupKey: row.groupKey || '__all__',
+        groupKey: String(row.groupKey ?? ''),
         value: Number(row.metricValue),
       }));
     },
@@ -633,7 +639,10 @@ export const clickhouseEvent = {
       filterQueries: string;
     }) => {
       const { projectId, startDate, endDate, grouping, filterQueries } = input;
-      const groupExpression = getMetricsGroupExpression(grouping);
+      const groupExpression = getMetricsGroupExpression(grouping, 'event');
+      if (!groupExpression) {
+        return [];
+      }
 
       const resultSet = await clickhouseClient.query({
         query: `
@@ -661,7 +670,7 @@ export const clickhouseEvent = {
 
       const rows = (await resultSet.json()) as Array<{ groupKey: string; metricValue: number | string }>;
       return rows.map((row) => ({
-        groupKey: row.groupKey || '__all__',
+        groupKey: String(row.groupKey ?? ''),
         value: Number(row.metricValue),
       }));
     },

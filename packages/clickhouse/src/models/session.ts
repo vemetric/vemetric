@@ -345,7 +345,10 @@ export const clickhouseSession = {
       filterQueries: string;
     }) => {
       const { projectId, startDate, endDate, grouping, filterQueries } = input;
-      const groupExpression = getMetricsGroupExpression(grouping);
+      const groupExpression = getMetricsGroupExpression(grouping, 'session');
+      if (!groupExpression) {
+        return [];
+      }
 
       const resultSet = await clickhouseClient.query({
         query: `
@@ -370,7 +373,7 @@ export const clickhouseSession = {
 
       const rows = (await resultSet.json()) as Array<{ groupKey: string; metricValue: number | string }>;
       return rows.map((row) => ({
-        groupKey: row.groupKey || '__all__',
+        groupKey: String(row.groupKey ?? ''),
         value: Number(row.metricValue),
       }));
     },

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import {
+  type DeviceData,
   clickhouseClient,
   clickhouseEvent,
   clickhouseSession,
@@ -56,6 +57,15 @@ function baseSession(input: {
   endedAt: string;
   duration: number;
   countryCode: string;
+  city?: string;
+  referrer?: string;
+  referrerUrl?: string;
+  referrerType?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmContent?: string;
+  utmTerm?: string;
 }): ClickhouseSession {
   return {
     projectId: input.projectId,
@@ -67,22 +77,22 @@ function baseSession(input: {
     endedAt: input.endedAt,
     duration: input.duration,
     countryCode: input.countryCode,
-    city: input.countryCode === 'DE' ? 'Berlin' : 'New York',
+    city: input.city ?? (input.countryCode === 'DE' ? 'Berlin' : 'New York'),
     latitude: null,
     longitude: null,
     userAgent: 'Mozilla/5.0',
-    referrer: 'Google',
-    referrerUrl: 'https://google.com',
-    referrerType: 'search',
+    referrer: input.referrer ?? 'Google',
+    referrerUrl: input.referrerUrl ?? 'https://google.com',
+    referrerType: input.referrerType ?? 'search',
     origin: 'https://example.com',
     pathname: '/',
     urlHash: '',
     queryParams: {},
-    utmSource: '',
-    utmMedium: '',
-    utmCampaign: '',
-    utmContent: '',
-    utmTerm: '',
+    utmSource: input.utmSource ?? '',
+    utmMedium: input.utmMedium ?? '',
+    utmCampaign: input.utmCampaign ?? '',
+    utmContent: input.utmContent ?? '',
+    utmTerm: input.utmTerm ?? '',
     importSource: 'integration-test',
   };
 }
@@ -98,6 +108,18 @@ function baseEvent(input: {
   countryCode: string;
   pathname: string;
   customData?: Record<string, unknown>;
+  city?: string;
+  browser?: string;
+  deviceType?: DeviceData['deviceType'];
+  os?: string;
+  referrer?: string;
+  referrerUrl?: string;
+  referrerType?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmContent?: string;
+  utmTerm?: string;
 }): ClickhouseEvent {
   return {
     projectId: input.projectId,
@@ -115,28 +137,28 @@ function baseEvent(input: {
     requestHeaders: {},
     customData: input.customData ?? {},
     importSource: 'integration-test',
-    osName: 'macOS',
+    osName: input.os ?? 'macOS',
     osVersion: '14',
-    clientName: 'Chrome',
+    clientName: input.browser ?? 'Chrome',
     clientVersion: '123',
     clientType: 'browser',
-    deviceType: 'desktop',
+    deviceType: input.deviceType ?? 'desktop',
     countryCode: input.countryCode,
-    city: input.countryCode === 'DE' ? 'Berlin' : 'New York',
+    city: input.city ?? (input.countryCode === 'DE' ? 'Berlin' : 'New York'),
     latitude: null,
     longitude: null,
-    referrer: 'Google',
-    referrerUrl: 'https://google.com',
-    referrerType: 'search',
+    referrer: input.referrer ?? 'Google',
+    referrerUrl: input.referrerUrl ?? 'https://google.com',
+    referrerType: input.referrerType ?? 'search',
     origin: 'https://example.com',
     pathname: input.pathname,
     urlHash: '',
     queryParams: {},
-    utmSource: '',
-    utmMedium: '',
-    utmCampaign: '',
-    utmContent: '',
-    utmTerm: '',
+    utmSource: input.utmSource ?? '',
+    utmMedium: input.utmMedium ?? '',
+    utmCampaign: input.utmCampaign ?? '',
+    utmContent: input.utmContent ?? '',
+    utmTerm: input.utmTerm ?? '',
   };
 }
 
@@ -208,6 +230,64 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
   await truncateAnalyticsFixtureData(context.projectId);
 
   const projectId = BigInt(context.projectId);
+  const dimensionsByUser = {
+    1: {
+      city: 'New York',
+      browser: 'Chrome',
+      deviceType: 'desktop',
+      os: 'macOS',
+      referrer: 'Google',
+      referrerUrl: 'https://google.com',
+      referrerType: 'search',
+      utmSource: 'google',
+      utmMedium: 'cpc',
+      utmCampaign: 'winter_launch',
+      utmContent: 'hero_cta',
+      utmTerm: 'analytics',
+    },
+    2: {
+      city: '',
+      browser: 'Firefox',
+      deviceType: 'mobile',
+      os: 'Windows',
+      referrer: '',
+      referrerUrl: 'https://news.ycombinator.com',
+      referrerType: 'social',
+      utmSource: 'hn',
+      utmMedium: 'social',
+      utmCampaign: 'winter_launch',
+      utmContent: 'text_link',
+      utmTerm: 'opensource',
+    },
+    3: {
+      city: 'San Francisco',
+      browser: 'Safari',
+      deviceType: 'desktop',
+      os: 'macOS',
+      referrer: 'Newsletter',
+      referrerUrl: 'https://newsletter.example.com',
+      referrerType: 'email',
+      utmSource: 'newsletter',
+      utmMedium: 'email',
+      utmCampaign: 'jan_push',
+      utmContent: 'button',
+      utmTerm: 'metrics',
+    },
+    4: {
+      city: 'Berlin',
+      browser: 'Chrome',
+      deviceType: 'tablet',
+      os: 'Linux',
+      referrer: 'Bing',
+      referrerUrl: 'https://bing.com',
+      referrerType: 'search',
+      utmSource: 'bing',
+      utmMedium: 'cpc',
+      utmCampaign: 'jan_push',
+      utmContent: 'ad_1',
+      utmTerm: 'privacy',
+    },
+  } as const;
 
   const sessions: ClickhouseSession[] = [
     baseSession({
@@ -218,6 +298,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       endedAt: '2026-01-18 09:05:00',
       duration: 60,
       countryCode: 'US',
+      ...dimensionsByUser[1],
     }),
     baseSession({
       projectId,
@@ -227,6 +308,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       endedAt: '2026-01-18 10:15:00',
       duration: 120,
       countryCode: 'US',
+      ...dimensionsByUser[2],
     }),
     baseSession({
       projectId,
@@ -236,6 +318,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       endedAt: '2026-01-19 09:20:00',
       duration: 120,
       countryCode: 'US',
+      ...dimensionsByUser[3],
     }),
     baseSession({
       projectId,
@@ -245,6 +328,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       endedAt: '2026-01-19 11:25:00',
       duration: 180,
       countryCode: 'DE',
+      ...dimensionsByUser[4],
     }),
   ];
 
@@ -260,6 +344,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       name: '',
       countryCode: 'US',
       pathname: '/',
+      ...dimensionsByUser[1],
     }),
     baseEvent({
       projectId,
@@ -271,6 +356,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       name: '',
       countryCode: 'US',
       pathname: '/',
+      ...dimensionsByUser[2],
     }),
     baseEvent({
       projectId,
@@ -282,6 +368,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       name: '',
       countryCode: 'US',
       pathname: '/pricing',
+      ...dimensionsByUser[2],
     }),
     baseEvent({
       projectId,
@@ -293,6 +380,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       name: '',
       countryCode: 'US',
       pathname: '/signup',
+      ...dimensionsByUser[2],
     }),
 
     // Day 2 pageviews (4 total)
@@ -306,6 +394,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       name: '',
       countryCode: 'US',
       pathname: '/',
+      ...dimensionsByUser[3],
     }),
     baseEvent({
       projectId,
@@ -317,6 +406,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       name: '',
       countryCode: 'US',
       pathname: '/features',
+      ...dimensionsByUser[3],
     }),
     baseEvent({
       projectId,
@@ -328,6 +418,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       name: '',
       countryCode: 'US',
       pathname: '/pricing',
+      ...dimensionsByUser[3],
     }),
     baseEvent({
       projectId,
@@ -339,6 +430,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       name: '',
       countryCode: 'DE',
       pathname: '/',
+      ...dimensionsByUser[4],
     }),
 
     // Non-pageview events (5 total; day1=2, day2=3)
@@ -353,6 +445,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       countryCode: 'US',
       pathname: '/signup',
       customData: { plan: 'pro' },
+      ...dimensionsByUser[1],
     }),
     baseEvent({
       projectId,
@@ -364,6 +457,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       name: 'click',
       countryCode: 'US',
       pathname: '/pricing',
+      ...dimensionsByUser[2],
     }),
     baseEvent({
       projectId,
@@ -376,6 +470,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       countryCode: 'US',
       pathname: '/signup',
       customData: { plan: 'starter' },
+      ...dimensionsByUser[3],
     }),
     baseEvent({
       projectId,
@@ -388,6 +483,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       countryCode: 'US',
       pathname: '/signup',
       customData: { plan: 'pro' },
+      ...dimensionsByUser[3],
     }),
     baseEvent({
       projectId,
@@ -399,6 +495,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       name: 'purchase',
       countryCode: 'DE',
       pathname: '/checkout',
+      ...dimensionsByUser[4],
     }),
   ];
 

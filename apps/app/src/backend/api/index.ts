@@ -2,8 +2,8 @@ import { OpenAPIHono } from '@hono/zod-openapi';
 import { authMiddleware } from './middleware/auth';
 import { loggingMiddleware } from './middleware/logging';
 import { createRateLimitMiddleware } from './middleware/rate-limit';
-import { registerProjectRoutes } from './routes/projects';
 import { registerAnalyticsRoutes } from './routes/analytics';
+import { registerProjectRoutes } from './routes/projects';
 import type { PublicApiHonoEnv } from './types';
 import { createValidationErrorResponse, errorHandler } from './utils/errors';
 

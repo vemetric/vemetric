@@ -6,3 +6,4 @@ export * from './models/user';
 export * from './utils/date';
 export * from './utils/filters';
 export * from './utils/id';
+export * from './utils/query-group';

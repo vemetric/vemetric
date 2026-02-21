@@ -1,10 +1,6 @@
 import { z } from '@hono/zod-openapi';
 import { TIME_SPAN_PRESETS } from '@vemetric/common/charts/timespans';
-import {
-  eventPropertyTokenRegex,
-  metricsGroupFieldTokens,
-  parseMetricsQueryGroupingToken,
-} from 'clickhouse/src/utils/query-group';
+import { eventPropertyTokenRegex, metricsGroupFieldTokens, parseMetricsQueryGroupingToken } from 'clickhouse';
 import { apiFiltersOperatorSchema, apiFilterSchema } from './api-filters';
 import { apiDateInputSchema, apiTimestampSchema } from './common';
 import type { Metric } from '../consts/analytics';
@@ -87,12 +83,13 @@ const responseMetricsSchema = z
       description: 'Custom events count for this row.',
       example: 43,
     }),
-    bounce_rate: z.number().optional().openapi({
-      description: 'Bounce rate percentage for this row.',
+    bounce_rate: z.number().nullable().optional().openapi({
+      description: 'Bounce rate percentage for this row. Can be `null` when not applicable for the selected grouping.',
       example: 34.12,
     }),
-    visit_duration: z.number().optional().openapi({
-      description: 'Average visit duration in seconds for this row.',
+    visit_duration: z.number().nullable().optional().openapi({
+      description:
+        'Average visit duration in seconds for this row. Can be `null` when not applicable for the selected grouping.',
       example: 1222.45,
     }),
   })
@@ -227,6 +224,12 @@ export const analyticsQueryResponseSchema = z
         }),
         offset: z.number().int().min(0).openapi({
           description: 'Echo of the incoming `offset` request field.',
+        }),
+        filters: z.array(apiFilterSchema).optional().openapi({
+          description: 'Echo of the incoming `filters` request field.',
+        }),
+        filtersOperator: apiFiltersOperatorSchema.optional().openapi({
+          description: 'Echo of the incoming `filtersOperator` request field.',
         }),
       })
       .openapi({

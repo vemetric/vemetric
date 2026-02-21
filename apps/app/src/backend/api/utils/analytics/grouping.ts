@@ -1,5 +1,4 @@
-import { clickhouseDateToISO } from 'clickhouse/src/utils/date';
-import type { MetricsQueryGrouping } from 'clickhouse/src/utils/query-group';
+import { clickhouseDateToISO, type MetricsQueryGrouping } from 'clickhouse';
 import type { MetricRow } from '../../consts/analytics';
 import { formatApiDate } from '../date';
 

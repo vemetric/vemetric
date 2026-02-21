@@ -1,7 +1,8 @@
 import type { IFilterConfig } from '@vemetric/common/filters';
 import { clickhouseEvent, clickhouseSession } from 'clickhouse';
-import type { MetricsQueryGrouping } from 'clickhouse/src/utils/query-group';
+import type { MetricsQueryGrouping } from 'clickhouse';
 import { normalizeGroupKeys } from './grouping';
+import { isMetricApplicableForGrouping } from './metrics';
 import type { Metric, MetricRow } from '../../consts/analytics';
 
 export async function queryMetricRows(input: {
@@ -15,6 +16,10 @@ export async function queryMetricRows(input: {
 }): Promise<MetricRow[]> {
   const { metric, ...params } = input;
 
+  if (!isMetricApplicableForGrouping(metric, params.grouping)) {
+    return [];
+  }
+
   let rows: MetricRow[] = [];
   switch (metric) {
     case 'users':
@@ -27,24 +32,10 @@ export async function queryMetricRows(input: {
       break;
     }
     case 'visit_duration': {
-      if (
-        params.grouping.kind === 'event_prop' ||
-        (params.grouping.kind === 'field' &&
-          (params.grouping.token === 'event:name' ||
-            params.grouping.token === 'browser' ||
-            params.grouping.token === 'device_type' ||
-            params.grouping.token === 'os'))
-      ) {
-        return [];
-      }
-
       rows = await clickhouseSession.queryApiVisitDurationRows(params);
       break;
     }
     case 'bounce_rate': {
-      if (params.grouping.kind === 'event_prop' || (params.grouping.kind === 'field' && params.grouping.token === 'event:name')) {
-        return [];
-      }
       rows = await clickhouseEvent.queryApiBounceRateRows(params);
       break;
     }

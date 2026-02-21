@@ -411,6 +411,26 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
       });
     });
 
+    it('returns null for non-applicable metrics when grouped by event:name', async () => {
+      const response = await postAnalyticsQuery(
+        {
+          date_range: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+          metrics: ['events', 'bounce_rate', 'visit_duration'],
+          group_by: ['event:name'],
+          order_by: [['event:name', 'asc']],
+        },
+        isolated.authHeaders,
+      );
+
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as {
+        data: Array<{ metrics: Record<string, number | null> }>;
+      };
+      expect(body.data.every((row) => row.metrics.bounce_rate === null && row.metrics.visit_duration === null)).toBe(
+        true,
+      );
+    });
+
     it('never returns "__all__" as a grouped field value', async () => {
       const cityResponse = await postAnalyticsQuery(
         {
@@ -560,6 +580,16 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
           order_by: [['events', 'desc']],
           limit: 100,
           offset: 0,
+          filters: [
+            {
+              type: 'event',
+              name: {
+                operator: 'eq',
+                value: 'signup',
+              },
+            },
+          ],
+          filtersOperator: 'and',
         },
         pagination: {
           limit: 100,
@@ -738,11 +768,13 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
 
       expect(response.status).toBe(200);
       const body = (await response.json()) as {
-        data: Array<{ group: Record<string, string>; metrics: Record<string, number> }>;
+        data: Array<{ group: Record<string, string>; metrics: Record<string, number | null> }>;
       };
       expect(body.data.some((row) => Object.values(row.group).includes('__all__'))).toBe(false);
       expect(body.data.every((row) => row.group['event:prop:plan'] !== '__all__')).toBe(true);
-      expect(body.data.every((row) => row.metrics.bounce_rate === 0 && row.metrics.visit_duration === 0)).toBe(true);
+      expect(body.data.every((row) => row.metrics.bounce_rate === null && row.metrics.visit_duration === null)).toBe(
+        true,
+      );
     });
 
     it('returns only requested metrics in metrics object', async () => {

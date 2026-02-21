@@ -1,7 +1,6 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import { createRoute, z } from '@hono/zod-openapi';
-import { getUserFilterQueries } from 'clickhouse';
-import { parseMetricsQueryGroupingToken } from 'clickhouse/src/utils/query-group';
+import { getUserFilterQueries, parseMetricsQueryGroupingToken } from 'clickhouse';
 import { getFilterFunnelsData } from '../../utils/filter';
 import { isRetentionRestricted, RETENTION_UPGRADE_MESSAGE } from '../../utils/retention';
 import { DEFAULT_METRICS } from '../consts/analytics';
@@ -9,7 +8,7 @@ import { analyticsQueryRequestSchema, analyticsQueryResponseSchema } from '../sc
 import { authorizationHeaderSchema, commonOpenApiErrorResponses } from '../schemas/common';
 import type { PublicApiHonoEnv } from '../types';
 import { buildGroupObject } from '../utils/analytics/grouping';
-import { normalizeMetricValue } from '../utils/analytics/metrics';
+import { getEmptyMetricValue, normalizeMetricValue } from '../utils/analytics/metrics';
 import { applyOrdering } from '../utils/analytics/ordering';
 import { queryMetricRows } from '../utils/analytics/queries';
 import { mapApiFilterConfig } from '../utils/api-filter-mapper';
@@ -118,8 +117,8 @@ export function registerAnalyticsRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
 
     const rows = Array.from(dataByKey.values()).map((row) => ({
       group: row.group,
-      metrics: selectedMetrics.reduce<Record<string, number>>((acc, metric) => {
-        acc[metric] = row.metrics[metric] ?? 0;
+      metrics: selectedMetrics.reduce<Record<string, number | null>>((acc, metric) => {
+        acc[metric] = row.metrics[metric] ?? getEmptyMetricValue(metric, grouping);
         return acc;
       }, {}),
     }));
@@ -142,6 +141,12 @@ export function registerAnalyticsRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
           order_by: payload.order_by,
           limit: payload.limit,
           offset: payload.offset,
+          ...(payload.filters
+            ? {
+                filters: payload.filters,
+                filtersOperator: payload.filtersOperator,
+              }
+            : {}),
         },
         pagination: {
           limit: effectiveLimit,

@@ -1,5 +1,5 @@
 export function applyOrdering(
-  rows: Array<{ group: Record<string, string>; metrics: Record<string, number> }>,
+  rows: Array<{ group: Record<string, string>; metrics: Record<string, number | null> }>,
   orderBy: Array<[string, string]>,
 ) {
   if (orderBy.length === 0) {

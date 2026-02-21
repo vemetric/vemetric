@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 const REDIRECT_PATH_KEY = 'redirectPath';
 const COUNTRIES_MAP_VIEW_STATE_KEY = 'countries-map:view-state';
+const COUNTRIES_MAP_LOCKED_KEY = 'countries-map:locked';
 
 export const redirectPath = {
   set: (path: string) => {
@@ -46,5 +47,33 @@ export const countriesMapViewState = {
 
   clear: () => {
     localStorage.removeItem(COUNTRIES_MAP_VIEW_STATE_KEY);
+  },
+};
+
+const countriesMapLockedSchema = z.boolean();
+
+export const countriesMapLocked = {
+  set: (locked: boolean) => {
+    try {
+      localStorage.setItem(COUNTRIES_MAP_LOCKED_KEY, JSON.stringify(locked));
+    } catch {
+      // Ignore localStorage write errors (private mode, quota exceeded, etc.)
+    }
+  },
+
+  get: (): boolean => {
+    try {
+      const raw = localStorage.getItem(COUNTRIES_MAP_LOCKED_KEY);
+      if (!raw) return false;
+
+      const parsed = countriesMapLockedSchema.safeParse(JSON.parse(raw));
+      return parsed.success ? parsed.data : false;
+    } catch {
+      return false;
+    }
+  },
+
+  clear: () => {
+    localStorage.removeItem(COUNTRIES_MAP_LOCKED_KEY);
   },
 };

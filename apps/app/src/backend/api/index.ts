@@ -2,17 +2,18 @@ import { OpenAPIHono } from '@hono/zod-openapi';
 import { authMiddleware } from './middleware/auth';
 import { loggingMiddleware } from './middleware/logging';
 import { createRateLimitMiddleware } from './middleware/rate-limit';
-import { projectRoutes } from './routes/projects';
-import type { PublicApiEnv } from './types';
+import { registerAnalyticsRoutes } from './routes/analytics';
+import { registerProjectRoutes } from './routes/projects';
+import type { PublicApiHonoEnv } from './types';
 import { createValidationErrorResponse, errorHandler } from './utils/errors';
 
 export function createPublicApi() {
   const rateLimitMiddleware = createRateLimitMiddleware();
 
-  const api = new OpenAPIHono<PublicApiEnv>({
+  const api = new OpenAPIHono<PublicApiHonoEnv>({
     defaultHook: (result, c) => {
       if (!result.success) {
-        return c.json(createValidationErrorResponse(result.error.issues), 422);
+        return c.json(createValidationErrorResponse(result.error.issues), 400);
       }
     },
   });
@@ -32,7 +33,8 @@ export function createPublicApi() {
   api.use('/v1/*', authMiddleware);
   api.use('/v1/*', rateLimitMiddleware);
 
-  api.route('/v1', projectRoutes);
+  registerProjectRoutes(api);
+  registerAnalyticsRoutes(api);
 
   api.notFound((c) => {
     return c.json(

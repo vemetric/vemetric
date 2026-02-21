@@ -19,6 +19,7 @@
     "chakra:build": "chakra typegen src/frontend/style/theme.ts --strict",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:integration": "bun --env-file=../../.env vitest run --config vitest.integration.config.ts",
     "generate-pwa-assets": "pwa-assets-generator --preset minimal-2023 public/logo.svg"
   },
   "dependencies": {

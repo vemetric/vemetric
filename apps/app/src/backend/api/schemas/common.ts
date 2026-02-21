@@ -23,16 +23,16 @@ export const apiDateInputSchema = z
     example: '2026-01-19|2026-01-19T12:30:00Z',
   });
 
-export const authorizationHeaderSchema = z.object({
-  authorization: z
-    .string()
-    .openapi({
+export const authorizationHeaderSchema = z
+  .object({
+    authorization: z.string().openapi({
       description: 'Bearer token for a project API key. This endpoint returns data for that project only.',
       example: 'Bearer vem_abcdefghijklmnopqrstuvwxyz123456',
     }),
-}).openapi({
-  description: 'Authorization headers for public API requests.',
-});
+  })
+  .openapi({
+    description: 'Authorization headers for public API requests.',
+  });
 
 const getJsonErrorResponseContent = <T extends z.ZodLiteral<string>>(codeType: T) => ({
   'application/json': {
@@ -101,7 +101,7 @@ export const commonOpenApiErrorResponses = {
     content: jsonValidationErrorResponseContent,
   },
   401: {
-    description: 'Unauthorized - missing, malformed, invalid, or revoked API key',
+    description: 'Unauthorized - invalid or revoked API key',
     content: getJsonErrorResponseContent(z.literal('UNAUTHORIZED')),
   },
   429: {

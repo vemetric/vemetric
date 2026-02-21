@@ -292,7 +292,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
   const sessions: ClickhouseSession[] = [
     baseSession({
       projectId,
-      userId: 1n,
+      userId: BigInt(1),
       id: `${context.projectId}_s1`,
       startedAt: '2026-01-18 09:00:00',
       endedAt: '2026-01-18 09:05:00',
@@ -302,7 +302,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
     }),
     baseSession({
       projectId,
-      userId: 2n,
+      userId: BigInt(2),
       id: `${context.projectId}_s2`,
       startedAt: '2026-01-18 10:00:00',
       endedAt: '2026-01-18 10:15:00',
@@ -312,7 +312,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
     }),
     baseSession({
       projectId,
-      userId: 3n,
+      userId: BigInt(3),
       id: `${context.projectId}_s3`,
       startedAt: '2026-01-19 09:00:00',
       endedAt: '2026-01-19 09:20:00',
@@ -322,7 +322,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
     }),
     baseSession({
       projectId,
-      userId: 4n,
+      userId: BigInt(4),
       id: `${context.projectId}_s4`,
       startedAt: '2026-01-19 11:00:00',
       endedAt: '2026-01-19 11:25:00',
@@ -336,7 +336,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
     // Day 1 pageviews (4 total)
     baseEvent({
       projectId,
-      userId: 1n,
+      userId: BigInt(1),
       sessionId: `${context.projectId}_s1`,
       id: `${context.projectId}_e_pv_1`,
       createdAt: '2026-01-18 09:01:00',
@@ -348,7 +348,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
     }),
     baseEvent({
       projectId,
-      userId: 2n,
+      userId: BigInt(2),
       sessionId: `${context.projectId}_s2`,
       id: `${context.projectId}_e_pv_2`,
       createdAt: '2026-01-18 10:01:00',
@@ -360,7 +360,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
     }),
     baseEvent({
       projectId,
-      userId: 2n,
+      userId: BigInt(2),
       sessionId: `${context.projectId}_s2`,
       id: `${context.projectId}_e_pv_3`,
       createdAt: '2026-01-18 10:03:00',
@@ -372,7 +372,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
     }),
     baseEvent({
       projectId,
-      userId: 2n,
+      userId: BigInt(2),
       sessionId: `${context.projectId}_s2`,
       id: `${context.projectId}_e_pv_4`,
       createdAt: '2026-01-18 10:05:00',
@@ -386,7 +386,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
     // Day 2 pageviews (4 total)
     baseEvent({
       projectId,
-      userId: 3n,
+      userId: BigInt(3),
       sessionId: `${context.projectId}_s3`,
       id: `${context.projectId}_e_pv_5`,
       createdAt: '2026-01-19 09:01:00',
@@ -398,7 +398,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
     }),
     baseEvent({
       projectId,
-      userId: 3n,
+      userId: BigInt(3),
       sessionId: `${context.projectId}_s3`,
       id: `${context.projectId}_e_pv_6`,
       createdAt: '2026-01-19 09:05:00',
@@ -410,7 +410,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
     }),
     baseEvent({
       projectId,
-      userId: 3n,
+      userId: BigInt(3),
       sessionId: `${context.projectId}_s3`,
       id: `${context.projectId}_e_pv_7`,
       createdAt: '2026-01-19 09:10:00',
@@ -422,7 +422,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
     }),
     baseEvent({
       projectId,
-      userId: 4n,
+      userId: BigInt(4),
       sessionId: `${context.projectId}_s4`,
       id: `${context.projectId}_e_pv_8`,
       createdAt: '2026-01-19 11:05:00',
@@ -436,7 +436,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
     // Non-pageview events (5 total; day1=2, day2=3)
     baseEvent({
       projectId,
-      userId: 1n,
+      userId: BigInt(1),
       sessionId: `${context.projectId}_s1`,
       id: `${context.projectId}_e_evt_1`,
       createdAt: '2026-01-18 09:02:00',
@@ -449,7 +449,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
     }),
     baseEvent({
       projectId,
-      userId: 2n,
+      userId: BigInt(2),
       sessionId: `${context.projectId}_s2`,
       id: `${context.projectId}_e_evt_2`,
       createdAt: '2026-01-18 10:06:00',
@@ -461,7 +461,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
     }),
     baseEvent({
       projectId,
-      userId: 3n,
+      userId: BigInt(3),
       sessionId: `${context.projectId}_s3`,
       id: `${context.projectId}_e_evt_3`,
       createdAt: '2026-01-19 09:11:00',
@@ -474,7 +474,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
     }),
     baseEvent({
       projectId,
-      userId: 3n,
+      userId: BigInt(3),
       sessionId: `${context.projectId}_s3`,
       id: `${context.projectId}_e_evt_4`,
       createdAt: '2026-01-19 09:15:00',
@@ -487,7 +487,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
     }),
     baseEvent({
       projectId,
-      userId: 4n,
+      userId: BigInt(4),
       sessionId: `${context.projectId}_s4`,
       id: `${context.projectId}_e_evt_5`,
       createdAt: '2026-01-19 11:20:00',

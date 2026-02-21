@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRateLimitMiddleware } from './rate-limit';
-import type { PublicApiEnv } from '../types';
+import type { PublicApiHonoEnv } from '../types';
 import { errorHandler } from '../utils/errors';
 
 const { getRedisClientMock } = vi.hoisted(() => ({
@@ -29,14 +29,14 @@ class FakeRedis {
 }
 
 function createTestApp(options?: Parameters<typeof createRateLimitMiddleware>[0]) {
-  const app = new Hono<PublicApiEnv>();
+  const app = new Hono<PublicApiHonoEnv>();
   app.onError(errorHandler);
 
   app.use('/v1/*', async (c, next) => {
     c.set('project', {
       id: 'project_1',
       name: 'Test Project',
-    } as PublicApiEnv['Variables']['project']);
+    } as PublicApiHonoEnv['Variables']['project']);
 
     await next();
   });

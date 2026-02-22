@@ -192,7 +192,9 @@ export const ProjectApiTab = ({ projectId }: Props) => {
                   >
                     <Table.Cell>{key.name}</Table.Cell>
                     <Table.Cell>
-                      <CodeBox size="sm">{key.keyPrefix}</CodeBox>
+                      <CodeBox size="sm" disableCopy>
+                        {key.keyPrefix}
+                      </CodeBox>
                     </Table.Cell>
                     <Table.Cell w="100px">
                       <Tooltip

@@ -707,6 +707,37 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
       });
     });
 
+    it('applies page filters directly to grouped users rows when mixed with pageviews', async () => {
+      const response = await postAnalyticsQuery(
+        {
+          date_range: '30days',
+          metrics: ['users', 'pageviews'],
+          group_by: ['page:path'],
+          order_by: [['page:path', 'asc']],
+          filters: [
+            {
+              type: 'page',
+              path: {
+                operator: 'eq',
+                value: '/features',
+              },
+            },
+          ],
+        },
+        isolated.authHeaders,
+      );
+
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toMatchObject({
+        data: [
+          {
+            group: { 'page:path': '/features' },
+            metrics: { users: 1, pageviews: 1 },
+          },
+        ],
+      });
+    });
+
     it('applies event filters directly to grouped event rows', async () => {
       const response = await postAnalyticsQuery(
         {
@@ -740,6 +771,138 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
           {
             group: { country: 'US' },
             metrics: { events: 1 },
+          },
+        ],
+      });
+    });
+
+    it('treats page filters as cohort filters for events rows (dashboard-compatible)', async () => {
+      const response = await postAnalyticsQuery(
+        {
+          date_range: '30days',
+          metrics: ['events'],
+          group_by: ['event:name'],
+          order_by: [['event:name', 'asc']],
+          filters: [
+            {
+              type: 'page',
+              path: {
+                operator: 'eq',
+                value: '/features',
+              },
+            },
+          ],
+        },
+        isolated.authHeaders,
+      );
+
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toMatchObject({
+        data: [
+          {
+            // User visited /features but the counted event rows happened on /signup.
+            group: { 'event:name': 'signup' },
+            metrics: { events: 2 },
+          },
+        ],
+      });
+    });
+
+    it('keeps grouped page rows constrained to page filters when mixing events and pageviews', async () => {
+      const response = await postAnalyticsQuery(
+        {
+          date_range: '30days',
+          metrics: ['events', 'pageviews'],
+          group_by: ['page:path'],
+          order_by: [['pageviews', 'desc']],
+          filters: [
+            {
+              type: 'page',
+              path: {
+                operator: 'eq',
+                value: '/features',
+              },
+            },
+          ],
+        },
+        isolated.authHeaders,
+      );
+
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as {
+        data: Array<{ group: Record<string, string>; metrics: Record<string, number | null> }>;
+      };
+      expect(body.data).toHaveLength(1);
+      expect(body.data[0]).toMatchObject({
+        group: { 'page:path': '/features' },
+        metrics: { pageviews: 1 },
+      });
+    });
+
+    it('applies event filters directly to grouped users rows when mixed with events by event:name', async () => {
+      const response = await postAnalyticsQuery(
+        {
+          date_range: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+          metrics: ['users', 'events'],
+          group_by: ['event:name'],
+          order_by: [['event:name', 'asc']],
+          filters: [
+            {
+              type: 'event',
+              name: {
+                operator: 'eq',
+                value: 'signup',
+              },
+            },
+          ],
+        },
+        isolated.authHeaders,
+      );
+
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toMatchObject({
+        data: [
+          {
+            group: { 'event:name': 'signup' },
+            metrics: { users: 2, events: 3 },
+          },
+        ],
+      });
+    });
+
+    it('applies event filters directly to grouped users rows when mixed with events by event property', async () => {
+      const response = await postAnalyticsQuery(
+        {
+          date_range: '30days',
+          metrics: ['users', 'events'],
+          group_by: ['event:prop:plan'],
+          order_by: [['event:prop:plan', 'asc']],
+          filters: [
+            {
+              type: 'event',
+              name: {
+                operator: 'eq',
+                value: 'signup',
+              },
+              properties: [
+                {
+                  property: 'plan',
+                  operator: 'eq',
+                  value: 'pro',
+                },
+              ],
+            },
+          ],
+        },
+        isolated.authHeaders,
+      );
+
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toMatchObject({
+        data: [
+          {
+            group: { 'event:prop:plan': 'pro' },
+            metrics: { users: 1, events: 1 },
           },
         ],
       });

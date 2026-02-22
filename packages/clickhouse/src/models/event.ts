@@ -601,14 +601,20 @@ export const clickhouseEvent = {
           ? `AND isPageView <> 1 AND JSONExtractString(customData, ${escape(grouping.property ?? '')}) <> ''`
           : grouping.kind === 'field' && grouping.token === 'page:origin'
             ? "AND isPageView = 1 AND origin <> ''"
-          : grouping.kind === 'field' && grouping.token === 'page:path'
-            ? "AND isPageView = 1 AND pathname <> ''"
-          : grouping.kind === 'field' && grouping.token === 'event:name'
-            ? "AND isPageView <> 1 AND name <> ''"
-            : '';
-      const { filterQueries: eventFilterQueries } =
-        metric === 'events' && filterConfig ? getEventFilterQueries({ filterConfig }) : { filterQueries: '' };
-      const pageFilterQueries = metric === 'pageviews' && filterConfig ? buildPageFilterQueries(filterConfig) : '';
+            : grouping.kind === 'field' && grouping.token === 'page:path'
+              ? "AND isPageView = 1 AND pathname <> ''"
+              : grouping.kind === 'field' && grouping.token === 'event:name'
+                ? "AND isPageView <> 1 AND name <> ''"
+                : '';
+
+      const applyDirectEventFilters =
+        metric === 'events' ||
+        ((grouping.kind === 'field' || grouping.kind === 'event_prop') && grouping.token.startsWith('event:'));
+      const eventFilterQueries = applyDirectEventFilters && filterConfig ? buildEventFilterQueries(filterConfig) : '';
+
+      const applyDirectPageFilters =
+        metric === 'pageviews' || (grouping.kind === 'field' && grouping.token.startsWith('page:'));
+      const pageFilterQueries = applyDirectPageFilters && filterConfig ? buildPageFilterQueries(filterConfig) : '';
 
       const resultSet = await clickhouseClient.query({
         query: `
@@ -618,7 +624,7 @@ export const clickhouseEvent = {
         AND createdAt >= '${formatClickhouseDate(startDate)}'
         ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
         ${groupingConstraint}
-        ${eventFilterQueries}
+        ${eventFilterQueries ? `AND (${eventFilterQueries})` : ''}
         ${pageFilterQueries ? `AND (${pageFilterQueries})` : ''}
         ${filterQueries || ''}
       GROUP BY groupKey

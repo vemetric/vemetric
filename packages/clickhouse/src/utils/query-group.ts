@@ -4,6 +4,8 @@ export const eventPropertyTokenRegex = /^event:prop:([^\r\n]+)$/;
 export const metricsGroupFieldTokens = [
   'country',
   'city',
+  'page:origin',
+  'page:path',
   'browser',
   'device_type',
   'os',
@@ -58,7 +60,7 @@ function getFieldExpression(token: MetricsGroupFieldToken, scope: MetricsGroupSc
   const sharedFields: Record<
     Exclude<
       MetricsGroupFieldToken,
-      'browser' | 'device_type' | 'os' | 'event:name'
+      'page:origin' | 'page:path' | 'browser' | 'device_type' | 'os' | 'event:name'
     >,
     string
   > = {
@@ -75,6 +77,14 @@ function getFieldExpression(token: MetricsGroupFieldToken, scope: MetricsGroupSc
 
   if (token in sharedFields) {
     return sharedFields[token as keyof typeof sharedFields];
+  }
+
+  if (token === 'page:origin') {
+    return scope === 'event' ? 'origin' : null;
+  }
+
+  if (token === 'page:path') {
+    return scope === 'event' ? 'pathname' : null;
   }
 
   if (token === 'browser') {

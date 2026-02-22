@@ -27,6 +27,10 @@ export function isMetricApplicableForGrouping(metric: Metric, grouping: MetricsQ
       return metric !== 'bounce_rate' && metric !== 'visit_duration';
     }
 
+    if (grouping.token === 'page:path' || grouping.token === 'page:origin') {
+      return metric !== 'bounce_rate' && metric !== 'visit_duration';
+    }
+
     if (
       (grouping.token === 'browser' || grouping.token === 'device_type' || grouping.token === 'os') &&
       metric === 'visit_duration'

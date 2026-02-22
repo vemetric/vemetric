@@ -112,7 +112,7 @@ export const analyticsQueryRequestSchema = z
       .default([])
       .openapi({
         description:
-          'Allowed values: "interval:auto", "country", "city", "browser", "device_type", "os", "referrer", "referrer_type", "utm_*", "event:name", or "event:prop:<property_name>". At the moment it\'s only possible to group by one field, please tell us if you need more.',
+          'Allowed values: "interval:auto", "country", "city", "page:origin", "page:path", "browser", "device_type", "os", "referrer", "referrer_type", "utm_*", "event:name", or "event:prop:<property_name>". At the moment it\'s only possible to group by one field, please tell us if you need more.',
         example: ['country'],
       }),
     order_by: orderBySchema.default([]).openapi({

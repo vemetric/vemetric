@@ -347,10 +347,9 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
     });
 
     it.each([
-      [
-        'city',
-        { Berlin: 1, 'New York': 1, 'San Francisco': 1, Unknown: 1 },
-      ],
+      ['city', { Berlin: 1, 'New York': 1, 'San Francisco': 1, Unknown: 1 }],
+      ['page:origin', { 'https://example.com': 4 }],
+      ['page:path', { '/': 4, '/features': 1, '/pricing': 2, '/signup': 1 }],
       ['browser', { Chrome: 2, Firefox: 1, Safari: 1 }],
       ['device_type', { desktop: 2, mobile: 1, tablet: 1 }],
       ['os', { Linux: 1, Windows: 1, macOS: 2 }],
@@ -456,9 +455,9 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
       );
       expect(referrerResponse.status).toBe(200);
       const referrerBody = await referrerResponse.json();
-      expect(
-        referrerBody.data.every((row: { group: { referrer?: string } }) => row.group.referrer !== '__all__'),
-      ).toBe(true);
+      expect(referrerBody.data.every((row: { group: { referrer?: string } }) => row.group.referrer !== '__all__')).toBe(
+        true,
+      );
     });
 
     it('supports ordering by metric value', async () => {

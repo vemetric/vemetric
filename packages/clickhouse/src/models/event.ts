@@ -599,6 +599,10 @@ export const clickhouseEvent = {
       const groupingConstraint =
         grouping.kind === 'event_prop'
           ? `AND isPageView <> 1 AND JSONExtractString(customData, ${escape(grouping.property ?? '')}) <> ''`
+          : grouping.kind === 'field' && grouping.token === 'page:origin'
+            ? "AND isPageView = 1 AND origin <> ''"
+          : grouping.kind === 'field' && grouping.token === 'page:path'
+            ? "AND isPageView = 1 AND pathname <> ''"
           : grouping.kind === 'field' && grouping.token === 'event:name'
             ? "AND isPageView <> 1 AND name <> ''"
             : '';

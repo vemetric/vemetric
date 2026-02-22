@@ -348,6 +348,8 @@ describe('POST /api/v1/analytics/query (contract)', () => {
       const app = createPublicApi();
       const groupingTokens = [
         'city',
+        'page:origin',
+        'page:path',
         'browser',
         'device_type',
         'os',

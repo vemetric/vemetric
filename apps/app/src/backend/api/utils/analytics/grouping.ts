@@ -3,8 +3,9 @@ import type { MetricRow } from '../../consts/analytics';
 import { formatApiDate } from '../date';
 
 function formatGroupedFieldValue(token: string, groupKey: string): string {
-  if (groupKey !== '') {
-    return groupKey;
+  const normalizedGroupKey = groupKey.replaceAll('\u0000', '').trim();
+  if (normalizedGroupKey !== '') {
+    return normalizedGroupKey;
   }
 
   switch (token) {

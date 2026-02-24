@@ -20,7 +20,7 @@ interface Props {
 
 export const useFilters = ({ from }: Props) => {
   const navigate = useNavigate({ from });
-  const { defaultOperator = 'or' } = useFilterContext();
+  const { defaultOperator = 'and' } = useFilterContext();
 
   const setFilters = (filterConfig: IFilterConfig | ((prev: IFilterConfig) => IFilterConfig)) => {
     navigate({

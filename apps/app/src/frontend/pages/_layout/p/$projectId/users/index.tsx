@@ -38,6 +38,7 @@ export const Route = createFileRoute('/_layout/p/$projectId/users/')({
 function Page() {
   const { projectId } = Route.useParams();
   const { p: page = 1, f: filterConfig, s: sortConfig, q } = Route.useSearch();
+  const isEventSort = sortConfig?.by?.type === 'event';
   const navigate = useNavigate({ from: Route.fullPath });
   const [search, setSearch, debouncedSearch] = useDebouncedState({
     defaultValue: q ?? '',
@@ -156,7 +157,10 @@ function Page() {
             </Box>
           ) : (
             <>
-              {users.map(({ id, identifier, avatarUrl, displayName, countryCode, lastSeenAt, isOnline }) => {
+              {users.map((user) => {
+                const { id, identifier, avatarUrl, displayName, countryCode, lastSeenAt, lastEventFiredAt, isOnline } =
+                  user;
+                const timestamp = isEventSort ? lastEventFiredAt : lastSeenAt;
                 return (
                   <Box
                     key={id}
@@ -216,10 +220,10 @@ function Page() {
                         <Flex justify={{ base: 'flex-end', md: 'flex-start' }}>
                           <Tooltip
                             content={
-                              lastSeenAt
-                                ? sortConfig?.by?.type === 'event'
-                                  ? `Last fired event at ${dateTimeFormatter.formatDateTime(lastSeenAt)}`
-                                  : `Last seen at ${dateTimeFormatter.formatDateTime(lastSeenAt)}`
+                              timestamp
+                                ? isEventSort
+                                  ? `Last fired event at ${dateTimeFormatter.formatDateTime(timestamp)}`
+                                  : `Last seen at ${dateTimeFormatter.formatDateTime(timestamp)}`
                                 : 'Never fired this event'
                             }
                           >
@@ -229,11 +233,11 @@ function Page() {
                               gap={{ base: 2, md: 1 }}
                               flexDir={{ base: 'row-reverse', md: 'row' }}
                             >
-                              <Icon>{lastSeenAt ? <TbClock /> : <TbClockOff />}</Icon>
+                              <Icon>{timestamp ? <TbClock /> : <TbClockOff />}</Icon>
                               <Text textStyle="sm" color="fg.muted">
-                                {lastSeenAt ? (
+                                {timestamp ? (
                                   <>
-                                    {dateTimeFormatter.formatDistanceNow(lastSeenAt, true)}{' '}
+                                    {dateTimeFormatter.formatDistanceNow(timestamp, true)}{' '}
                                     <Span hideBelow="md">ago</Span>
                                   </>
                                 ) : (

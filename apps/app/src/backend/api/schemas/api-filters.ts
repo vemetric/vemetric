@@ -34,7 +34,7 @@ const pageApiFilterSchema = z
     },
   });
 
-const eventApiFilterSchema = z
+export const eventApiFilterSchema = z
   .object({
     type: z.literal('event').openapi({
       description: 'Filter type identifier for event filters.',
@@ -47,11 +47,11 @@ const eventApiFilterSchema = z
         z.object({
           property: z.string().openapi({
             description: 'Event property key inside custom event data.',
-            example: 'plan',
+            example: 'provider',
           }),
           value: apiStringFilterSchema.shape.value.openapi({
             description: 'Event property value to compare against.',
-            example: 'pro',
+            example: 'github',
           }),
           operator: apiStringFilterSchema.shape.operator.openapi({
             description: 'String matching operator for `value`.',

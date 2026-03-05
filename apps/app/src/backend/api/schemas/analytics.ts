@@ -1,8 +1,8 @@
 import { z } from '@hono/zod-openapi';
-import { TIME_SPAN_PRESETS } from '@vemetric/common/charts/timespans';
+import { sortDirectionSchema } from '@vemetric/common/sort';
 import { eventPropertyTokenRegex, metricsGroupFieldTokens, parseMetricsQueryGroupingToken } from 'clickhouse';
 import { apiFiltersOperatorSchema, apiFilterSchema } from './api-filters';
-import { apiDateInputSchema, apiTimestampSchema } from './common';
+import { apiDateRangeSchema, apiTimestampSchema } from './common';
 import type { Metric } from '../consts/analytics';
 import { DEFAULT_METRICS, METRICS, METRICS_SET } from '../consts/analytics';
 import { isSortingGroupField } from '../utils/analytics/grouping';
@@ -34,16 +34,8 @@ const orderByFieldSchema = z.union([
 ]);
 
 const orderBySchema = z
-  .array(z.tuple([orderByFieldSchema, z.enum(['asc', 'desc'])]))
-  .max(1, 'order_by can include max one item in v1');
-
-const dateRangeSchema = z
-  .union([z.enum(TIME_SPAN_PRESETS), z.tuple([apiDateInputSchema, apiDateInputSchema])])
-  .openapi({
-    description:
-      'Date range for the query. Can be either one of the preset strings below, or an array with two date strings [start, end]. Date strings can be either in YYYY-MM-DD format or UTC ISO-8601 format with second precision.',
-    example: ['2026-01-01T12:00:00Z', '2026-01-31T12:00:00Z'],
-  });
+  .array(z.tuple([orderByFieldSchema, sortDirectionSchema]))
+  .max(1, 'order_by can include max one item');
 
 const aggregateGroupSchema = z.object({}).strict();
 const intervalGroupSchema = z.object({ date: apiTimestampSchema }).openapi({
@@ -102,7 +94,7 @@ const responseMetricsSchema = z
 
 export const analyticsQueryRequestSchema = z
   .object({
-    date_range: dateRangeSchema,
+    date_range: apiDateRangeSchema,
     metrics: z.array(z.enum(METRICS)).optional().openapi({
       description: `Metrics to calculate and include in the response.`,
       default: DEFAULT_METRICS,
@@ -116,8 +108,12 @@ export const analyticsQueryRequestSchema = z
         example: ['country'],
       }),
     order_by: orderBySchema.default([]).openapi({
-      description: 'Gives you the ability to order multiple fields by different directions',
+      description:
+        "Gives you the ability to order by a specific field and direction. At the moment it's only possible to order by one field.",
       example: [['users', 'desc']],
+      'x-vemetric-docs': {
+        hideTupleVariantChildren: true,
+      },
     }),
     limit: z
       .number()
@@ -148,7 +144,7 @@ export const analyticsQueryRequestSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['group_by'],
-        message: 'group_by can include max one item in v1',
+        message: 'group_by can include max one item',
       });
     }
 
@@ -207,7 +203,7 @@ export const analyticsQueryResponseSchema = z
       }),
     query: z
       .object({
-        date_range: dateRangeSchema.openapi({
+        date_range: apiDateRangeSchema.openapi({
           description: 'Echo of the incoming `date_range` request field.',
         }),
         group_by: z.array(groupByTokenSchema).max(1).openapi({

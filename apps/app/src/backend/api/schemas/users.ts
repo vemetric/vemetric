@@ -92,7 +92,7 @@ export const usersListRequestSchema = z
         description: 'Optional filters to restrict the user list.',
         'x-vemetric-docs': { collapseByDefault: true },
       }),
-    filtersOperator: apiFiltersOperatorSchema.default('and').openapi({
+    filters_operator: apiFiltersOperatorSchema.default('and').openapi({
       description: 'Operator to apply between multiple filters.',
     }),
     order_by: usersOrderBySchema.optional(),

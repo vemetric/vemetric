@@ -301,7 +301,12 @@ export const clickhouseEvent = {
         sortConfig,
       } = input;
       const userFilterQueries = filterConfig?.operator === 'and' ? buildUserFilterQueries(filterConfig) : '';
-      const { joinClause, orderByClause, sortSelect, isSortByEvent } = buildUserSortQueries(sortConfig, projectId);
+      const { joinClause, orderByClause, sortSelect, isSortByEvent } = buildUserSortQueries(
+        sortConfig,
+        projectId,
+        startDate,
+        endDate,
+      );
       const searchQuery = search ? `AND displayName ILIKE ${escape('%' + search + '%')}` : '';
 
       const resultSet = await clickhouseClient.query({

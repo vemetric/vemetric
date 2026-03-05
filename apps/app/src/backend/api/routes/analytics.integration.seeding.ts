@@ -56,6 +56,23 @@ function buildRawApiKey(seed: number): string {
   return `vem_${suffix}`;
 }
 
+function getDefaultDisplayName(userId: bigint): string {
+  const value = Number(userId);
+  if (value === 1) {
+    return 'Zulu';
+  }
+  if (value === 2) {
+    return 'Echo';
+  }
+  if (value === 3) {
+    return 'Bravo';
+  }
+  if (value === 4) {
+    return 'Charlie';
+  }
+  return `User ${userId}`;
+}
+
 function baseSession(input: {
   projectId: bigint;
   userId: bigint;
@@ -81,7 +98,7 @@ function baseSession(input: {
     userId: input.userId,
     id: input.id,
     userIdentifier: input.userIdentifier ?? `user-${input.userId}`,
-    userDisplayName: input.userDisplayName ?? `User ${input.userId}`,
+    userDisplayName: input.userDisplayName ?? getDefaultDisplayName(input.userId),
     startedAt: input.startedAt,
     endedAt: input.endedAt,
     duration: input.duration,
@@ -144,7 +161,7 @@ function baseEvent(input: {
     isPageView: input.isPageView,
     userAgent: 'Mozilla/5.0',
     userIdentifier: input.userIdentifier ?? `user-${input.userId}`,
-    userDisplayName: input.userDisplayName ?? `User ${input.userId}`,
+    userDisplayName: input.userDisplayName ?? getDefaultDisplayName(input.userId),
     requestHeaders: {},
     customData: input.customData ?? {},
     importSource: 'integration-test',

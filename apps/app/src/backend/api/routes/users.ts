@@ -81,7 +81,7 @@ export function registerUserRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
       throw new ApiError(403, 'PLAN_LIMIT_EXCEEDED', RETENTION_UPGRADE_MESSAGE);
     }
 
-    const filterConfig = mapApiFilterConfig(payload.filters, payload.filtersOperator);
+    const filterConfig = mapApiFilterConfig(payload.filters, payload.filters_operator);
     const funnelsData = filterConfig ? await getFilterFunnelsData(project.id, filterConfig) : null;
     const { filterQueries } = getUserFilterQueries({
       filterConfig,

@@ -3,7 +3,7 @@ export function normalizeNullableString(value: string | null | undefined): strin
     return null;
   }
 
-  return value;
+  return value === '' ? null : value;
 }
 
 export function normalizeCountryCode(value: string | null | undefined): string | null {

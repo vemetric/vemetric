@@ -135,7 +135,7 @@ export const analyticsQueryRequestSchema = z
         description: 'Ability to filter the results based on multiple criteria.',
         'x-vemetric-docs': { collapseByDefault: true },
       }),
-    filtersOperator: apiFiltersOperatorSchema.default('and').openapi({
+    filters_operator: apiFiltersOperatorSchema.default('and').openapi({
       description: 'Operator to apply between multiple filters. Can be either "and" or "or".',
     }),
   })
@@ -224,8 +224,8 @@ export const analyticsQueryResponseSchema = z
         filters: z.array(apiFilterSchema).optional().openapi({
           description: 'Echo of the incoming `filters` request field.',
         }),
-        filtersOperator: apiFiltersOperatorSchema.optional().openapi({
-          description: 'Echo of the incoming `filtersOperator` request field.',
+        filters_operator: apiFiltersOperatorSchema.optional().openapi({
+          description: 'Echo of the incoming `filters_operator` request field.',
         }),
       })
       .openapi({

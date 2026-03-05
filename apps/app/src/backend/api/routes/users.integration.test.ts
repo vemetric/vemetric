@@ -95,7 +95,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
         {
           id: '4',
           identifier: 'user-4',
-          display_name: 'User 4',
+          display_name: 'Charlie',
           country_code: 'DE',
           last_seen_at: '2026-01-19T11:20:00Z',
           last_event_fired_at: null,
@@ -105,7 +105,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
         {
           id: '3',
           identifier: 'user-3',
-          display_name: 'User 3',
+          display_name: 'Bravo',
           country_code: 'US',
           last_seen_at: '2026-01-19T09:15:00Z',
           last_event_fired_at: null,
@@ -115,7 +115,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
         {
           id: '2',
           identifier: 'user-2',
-          display_name: 'User 2',
+          display_name: 'Echo',
           country_code: 'US',
           last_seen_at: '2026-01-18T10:06:00Z',
           last_event_fired_at: null,
@@ -125,7 +125,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
         {
           id: '1',
           identifier: 'user-1',
-          display_name: 'User 1',
+          display_name: 'Zulu',
           country_code: 'US',
           last_seen_at: '2026-01-18T09:02:00Z',
           last_event_fired_at: null,
@@ -148,11 +148,12 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.users.map((user: { display_name: string | null }) => user.display_name)).toEqual([
-      'User 1',
-      'User 2',
-      'User 3',
-      'User 4',
+      'Bravo',
+      'Charlie',
+      'Echo',
+      'Zulu',
     ]);
+    expect(body.users.map((user: { id: string }) => user.id)).toEqual(['3', '4', '2', '1']);
     expect(body.users.every((user: { last_event_fired_at: string | null }) => user.last_event_fired_at === null)).toBe(
       true,
     );
@@ -249,6 +250,39 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
       { id: '3', last_event_fired_at: '2026-01-19T09:15:00Z' },
       { id: '1', last_event_fired_at: '2026-01-18T09:02:00Z' },
       { id: '2', last_event_fired_at: null },
+      { id: '4', last_event_fired_at: null },
+    ]);
+  });
+
+  it('scopes last_event_fired sorting and timestamp to the requested date_range', async () => {
+    const response = await postUsersQuery(
+      {
+        date_range: ['2026-01-19T00:00:00Z', '2026-01-19T23:59:59Z'],
+        order_by: [
+          [
+            'last_event_fired',
+            'desc',
+            {
+              name: {
+                operator: 'eq',
+                value: 'signup',
+              },
+            },
+          ],
+        ],
+      },
+      isolated.authHeaders,
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(
+      body.users.map((user: { id: string; last_event_fired_at: string | null }) => ({
+        id: user.id,
+        last_event_fired_at: user.last_event_fired_at,
+      })),
+    ).toEqual([
+      { id: '3', last_event_fired_at: '2026-01-19T09:15:00Z' },
       { id: '4', last_event_fired_at: null },
     ]);
   });

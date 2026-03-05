@@ -62,7 +62,7 @@ export function registerAnalyticsRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
     const payload = req.valid('json');
 
     const grouping = parseMetricsQueryGroupingToken(payload.group_by[0] ?? null);
-    const filterConfig = mapApiFilterConfig(payload.filters, payload.filtersOperator);
+    const filterConfig = mapApiFilterConfig(payload.filters, payload.filters_operator);
     const { timespan, startDate, endDate } = resolveApiDateRange(payload.date_range);
     if (
       isRetentionRestricted({
@@ -144,7 +144,7 @@ export function registerAnalyticsRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
           ...(payload.filters
             ? {
                 filters: payload.filters,
-                filtersOperator: payload.filtersOperator,
+                filters_operator: payload.filters_operator,
               }
             : {}),
         },

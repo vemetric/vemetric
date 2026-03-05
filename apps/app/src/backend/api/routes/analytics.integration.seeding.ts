@@ -35,6 +35,13 @@ export type IsolatedAnalyticsSeedContext = {
   apiKeyRecord: ApiKeyProjectRecord;
 };
 
+type IsolatedAnalyticsSeedOptions = {
+  projectId?: string;
+  keySeed?: number;
+  projectName?: string;
+  projectDomain?: string;
+};
+
 const ANALYTICS_TEST_PROJECT_ID = '9000000000000001';
 const ANALYTICS_TEST_KEY_SEED = 1;
 const KEEP_ANALYTICS_TEST_DATA = process.env.KEEP_ANALYTICS_TEST_DATA === '1';
@@ -49,6 +56,23 @@ function buildRawApiKey(seed: number): string {
   return `vem_${suffix}`;
 }
 
+function getDefaultDisplayName(userId: bigint): string {
+  const value = Number(userId);
+  if (value === 1) {
+    return 'Zulu';
+  }
+  if (value === 2) {
+    return 'Echo';
+  }
+  if (value === 3) {
+    return 'Bravo';
+  }
+  if (value === 4) {
+    return 'Charlie';
+  }
+  return `User ${userId}`;
+}
+
 function baseSession(input: {
   projectId: bigint;
   userId: bigint;
@@ -57,6 +81,8 @@ function baseSession(input: {
   endedAt: string;
   duration: number;
   countryCode: string;
+  userIdentifier?: string;
+  userDisplayName?: string;
   city?: string;
   referrer?: string;
   referrerUrl?: string;
@@ -71,8 +97,8 @@ function baseSession(input: {
     projectId: input.projectId,
     userId: input.userId,
     id: input.id,
-    userIdentifier: `user-${input.userId}`,
-    userDisplayName: `User ${input.userId}`,
+    userIdentifier: input.userIdentifier ?? `user-${input.userId}`,
+    userDisplayName: input.userDisplayName ?? getDefaultDisplayName(input.userId),
     startedAt: input.startedAt,
     endedAt: input.endedAt,
     duration: input.duration,
@@ -107,6 +133,8 @@ function baseEvent(input: {
   name: string;
   countryCode: string;
   pathname: string;
+  userIdentifier?: string;
+  userDisplayName?: string;
   customData?: Record<string, unknown>;
   city?: string;
   browser?: string;
@@ -132,8 +160,8 @@ function baseEvent(input: {
     name: input.name,
     isPageView: input.isPageView,
     userAgent: 'Mozilla/5.0',
-    userIdentifier: `user-${input.userId}`,
-    userDisplayName: `User ${input.userId}`,
+    userIdentifier: input.userIdentifier ?? `user-${input.userId}`,
+    userDisplayName: input.userDisplayName ?? getDefaultDisplayName(input.userId),
     requestHeaders: {},
     customData: input.customData ?? {},
     importSource: 'integration-test',
@@ -162,9 +190,12 @@ function baseEvent(input: {
   };
 }
 
-export function createIsolatedAnalyticsSeedContext(): IsolatedAnalyticsSeedContext {
-  const projectId = ANALYTICS_TEST_PROJECT_ID;
-  const rawApiKey = buildRawApiKey(ANALYTICS_TEST_KEY_SEED);
+export function createIsolatedAnalyticsSeedContext(
+  options: IsolatedAnalyticsSeedOptions = {},
+): IsolatedAnalyticsSeedContext {
+  const projectId = options.projectId ?? ANALYTICS_TEST_PROJECT_ID;
+  const keySeed = options.keySeed ?? ANALYTICS_TEST_KEY_SEED;
+  const rawApiKey = buildRawApiKey(keySeed);
   const keyHash = sha256(rawApiKey);
 
   return {
@@ -180,8 +211,8 @@ export function createIsolatedAnalyticsSeedContext(): IsolatedAnalyticsSeedConte
       projectId,
       project: {
         id: projectId,
-        name: 'Analytics Integration Test Project',
-        domain: 'analytics-integration-test.example.com',
+        name: options.projectName ?? 'Analytics Integration Test Project',
+        domain: options.projectDomain ?? 'analytics-integration-test.example.com',
         token: `token_${projectId}`,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         firstEventAt: new Date('2026-01-18T09:00:00.000Z'),
@@ -329,6 +360,27 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       duration: 180,
       countryCode: 'DE',
       ...dimensionsByUser[4],
+    }),
+    // Anonymous user outside analytics test ranges but inside free-plan retention window
+    baseSession({
+      projectId,
+      userId: BigInt(5),
+      id: `${context.projectId}_s5`,
+      startedAt: '2025-12-25 08:00:00',
+      endedAt: '2025-12-25 08:03:00',
+      duration: 45,
+      countryCode: '',
+      userIdentifier: '',
+      userDisplayName: '',
+      city: '',
+      referrer: '',
+      referrerUrl: '',
+      referrerType: 'direct',
+      utmSource: '',
+      utmMedium: '',
+      utmCampaign: '',
+      utmContent: '',
+      utmTerm: '',
     }),
   ];
 
@@ -496,6 +548,29 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       countryCode: 'DE',
       pathname: '/checkout',
       ...dimensionsByUser[4],
+    }),
+    // Anonymous pageview used by users endpoint tests
+    baseEvent({
+      projectId,
+      userId: BigInt(5),
+      sessionId: `${context.projectId}_s5`,
+      id: `${context.projectId}_e_pv_anon_1`,
+      createdAt: '2025-12-25 08:01:00',
+      isPageView: true,
+      name: '',
+      countryCode: '',
+      pathname: '/landing',
+      userIdentifier: '',
+      userDisplayName: '',
+      city: '',
+      referrer: '',
+      referrerUrl: '',
+      referrerType: 'direct',
+      utmSource: '',
+      utmMedium: '',
+      utmCampaign: '',
+      utmContent: '',
+      utmTerm: '',
     }),
   ];
 

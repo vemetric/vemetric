@@ -16,6 +16,7 @@ const getMotionViewProps = (overview?: boolean) => ({
 export const UserSortPopover = () => {
   const { s: sortConfig } = useSearch({ from: '/_layout/p/$projectId/users/' });
   const navigate = useNavigate({ from: '/p/$projectId/users' });
+  const eventSort = sortConfig?.by?.type === 'event' ? sortConfig.by : undefined;
 
   const [isAnimating, setIsAnimating] = useState(false);
   const [filterView, _setFilterView] = useState<string | null>(null);
@@ -61,7 +62,7 @@ export const UserSortPopover = () => {
           color="fg"
           _hover={{ bg: 'transparent', outline: '1px solid', outlineColor: 'gray.emphasized' }}
         >
-          {sortConfig?.by?.type === 'event' ? (
+          {eventSort ? (
             <Text as="span" display="contents" color="purple.fg">
               <TbBolt /> Last fired event
             </Text>
@@ -117,7 +118,7 @@ export const UserSortPopover = () => {
                     onBack={onBack}
                   />
                   <EventFilterForm
-                    filter={sortConfig?.by}
+                    filter={eventSort}
                     onSubmit={(sortBy) => {
                       navigate({ search: (prev) => ({ ...prev, s: { by: sortBy } }) });
                       onClose();

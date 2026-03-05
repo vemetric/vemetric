@@ -39,9 +39,9 @@ export const usersRouter = router({
 
       const offset = (page - 1) * USERS_PER_PAGE;
       const [users] = await Promise.all([
-        clickhouseEvent.getLatestUsers(
+        clickhouseEvent.queryUsers({
           projectId,
-          {
+          pagination: {
             offset,
             limit: USERS_PER_PAGE + 1, // Get one extra to determine if there are more
           },
@@ -50,7 +50,7 @@ export const usersRouter = router({
           sortConfig,
           startDate,
           search,
-        ),
+        }),
       ]);
 
       const hasNextPage = users.length > USERS_PER_PAGE;

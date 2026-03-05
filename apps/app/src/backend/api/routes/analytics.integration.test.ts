@@ -588,7 +588,7 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
               },
             },
           ],
-          filtersOperator: 'and',
+          filters_operator: 'and',
         },
         pagination: {
           limit: 100,

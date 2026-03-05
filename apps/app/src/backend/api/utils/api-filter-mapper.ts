@@ -1,4 +1,10 @@
-import type { IFilter, IFilterConfig, IFilterGroup, IStringFilterOperator } from '@vemetric/common/filters';
+import type {
+  IEventFilter,
+  IFilter,
+  IFilterConfig,
+  IFilterGroup,
+  IStringFilterOperator,
+} from '@vemetric/common/filters';
 import type { ApiFilter, ApiStringOperator } from '../schemas/api-filters';
 
 function mapApiStringOperator(operator: ApiStringOperator): IStringFilterOperator {
@@ -31,6 +37,20 @@ function mapApiStringFilter(
   };
 }
 
+export function mapApiEventFilter(filter: Extract<ApiFilter, { type: 'event' }>): IEventFilter {
+  return {
+    type: 'event',
+    nameFilter: mapApiStringFilter(filter.name),
+    propertiesFilter: filter.properties?.map((property) => ({
+      property: property.property,
+      valueFilter: {
+        operator: mapApiStringOperator(property.operator),
+        value: property.value,
+      },
+    })),
+  };
+}
+
 function mapApiFilter(filter: ApiFilter): IFilter {
   switch (filter.type) {
     case 'page': {
@@ -42,17 +62,7 @@ function mapApiFilter(filter: ApiFilter): IFilter {
       };
     }
     case 'event': {
-      return {
-        type: 'event',
-        nameFilter: mapApiStringFilter(filter.name),
-        propertiesFilter: filter.properties?.map((property) => ({
-          property: property.property,
-          valueFilter: {
-            operator: mapApiStringOperator(property.operator),
-            value: property.value,
-          },
-        })),
-      };
+      return mapApiEventFilter(filter);
     }
     case 'user': {
       return {

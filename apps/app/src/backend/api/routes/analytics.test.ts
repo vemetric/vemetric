@@ -121,7 +121,7 @@ describe('POST /api/v1/analytics/query (contract)', () => {
         },
       });
       expect(Array.isArray(body.error.details)).toBe(true);
-      expectValidationDetail(body, 'group_by', 'group_by can include max one item in v1');
+      expectValidationDetail(body, 'group_by', 'group_by can include max one item');
     });
 
     it('rejects custom date_range when start is after end', async () => {

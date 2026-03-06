@@ -24,32 +24,6 @@ const API_USERS_FIELD_TO_INTERNAL = {
   country: 'countryCode',
 } as const;
 
-function mapUserRow(row: {
-  id: bigint;
-  identifier: string;
-  displayName: string;
-  countryCode: string;
-  city: string;
-  lastSeenAt: string;
-  lastEventFiredAt: string | null;
-  avatarUrl: string | null;
-}) {
-  const identifier = normalizeNullableString(row.identifier);
-  const displayName = normalizeNullableString(row.displayName);
-
-  return {
-    id: String(row.id),
-    identifier,
-    display_name: displayName,
-    country: normalizeCountryCode(row.countryCode),
-    city: normalizeNullableString(row.city),
-    last_seen_at: toApiTimestamp(row.lastSeenAt),
-    last_event_fired_at: toApiTimestamp(row.lastEventFiredAt),
-    avatar_url: normalizeNullableString(row.avatarUrl),
-    anonymous: identifier === null,
-  };
-}
-
 const usersListRoute = createRoute({
   method: 'post',
   path: '/v1/users',
@@ -206,7 +180,22 @@ export function registerUserRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
           offset: payload.offset,
           returned: rows.length,
         },
-        users: rows.map(mapUserRow),
+        users: rows.map((row) => {
+          const identifier = normalizeNullableString(row.identifier);
+          const displayName = normalizeNullableString(row.displayName);
+
+          return {
+            id: String(row.id),
+            identifier,
+            display_name: displayName,
+            country: normalizeCountryCode(row.countryCode),
+            city: normalizeNullableString(row.city),
+            last_seen_at: toApiTimestamp(row.lastSeenAt),
+            last_event_fired_at: toApiTimestamp(row.lastEventFiredAt),
+            avatar_url: normalizeNullableString(row.avatarUrl),
+            anonymous: identifier === null,
+          };
+        }),
       },
       200,
     );

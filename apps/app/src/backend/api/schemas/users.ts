@@ -3,7 +3,7 @@ import { sortDirectionSchema } from '@vemetric/common/sort';
 import { apiFilterSchema, apiFiltersOperatorSchema, eventApiFilterSchema } from './api-filters';
 import { apiDateRangeSchema, apiTimestampSchema } from './common';
 
-const usersOrderByFieldSchema = z.enum(['last_seen_at', 'display_name', 'identifier', 'country_code']).openapi({
+const usersOrderByFieldSchema = z.enum(['last_seen_at', 'display_name', 'identifier', 'country']).openapi({
   description: 'Sortable user field.',
   example: 'last_seen_at',
 });
@@ -44,7 +44,7 @@ const usersOrderBySchema = z
     ],
   });
 
-const userListItemSchema = z
+export const userListItemSchema = z
   .object({
     id: z.string().openapi({
       description: "Vemetric's internal user ID.",
@@ -58,9 +58,13 @@ const userListItemSchema = z
       description: 'User display name if available.',
       example: 'John Doe',
     }),
-    country_code: z.string().nullable().openapi({
+    country: z.string().nullable().openapi({
       description: 'ISO-3166 alpha-2 country code, or `null` when unknown.',
       example: 'US',
+    }),
+    city: z.string().nullable().openapi({
+      description: 'User city, or `null` when unknown.',
+      example: 'Berlin',
     }),
     last_seen_at: apiTimestampSchema.nullable().openapi({
       description: 'UTC timestamp of the latest activity for this user within the selected period.',
@@ -80,6 +84,38 @@ const userListItemSchema = z
   })
   .openapi({
     description: 'Compact summary user row.',
+  });
+
+export const userSingleQuerySchema = z
+  .object({
+    id: z.string().regex(/^\d+$/, 'id must be a numeric user id').optional().openapi({
+      description: "Vemetric's internal user ID. You have to either provide `id` or `identifier`.",
+      example: '123',
+    }),
+    identifier: z.string().min(1).optional().openapi({
+      description: 'User identifier value. You have to either provide `identifier` or `id`.',
+      example: 'your-user-id',
+    }),
+  })
+  .superRefine((data, ctx) => {
+    const hasId = typeof data.id === 'string';
+    const hasIdentifier = typeof data.identifier === 'string';
+
+    if (hasId === hasIdentifier) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['id'],
+        message: 'Provide exactly one of id or identifier',
+      });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['identifier'],
+        message: 'Provide exactly one of id or identifier',
+      });
+    }
+  })
+  .openapi({
+    description: 'Query parameters for fetching one user. Exactly one of `id` or `identifier` is required.',
   });
 
 export const usersListRequestSchema = z
@@ -166,4 +202,18 @@ export const usersListResponseSchema = z
   })
   .openapi({
     description: 'Successful users list response payload.',
+  });
+
+export const usersSingleResponseSchema = z
+  .object({
+    user: userListItemSchema
+      .omit({
+        last_event_fired_at: true,
+      })
+      .openapi({
+        description: 'Resolved user row.',
+      }),
+  })
+  .openapi({
+    description: 'Successful single user response payload.',
   });

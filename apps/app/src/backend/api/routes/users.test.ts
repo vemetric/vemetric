@@ -212,3 +212,62 @@ describe('POST /api/v1/users (contract)', () => {
     });
   });
 });
+
+describe('GET /api/v1/users/single (contract)', () => {
+  const findByKeyHash = findByKeyHashMock as Mock;
+  const getRedisClient = getRedisClientMock as Mock;
+
+  beforeEach(() => {
+    findByKeyHash.mockReset();
+    getRedisClient.mockReset();
+
+    findByKeyHash.mockResolvedValue(createMockApiKey());
+    getRedisClient.mockResolvedValue({
+      eval: vi.fn().mockResolvedValue([1, 60]),
+    });
+  });
+
+  it('rejects when id and identifier are both missing', async () => {
+    const app = createPublicApi();
+
+    const response = await app.request('/v1/users/single', {
+      method: 'GET',
+      headers: AUTH_HEADERS,
+    });
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expectValidationDetail(body, 'id', 'Provide exactly one of id or identifier');
+    expectValidationDetail(body, 'identifier', 'Provide exactly one of id or identifier');
+  });
+
+  it('rejects when id and identifier are both provided', async () => {
+    const app = createPublicApi();
+
+    const response = await app.request('/v1/users/single?id=1&identifier=user-1', {
+      method: 'GET',
+      headers: AUTH_HEADERS,
+    });
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expectValidationDetail(body, 'id', 'Provide exactly one of id or identifier');
+    expectValidationDetail(body, 'identifier', 'Provide exactly one of id or identifier');
+  });
+
+  it('rejects non-numeric id', async () => {
+    const app = createPublicApi();
+
+    const response = await app.request('/v1/users/single?id=abc', {
+      method: 'GET',
+      headers: AUTH_HEADERS,
+    });
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expectValidationDetail(body, 'id', 'id must be a numeric user id');
+  });
+});

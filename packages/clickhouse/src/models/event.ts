@@ -310,12 +310,13 @@ export const clickhouseEvent = {
       const searchQuery = search ? `AND displayName ILIKE ${escape('%' + search + '%')}` : '';
 
       const resultSet = await clickhouseClient.query({
-        query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.maxCreatedAt as maxCreatedAt, u.isOnline as isOnline, usr.avatarUrl as avatarUrl${sortSelect}
+        query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.city as city, u.maxCreatedAt as maxCreatedAt, u.isOnline as isOnline, usr.avatarUrl as avatarUrl${sortSelect}
             FROM (
               SELECT userId,
                 argMax(userIdentifier, eventCreatedAt) as identifier,
                 argMax(userDisplayName, eventCreatedAt) as displayName,
                 argMax(countryCode, eventCreatedAt) as countryCode,
+                argMax(city, eventCreatedAt) as city,
                 max(eventCreatedAt) as maxCreatedAt,
                 max(eventCreatedAt) >= ${ONLINE_USERS_INTERVAL_QUERY} as isOnline
               FROM (
@@ -323,6 +324,7 @@ export const clickhouseEvent = {
                   argMax(userIdentifier, createdAt) as userIdentifier,
                   argMax(userDisplayName, createdAt) as userDisplayName,
                   argMax(countryCode, createdAt) as countryCode,
+                  argMax(city, createdAt) as city,
                   max(createdAt) as eventCreatedAt
                 FROM ${TABLE_NAME}
                 WHERE projectId=${escape(projectId)}
@@ -356,6 +358,7 @@ export const clickhouseEvent = {
           identifier: row.identifier as string,
           displayName: row.displayName as string,
           countryCode: row.countryCode as string,
+          city: row.city as string,
           lastSeenAt: row.maxCreatedAt as string,
           lastEventFiredAt: isSortByEvent ? ((row.lastEventFiredAt as string | null) ?? null) : null,
           isOnline: Boolean(row.isOnline),

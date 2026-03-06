@@ -83,7 +83,7 @@ const jsonValidationErrorResponseContent = {
                 z.object({
                   field: z.string().openapi({
                     description: 'Path to the invalid request field.',
-                    example: 'group_by.0',
+                    example: 'groupBy.0',
                   }),
                   message: z.string().openapi({
                     description: 'Validation error message for the field.',

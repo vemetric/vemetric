@@ -74,16 +74,16 @@ describe('POST /api/v1/analytics/query (contract)', () => {
   });
 
   describe('validation', () => {
-    it('rejects invalid group_by token', async () => {
+    it('rejects invalid groupBy token', async () => {
       const app = createPublicApi();
 
       const response = await app.request('/v1/analytics/query', {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
-          date_range: '30days',
+          dateRange: '30days',
           metrics: ['users'],
-          group_by: ['invalid:group'],
+          groupBy: ['invalid:group'],
         }),
       });
 
@@ -96,19 +96,19 @@ describe('POST /api/v1/analytics/query (contract)', () => {
         },
       });
       expect(Array.isArray(body.error.details)).toBe(true);
-      expectValidationDetail(body, 'group_by.0', 'Invalid grouping token');
+      expectValidationDetail(body, 'groupBy.0', 'Invalid grouping token');
     });
 
-    it('rejects group_by with more than one item', async () => {
+    it('rejects groupBy with more than one item', async () => {
       const app = createPublicApi();
 
       const response = await app.request('/v1/analytics/query', {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
-          date_range: '30days',
+          dateRange: '30days',
           metrics: ['users'],
-          group_by: ['country', 'browser'],
+          groupBy: ['country', 'browser'],
         }),
       });
 
@@ -121,19 +121,19 @@ describe('POST /api/v1/analytics/query (contract)', () => {
         },
       });
       expect(Array.isArray(body.error.details)).toBe(true);
-      expectValidationDetail(body, 'group_by', 'group_by can include max one item');
+      expectValidationDetail(body, 'groupBy', 'groupBy can include max one item');
     });
 
-    it('rejects custom date_range when start is after end', async () => {
+    it('rejects custom dateRange when start is after end', async () => {
       const app = createPublicApi();
 
       const response = await app.request('/v1/analytics/query', {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
-          date_range: ['2026-02-18', '2026-02-17'],
+          dateRange: ['2026-02-18', '2026-02-17'],
           metrics: ['users'],
-          group_by: [],
+          groupBy: [],
         }),
       });
 
@@ -146,7 +146,7 @@ describe('POST /api/v1/analytics/query (contract)', () => {
         },
       });
       expect(Array.isArray(body.error.details)).toBe(true);
-      expectValidationDetail(body, 'date_range', 'Start date must be before or equal to end date');
+      expectValidationDetail(body, 'dateRange', 'Start date must be before or equal to end date');
     });
 
     it('rejects non-UTC date input', async () => {
@@ -156,9 +156,9 @@ describe('POST /api/v1/analytics/query (contract)', () => {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
-          date_range: ['2026-01-18T00:00:00+02:00', '2026-02-17T23:59:59+02:00'],
+          dateRange: ['2026-01-18T00:00:00+02:00', '2026-02-17T23:59:59+02:00'],
           metrics: ['users'],
-          group_by: [],
+          groupBy: [],
         }),
       });
 
@@ -173,7 +173,7 @@ describe('POST /api/v1/analytics/query (contract)', () => {
       expect(Array.isArray(body.error.details)).toBe(true);
       expectValidationDetail(
         body,
-        'date_range.0',
+        'dateRange.0',
         'UTC date input must be either YYYY-MM-DD or UTC ISO-8601 with second precision',
       );
     });
@@ -185,9 +185,9 @@ describe('POST /api/v1/analytics/query (contract)', () => {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
-          date_range: ['2026-01-18T00:00:00.123Z', '2026-02-17T23:59:59Z'],
+          dateRange: ['2026-01-18T00:00:00.123Z', '2026-02-17T23:59:59Z'],
           metrics: ['users'],
-          group_by: [],
+          groupBy: [],
         }),
       });
 
@@ -202,22 +202,22 @@ describe('POST /api/v1/analytics/query (contract)', () => {
       expect(Array.isArray(body.error.details)).toBe(true);
       expectValidationDetail(
         body,
-        'date_range.0',
+        'dateRange.0',
         'UTC date input must be either YYYY-MM-DD or UTC ISO-8601 with second precision',
       );
     });
 
-    it('rejects order_by metric that is not requested in metrics', async () => {
+    it('rejects orderBy metric that is not requested in metrics', async () => {
       const app = createPublicApi();
 
       const response = await app.request('/v1/analytics/query', {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
-          date_range: '30days',
+          dateRange: '30days',
           metrics: ['users'],
-          group_by: ['country'],
-          order_by: [['events', 'desc']],
+          groupBy: ['country'],
+          orderBy: [['events', 'desc']],
         }),
       });
 
@@ -230,20 +230,20 @@ describe('POST /api/v1/analytics/query (contract)', () => {
         },
       });
       expect(Array.isArray(body.error.details)).toBe(true);
-      expectValidationDetail(body, 'order_by.0.0', 'Sort metric must be included in metrics');
+      expectValidationDetail(body, 'orderBy.0.0', 'Sort metric must be included in metrics');
     });
 
-    it('rejects invalid order_by direction', async () => {
+    it('rejects invalid orderBy direction', async () => {
       const app = createPublicApi();
 
       const response = await app.request('/v1/analytics/query', {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
-          date_range: '30days',
+          dateRange: '30days',
           metrics: ['users'],
-          group_by: ['country'],
-          order_by: [['country', 'down']],
+          groupBy: ['country'],
+          orderBy: [['country', 'down']],
         }),
       });
 
@@ -256,7 +256,7 @@ describe('POST /api/v1/analytics/query (contract)', () => {
         },
       });
       expect(Array.isArray(body.error.details)).toBe(true);
-      expectValidationDetail(body, 'order_by.0.1', "Invalid enum value. Expected 'asc' | 'desc', received 'down'");
+      expectValidationDetail(body, 'orderBy.0.1', "Invalid enum value. Expected 'asc' | 'desc', received 'down'");
     });
 
     it('rejects legacy string filter operator "is" (use "eq")', async () => {
@@ -266,9 +266,9 @@ describe('POST /api/v1/analytics/query (contract)', () => {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
-          date_range: '30days',
+          dateRange: '30days',
           metrics: ['users'],
-          group_by: [],
+          groupBy: [],
           filters: [
             {
               type: 'referrer',
@@ -295,16 +295,16 @@ describe('POST /api/v1/analytics/query (contract)', () => {
       );
     });
 
-    it('rejects invalid event property group_by token format', async () => {
+    it('rejects invalid event property groupBy token format', async () => {
       const app = createPublicApi();
 
       const response = await app.request('/v1/analytics/query', {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
-          date_range: '30days',
+          dateRange: '30days',
           metrics: ['events'],
-          group_by: ['event:prop:'],
+          groupBy: ['event:prop:'],
         }),
       });
 
@@ -316,20 +316,20 @@ describe('POST /api/v1/analytics/query (contract)', () => {
           message: 'Invalid request parameters',
         },
       });
-      expectValidationDetail(body, 'group_by.0', 'Invalid grouping token');
+      expectValidationDetail(body, 'groupBy.0', 'Invalid grouping token');
     });
 
-    it('accepts event property group_by token with dash and dollar', async () => {
+    it('accepts event property groupBy token with dash and dollar', async () => {
       const app = createPublicApi();
 
       const response = await app.request('/v1/analytics/query', {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
-          date_range: '30days',
+          dateRange: '30days',
           metrics: ['users'],
-          group_by: ['event:prop:plan-name$'],
-          order_by: [['events', 'desc']],
+          groupBy: ['event:prop:plan-name$'],
+          orderBy: [['events', 'desc']],
         }),
       });
 
@@ -341,7 +341,7 @@ describe('POST /api/v1/analytics/query (contract)', () => {
           message: 'Invalid request parameters',
         },
       });
-      expectValidationDetail(body, 'order_by.0.0', 'Sort metric must be included in metrics');
+      expectValidationDetail(body, 'orderBy.0.0', 'Sort metric must be included in metrics');
     });
 
     it('accepts new predefined grouping tokens', async () => {
@@ -351,15 +351,15 @@ describe('POST /api/v1/analytics/query (contract)', () => {
         'page:origin',
         'page:path',
         'browser',
-        'device_type',
+        'deviceType',
         'os',
         'referrer',
-        'referrer_type',
-        'utm_campaign',
-        'utm_content',
-        'utm_medium',
-        'utm_source',
-        'utm_term',
+        'referrerType',
+        'utmCampaign',
+        'utmContent',
+        'utmMedium',
+        'utmSource',
+        'utmTerm',
         'event:name',
       ];
 
@@ -368,16 +368,16 @@ describe('POST /api/v1/analytics/query (contract)', () => {
           method: 'POST',
           headers: AUTH_HEADERS,
           body: JSON.stringify({
-            date_range: '30days',
+            dateRange: '30days',
             metrics: ['users'],
-            group_by: [token],
-            order_by: [['events', 'desc']],
+            groupBy: [token],
+            orderBy: [['events', 'desc']],
           }),
         });
 
         expect(response.status).toBe(400);
         const body = await response.json();
-        expectValidationDetail(body, 'order_by.0.0', 'Sort metric must be included in metrics');
+        expectValidationDetail(body, 'orderBy.0.0', 'Sort metric must be included in metrics');
       }
     });
 
@@ -388,10 +388,10 @@ describe('POST /api/v1/analytics/query (contract)', () => {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
-          date_range: '30days',
+          dateRange: '30days',
           metrics: ['users'],
-          group_by: ['country'],
-          order_by: [['date', 'asc']],
+          groupBy: ['country'],
+          orderBy: [['date', 'asc']],
         }),
       });
 
@@ -403,21 +403,21 @@ describe('POST /api/v1/analytics/query (contract)', () => {
           message: 'Invalid request parameters',
         },
       });
-      expectValidationDetail(body, 'order_by.0.0', 'Invalid sort field');
+      expectValidationDetail(body, 'orderBy.0.0', 'Invalid sort field');
     });
   });
 
   describe('plan_limit', () => {
-    it('rejects disallowed preset date_range (6months)', async () => {
+    it('rejects disallowed preset dateRange (6months)', async () => {
       const app = createPublicApi();
 
       const response = await app.request('/v1/analytics/query', {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
-          date_range: '6months',
+          dateRange: '6months',
           metrics: ['users'],
-          group_by: [],
+          groupBy: [],
         }),
       });
 
@@ -437,9 +437,9 @@ describe('POST /api/v1/analytics/query (contract)', () => {
           method: 'POST',
           headers: AUTH_HEADERS,
           body: JSON.stringify({
-            date_range: dateRange,
+            dateRange: dateRange,
             metrics: ['users'],
-            group_by: [],
+            groupBy: [],
           }),
         });
 

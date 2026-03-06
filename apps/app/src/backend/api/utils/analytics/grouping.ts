@@ -11,9 +11,9 @@ function formatGroupedFieldValue(token: string, groupKey: string): string {
   switch (token) {
     case 'referrer':
       return 'Direct / None';
-    case 'referrer_type':
+    case 'referrerType':
       return 'unknown';
-    case 'device_type':
+    case 'deviceType':
       return 'unknown';
     default:
       return 'Unknown';

@@ -78,10 +78,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
   describe('aggregate', () => {
     it('returns exact output for preset range', async () => {
       const request = {
-        date_range: '30days',
-        metrics: ['users', 'pageviews', 'events', 'bounce_rate', 'visit_duration'],
-        group_by: [],
-        order_by: [['users', 'desc']],
+        dateRange: '30days',
+        metrics: ['users', 'pageviews', 'events', 'bounceRate', 'visitDuration'],
+        groupBy: [],
+        orderBy: [['users', 'desc']],
       };
 
       const expected = {
@@ -90,10 +90,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
           to: '2026-02-17T23:59:59Z',
         },
         query: {
-          date_range: '30days',
-          group_by: [],
-          metrics: ['users', 'pageviews', 'events', 'bounce_rate', 'visit_duration'],
-          order_by: [['users', 'desc']],
+          dateRange: '30days',
+          groupBy: [],
+          metrics: ['users', 'pageviews', 'events', 'bounceRate', 'visitDuration'],
+          orderBy: [['users', 'desc']],
           limit: 100,
           offset: 0,
         },
@@ -109,8 +109,8 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
               users: 2,
               pageviews: 4,
               events: 3,
-              bounce_rate: 50,
-              visit_duration: 150,
+              bounceRate: 50,
+              visitDuration: 150,
             },
           },
         ],
@@ -124,8 +124,8 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
 
     it('returns exact output when metrics are omitted (defaults)', async () => {
       const request = {
-        date_range: '30days',
-        group_by: [],
+        dateRange: '30days',
+        groupBy: [],
       };
 
       const response = await postAnalyticsQuery(request, isolated.authHeaders);
@@ -137,10 +137,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
           to: '2026-02-17T23:59:59Z',
         },
         query: {
-          date_range: '30days',
-          group_by: [],
+          dateRange: '30days',
+          groupBy: [],
           metrics: ['users', 'pageviews', 'events'],
-          order_by: [],
+          orderBy: [],
           limit: 100,
           offset: 0,
         },
@@ -162,11 +162,11 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
       });
     });
 
-    it('ignores pagination params when group_by is empty', async () => {
+    it('ignores pagination params when groupBy is empty', async () => {
       const request = {
-        date_range: '30days',
+        dateRange: '30days',
         metrics: ['users'],
-        group_by: [],
+        groupBy: [],
         limit: 1,
         offset: 50,
       };
@@ -180,10 +180,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
           to: '2026-02-17T23:59:59Z',
         },
         query: {
-          date_range: '30days',
-          group_by: [],
+          dateRange: '30days',
+          groupBy: [],
           metrics: ['users'],
-          order_by: [],
+          orderBy: [],
           limit: 1,
           offset: 50,
         },
@@ -205,10 +205,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
 
     it('returns exact output for custom UTC datetime range', async () => {
       const request = {
-        date_range: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+        dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
         metrics: ['users', 'events'],
-        group_by: [],
-        order_by: [],
+        groupBy: [],
+        orderBy: [],
       };
 
       const response = await postAnalyticsQuery(request, isolated.authHeaders);
@@ -220,10 +220,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
           to: '2026-01-19T23:59:59Z',
         },
         query: {
-          date_range: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
-          group_by: [],
+          dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+          groupBy: [],
           metrics: ['users', 'events'],
-          order_by: [],
+          orderBy: [],
           limit: 100,
           offset: 0,
         },
@@ -248,10 +248,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
   describe('grouped', () => {
     it('returns exact timeseries output for interval:auto', async () => {
       const request = {
-        date_range: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+        dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
         metrics: ['users', 'pageviews', 'events'],
-        group_by: ['interval:auto'],
-        order_by: [['date', 'asc']],
+        groupBy: ['interval:auto'],
+        orderBy: [['date', 'asc']],
       };
 
       const expected = {
@@ -260,10 +260,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
           to: '2026-01-19T23:59:59Z',
         },
         query: {
-          date_range: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
-          group_by: ['interval:auto'],
+          dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+          groupBy: ['interval:auto'],
           metrics: ['users', 'pageviews', 'events'],
-          order_by: [['date', 'asc']],
+          orderBy: [['date', 'asc']],
           limit: 100,
           offset: 0,
         },
@@ -304,10 +304,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
 
     it('returns exact country breakdown sorted by group field', async () => {
       const request = {
-        date_range: '30days',
+        dateRange: '30days',
         metrics: ['users', 'pageviews', 'events'],
-        group_by: ['country'],
-        order_by: [['country', 'asc']],
+        groupBy: ['country'],
+        orderBy: [['country', 'asc']],
         limit: 100,
         offset: 0,
       };
@@ -321,10 +321,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
           to: '2026-02-17T23:59:59Z',
         },
         query: {
-          date_range: '30days',
-          group_by: ['country'],
+          dateRange: '30days',
+          groupBy: ['country'],
           metrics: ['users', 'pageviews', 'events'],
-          order_by: [['country', 'asc']],
+          orderBy: [['country', 'asc']],
           limit: 100,
           offset: 0,
         },
@@ -351,23 +351,23 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
       ['page:origin', { 'https://example.com': 4 }],
       ['page:path', { '/': 4, '/features': 1, '/pricing': 2, '/signup': 1 }],
       ['browser', { Chrome: 2, Firefox: 1, Safari: 1 }],
-      ['device_type', { desktop: 2, mobile: 1, tablet: 1 }],
+      ['deviceType', { desktop: 2, mobile: 1, tablet: 1 }],
       ['os', { Linux: 1, Windows: 1, macOS: 2 }],
       ['referrer', { Bing: 1, Google: 1, Newsletter: 1, 'Direct / None': 1 }],
-      ['referrer_type', { email: 1, search: 2, social: 1 }],
-      ['utm_campaign', { jan_push: 2, winter_launch: 2 }],
-      ['utm_content', { ad_1: 1, button: 1, hero_cta: 1, text_link: 1 }],
-      ['utm_medium', { cpc: 2, email: 1, social: 1 }],
-      ['utm_source', { bing: 1, google: 1, hn: 1, newsletter: 1 }],
-      ['utm_term', { analytics: 1, metrics: 1, opensource: 1, privacy: 1 }],
+      ['referrerType', { email: 1, search: 2, social: 1 }],
+      ['utmCampaign', { jan_push: 2, winter_launch: 2 }],
+      ['utmContent', { ad_1: 1, button: 1, hero_cta: 1, text_link: 1 }],
+      ['utmMedium', { cpc: 2, email: 1, social: 1 }],
+      ['utmSource', { bing: 1, google: 1, hn: 1, newsletter: 1 }],
+      ['utmTerm', { analytics: 1, metrics: 1, opensource: 1, privacy: 1 }],
       ['event:name', { click: 1, purchase: 1, signup: 2 }],
     ] as const)('supports grouping by %s', async (groupBy, expectedUsersByGroup) => {
       const response = await postAnalyticsQuery(
         {
-          date_range: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+          dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
           metrics: ['users'],
-          group_by: [groupBy],
-          order_by: [[groupBy, 'asc']],
+          groupBy: [groupBy],
+          orderBy: [[groupBy, 'asc']],
           limit: 100,
           offset: 0,
         },
@@ -376,7 +376,7 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
 
       expect(response.status).toBe(200);
       const body = await response.json();
-      expect(body.query.group_by).toEqual([groupBy]);
+      expect(body.query.groupBy).toEqual([groupBy]);
 
       const actual = Object.fromEntries(
         body.data.map((row: { group: Record<string, string>; metrics: { users: number } }) => [
@@ -390,10 +390,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
     it('supports grouping by event:name for events metric values', async () => {
       const response = await postAnalyticsQuery(
         {
-          date_range: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+          dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
           metrics: ['events'],
-          group_by: ['event:name'],
-          order_by: [['event:name', 'asc']],
+          groupBy: ['event:name'],
+          orderBy: [['event:name', 'asc']],
           limit: 100,
           offset: 0,
         },
@@ -413,10 +413,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
     it('returns null for non-applicable metrics when grouped by event:name', async () => {
       const response = await postAnalyticsQuery(
         {
-          date_range: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
-          metrics: ['events', 'bounce_rate', 'visit_duration'],
-          group_by: ['event:name'],
-          order_by: [['event:name', 'asc']],
+          dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+          metrics: ['events', 'bounceRate', 'visitDuration'],
+          groupBy: ['event:name'],
+          orderBy: [['event:name', 'asc']],
         },
         isolated.authHeaders,
       );
@@ -425,7 +425,7 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
       const body = (await response.json()) as {
         data: Array<{ metrics: Record<string, number | null> }>;
       };
-      expect(body.data.every((row) => row.metrics.bounce_rate === null && row.metrics.visit_duration === null)).toBe(
+      expect(body.data.every((row) => row.metrics.bounceRate === null && row.metrics.visitDuration === null)).toBe(
         true,
       );
     });
@@ -433,10 +433,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
     it('never returns "__all__" as a grouped field value', async () => {
       const cityResponse = await postAnalyticsQuery(
         {
-          date_range: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+          dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
           metrics: ['users'],
-          group_by: ['city'],
-          order_by: [['city', 'asc']],
+          groupBy: ['city'],
+          orderBy: [['city', 'asc']],
         },
         isolated.authHeaders,
       );
@@ -446,10 +446,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
 
       const referrerResponse = await postAnalyticsQuery(
         {
-          date_range: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+          dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
           metrics: ['users'],
-          group_by: ['referrer'],
-          order_by: [['referrer', 'asc']],
+          groupBy: ['referrer'],
+          orderBy: [['referrer', 'asc']],
         },
         isolated.authHeaders,
       );
@@ -462,10 +462,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
 
     it('supports ordering by metric value', async () => {
       const request = {
-        date_range: '30days',
+        dateRange: '30days',
         metrics: ['events'],
-        group_by: ['country'],
-        order_by: [['events', 'desc']],
+        groupBy: ['country'],
+        orderBy: [['events', 'desc']],
       };
 
       const response = await postAnalyticsQuery(request, isolated.authHeaders);
@@ -481,10 +481,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
 
     it('supports ordering by event property field', async () => {
       const request = {
-        date_range: '30days',
+        dateRange: '30days',
         metrics: ['events'],
-        group_by: ['event:prop:plan'],
-        order_by: [['event:prop:plan', 'asc']],
+        groupBy: ['event:prop:plan'],
+        orderBy: [['event:prop:plan', 'asc']],
         filters: [
           {
             type: 'event',
@@ -509,10 +509,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
 
     it('supports pagination with limit and offset', async () => {
       const request = {
-        date_range: '30days',
+        dateRange: '30days',
         metrics: ['users'],
-        group_by: ['country'],
-        order_by: [['country', 'asc']],
+        groupBy: ['country'],
+        orderBy: [['country', 'asc']],
         limit: 1,
         offset: 1,
       };
@@ -526,10 +526,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
           to: '2026-02-17T23:59:59Z',
         },
         query: {
-          date_range: '30days',
-          group_by: ['country'],
+          dateRange: '30days',
+          groupBy: ['country'],
           metrics: ['users'],
-          order_by: [['country', 'asc']],
+          orderBy: [['country', 'asc']],
           limit: 1,
           offset: 1,
         },
@@ -549,10 +549,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
 
     it('returns exact event property breakdown scoped via filters', async () => {
       const request = {
-        date_range: '30days',
+        dateRange: '30days',
         metrics: ['events'],
-        group_by: ['event:prop:plan'],
-        order_by: [['events', 'desc']],
+        groupBy: ['event:prop:plan'],
+        orderBy: [['events', 'desc']],
         filters: [
           {
             type: 'event',
@@ -573,10 +573,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
           to: '2026-02-17T23:59:59Z',
         },
         query: {
-          date_range: '30days',
-          group_by: ['event:prop:plan'],
+          dateRange: '30days',
+          groupBy: ['event:prop:plan'],
           metrics: ['events'],
-          order_by: [['events', 'desc']],
+          orderBy: [['events', 'desc']],
           limit: 100,
           offset: 0,
           filters: [
@@ -588,7 +588,7 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
               },
             },
           ],
-          filters_operator: 'and',
+          filtersOperator: 'and',
         },
         pagination: {
           limit: 100,
@@ -611,10 +611,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
     it('applies event filters directly to event metric rows', async () => {
       const response = await postAnalyticsQuery(
         {
-          date_range: '30days',
+          dateRange: '30days',
           metrics: ['events'],
-          group_by: ['event:prop:plan'],
-          order_by: [['events', 'desc']],
+          groupBy: ['event:prop:plan'],
+          orderBy: [['events', 'desc']],
           filters: [
             {
               type: 'event',
@@ -649,9 +649,9 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
     it('applies page filters directly to pageviews metric rows', async () => {
       const response = await postAnalyticsQuery(
         {
-          date_range: '30days',
+          dateRange: '30days',
           metrics: ['pageviews'],
-          group_by: [],
+          groupBy: [],
           filters: [
             {
               type: 'page',
@@ -679,10 +679,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
     it('applies page filters directly to grouped pageviews rows', async () => {
       const response = await postAnalyticsQuery(
         {
-          date_range: '30days',
+          dateRange: '30days',
           metrics: ['pageviews'],
-          group_by: ['country'],
-          order_by: [['country', 'asc']],
+          groupBy: ['country'],
+          orderBy: [['country', 'asc']],
           filters: [
             {
               type: 'page',
@@ -710,10 +710,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
     it('applies page filters directly to grouped users rows when mixed with pageviews', async () => {
       const response = await postAnalyticsQuery(
         {
-          date_range: '30days',
+          dateRange: '30days',
           metrics: ['users', 'pageviews'],
-          group_by: ['page:path'],
-          order_by: [['page:path', 'asc']],
+          groupBy: ['page:path'],
+          orderBy: [['page:path', 'asc']],
           filters: [
             {
               type: 'page',
@@ -741,10 +741,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
     it('applies event filters directly to grouped event rows', async () => {
       const response = await postAnalyticsQuery(
         {
-          date_range: '30days',
+          dateRange: '30days',
           metrics: ['events'],
-          group_by: ['country'],
-          order_by: [['country', 'asc']],
+          groupBy: ['country'],
+          orderBy: [['country', 'asc']],
           filters: [
             {
               type: 'event',
@@ -779,10 +779,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
     it('treats page filters as cohort filters for events rows (dashboard-compatible)', async () => {
       const response = await postAnalyticsQuery(
         {
-          date_range: '30days',
+          dateRange: '30days',
           metrics: ['events'],
-          group_by: ['event:name'],
-          order_by: [['event:name', 'asc']],
+          groupBy: ['event:name'],
+          orderBy: [['event:name', 'asc']],
           filters: [
             {
               type: 'page',
@@ -811,10 +811,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
     it('keeps grouped page rows constrained to page filters when mixing events and pageviews', async () => {
       const response = await postAnalyticsQuery(
         {
-          date_range: '30days',
+          dateRange: '30days',
           metrics: ['events', 'pageviews'],
-          group_by: ['page:path'],
-          order_by: [['pageviews', 'desc']],
+          groupBy: ['page:path'],
+          orderBy: [['pageviews', 'desc']],
           filters: [
             {
               type: 'page',
@@ -842,10 +842,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
     it('applies event filters directly to grouped users rows when mixed with events by event:name', async () => {
       const response = await postAnalyticsQuery(
         {
-          date_range: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+          dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
           metrics: ['users', 'events'],
-          group_by: ['event:name'],
-          order_by: [['event:name', 'asc']],
+          groupBy: ['event:name'],
+          orderBy: [['event:name', 'asc']],
           filters: [
             {
               type: 'event',
@@ -873,10 +873,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
     it('applies event filters directly to grouped users rows when mixed with events by event property', async () => {
       const response = await postAnalyticsQuery(
         {
-          date_range: '30days',
+          dateRange: '30days',
           metrics: ['users', 'events'],
-          group_by: ['event:prop:plan'],
-          order_by: [['event:prop:plan', 'asc']],
+          groupBy: ['event:prop:plan'],
+          orderBy: [['event:prop:plan', 'asc']],
           filters: [
             {
               type: 'event',
@@ -911,10 +911,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
     it('does not expose __all__ placeholder for event property grouping', async () => {
       const response = await postAnalyticsQuery(
         {
-          date_range: '30days',
-          metrics: ['users', 'pageviews', 'events', 'bounce_rate', 'visit_duration'],
-          group_by: ['event:prop:plan'],
-          order_by: [['events', 'desc']],
+          dateRange: '30days',
+          metrics: ['users', 'pageviews', 'events', 'bounceRate', 'visitDuration'],
+          groupBy: ['event:prop:plan'],
+          orderBy: [['events', 'desc']],
           filters: [
             {
               type: 'event',
@@ -934,7 +934,7 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
       };
       expect(body.data.some((row) => Object.values(row.group).includes('__all__'))).toBe(false);
       expect(body.data.every((row) => row.group['event:prop:plan'] !== '__all__')).toBe(true);
-      expect(body.data.every((row) => row.metrics.bounce_rate === null && row.metrics.visit_duration === null)).toBe(
+      expect(body.data.every((row) => row.metrics.bounceRate === null && row.metrics.visitDuration === null)).toBe(
         true,
       );
     });
@@ -942,10 +942,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
     it('returns only requested metrics in metrics object', async () => {
       const response = await postAnalyticsQuery(
         {
-          date_range: '30days',
+          dateRange: '30days',
           metrics: ['users'],
-          group_by: ['country'],
-          order_by: [['country', 'asc']],
+          groupBy: ['country'],
+          orderBy: [['country', 'asc']],
         },
         isolated.authHeaders,
       );
@@ -957,10 +957,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
           to: '2026-02-17T23:59:59Z',
         },
         query: {
-          date_range: '30days',
-          group_by: ['country'],
+          dateRange: '30days',
+          groupBy: ['country'],
           metrics: ['users'],
-          order_by: [['country', 'asc']],
+          orderBy: [['country', 'asc']],
           limit: 100,
           offset: 0,
         },
@@ -987,10 +987,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
     it('returns exact period for custom UTC datetime range with time components', async () => {
       const response = await postAnalyticsQuery(
         {
-          date_range: ['2026-02-10T06:30:00Z', '2026-02-11T08:45:00Z'],
+          dateRange: ['2026-02-10T06:30:00Z', '2026-02-11T08:45:00Z'],
           metrics: ['users'],
-          group_by: ['country'],
-          order_by: [['country', 'asc']],
+          groupBy: ['country'],
+          orderBy: [['country', 'asc']],
         },
         isolated.authHeaders,
       );
@@ -1002,10 +1002,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
           to: '2026-02-11T08:45:00Z',
         },
         query: {
-          date_range: ['2026-02-10T06:30:00Z', '2026-02-11T08:45:00Z'],
-          group_by: ['country'],
+          dateRange: ['2026-02-10T06:30:00Z', '2026-02-11T08:45:00Z'],
+          groupBy: ['country'],
           metrics: ['users'],
-          order_by: [['country', 'asc']],
+          orderBy: [['country', 'asc']],
           limit: 100,
           offset: 0,
         },
@@ -1021,10 +1021,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
     it('returns empty grouped result when date range has no matching data', async () => {
       const response = await postAnalyticsQuery(
         {
-          date_range: ['2026-02-10', '2026-02-11'],
+          dateRange: ['2026-02-10', '2026-02-11'],
           metrics: ['users'],
-          group_by: ['country'],
-          order_by: [['country', 'asc']],
+          groupBy: ['country'],
+          orderBy: [['country', 'asc']],
         },
         isolated.authHeaders,
       );
@@ -1036,10 +1036,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
           to: '2026-02-11T23:59:59Z',
         },
         query: {
-          date_range: ['2026-02-10', '2026-02-11'],
-          group_by: ['country'],
+          dateRange: ['2026-02-10', '2026-02-11'],
+          groupBy: ['country'],
           metrics: ['users'],
-          order_by: [['country', 'asc']],
+          orderBy: [['country', 'asc']],
           limit: 100,
           offset: 0,
         },
@@ -1055,9 +1055,9 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
     it('returns zeroed aggregate row when date range has no matching data', async () => {
       const response = await postAnalyticsQuery(
         {
-          date_range: ['2026-02-10', '2026-02-11'],
+          dateRange: ['2026-02-10', '2026-02-11'],
           metrics: ['users', 'events'],
-          group_by: [],
+          groupBy: [],
         },
         isolated.authHeaders,
       );
@@ -1069,10 +1069,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
           to: '2026-02-11T23:59:59Z',
         },
         query: {
-          date_range: ['2026-02-10', '2026-02-11'],
-          group_by: [],
+          dateRange: ['2026-02-10', '2026-02-11'],
+          groupBy: [],
           metrics: ['users', 'events'],
-          order_by: [],
+          orderBy: [],
           limit: 100,
           offset: 0,
         },
@@ -1098,10 +1098,10 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
     it('allows event property grouping when event filter is missing', async () => {
       const response = await postAnalyticsQuery(
         {
-          date_range: '30days',
+          dateRange: '30days',
           metrics: ['events'],
-          group_by: ['event:prop:plan'],
-          order_by: [['events', 'desc']],
+          groupBy: ['event:prop:plan'],
+          orderBy: [['events', 'desc']],
         },
         isolated.authHeaders,
       );
@@ -1114,9 +1114,9 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
     it('allows event property grouping when event filter has no nameFilter', async () => {
       const response = await postAnalyticsQuery(
         {
-          date_range: '30days',
+          dateRange: '30days',
           metrics: ['events'],
-          group_by: ['event:prop:plan'],
+          groupBy: ['event:prop:plan'],
           filters: [
             {
               type: 'event',
@@ -1138,12 +1138,12 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
       expect(Array.isArray(body.data)).toBe(true);
     });
 
-    it('rejects reversed custom date_range array', async () => {
+    it('rejects reversed custom dateRange array', async () => {
       const response = await postAnalyticsQuery(
         {
-          date_range: ['2026-02-17', '2026-01-18'],
+          dateRange: ['2026-02-17', '2026-01-18'],
           metrics: ['users'],
-          group_by: [],
+          groupBy: [],
         },
         isolated.authHeaders,
       );
@@ -1156,13 +1156,13 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
       });
     });
 
-    it('rejects invalid order_by direction', async () => {
+    it('rejects invalid orderBy direction', async () => {
       const response = await postAnalyticsQuery(
         {
-          date_range: '30days',
+          dateRange: '30days',
           metrics: ['users'],
-          group_by: ['country'],
-          order_by: [['country', 'down']],
+          groupBy: ['country'],
+          orderBy: [['country', 'down']],
         },
         isolated.authHeaders,
       );

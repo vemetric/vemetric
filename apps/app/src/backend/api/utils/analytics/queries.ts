@@ -31,11 +31,11 @@ export async function queryMetricRows(input: {
       });
       break;
     }
-    case 'visit_duration': {
+    case 'visitDuration': {
       rows = await clickhouseSession.queryApiVisitDurationRows(params);
       break;
     }
-    case 'bounce_rate': {
+    case 'bounceRate': {
       rows = await clickhouseEvent.queryApiBounceRateRows(params);
       break;
     }

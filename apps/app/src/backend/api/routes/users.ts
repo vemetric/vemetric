@@ -18,9 +18,6 @@ import { formatApiDate, resolveApiDateRange, toApiTimestamp } from '../utils/dat
 import { ApiError } from '../utils/errors';
 
 const API_USERS_FIELD_TO_INTERNAL = {
-  last_seen_at: 'lastSeenAt',
-  display_name: 'displayName',
-  identifier: 'identifier',
   country: 'countryCode',
 } as const;
 
@@ -110,10 +107,10 @@ const usersSingleRoute = createRoute({
 export function registerUserRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
   api.openapi(usersListRoute, async ({ req, json, var: { project, subscriptionStatus } }) => {
     const payload = req.valid('json');
-    const firstOrderBy = payload.order_by?.[0];
+    const firstOrderBy = payload.orderBy?.[0];
     const projectId = BigInt(project.id);
 
-    const resolvedDateRange = resolveApiDateRange(payload.date_range ?? '30days');
+    const resolvedDateRange = resolveApiDateRange(payload.dateRange ?? '30days');
     const startDate = resolvedDateRange.startDate;
     const endDate = resolvedDateRange.endDate;
 
@@ -127,7 +124,7 @@ export function registerUserRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
       throw new ApiError(403, 'PLAN_LIMIT_EXCEEDED', RETENTION_UPGRADE_MESSAGE);
     }
 
-    const filterConfig = mapApiFilterConfig(payload.filters, payload.filters_operator);
+    const filterConfig = mapApiFilterConfig(payload.filters, payload.filtersOperator);
     const funnelsData = filterConfig ? await getFilterFunnelsData(project.id, filterConfig) : null;
     const { filterQueries } = getUserFilterQueries({
       filterConfig,
@@ -138,7 +135,7 @@ export function registerUserRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
     });
 
     const orderByConfig: IUserSortConfig =
-      firstOrderBy?.[0] === 'last_event_fired'
+      firstOrderBy?.[0] === 'lastEventFired'
         ? {
             direction: firstOrderBy[1],
             by: mapApiEventFilter({
@@ -150,8 +147,9 @@ export function registerUserRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
             by: {
               type: 'field',
               fieldName:
-                API_USERS_FIELD_TO_INTERNAL[firstOrderBy?.[0] ?? 'last_seen_at'] ??
-                API_USERS_FIELD_TO_INTERNAL.last_seen_at,
+                API_USERS_FIELD_TO_INTERNAL[firstOrderBy?.[0] as keyof typeof API_USERS_FIELD_TO_INTERNAL] ??
+                firstOrderBy?.[0] ??
+                'lastSeenAt',
             },
             direction: firstOrderBy?.[1] ?? 'desc',
           };
@@ -187,12 +185,12 @@ export function registerUserRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
           return {
             id: String(row.id),
             identifier,
-            display_name: displayName,
+            displayName,
             country: normalizeCountryCode(row.countryCode),
             city: normalizeNullableString(row.city),
-            last_seen_at: toApiTimestamp(row.lastSeenAt),
-            last_event_fired_at: toApiTimestamp(row.lastEventFiredAt),
-            avatar_url: normalizeNullableString(row.avatarUrl),
+            lastSeenAt: toApiTimestamp(row.lastSeenAt),
+            lastEventFiredAt: toApiTimestamp(row.lastEventFiredAt),
+            avatarUrl: normalizeNullableString(row.avatarUrl),
             anonymous: identifier === null,
           };
         }),
@@ -237,11 +235,11 @@ export function registerUserRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
         user: {
           id: String(resolvedUserId),
           identifier,
-          display_name: displayName,
+          displayName,
           country: countryCode,
           city,
-          last_seen_at: toApiTimestamp(latestEvent?.createdAt),
-          avatar_url: normalizeNullableString(user?.avatarUrl),
+          lastSeenAt: toApiTimestamp(latestEvent?.createdAt),
+          avatarUrl: normalizeNullableString(user?.avatarUrl),
           anonymous: identifier === null,
         },
       },

@@ -61,9 +61,9 @@ export function registerAnalyticsRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
   api.openapi(analyticsRoute, async ({ req, json, var: { project, subscriptionStatus } }) => {
     const payload = req.valid('json');
 
-    const grouping = parseMetricsQueryGroupingToken(payload.group_by[0] ?? null);
-    const filterConfig = mapApiFilterConfig(payload.filters, payload.filters_operator);
-    const { timespan, startDate, endDate } = resolveApiDateRange(payload.date_range);
+    const grouping = parseMetricsQueryGroupingToken(payload.groupBy[0] ?? null);
+    const filterConfig = mapApiFilterConfig(payload.filters, payload.filtersOperator);
+    const { timespan, startDate, endDate } = resolveApiDateRange(payload.dateRange);
     if (
       isRetentionRestricted({
         timespan,
@@ -123,7 +123,7 @@ export function registerAnalyticsRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
       }, {}),
     }));
 
-    const sortedRows = applyOrdering(rows, payload.order_by);
+    const sortedRows = applyOrdering(rows, payload.orderBy);
     const effectiveLimit = grouping.kind === 'none' ? 1 : payload.limit;
     const effectiveOffset = grouping.kind === 'none' ? 0 : payload.offset;
     const paginatedRows = sortedRows.slice(effectiveOffset, effectiveOffset + effectiveLimit);
@@ -135,16 +135,16 @@ export function registerAnalyticsRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
           to: formatApiDate(endDate ?? new Date()),
         },
         query: {
-          date_range: payload.date_range,
-          group_by: payload.group_by,
+          dateRange: payload.dateRange,
+          groupBy: payload.groupBy,
           metrics: selectedMetrics,
-          order_by: payload.order_by,
+          orderBy: payload.orderBy,
           limit: payload.limit,
           offset: payload.offset,
           ...(payload.filters
             ? {
                 filters: payload.filters,
-                filters_operator: payload.filters_operator,
+                filtersOperator: payload.filtersOperator,
               }
             : {}),
         },

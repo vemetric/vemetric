@@ -39,6 +39,22 @@ async function postUsersQuery(
   });
 }
 
+async function getSingleUser(
+  query: Record<string, string>,
+  headers: {
+    Authorization: string;
+    'Content-Type': 'application/json';
+  },
+) {
+  const app = createPublicApi();
+  const search = new URLSearchParams(query);
+
+  return app.request(`/v1/users/single?${search.toString()}`, {
+    method: 'GET',
+    headers,
+  });
+}
+
 describe('POST /api/v1/users (integration, seeded fixtures)', () => {
   const findByKeyHash = findByKeyHashMock as Mock;
   const getRedisClient = getRedisClientMock as Mock;
@@ -96,7 +112,8 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
           id: '4',
           identifier: 'user-4',
           display_name: 'Charlie',
-          country_code: 'DE',
+          country: 'DE',
+          city: 'Berlin',
           last_seen_at: '2026-01-19T11:20:00Z',
           last_event_fired_at: null,
           avatar_url: null,
@@ -106,7 +123,8 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
           id: '3',
           identifier: 'user-3',
           display_name: 'Bravo',
-          country_code: 'US',
+          country: 'US',
+          city: 'San Francisco',
           last_seen_at: '2026-01-19T09:15:00Z',
           last_event_fired_at: null,
           avatar_url: null,
@@ -116,7 +134,8 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
           id: '2',
           identifier: 'user-2',
           display_name: 'Echo',
-          country_code: 'US',
+          country: 'US',
+          city: null,
           last_seen_at: '2026-01-18T10:06:00Z',
           last_event_fired_at: null,
           avatar_url: null,
@@ -126,7 +145,8 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
           id: '1',
           identifier: 'user-1',
           display_name: 'Zulu',
-          country_code: 'US',
+          country: 'US',
+          city: 'New York',
           last_seen_at: '2026-01-18T09:02:00Z',
           last_event_fired_at: null,
           avatar_url: null,
@@ -362,7 +382,8 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
       id: '5',
       identifier: null,
       display_name: null,
-      country_code: null,
+      country: 'DE',
+      city: 'Berlin',
       last_seen_at: '2025-12-25T08:01:00Z',
       last_event_fired_at: null,
       avatar_url: null,
@@ -392,6 +413,72 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
           last_event_fired_at: null,
         },
       ],
+    });
+  });
+
+  it('returns a single user by id', async () => {
+    const response = await getSingleUser({ id: '3' }, isolated.authHeaders);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      user: {
+        id: '3',
+        identifier: 'user-3',
+        display_name: 'Bravo',
+        country: 'US',
+        city: 'San Francisco',
+        last_seen_at: '2026-01-19T09:15:00Z',
+        avatar_url: null,
+        anonymous: false,
+      },
+    });
+  });
+
+  it('returns a single user by identifier', async () => {
+    const response = await getSingleUser({ identifier: 'user-1' }, isolated.authHeaders);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      user: {
+        id: '1',
+        identifier: 'user-1',
+        display_name: 'Zulu',
+        country: 'US',
+        city: 'New York',
+        last_seen_at: '2026-01-18T09:02:00Z',
+        avatar_url: null,
+        anonymous: false,
+      },
+    });
+  });
+
+  it('returns 404 when user is not found', async () => {
+    const response = await getSingleUser({ identifier: 'does-not-exist@example.com' }, isolated.authHeaders);
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'USER_NOT_FOUND',
+        message: 'User not found',
+      },
+    });
+  });
+
+  it('returns single anonymous user data from latest event when requested by id', async () => {
+    const response = await getSingleUser({ id: '5' }, isolated.authHeaders);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      user: {
+        id: '5',
+        identifier: null,
+        display_name: null,
+        country: 'DE',
+        city: 'Berlin',
+        last_seen_at: '2025-12-25T08:01:00Z',
+        avatar_url: null,
+        anonymous: true,
+      },
     });
   });
 });

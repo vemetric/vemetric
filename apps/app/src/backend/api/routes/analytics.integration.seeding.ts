@@ -4,8 +4,10 @@ import {
   clickhouseClient,
   clickhouseEvent,
   clickhouseSession,
+  clickhouseUser,
   type ClickhouseEvent,
   type ClickhouseSession,
+  type ClickhouseUser,
 } from 'clickhouse';
 
 type ApiKeyProjectRecord = {
@@ -56,23 +58,6 @@ function buildRawApiKey(seed: number): string {
   return `vem_${suffix}`;
 }
 
-function getDefaultDisplayName(userId: bigint): string {
-  const value = Number(userId);
-  if (value === 1) {
-    return 'Zulu';
-  }
-  if (value === 2) {
-    return 'Echo';
-  }
-  if (value === 3) {
-    return 'Bravo';
-  }
-  if (value === 4) {
-    return 'Charlie';
-  }
-  return `User ${userId}`;
-}
-
 function baseSession(input: {
   projectId: bigint;
   userId: bigint;
@@ -98,7 +83,7 @@ function baseSession(input: {
     userId: input.userId,
     id: input.id,
     userIdentifier: input.userIdentifier ?? `user-${input.userId}`,
-    userDisplayName: input.userDisplayName ?? getDefaultDisplayName(input.userId),
+    userDisplayName: input.userDisplayName ?? '',
     startedAt: input.startedAt,
     endedAt: input.endedAt,
     duration: input.duration,
@@ -161,7 +146,7 @@ function baseEvent(input: {
     isPageView: input.isPageView,
     userAgent: 'Mozilla/5.0',
     userIdentifier: input.userIdentifier ?? `user-${input.userId}`,
-    userDisplayName: input.userDisplayName ?? getDefaultDisplayName(input.userId),
+    userDisplayName: input.userDisplayName ?? '',
     requestHeaders: {},
     customData: input.customData ?? {},
     importSource: 'integration-test',
@@ -238,6 +223,11 @@ async function truncateAnalyticsFixtureData(projectId: string): Promise<void> {
     query: 'ALTER TABLE session DELETE WHERE projectId = {projectId:UInt64} SETTINGS mutations_sync = 2',
     query_params: { projectId },
   });
+
+  await clickhouseClient.command({
+    query: 'ALTER TABLE user DELETE WHERE projectId = {projectId:UInt64} SETTINGS mutations_sync = 2',
+    query_params: { projectId },
+  });
 }
 
 export async function resetAnalyticsFixtureData(context: IsolatedAnalyticsSeedContext): Promise<void> {
@@ -263,6 +253,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
   const projectId = BigInt(context.projectId);
   const dimensionsByUser = {
     1: {
+      userDisplayName: 'Zulu',
       city: 'New York',
       browser: 'Chrome',
       deviceType: 'desktop',
@@ -277,6 +268,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       utmTerm: 'analytics',
     },
     2: {
+      userDisplayName: 'Echo',
       city: '',
       browser: 'Firefox',
       deviceType: 'mobile',
@@ -291,6 +283,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       utmTerm: 'opensource',
     },
     3: {
+      userDisplayName: 'Bravo',
       city: 'San Francisco',
       browser: 'Safari',
       deviceType: 'desktop',
@@ -305,6 +298,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       utmTerm: 'metrics',
     },
     4: {
+      userDisplayName: 'Charlie',
       city: 'Berlin',
       browser: 'Chrome',
       deviceType: 'tablet',
@@ -369,10 +363,10 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       startedAt: '2025-12-25 08:00:00',
       endedAt: '2025-12-25 08:03:00',
       duration: 45,
-      countryCode: '',
+      countryCode: 'DE',
       userIdentifier: '',
       userDisplayName: '',
-      city: '',
+      city: 'Berlin',
       referrer: '',
       referrerUrl: '',
       referrerType: 'direct',
@@ -558,11 +552,11 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       createdAt: '2025-12-25 08:01:00',
       isPageView: true,
       name: '',
-      countryCode: '',
+      countryCode: 'DE',
       pathname: '/landing',
       userIdentifier: '',
       userDisplayName: '',
-      city: '',
+      city: 'Berlin',
       referrer: '',
       referrerUrl: '',
       referrerType: 'direct',
@@ -574,6 +568,126 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
     }),
   ];
 
+  const users: ClickhouseUser[] = [
+    {
+      projectId,
+      id: BigInt(1),
+      identifier: 'user-1',
+      displayName: 'Zulu',
+      avatarUrl: '',
+      createdAt: '2026-01-18 09:00:00',
+      firstSeenAt: '2026-01-18 09:00:00',
+      updatedAt: '2026-01-19 09:15:00',
+      initialDeviceId: BigInt(1),
+      countryCode: 'US',
+      city: 'New York',
+      latitude: null,
+      longitude: null,
+      userAgent: 'Mozilla/5.0',
+      referrer: 'Google',
+      referrerUrl: 'https://google.com',
+      referrerType: 'search',
+      origin: 'https://example.com',
+      pathname: '/',
+      urlHash: '',
+      queryParams: {},
+      utmSource: 'google',
+      utmMedium: 'cpc',
+      utmCampaign: 'winter_launch',
+      utmContent: 'hero_cta',
+      utmTerm: 'analytics',
+      customData: {},
+    },
+    {
+      projectId,
+      id: BigInt(2),
+      identifier: 'user-2',
+      displayName: 'Echo',
+      avatarUrl: '',
+      createdAt: '2026-01-18 10:00:00',
+      firstSeenAt: '2026-01-18 10:00:00',
+      updatedAt: '2026-01-19 11:20:00',
+      initialDeviceId: BigInt(2),
+      countryCode: 'US',
+      city: '',
+      latitude: null,
+      longitude: null,
+      userAgent: 'Mozilla/5.0',
+      referrer: '',
+      referrerUrl: 'https://news.ycombinator.com',
+      referrerType: 'social',
+      origin: 'https://example.com',
+      pathname: '/',
+      urlHash: '',
+      queryParams: {},
+      utmSource: 'hn',
+      utmMedium: 'social',
+      utmCampaign: 'winter_launch',
+      utmContent: 'text_link',
+      utmTerm: 'opensource',
+      customData: {},
+    },
+    {
+      projectId,
+      id: BigInt(3),
+      identifier: 'user-3',
+      displayName: 'Bravo',
+      avatarUrl: '',
+      createdAt: '2026-01-19 09:00:00',
+      firstSeenAt: '2026-01-19 09:00:00',
+      updatedAt: '2026-01-19 09:15:00',
+      initialDeviceId: BigInt(3),
+      countryCode: 'US',
+      city: 'San Francisco',
+      latitude: null,
+      longitude: null,
+      userAgent: 'Mozilla/5.0',
+      referrer: 'Newsletter',
+      referrerUrl: 'https://newsletter.example.com',
+      referrerType: 'email',
+      origin: 'https://example.com',
+      pathname: '/',
+      urlHash: '',
+      queryParams: {},
+      utmSource: 'newsletter',
+      utmMedium: 'email',
+      utmCampaign: 'jan_push',
+      utmContent: 'button',
+      utmTerm: 'metrics',
+      customData: {},
+    },
+    {
+      projectId,
+      id: BigInt(4),
+      identifier: 'user-4',
+      displayName: 'Charlie',
+      avatarUrl: '',
+      createdAt: '2026-01-19 11:00:00',
+      firstSeenAt: '2026-01-19 11:00:00',
+      updatedAt: '2026-01-19 11:20:00',
+      initialDeviceId: BigInt(4),
+      countryCode: 'DE',
+      city: 'Berlin',
+      latitude: null,
+      longitude: null,
+      userAgent: 'Mozilla/5.0',
+      referrer: 'Bing',
+      referrerUrl: 'https://bing.com',
+      referrerType: 'search',
+      origin: 'https://example.com',
+      pathname: '/',
+      urlHash: '',
+      queryParams: {},
+      utmSource: 'bing',
+      utmMedium: 'cpc',
+      utmCampaign: 'jan_push',
+      utmContent: 'ad_1',
+      utmTerm: 'privacy',
+      customData: {},
+    },
+  ];
+
+  await clickhouseUser.insert(users);
   await clickhouseSession.insert(sessions);
   await clickhouseEvent.insert(events);
 }

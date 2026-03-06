@@ -1,11 +1,16 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import { createRoute, z } from '@hono/zod-openapi';
 import type { IUserSortConfig } from '@vemetric/common/sort';
-import { clickhouseEvent, getUserFilterQueries } from 'clickhouse';
+import { clickhouseEvent, clickhouseUser, getUserFilterQueries } from 'clickhouse';
 import { getFilterFunnelsData } from '../../utils/filter';
 import { isRetentionRestricted, RETENTION_UPGRADE_MESSAGE } from '../../utils/retention';
 import { authorizationHeaderSchema, commonOpenApiErrorResponses } from '../schemas/common';
-import { usersListRequestSchema, usersListResponseSchema } from '../schemas/users';
+import {
+  userSingleQuerySchema,
+  usersListRequestSchema,
+  usersListResponseSchema,
+  usersSingleResponseSchema,
+} from '../schemas/users';
 import type { PublicApiHonoEnv } from '../types';
 import { mapApiEventFilter, mapApiFilterConfig } from '../utils/api-filter-mapper';
 import { normalizeCountryCode, normalizeNullableString } from '../utils/common';
@@ -16,7 +21,7 @@ const API_USERS_FIELD_TO_INTERNAL = {
   last_seen_at: 'lastSeenAt',
   display_name: 'displayName',
   identifier: 'identifier',
-  country_code: 'countryCode',
+  country: 'countryCode',
 } as const;
 
 const usersListRoute = createRoute({
@@ -53,6 +58,47 @@ const usersListRoute = createRoute({
               code: z.literal('PLAN_LIMIT_EXCEEDED'),
               message: z.string(),
             }),
+          }),
+        },
+      },
+    },
+    ...commonOpenApiErrorResponses,
+  },
+});
+
+const usersSingleRoute = createRoute({
+  method: 'get',
+  path: '/v1/users/single',
+  summary: 'Get user',
+  description: 'Returns one user by id or identifier.',
+  request: {
+    headers: authorizationHeaderSchema,
+    query: userSingleQuerySchema,
+  },
+  responses: {
+    200: {
+      description: 'Success',
+      content: {
+        'application/json': {
+          schema: usersSingleResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: 'User was not found',
+      content: {
+        'application/json': {
+          schema: z.object({
+            error: z
+              .object({
+                code: z.literal('USER_NOT_FOUND').openapi({
+                  description: 'Machine-readable error code.',
+                }),
+                message: z.string().openapi({
+                  description: 'Human-readable error message.',
+                }),
+              })
+              .openapi({ description: 'Error details.' }),
           }),
         },
       },
@@ -142,13 +188,62 @@ export function registerUserRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
             id: String(row.id),
             identifier,
             display_name: displayName,
-            country_code: normalizeCountryCode(row.countryCode),
+            country: normalizeCountryCode(row.countryCode),
+            city: normalizeNullableString(row.city),
             last_seen_at: toApiTimestamp(row.lastSeenAt),
             last_event_fired_at: toApiTimestamp(row.lastEventFiredAt),
             avatar_url: normalizeNullableString(row.avatarUrl),
             anonymous: identifier === null,
           };
         }),
+      },
+      200,
+    );
+  });
+
+  api.openapi(usersSingleRoute, async ({ req, json, var: { project } }) => {
+    const query = req.valid('query');
+    const projectId = BigInt(project.id);
+    const userId = query.id !== undefined ? BigInt(query.id) : undefined;
+
+    const user =
+      query.id !== undefined
+        ? await clickhouseUser.findById(projectId, userId as bigint)
+        : await clickhouseUser.findByIdentifier(projectId, query.identifier as string);
+
+    const resolvedUserId = user?.id ?? userId;
+    if (resolvedUserId === undefined) {
+      throw new ApiError(404, 'USER_NOT_FOUND', 'User not found');
+    }
+
+    const latestEvents = await clickhouseEvent.getLatestEventsByUserId({
+      projectId,
+      userId: resolvedUserId,
+      limit: 1,
+    });
+    const latestEvent = latestEvents[0] ?? null;
+
+    if (!user && !latestEvent) {
+      throw new ApiError(404, 'USER_NOT_FOUND', 'User not found');
+    }
+
+    const identifier = normalizeNullableString(user?.identifier || latestEvent?.userIdentifier);
+    const displayName = normalizeNullableString(user?.displayName || latestEvent?.userDisplayName);
+    const countryCode = normalizeCountryCode(user?.countryCode || latestEvent?.countryCode);
+    const city = normalizeNullableString(user?.city || latestEvent?.city);
+
+    return json(
+      {
+        user: {
+          id: String(resolvedUserId),
+          identifier,
+          display_name: displayName,
+          country: countryCode,
+          city,
+          last_seen_at: toApiTimestamp(latestEvent?.createdAt),
+          avatar_url: normalizeNullableString(user?.avatarUrl),
+          anonymous: identifier === null,
+        },
       },
       200,
     );

@@ -11,7 +11,7 @@ import { buildGroupObject } from '../utils/analytics/grouping';
 import { getEmptyMetricValue, normalizeMetricValue } from '../utils/analytics/metrics';
 import { applyOrdering } from '../utils/analytics/ordering';
 import { queryMetricRows } from '../utils/analytics/queries';
-import { mapApiFilterConfig } from '../utils/api-filter-mapper';
+import { mapApiFilterConfig } from '../utils/api-to-internal-filter-mapper';
 import { resolveApiDateRange, formatApiDate } from '../utils/date';
 import { ApiError } from '../utils/errors';
 

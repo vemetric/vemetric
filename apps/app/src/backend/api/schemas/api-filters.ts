@@ -11,7 +11,7 @@ const apiStringFilterSchema = z.object({
   }),
 });
 
-const pageApiFilterSchema = z
+export const pageApiFilterSchema = z
   .object({
     type: z.literal('page'),
     origin: apiStringFilterSchema.optional().openapi({

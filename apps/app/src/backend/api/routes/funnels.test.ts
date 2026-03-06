@@ -35,10 +35,7 @@ describe('GET /api/v1/funnels', () => {
     });
   });
 
-  it('returns saved funnels for the authenticated project', async () => {
-    const createdAt = new Date('2026-03-01T10:00:00.000Z');
-    const updatedAt = new Date('2026-03-02T11:30:00.000Z');
-
+  function mockValidApiKey() {
     findByKeyHash.mockResolvedValueOnce({
       id: 'key_123',
       projectId: '100',
@@ -54,6 +51,44 @@ describe('GET /api/v1/funnels', () => {
         excludedCountries: '',
       },
     });
+  }
+
+  it('returns 401 when Authorization header is missing', async () => {
+    const app = createPublicApi();
+    const response = await app.request('/v1/funnels', { method: 'GET' });
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Missing API key. Use Authorization: Bearer <key>',
+      },
+    });
+  });
+
+  it('returns an empty list when project has no funnels', async () => {
+    mockValidApiKey();
+    findByProjectId.mockResolvedValueOnce([]);
+
+    const app = createPublicApi();
+    const response = await app.request('/v1/funnels', {
+      method: 'GET',
+      headers: {
+        Authorization: 'Bearer vem_abcdefghijklmnopqrstuvwxyz123456',
+      },
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      funnels: [],
+    });
+  });
+
+  it('returns saved funnels for the authenticated project', async () => {
+    const createdAt = new Date('2026-03-01T10:00:00.000Z');
+    const updatedAt = new Date('2026-03-02T11:30:00.000Z');
+
+    mockValidApiKey();
 
     findByProjectId.mockResolvedValueOnce([
       {

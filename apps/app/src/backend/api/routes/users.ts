@@ -12,7 +12,7 @@ import {
   usersSingleResponseSchema,
 } from '../schemas/users';
 import type { PublicApiHonoEnv } from '../types';
-import { mapApiEventFilter, mapApiFilterConfig } from '../utils/api-filter-mapper';
+import { mapApiEventFilter, mapApiFilterConfig } from '../utils/api-to-internal-filter-mapper';
 import { normalizeCountryCode, normalizeNullableString } from '../utils/common';
 import { formatApiDate, resolveApiDateRange, toApiTimestamp } from '../utils/date';
 import { ApiError } from '../utils/errors';

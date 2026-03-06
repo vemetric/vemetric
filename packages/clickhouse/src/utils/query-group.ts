@@ -7,15 +7,15 @@ export const metricsGroupFieldTokens = [
   'page:origin',
   'page:path',
   'browser',
-  'device_type',
+  'deviceType',
   'os',
   'referrer',
-  'referrer_type',
-  'utm_campaign',
-  'utm_content',
-  'utm_medium',
-  'utm_source',
-  'utm_term',
+  'referrerType',
+  'utmCampaign',
+  'utmContent',
+  'utmMedium',
+  'utmSource',
+  'utmTerm',
   'event:name',
 ] as const;
 
@@ -60,19 +60,19 @@ function getFieldExpression(token: MetricsGroupFieldToken, scope: MetricsGroupSc
   const sharedFields: Record<
     Exclude<
       MetricsGroupFieldToken,
-      'page:origin' | 'page:path' | 'browser' | 'device_type' | 'os' | 'event:name'
+      'page:origin' | 'page:path' | 'browser' | 'deviceType' | 'os' | 'event:name'
     >,
     string
   > = {
     country: 'countryCode',
     city: 'city',
     referrer: 'referrer',
-    referrer_type: 'referrerType',
-    utm_campaign: 'utmCampaign',
-    utm_content: 'utmContent',
-    utm_medium: 'utmMedium',
-    utm_source: 'utmSource',
-    utm_term: 'utmTerm',
+    referrerType: 'referrerType',
+    utmCampaign: 'utmCampaign',
+    utmContent: 'utmContent',
+    utmMedium: 'utmMedium',
+    utmSource: 'utmSource',
+    utmTerm: 'utmTerm',
   };
 
   if (token in sharedFields) {
@@ -91,7 +91,7 @@ function getFieldExpression(token: MetricsGroupFieldToken, scope: MetricsGroupSc
     return scope === 'event' ? 'clientName' : null;
   }
 
-  if (token === 'device_type') {
+  if (token === 'deviceType') {
     return scope === 'event' ? 'deviceType' : null;
   }
 

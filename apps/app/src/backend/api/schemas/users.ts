@@ -3,14 +3,14 @@ import { sortDirectionSchema } from '@vemetric/common/sort';
 import { apiFilterSchema, apiFiltersOperatorSchema, eventApiFilterSchema } from './api-filters';
 import { apiDateRangeSchema, apiTimestampSchema } from './common';
 
-const usersOrderByFieldSchema = z.enum(['last_seen_at', 'display_name', 'identifier', 'country']).openapi({
+const usersOrderByFieldSchema = z.enum(['lastSeenAt', 'displayName', 'identifier', 'country']).openapi({
   description: 'Sortable user field.',
-  example: 'last_seen_at',
+  example: 'lastSeenAt',
 });
 
-const usersEventOrderByFieldSchema = z.literal('last_event_fired').openapi({
+const usersEventOrderByFieldSchema = z.literal('lastEventFired').openapi({
   description: 'Special sort field that sorts users by when they last fired a matching event filter.',
-  example: 'last_event_fired',
+  example: 'lastEventFired',
 });
 
 const usersEventOrderByFilterSchema = eventApiFilterSchema.omit({ type: true }).openapi({
@@ -24,17 +24,17 @@ const usersOrderByItemSchema = z.union([
 
 const usersOrderBySchema = z
   .array(usersOrderByItemSchema)
-  .max(1, 'order_by can include max one item')
+  .max(1, 'orderBy can include max one item')
   .openapi({
     description:
       "Gives you the ability to order users by a specific field and direction. At the moment it's only possible to order by one field.",
-    default: [['last_seen_at', 'desc']],
+    default: [['lastSeenAt', 'desc']],
     'x-vemetric-docs': {
       hideTupleVariantChildren: true,
     },
     example: [
       [
-        'last_event_fired',
+        'lastEventFired',
         'desc',
         {
           name: { operator: 'eq', value: 'Signup' },
@@ -54,7 +54,7 @@ export const userListItemSchema = z
       description: 'User identifier if available (the value you provided to identify the user).',
       example: 'john@example.com',
     }),
-    display_name: z.string().nullable().openapi({
+    displayName: z.string().nullable().openapi({
       description: 'User display name if available.',
       example: 'John Doe',
     }),
@@ -66,14 +66,14 @@ export const userListItemSchema = z
       description: 'User city, or `null` when unknown.',
       example: 'Berlin',
     }),
-    last_seen_at: apiTimestampSchema.nullable().openapi({
+    lastSeenAt: apiTimestampSchema.nullable().openapi({
       description: 'UTC timestamp of the latest activity for this user within the selected period.',
     }),
-    last_event_fired_at: apiTimestampSchema.nullable().openapi({
+    lastEventFiredAt: apiTimestampSchema.nullable().openapi({
       description:
-        'UTC timestamp of when the user last fired the event referenced by `order_by[0][2]`. Populated only for `order_by[0][0] = "last_event_fired"`, otherwise `null`.',
+        'UTC timestamp of when the user last fired the event referenced by `orderBy[0][2]`. Populated only for `orderBy[0][0] = "lastEventFired"`, otherwise `null`.',
     }),
-    avatar_url: z.string().nullable().openapi({
+    avatarUrl: z.string().nullable().openapi({
       description: 'Avatar URL if available.',
       example: 'https://cdn.example.com/avatar.png',
     }),
@@ -120,7 +120,7 @@ export const userSingleQuerySchema = z
 
 export const usersListRequestSchema = z
   .object({
-    date_range: apiDateRangeSchema.optional(),
+    dateRange: apiDateRangeSchema.optional(),
     filters: z
       .array(apiFilterSchema)
       .optional()
@@ -128,10 +128,10 @@ export const usersListRequestSchema = z
         description: 'Optional filters to restrict the user list.',
         'x-vemetric-docs': { collapseByDefault: true },
       }),
-    filters_operator: apiFiltersOperatorSchema.default('and').openapi({
+    filtersOperator: apiFiltersOperatorSchema.default('and').openapi({
       description: 'Operator to apply between multiple filters.',
     }),
-    order_by: usersOrderBySchema.optional(),
+    orderBy: usersOrderBySchema.optional(),
     limit: z
       .number()
       .int()
@@ -147,15 +147,15 @@ export const usersListRequestSchema = z
       .openapi({ description: 'Number of users to skip from the start of the result set.' }),
   })
   .superRefine((data, ctx) => {
-    if (Array.isArray(data.date_range)) {
-      const [rawStart, rawEnd] = data.date_range;
+    if (Array.isArray(data.dateRange)) {
+      const [rawStart, rawEnd] = data.dateRange;
       const start = new Date(rawStart);
       const end = new Date(rawEnd);
 
       if (start.getTime() > end.getTime()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ['date_range'],
+          path: ['dateRange'],
           message: 'Start date must be before or equal to end date',
         });
       }
@@ -208,7 +208,7 @@ export const usersSingleResponseSchema = z
   .object({
     user: userListItemSchema
       .omit({
-        last_event_fired_at: true,
+        lastEventFiredAt: true,
       })
       .openapi({
         description: 'Resolved user row.',

@@ -88,10 +88,10 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
     });
   });
 
-  it('returns compact user rows with explicit date_range and default sorting', async () => {
+  it('returns compact user rows with explicit dateRange and default sorting', async () => {
     const response = await postUsersQuery(
       {
-        date_range: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+        dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
       },
       isolated.authHeaders,
     );
@@ -111,70 +111,70 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
         {
           id: '4',
           identifier: 'user-4',
-          display_name: 'Charlie',
+          displayName: 'Charlie',
           country: 'DE',
           city: 'Berlin',
-          last_seen_at: '2026-01-19T11:20:00Z',
-          last_event_fired_at: null,
-          avatar_url: null,
+          lastSeenAt: '2026-01-19T11:20:00Z',
+          lastEventFiredAt: null,
+          avatarUrl: null,
           anonymous: false,
         },
         {
           id: '3',
           identifier: 'user-3',
-          display_name: 'Bravo',
+          displayName: 'Bravo',
           country: 'US',
           city: 'San Francisco',
-          last_seen_at: '2026-01-19T09:15:00Z',
-          last_event_fired_at: null,
-          avatar_url: null,
+          lastSeenAt: '2026-01-19T09:15:00Z',
+          lastEventFiredAt: null,
+          avatarUrl: null,
           anonymous: false,
         },
         {
           id: '2',
           identifier: 'user-2',
-          display_name: 'Echo',
+          displayName: 'Echo',
           country: 'US',
           city: null,
-          last_seen_at: '2026-01-18T10:06:00Z',
-          last_event_fired_at: null,
-          avatar_url: null,
+          lastSeenAt: '2026-01-18T10:06:00Z',
+          lastEventFiredAt: null,
+          avatarUrl: null,
           anonymous: false,
         },
         {
           id: '1',
           identifier: 'user-1',
-          display_name: 'Zulu',
+          displayName: 'Zulu',
           country: 'US',
           city: 'New York',
-          last_seen_at: '2026-01-18T09:02:00Z',
-          last_event_fired_at: null,
-          avatar_url: null,
+          lastSeenAt: '2026-01-18T09:02:00Z',
+          lastEventFiredAt: null,
+          avatarUrl: null,
           anonymous: false,
         },
       ],
     });
   });
 
-  it('supports sorting by display_name', async () => {
+  it('supports sorting by displayName', async () => {
     const response = await postUsersQuery(
       {
-        date_range: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
-        order_by: [['display_name', 'asc']],
+        dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+        orderBy: [['displayName', 'asc']],
       },
       isolated.authHeaders,
     );
 
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.users.map((user: { display_name: string | null }) => user.display_name)).toEqual([
+    expect(body.users.map((user: { displayName: string | null }) => user.displayName)).toEqual([
       'Bravo',
       'Charlie',
       'Echo',
       'Zulu',
     ]);
     expect(body.users.map((user: { id: string }) => user.id)).toEqual(['3', '4', '2', '1']);
-    expect(body.users.every((user: { last_event_fired_at: string | null }) => user.last_event_fired_at === null)).toBe(
+    expect(body.users.every((user: { lastEventFiredAt: string | null }) => user.lastEventFiredAt === null)).toBe(
       true,
     );
   });
@@ -182,10 +182,10 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
   it('supports sorting by last time a user fired a specific event', async () => {
     const response = await postUsersQuery(
       {
-        date_range: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
-        order_by: [
+        dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+        orderBy: [
           [
-            'last_event_fired',
+            'lastEventFired',
             'desc',
             {
               name: {
@@ -203,31 +203,31 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
     const body = await response.json();
     expect(body.users.map((user: { id: string }) => user.id).slice(0, 2)).toEqual(['3', '1']);
     expect(
-      body.users.map((user: { id: string; last_seen_at: string | null; last_event_fired_at: string | null }) => ({
+      body.users.map((user: { id: string; lastSeenAt: string | null; lastEventFiredAt: string | null }) => ({
         id: user.id,
-        last_seen_at: user.last_seen_at,
-        last_event_fired_at: user.last_event_fired_at,
+        lastSeenAt: user.lastSeenAt,
+        lastEventFiredAt: user.lastEventFiredAt,
       })),
     ).toEqual([
       {
         id: '3',
-        last_seen_at: '2026-01-19T09:15:00Z',
-        last_event_fired_at: '2026-01-19T09:15:00Z',
+        lastSeenAt: '2026-01-19T09:15:00Z',
+        lastEventFiredAt: '2026-01-19T09:15:00Z',
       },
       {
         id: '1',
-        last_seen_at: '2026-01-18T09:02:00Z',
-        last_event_fired_at: '2026-01-18T09:02:00Z',
+        lastSeenAt: '2026-01-18T09:02:00Z',
+        lastEventFiredAt: '2026-01-18T09:02:00Z',
       },
       {
         id: '2',
-        last_seen_at: '2026-01-18T10:06:00Z',
-        last_event_fired_at: null,
+        lastSeenAt: '2026-01-18T10:06:00Z',
+        lastEventFiredAt: null,
       },
       {
         id: '4',
-        last_seen_at: '2026-01-19T11:20:00Z',
-        last_event_fired_at: null,
+        lastSeenAt: '2026-01-19T11:20:00Z',
+        lastEventFiredAt: null,
       },
     ]);
   });
@@ -235,10 +235,10 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
   it('supports sorting by last time a user fired a specific event with properties', async () => {
     const response = await postUsersQuery(
       {
-        date_range: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
-        order_by: [
+        dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+        orderBy: [
           [
-            'last_event_fired',
+            'lastEventFired',
             'desc',
             {
               name: {
@@ -262,25 +262,25 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(
-      body.users.map((user: { id: string; last_event_fired_at: string | null }) => ({
+      body.users.map((user: { id: string; lastEventFiredAt: string | null }) => ({
         id: user.id,
-        last_event_fired_at: user.last_event_fired_at,
+        lastEventFiredAt: user.lastEventFiredAt,
       })),
     ).toEqual([
-      { id: '3', last_event_fired_at: '2026-01-19T09:15:00Z' },
-      { id: '1', last_event_fired_at: '2026-01-18T09:02:00Z' },
-      { id: '2', last_event_fired_at: null },
-      { id: '4', last_event_fired_at: null },
+      { id: '3', lastEventFiredAt: '2026-01-19T09:15:00Z' },
+      { id: '1', lastEventFiredAt: '2026-01-18T09:02:00Z' },
+      { id: '2', lastEventFiredAt: null },
+      { id: '4', lastEventFiredAt: null },
     ]);
   });
 
-  it('scopes last_event_fired sorting and timestamp to the requested date_range', async () => {
+  it('scopes lastEventFired sorting and timestamp to the requested dateRange', async () => {
     const response = await postUsersQuery(
       {
-        date_range: ['2026-01-19T00:00:00Z', '2026-01-19T23:59:59Z'],
-        order_by: [
+        dateRange: ['2026-01-19T00:00:00Z', '2026-01-19T23:59:59Z'],
+        orderBy: [
           [
-            'last_event_fired',
+            'lastEventFired',
             'desc',
             {
               name: {
@@ -297,20 +297,20 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(
-      body.users.map((user: { id: string; last_event_fired_at: string | null }) => ({
+      body.users.map((user: { id: string; lastEventFiredAt: string | null }) => ({
         id: user.id,
-        last_event_fired_at: user.last_event_fired_at,
+        lastEventFiredAt: user.lastEventFiredAt,
       })),
     ).toEqual([
-      { id: '3', last_event_fired_at: '2026-01-19T09:15:00Z' },
-      { id: '4', last_event_fired_at: null },
+      { id: '3', lastEventFiredAt: '2026-01-19T09:15:00Z' },
+      { id: '4', lastEventFiredAt: null },
     ]);
   });
 
   it('supports limit and offset pagination', async () => {
     const response = await postUsersQuery(
       {
-        date_range: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+        dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
         limit: 2,
         offset: 1,
       },
@@ -331,7 +331,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
   it('applies event filters to the user list', async () => {
     const response = await postUsersQuery(
       {
-        date_range: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+        dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
         filters: [
           {
             type: 'event',
@@ -354,7 +354,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
     });
   });
 
-  it('defaults to 30days when date_range is omitted and returns the resolved period', async () => {
+  it('defaults to 30days when dateRange is omitted and returns the resolved period', async () => {
     const response = await postUsersQuery({}, isolated.authHeaders);
 
     expect(response.status).toBe(200);
@@ -381,12 +381,12 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
     expect(anonymousUser).toEqual({
       id: '5',
       identifier: null,
-      display_name: null,
+      displayName: null,
       country: 'DE',
       city: 'Berlin',
-      last_seen_at: '2025-12-25T08:01:00Z',
-      last_event_fired_at: null,
-      avatar_url: null,
+      lastSeenAt: '2025-12-25T08:01:00Z',
+      lastEventFiredAt: null,
+      avatarUrl: null,
       anonymous: true,
     });
   });
@@ -409,8 +409,8 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
           id: '5',
           anonymous: true,
           identifier: null,
-          display_name: null,
-          last_event_fired_at: null,
+          displayName: null,
+          lastEventFiredAt: null,
         },
       ],
     });
@@ -424,11 +424,11 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
       user: {
         id: '3',
         identifier: 'user-3',
-        display_name: 'Bravo',
+        displayName: 'Bravo',
         country: 'US',
         city: 'San Francisco',
-        last_seen_at: '2026-01-19T09:15:00Z',
-        avatar_url: null,
+        lastSeenAt: '2026-01-19T09:15:00Z',
+        avatarUrl: null,
         anonymous: false,
       },
     });
@@ -442,11 +442,11 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
       user: {
         id: '1',
         identifier: 'user-1',
-        display_name: 'Zulu',
+        displayName: 'Zulu',
         country: 'US',
         city: 'New York',
-        last_seen_at: '2026-01-18T09:02:00Z',
-        avatar_url: null,
+        lastSeenAt: '2026-01-18T09:02:00Z',
+        avatarUrl: null,
         anonymous: false,
       },
     });
@@ -472,11 +472,11 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
       user: {
         id: '5',
         identifier: null,
-        display_name: null,
+        displayName: null,
         country: 'DE',
         city: 'Berlin',
-        last_seen_at: '2025-12-25T08:01:00Z',
-        avatar_url: null,
+        lastSeenAt: '2025-12-25T08:01:00Z',
+        avatarUrl: null,
         anonymous: true,
       },
     });

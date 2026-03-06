@@ -19,21 +19,21 @@ export function isMetricApplicableForGrouping(metric: Metric, grouping: MetricsQ
   }
 
   if (grouping.kind === 'event_prop') {
-    return metric !== 'bounce_rate' && metric !== 'visit_duration';
+    return metric !== 'bounceRate' && metric !== 'visitDuration';
   }
 
   if (grouping.kind === 'field') {
     if (grouping.token === 'event:name') {
-      return metric !== 'bounce_rate' && metric !== 'visit_duration';
+      return metric !== 'bounceRate' && metric !== 'visitDuration';
     }
 
     if (grouping.token === 'page:path' || grouping.token === 'page:origin') {
-      return metric !== 'bounce_rate' && metric !== 'visit_duration';
+      return metric !== 'bounceRate' && metric !== 'visitDuration';
     }
 
     if (
-      (grouping.token === 'browser' || grouping.token === 'device_type' || grouping.token === 'os') &&
-      metric === 'visit_duration'
+      (grouping.token === 'browser' || grouping.token === 'deviceType' || grouping.token === 'os') &&
+      metric === 'visitDuration'
     ) {
       return false;
     }

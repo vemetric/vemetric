@@ -142,7 +142,7 @@ const referrerApiFilterSchema = z
 
 const referrerUrlApiFilterSchema = z
   .object({
-    type: z.literal('referrer_url').openapi({
+    type: z.literal('referrerUrl').openapi({
       description: 'Filter type identifier for referrer URL filters.',
     }),
     value: apiStringFilterSchema.shape.value.openapi({
@@ -157,7 +157,7 @@ const referrerUrlApiFilterSchema = z
   .openapi({
     description: 'Filter by referrer URL.',
     example: {
-      type: 'referrer_url',
+      type: 'referrerUrl',
       operator: 'contains',
       value: 'google.com',
     },
@@ -165,7 +165,7 @@ const referrerUrlApiFilterSchema = z
 
 const referrerTypeApiFilterSchema = z
   .object({
-    type: z.literal('referrer_type').openapi({
+    type: z.literal('referrerType').openapi({
       description: 'Filter type identifier for referrer type filters.',
     }),
     value: listFilterSchema.shape.value.openapi({
@@ -180,7 +180,7 @@ const referrerTypeApiFilterSchema = z
   .openapi({
     description: 'Filter by referrer category/type.',
     example: {
-      type: 'referrer_type',
+      type: 'referrerType',
       operator: 'oneOf',
       value: ['search'],
     },
@@ -188,31 +188,31 @@ const referrerTypeApiFilterSchema = z
 
 const utmTagsApiFilterSchema = z
   .object({
-    type: z.literal('utm_tags').openapi({
+    type: z.literal('utmTags').openapi({
       description: 'Filter type identifier for UTM tag filters.',
     }),
-    utm_campaign: apiStringFilterSchema.optional().openapi({
+    utmCampaign: apiStringFilterSchema.optional().openapi({
       description: 'Filter by UTM campaign.',
     }),
-    utm_content: apiStringFilterSchema.optional().openapi({
+    utmContent: apiStringFilterSchema.optional().openapi({
       description: 'Filter by UTM content.',
     }),
-    utm_medium: apiStringFilterSchema.optional().openapi({
+    utmMedium: apiStringFilterSchema.optional().openapi({
       description: 'Filter by UTM medium.',
     }),
-    utm_source: apiStringFilterSchema.optional().openapi({
+    utmSource: apiStringFilterSchema.optional().openapi({
       description: 'Filter by UTM source.',
     }),
-    utm_term: apiStringFilterSchema.optional().openapi({
+    utmTerm: apiStringFilterSchema.optional().openapi({
       description: 'Filter by UTM term.',
     }),
   })
   .openapi({
     description: 'Filter by one or more UTM parameters.',
     example: {
-      type: 'utm_tags',
-      utm_source: { operator: 'eq', value: 'google' },
-      utm_medium: { operator: 'eq', value: 'cpc' },
+      type: 'utmTags',
+      utmSource: { operator: 'eq', value: 'google' },
+      utmMedium: { operator: 'eq', value: 'cpc' },
     },
   });
 

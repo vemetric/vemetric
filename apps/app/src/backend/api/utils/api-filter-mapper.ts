@@ -83,26 +83,26 @@ function mapApiFilter(filter: ApiFilter): IFilter {
         referrerFilter: mapApiStringFilter(filter),
       };
     }
-    case 'referrer_url': {
+    case 'referrerUrl': {
       return {
         type: 'referrerUrl',
         referrerUrlFilter: mapApiStringFilter(filter),
       };
     }
-    case 'referrer_type': {
+    case 'referrerType': {
       return {
         type: 'referrerType',
         referrerTypeFilter: filter,
       };
     }
-    case 'utm_tags': {
+    case 'utmTags': {
       return {
         type: 'utmTags',
-        utmCampaignFilter: mapApiStringFilter(filter.utm_campaign),
-        utmContentFilter: mapApiStringFilter(filter.utm_content),
-        utmMediumFilter: mapApiStringFilter(filter.utm_medium),
-        utmSourceFilter: mapApiStringFilter(filter.utm_source),
-        utmTermFilter: mapApiStringFilter(filter.utm_term),
+        utmCampaignFilter: mapApiStringFilter(filter.utmCampaign),
+        utmContentFilter: mapApiStringFilter(filter.utmContent),
+        utmMediumFilter: mapApiStringFilter(filter.utmMedium),
+        utmSourceFilter: mapApiStringFilter(filter.utmSource),
+        utmTermFilter: mapApiStringFilter(filter.utmTerm),
       };
     }
     case 'browser': {

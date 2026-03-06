@@ -38,7 +38,7 @@ export function registerFunnelRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
           id: funnel.id,
           name: funnel.name,
           icon: funnel.icon,
-          steps: (funnel.steps as FunnelStep[]).map((step) => mapFunnelStepToApi(step)),
+          steps: (funnel.steps as FunnelStep[]).map((step, index) => mapFunnelStepToApi(step, index)),
           createdAt: funnel.createdAt.toISOString(),
           updatedAt: funnel.updatedAt.toISOString(),
         })),

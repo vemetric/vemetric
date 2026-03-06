@@ -64,12 +64,23 @@ describe('GET /api/v1/funnels', () => {
         steps: [
           {
             id: 'step_1',
-            name: 'Homepage',
+            name: '',
             filter: {
               type: 'page',
               pathFilter: {
                 operator: 'is',
                 value: '/',
+              },
+            },
+          },
+          {
+            id: 'step_2',
+            name: 'Checkout',
+            filter: {
+              type: 'event',
+              nameFilter: {
+                operator: 'is',
+                value: 'PurchaseCompleted',
               },
             },
           },
@@ -97,12 +108,23 @@ describe('GET /api/v1/funnels', () => {
           steps: [
             {
               id: 'step_1',
-              name: 'Homepage',
+              name: 'Step 1',
               filter: {
                 type: 'page',
                 path: {
                   operator: 'eq',
                   value: '/',
+                },
+              },
+            },
+            {
+              id: 'step_2',
+              name: 'Checkout',
+              filter: {
+                type: 'event',
+                name: {
+                  operator: 'eq',
+                  value: 'PurchaseCompleted',
                 },
               },
             },

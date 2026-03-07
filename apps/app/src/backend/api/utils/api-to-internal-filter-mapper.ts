@@ -123,6 +123,14 @@ function mapApiFilter(filter: ApiFilter): IFilter {
         osFilter: filter,
       };
     }
+    case 'funnel': {
+      return {
+        type: 'funnel',
+        id: filter.id,
+        step: filter.step,
+        operator: filter.operator,
+      };
+    }
   }
 }
 

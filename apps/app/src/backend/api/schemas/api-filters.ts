@@ -285,6 +285,34 @@ const osApiFilterSchema = z
     },
   });
 
+const funnelApiFilterSchema = z
+  .object({
+    type: z.literal('funnel').openapi({
+      description: 'Filter type identifier for funnel completion filters.',
+    }),
+    id: z.string().uuid().openapi({
+      description: 'Funnel ID to evaluate for completion status.',
+      example: '550e8400-e29b-41d4-a716-446655440000',
+    }),
+    step: z.number().int().min(0).openapi({
+      description: 'Zero-based funnel step index to evaluate.',
+      example: 1,
+    }),
+    operator: z.enum(['completed', 'notCompleted']).openapi({
+      description: 'Whether users must have completed or not completed the selected step.',
+      example: 'completed',
+    }),
+  })
+  .openapi({
+    description: 'Filter users based on funnel step completion.',
+    example: {
+      type: 'funnel',
+      id: '550e8400-e29b-41d4-a716-446655440000',
+      step: 1,
+      operator: 'completed',
+    },
+  });
+
 export const apiFilterSchema = z.discriminatedUnion('type', [
   pageApiFilterSchema,
   eventApiFilterSchema,
@@ -297,6 +325,7 @@ export const apiFilterSchema = z.discriminatedUnion('type', [
   browserApiFilterSchema,
   deviceApiFilterSchema,
   osApiFilterSchema,
+  funnelApiFilterSchema,
 ]);
 
 export const apiFiltersOperatorSchema = filterGroupOperatorsSchema;

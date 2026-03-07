@@ -8,14 +8,18 @@ import {
   type IsolatedAnalyticsSeedContext,
 } from './analytics.integration.seeding';
 
-const { findByKeyHashMock, getRedisClientMock } = vi.hoisted(() => ({
+const { findByKeyHashMock, findByProjectIdMock, getRedisClientMock } = vi.hoisted(() => ({
   findByKeyHashMock: vi.fn(),
+  findByProjectIdMock: vi.fn(),
   getRedisClientMock: vi.fn(),
 }));
 
 vi.mock('database', () => ({
   dbApiKey: {
     findByKeyHash: findByKeyHashMock,
+  },
+  dbFunnel: {
+    findByProjectId: findByProjectIdMock,
   },
 }));
 
@@ -49,6 +53,7 @@ async function postAnalyticsQuery(
  */
 describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
   const findByKeyHash = findByKeyHashMock as Mock;
+  const findByProjectId = findByProjectIdMock as Mock;
   const getRedisClient = getRedisClientMock as Mock;
   let isolated: IsolatedAnalyticsSeedContext;
 
@@ -67,9 +72,11 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
 
   beforeEach(() => {
     findByKeyHash.mockReset();
+    findByProjectId.mockReset();
     getRedisClient.mockReset();
 
     findByKeyHash.mockResolvedValue(isolated.apiKeyRecord);
+    findByProjectId.mockResolvedValue([]);
     getRedisClient.mockResolvedValue({
       eval: vi.fn().mockResolvedValue([1, 60]),
     });
@@ -997,6 +1004,103 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
           {
             group: { country: 'US' },
             metrics: { users: 1 },
+          },
+        ],
+      });
+    });
+  });
+
+  describe('funnel filter', () => {
+    it('applies funnel completion filter to restrict users and metrics', async () => {
+      findByProjectId.mockResolvedValueOnce([
+        {
+          id: '550e8400-e29b-41d4-a716-446655440000',
+          projectId: isolated.projectId,
+          name: 'Signup Funnel',
+          icon: null,
+          steps: [
+            {
+              id: 'step_1',
+              name: 'Landing',
+              filter: {
+                type: 'page',
+                pathFilter: {
+                  operator: 'is',
+                  value: '/',
+                },
+              },
+            },
+            {
+              id: 'step_2',
+              name: 'Signed Up',
+              filter: {
+                type: 'event',
+                nameFilter: {
+                  operator: 'is',
+                  value: 'signup',
+                },
+              },
+            },
+          ],
+          createdAt: new Date('2026-01-01T00:00:00.000Z'),
+          updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        },
+      ]);
+
+      const response = await postAnalyticsQuery(
+        {
+          dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+          metrics: ['users', 'events', 'pageviews'],
+          groupBy: [],
+          filters: [
+            {
+              type: 'funnel',
+              id: '550e8400-e29b-41d4-a716-446655440000',
+              step: 1,
+              operator: 'completed',
+            },
+          ],
+          filtersOperator: 'and',
+        },
+        isolated.authHeaders,
+      );
+
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toEqual({
+        period: {
+          from: '2026-01-18T00:00:00Z',
+          to: '2026-01-19T23:59:59Z',
+        },
+        query: {
+          dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+          groupBy: [],
+          metrics: ['users', 'events', 'pageviews'],
+          orderBy: [],
+          limit: 100,
+          offset: 0,
+          filters: [
+            {
+              type: 'funnel',
+              id: '550e8400-e29b-41d4-a716-446655440000',
+              step: 1,
+              operator: 'completed',
+            },
+          ],
+          filtersOperator: 'and',
+        },
+        pagination: {
+          limit: 1,
+          offset: 0,
+          returned: 1,
+        },
+        data: [
+          {
+            group: {},
+            metrics: {
+              users: 2,
+              events: 3,
+              pageviews: 4,
+            },
           },
         ],
       });

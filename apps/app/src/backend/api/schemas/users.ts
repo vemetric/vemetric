@@ -120,7 +120,7 @@ export const userSingleQuerySchema = z
 
 export const usersListRequestSchema = z
   .object({
-    dateRange: apiDateRangeSchema.optional(),
+    dateRange: apiDateRangeSchema,
     filters: z
       .array(apiFilterSchema)
       .optional()

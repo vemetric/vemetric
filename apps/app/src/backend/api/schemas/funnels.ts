@@ -99,41 +99,53 @@ const funnelResultStepSchema = z.object({
 });
 
 export const funnelResultsResponseSchema = z.object({
-  period: z.object({
-    from: apiTimestampSchema.openapi({
-      description: 'Resolved UTC start timestamp for the query window.',
+  period: z
+    .object({
+      from: apiTimestampSchema.openapi({
+        description: 'Resolved UTC start timestamp for the query window.',
+      }),
+      to: apiTimestampSchema.openapi({
+        description: 'Resolved UTC end timestamp for the query window.',
+      }),
+    })
+    .openapi({
+      description: 'Resolved query period.',
     }),
-    to: apiTimestampSchema.openapi({
-      description: 'Resolved UTC end timestamp for the query window.',
-    }),
+  query: z
+    .object({
+      dateRange: apiDateRangeSchema.openapi({
+        description: 'Echo of the incoming `dateRange` request field.',
+      }),
+      filters: z.array(apiFilterSchema).optional().openapi({
+        description: 'Echo of the incoming `filters` request field.',
+      }),
+      filtersOperator: apiFiltersOperatorSchema.optional().openapi({
+        description: 'Echo of the incoming `filtersOperator` request field.',
+      }),
+    })
+    .openapi({ description: 'Resolved query configuration used for this response.' }),
+  funnel: funnelSchema.openapi({
+    description: 'Funnel definition for which these results were computed.',
   }),
-  query: z.object({
-    dateRange: apiDateRangeSchema.openapi({
-      description: 'Echo of the incoming `dateRange` request field.',
+  results: z
+    .object({
+      activeUsers: z.number().int().min(0).openapi({
+        description: 'Users active in the period and matching filters.',
+        example: 245,
+      }),
+      steps: z.array(funnelResultStepSchema).openapi({
+        description: 'Per-step user counts in funnel order.',
+      }),
+      conversionRate: z.number().min(0).max(100).openapi({
+        description: 'Conversion rate from first funnel step to last funnel step, in percent.',
+        example: 32.81,
+      }),
+      activeUserConversionRate: z.number().min(0).max(100).openapi({
+        description: 'Conversion rate from active users to last funnel step, in percent.',
+        example: 18.26,
+      }),
+    })
+    .openapi({
+      description: 'Funnel results for the given query.',
     }),
-    filters: z.array(apiFilterSchema).optional().openapi({
-      description: 'Echo of the incoming `filters` request field.',
-    }),
-    filtersOperator: apiFiltersOperatorSchema.optional().openapi({
-      description: 'Echo of the incoming `filtersOperator` request field.',
-    }),
-  }),
-  funnel: funnelSchema,
-  results: z.object({
-    activeUsers: z.number().int().min(0).openapi({
-      description: 'Users active in the period and matching filters.',
-      example: 245,
-    }),
-    steps: z.array(funnelResultStepSchema).openapi({
-      description: 'Per-step user counts in funnel order.',
-    }),
-    conversionRate: z.number().min(0).max(100).openapi({
-      description: 'Conversion rate from first funnel step to last funnel step, in percent.',
-      example: 32.81,
-    }),
-    activeUserConversionRate: z.number().min(0).max(100).openapi({
-      description: 'Conversion rate from active users to last funnel step, in percent.',
-      example: 18.26,
-    }),
-  }),
 });

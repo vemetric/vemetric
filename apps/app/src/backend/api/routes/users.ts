@@ -110,7 +110,7 @@ export function registerUserRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
     const firstOrderBy = payload.orderBy?.[0];
     const projectId = BigInt(project.id);
 
-    const resolvedDateRange = resolveApiDateRange(payload.dateRange ?? '30days');
+    const resolvedDateRange = resolveApiDateRange(payload.dateRange);
     const startDate = resolvedDateRange.startDate;
     const endDate = resolvedDateRange.endDate;
 

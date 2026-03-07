@@ -74,6 +74,21 @@ describe('POST /api/v1/users (contract)', () => {
   });
 
   describe('validation', () => {
+    it('rejects missing dateRange', async () => {
+      const app = createPublicApi();
+
+      const response = await app.request('/v1/users', {
+        method: 'POST',
+        headers: AUTH_HEADERS,
+        body: JSON.stringify({}),
+      });
+
+      expect(response.status).toBe(400);
+      const body = await response.json();
+      expect(body.error.code).toBe('VALIDATION_ERROR');
+      expectValidationDetail(body, 'dateRange', 'Invalid input');
+    });
+
     it('rejects reversed custom dateRange', async () => {
       const app = createPublicApi();
 
@@ -98,6 +113,7 @@ describe('POST /api/v1/users (contract)', () => {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
+          dateRange: '30days',
           orderBy: [['users', 'desc']],
         }),
       });
@@ -115,6 +131,7 @@ describe('POST /api/v1/users (contract)', () => {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
+          dateRange: '30days',
           orderBy: [['lastSeenAt', 'sideways']],
         }),
       });
@@ -132,6 +149,7 @@ describe('POST /api/v1/users (contract)', () => {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
+          dateRange: '30days',
           orderBy: [
             ['lastSeenAt', 'desc'],
             ['identifier', 'asc'],
@@ -152,6 +170,7 @@ describe('POST /api/v1/users (contract)', () => {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
+          dateRange: '30days',
           orderBy: [
             [
               'displayName',
@@ -180,6 +199,7 @@ describe('POST /api/v1/users (contract)', () => {
         method: 'POST',
         headers: AUTH_HEADERS,
         body: JSON.stringify({
+          dateRange: '30days',
           orderBy: [['lastEventFired', 'desc']],
         }),
       });

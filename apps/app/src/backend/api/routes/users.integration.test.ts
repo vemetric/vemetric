@@ -354,25 +354,26 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
     });
   });
 
-  it('defaults to 30days when dateRange is omitted and returns the resolved period', async () => {
+  it('returns VALIDATION_ERROR when dateRange is omitted', async () => {
     const response = await postUsersQuery({}, isolated.authHeaders);
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({
-      period: {
-        from: '2025-12-21T00:00:00Z',
-        to: '2026-01-19T11:22:00Z',
-      },
-      pagination: {
-        limit: 100,
-        offset: 0,
-        returned: 5,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Invalid request parameters',
+        details: [
+          {
+            field: 'dateRange',
+            message: 'Invalid input',
+          },
+        ],
       },
     });
   });
 
   it('returns anonymous users with normalized fields when included in the period', async () => {
-    const response = await postUsersQuery({}, isolated.authHeaders);
+    const response = await postUsersQuery({ dateRange: '30days' }, isolated.authHeaders);
 
     expect(response.status).toBe(200);
     const body = await response.json();
@@ -394,6 +395,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
   it('supports filtering anonymous users via user filter', async () => {
     const response = await postUsersQuery(
       {
+        dateRange: '30days',
         filters: [{ type: 'user', anonymous: true }],
       },
       isolated.authHeaders,

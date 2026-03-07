@@ -77,6 +77,10 @@ export const userListItemSchema = z
       description: 'Avatar URL if available.',
       example: 'https://cdn.example.com/avatar.png',
     }),
+    data: z.record(z.string(), z.any()).openapi({
+      description: 'Data attributes collected for this user.',
+      example: { plan: 'pro', company: 'Vemetric' },
+    }),
     anonymous: z.boolean().openapi({
       description: 'Whether the user is anonymous (not identified).',
       example: false,

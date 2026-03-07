@@ -117,6 +117,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
           lastSeenAt: '2026-01-19T11:20:00Z',
           lastEventFiredAt: null,
           avatarUrl: null,
+          data: {},
           anonymous: false,
         },
         {
@@ -128,6 +129,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
           lastSeenAt: '2026-01-19T09:15:00Z',
           lastEventFiredAt: null,
           avatarUrl: null,
+          data: { plan: 'starter' },
           anonymous: false,
         },
         {
@@ -139,6 +141,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
           lastSeenAt: '2026-01-18T10:06:00Z',
           lastEventFiredAt: null,
           avatarUrl: null,
+          data: {},
           anonymous: false,
         },
         {
@@ -150,6 +153,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
           lastSeenAt: '2026-01-18T09:02:00Z',
           lastEventFiredAt: null,
           avatarUrl: null,
+          data: { plan: 'pro', company: 'Acme Inc' },
           anonymous: false,
         },
       ],
@@ -388,6 +392,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
       lastSeenAt: '2025-12-25T08:01:00Z',
       lastEventFiredAt: null,
       avatarUrl: null,
+      data: {},
       anonymous: true,
     });
   });
@@ -413,6 +418,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
           identifier: null,
           displayName: null,
           lastEventFiredAt: null,
+          data: {},
         },
       ],
     });
@@ -431,6 +437,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
         city: 'San Francisco',
         lastSeenAt: '2026-01-19T09:15:00Z',
         avatarUrl: null,
+        data: { plan: 'starter' },
         anonymous: false,
       },
     });
@@ -449,6 +456,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
         city: 'New York',
         lastSeenAt: '2026-01-18T09:02:00Z',
         avatarUrl: null,
+        data: { plan: 'pro', company: 'Acme Inc' },
         anonymous: false,
       },
     });
@@ -479,6 +487,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
         city: 'Berlin',
         lastSeenAt: '2025-12-25T08:01:00Z',
         avatarUrl: null,
+        data: {},
         anonymous: true,
       },
     });

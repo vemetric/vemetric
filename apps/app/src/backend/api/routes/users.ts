@@ -191,6 +191,7 @@ export function registerUserRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
             lastSeenAt: toApiTimestamp(row.lastSeenAt),
             lastEventFiredAt: toApiTimestamp(row.lastEventFiredAt),
             avatarUrl: normalizeNullableString(row.avatarUrl),
+            data: row.data ?? {},
             anonymous: identifier === null,
           };
         }),
@@ -240,6 +241,7 @@ export function registerUserRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
           city,
           lastSeenAt: toApiTimestamp(latestEvent?.createdAt),
           avatarUrl: normalizeNullableString(user?.avatarUrl),
+          data: user?.customData ?? {},
           anonymous: identifier === null,
         },
       },

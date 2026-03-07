@@ -596,7 +596,10 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       utmCampaign: 'winter_launch',
       utmContent: 'hero_cta',
       utmTerm: 'analytics',
-      customData: {},
+      customData: {
+        plan: 'pro',
+        company: 'Acme Inc',
+      },
     },
     {
       projectId,
@@ -654,7 +657,9 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       utmCampaign: 'jan_push',
       utmContent: 'button',
       utmTerm: 'metrics',
-      customData: {},
+      customData: {
+        plan: 'starter',
+      },
     },
     {
       projectId,

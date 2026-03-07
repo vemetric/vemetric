@@ -310,7 +310,7 @@ export const clickhouseEvent = {
       const searchQuery = search ? `AND displayName ILIKE ${escape('%' + search + '%')}` : '';
 
       const resultSet = await clickhouseClient.query({
-        query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.city as city, u.maxCreatedAt as maxCreatedAt, u.isOnline as isOnline, usr.avatarUrl as avatarUrl${sortSelect}
+        query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.city as city, u.maxCreatedAt as maxCreatedAt, u.isOnline as isOnline, usr.avatarUrl as avatarUrl, usr.customData as customData${sortSelect}
             FROM (
               SELECT userId,
                 argMax(userIdentifier, eventCreatedAt) as identifier,
@@ -338,7 +338,7 @@ export const clickhouseEvent = {
               GROUP BY userId
             ) u
             LEFT JOIN (
-              SELECT id, argMax(avatarUrl, updatedAt) as avatarUrl
+              SELECT id, argMax(avatarUrl, updatedAt) as avatarUrl, argMax(customData, updatedAt) as customData
               FROM user
               WHERE projectId=${escape(projectId)}
               GROUP BY id
@@ -353,6 +353,11 @@ export const clickhouseEvent = {
       });
       const result = (await resultSet.json()) as Array<any>;
       return result.map((row) => {
+        const data =
+          typeof row.customData === 'string' && row.customData.length > 0
+            ? (JSON.parse(row.customData) as Record<string, unknown>)
+            : {};
+
         return {
           id: BigInt(row.userId),
           identifier: row.identifier as string,
@@ -363,6 +368,7 @@ export const clickhouseEvent = {
           lastEventFiredAt: isSortByEvent ? ((row.lastEventFiredAt as string | null) ?? null) : null,
           isOnline: Boolean(row.isOnline),
           avatarUrl: row.avatarUrl as string,
+          data,
         };
       });
     },

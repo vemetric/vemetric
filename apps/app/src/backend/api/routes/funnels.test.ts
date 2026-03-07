@@ -313,4 +313,72 @@ describe('GET /api/v1/funnels', () => {
       },
     });
   });
+
+  it('returns 404 when funnel belongs to a different project', async () => {
+    const funnelId = '550e8400-e29b-41d4-a716-446655440000';
+    mockValidApiKey();
+    findById.mockResolvedValueOnce({
+      id: funnelId,
+      projectId: '999',
+      name: 'Other Project Funnel',
+      icon: null,
+      steps: [],
+      createdAt: new Date('2026-03-01T10:00:00.000Z'),
+      updatedAt: new Date('2026-03-01T10:00:00.000Z'),
+    });
+
+    const app = createPublicApi();
+    const response = await app.request(`/v1/funnels/${funnelId}`, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer vem_abcdefghijklmnopqrstuvwxyz123456',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        dateRange: '30days',
+      }),
+    });
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'FUNNEL_NOT_FOUND',
+        message: 'Funnel not found',
+      },
+    });
+  });
+
+  it('returns 403 when dateRange exceeds plan retention limits', async () => {
+    const funnelId = '550e8400-e29b-41d4-a716-446655440000';
+    mockValidApiKey();
+    findById.mockResolvedValueOnce({
+      id: funnelId,
+      projectId: '100',
+      name: 'Signup Funnel',
+      icon: null,
+      steps: [],
+      createdAt: new Date('2026-03-01T10:00:00.000Z'),
+      updatedAt: new Date('2026-03-01T10:00:00.000Z'),
+    });
+
+    const app = createPublicApi();
+    const response = await app.request(`/v1/funnels/${funnelId}`, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer vem_abcdefghijklmnopqrstuvwxyz123456',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        dateRange: '1year',
+      }),
+    });
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'PLAN_LIMIT_EXCEEDED',
+        message: 'Upgrade to the Professional plan for longer data retention',
+      },
+    });
+  });
 });

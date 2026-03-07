@@ -7,7 +7,7 @@ import { DEFAULT_METRICS } from '../consts/analytics';
 import { analyticsQueryRequestSchema, analyticsQueryResponseSchema } from '../schemas/analytics';
 import { authorizationHeaderSchema, commonOpenApiErrorResponses } from '../schemas/common';
 import type { PublicApiHonoEnv } from '../types';
-import { buildGroupObject } from '../utils/analytics/grouping';
+import { buildGroupObject, resolveAutoIntervalGrouping } from '../utils/analytics/grouping';
 import { getEmptyMetricValue, normalizeMetricValue } from '../utils/analytics/metrics';
 import { applyOrdering } from '../utils/analytics/ordering';
 import { queryMetricRows } from '../utils/analytics/queries';
@@ -61,9 +61,10 @@ export function registerAnalyticsRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
   api.openapi(analyticsRoute, async ({ req, json, var: { project, subscriptionStatus } }) => {
     const payload = req.valid('json');
 
-    const grouping = parseMetricsQueryGroupingToken(payload.groupBy[0] ?? null);
+    const rawGrouping = parseMetricsQueryGroupingToken(payload.groupBy[0] ?? null);
     const filterConfig = mapApiFilterConfig(payload.filters, payload.filtersOperator);
     const { timespan, startDate, endDate } = resolveApiDateRange(payload.dateRange);
+    const grouping = resolveAutoIntervalGrouping(rawGrouping, { timespan, startDate, endDate });
     if (
       isRetentionRestricted({
         timespan,

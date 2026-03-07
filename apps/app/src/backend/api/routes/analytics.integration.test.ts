@@ -270,27 +270,47 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
         pagination: {
           limit: 100,
           offset: 0,
-          returned: 2,
+          returned: 4,
         },
         data: [
           {
             group: {
-              date: '2026-01-18T00:00:00Z',
+              date: '2026-01-18T09:00:00Z',
             },
             metrics: {
-              users: 2,
-              pageviews: 4,
+              users: 1,
+              pageviews: 1,
+              events: 1,
+            },
+          },
+          {
+            group: {
+              date: '2026-01-18T10:00:00Z',
+            },
+            metrics: {
+              users: 1,
+              pageviews: 3,
+              events: 1,
+            },
+          },
+          {
+            group: {
+              date: '2026-01-19T09:00:00Z',
+            },
+            metrics: {
+              users: 1,
+              pageviews: 3,
               events: 2,
             },
           },
           {
             group: {
-              date: '2026-01-19T00:00:00Z',
+              date: '2026-01-19T11:00:00Z',
             },
             metrics: {
-              users: 2,
-              pageviews: 4,
-              events: 3,
+              users: 1,
+              pageviews: 1,
+              events: 1,
             },
           },
         ],

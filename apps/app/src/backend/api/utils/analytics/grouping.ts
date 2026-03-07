@@ -1,3 +1,4 @@
+import { getCustomDateRangeInterval, TIME_SPAN_DATA, type TimeSpan } from '@vemetric/common/charts/timespans';
 import { clickhouseDateToISO, type MetricsQueryGrouping } from 'clickhouse';
 import type { MetricRow } from '../../consts/analytics';
 import { formatApiDate } from '../date';
@@ -66,4 +67,24 @@ export function normalizeGroupKeys(rows: Array<MetricRow>, grouping: MetricsQuer
     groupKey: normalizeGroupKey(grouping, row.groupKey),
     value: row.value,
   }));
+}
+
+export function resolveAutoIntervalGrouping(
+  grouping: MetricsQueryGrouping,
+  options: {
+    timespan: TimeSpan;
+    startDate: Date;
+    endDate?: Date;
+  },
+): MetricsQueryGrouping {
+  if (grouping.kind !== 'interval' || grouping.interval !== 'auto') {
+    return grouping;
+  }
+
+  const interval =
+    options.timespan === 'custom' && options.endDate
+      ? getCustomDateRangeInterval(options.startDate, options.endDate)
+      : TIME_SPAN_DATA[options.timespan].interval;
+
+  return { ...grouping, interval };
 }

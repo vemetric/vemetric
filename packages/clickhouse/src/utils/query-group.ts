@@ -58,10 +58,7 @@ export function parseMetricsQueryGroupingToken(token: string | null): MetricsQue
 
 function getFieldExpression(token: MetricsGroupFieldToken, scope: MetricsGroupScope): string | null {
   const sharedFields: Record<
-    Exclude<
-      MetricsGroupFieldToken,
-      'page:origin' | 'page:path' | 'browser' | 'deviceType' | 'os' | 'event:name'
-    >,
+    Exclude<MetricsGroupFieldToken, 'page:origin' | 'page:path' | 'browser' | 'deviceType' | 'os' | 'event:name'>,
     string
   > = {
     country: 'countryCode',
@@ -112,7 +109,24 @@ export function getMetricsGroupExpression(grouping: MetricsQueryGrouping, scope:
   }
 
   if (grouping.kind === 'interval') {
-    return scope === 'event' ? 'toStartOfDay(createdAt)' : 'toStartOfDay(startedAt)';
+    const dateField = scope === 'event' ? 'createdAt' : 'startedAt';
+
+    switch (grouping.interval) {
+      case 'thirty_seconds':
+        return `toStartOfInterval(${dateField}, INTERVAL 30 SECOND)`;
+      case 'ten_minutes':
+        return `toStartOfTenMinutes(${dateField})`;
+      case 'hourly':
+        return `toStartOfHour(${dateField})`;
+      case 'daily':
+        return `toStartOfDay(${dateField})`;
+      case 'weekly':
+        return `toStartOfWeek(${dateField})`;
+      case 'monthly':
+        return `toStartOfMonth(${dateField})`;
+      default:
+        return `toStartOfDay(${dateField})`;
+    }
   }
 
   if (grouping.kind === 'event_prop') {

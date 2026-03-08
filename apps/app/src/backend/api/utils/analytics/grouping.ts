@@ -58,7 +58,7 @@ function normalizeGroupKey(grouping: MetricsQueryGrouping, rawGroupKey: string):
     return rawGroupKey;
   }
 
-  const iso = rawGroupKey.includes('T') ? rawGroupKey : clickhouseDateToISO(rawGroupKey);
+  const iso = rawGroupKey.includes('T') || !rawGroupKey.includes(' ') ? rawGroupKey : clickhouseDateToISO(rawGroupKey);
   return formatApiDate(new Date(iso));
 }
 

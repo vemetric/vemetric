@@ -287,6 +287,7 @@ export const clickhouseEvent = {
       filterConfig: IFilterConfig,
       sortConfig: IUserSortConfig,
       startDate?: Date,
+      endDate?: Date,
       search?: string,
     ) => {
       const userFilterQueries = filterConfig?.operator === 'and' ? buildUserFilterQueries(filterConfig) : '';
@@ -311,6 +312,7 @@ export const clickhouseEvent = {
                   FROM ${TABLE_NAME}
                   WHERE projectId=${escape(projectId)}
                     ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+                    ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
                   GROUP BY id
                   HAVING sum(sign) > 0
                 )

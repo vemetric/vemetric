@@ -1,4 +1,4 @@
-import { Box, Grid, Card, Skeleton, HStack, LinkOverlay, Flex, Icon, Text, IconButton, Span } from '@chakra-ui/react';
+import { Box, Button, Grid, Card, Skeleton, HStack, LinkOverlay, Flex, Icon, Text, IconButton, Span } from '@chakra-ui/react';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { COUNTRIES } from '@vemetric/common/countries';
@@ -15,15 +15,20 @@ import { UserAvatar } from '@/components/pages/user/user-avatar';
 import { UserSortPopover } from '@/components/pages/user/user-sort-popover';
 import { ProjectInitCard } from '@/components/project-init-card';
 import { SearchButtonInput } from '@/components/search-button-input';
+import { TimespanSelect } from '@/components/timespan-select';
+import { ErrorState } from '@/components/ui/empty-state';
 import { Status } from '@/components/ui/status';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useDebouncedState } from '@/hooks/use-debounced-state';
+import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { useSetBreadcrumbs, useSetDocsLink } from '@/stores/header-store';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
+import { timeSpanSearchMiddleware, timespanSearchSchema } from '@/utils/timespans';
 import { trpc } from '@/utils/trpc';
 import { getUserName } from '@/utils/user';
 
 const usersSearchSchema = z.object({
+  ...timespanSearchSchema.shape,
   p: z.number().min(1).optional().catch(1),
   f: filterConfigSchema,
   s: userSortConfigSchema,
@@ -33,11 +38,45 @@ const usersSearchSchema = z.object({
 export const Route = createFileRoute('/_layout/p/$projectId/users/')({
   validateSearch: zodValidator(usersSearchSchema),
   component: Page,
+  search: {
+    middlewares: [timeSpanSearchMiddleware],
+  },
 });
+
+interface RetentionErrorCardProps {
+  error: { data?: { httpStatus?: number } | null; message?: string } | null;
+  title?: string;
+  onReset: () => void;
+}
+
+function RetentionErrorCard({ error, title = 'Error loading data', onReset }: RetentionErrorCardProps) {
+  const is403 = error?.data?.httpStatus === 403;
+  return (
+    <Card.Root py={6}>
+      <ErrorState
+        title={is403 ? 'Access restricted' : title}
+        description={
+          is403 ? (
+            <Flex direction="column" align="center" gap={3}>
+              <Text textStyle="sm" color="fg.muted">
+                  {error?.message || 'Upgrade to the Professional plan for longer data retention.'}
+              </Text>
+              <Button size="sm" variant="outline" onClick={onReset}>
+                Reset to last 30 days
+              </Button>
+            </Flex>
+          ) : undefined
+        }
+      />
+    </Card.Root>
+  );
+}
 
 function Page() {
   const { projectId } = Route.useParams();
   const { p: page = 1, f: filterConfig, s: sortConfig, q } = Route.useSearch();
+  const { timespan, startDate, endDate } = useTimespanParam({ from: '/_layout/p/$projectId/users/' });
+  
   const navigate = useNavigate({ from: Route.fullPath });
   const [search, setSearch, debouncedSearch] = useDebouncedState({
     defaultValue: q ?? '',
@@ -46,13 +85,18 @@ function Page() {
 
   const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery({
     projectId,
-    timespan: '30days',
+    timespan,
+    startDate,
+    endDate,
   });
 
-  const { data, isLoading, isFetching, isPreviousData } = trpc.users.list.useQuery(
+  const { data, isLoading, isFetching, isPreviousData, isError, error } = trpc.users.list.useQuery(
     {
       projectId,
       page,
+      timespan,
+      startDate,
+      endDate,
       filterConfig,
       sortConfig,
       search: debouncedSearch,
@@ -84,6 +128,16 @@ function Page() {
 
   const gridTemplateColumns = { base: '50vw 1fr 2fr', md: '30px 3fr 1fr 1fr 40px' };
 
+  if (isError) {
+    return (
+      <RetentionErrorCard
+        error={error}
+        title="Error loading users"
+        onReset={() => navigate({ search: { t: '30days' } as any })}
+      />
+    );
+  }
+
   return (
     <FilterContextProvider
       value={{
@@ -105,6 +159,7 @@ function Page() {
         funnels: filterableData?.funnels ?? [],
       }}
     >
+      
       {!isLoading && !isFilterableDataLoading && isInitialized ? (
         <Box mt={-3} pos="sticky" top={{ base: '44px', md: '122px', lg: '52px' }} zIndex="dropdown">
           <Flex pt={3} bg="bg.content" flexWrap="wrap" w="100%" columnGap={8} rowGap={4} align="center">
@@ -112,6 +167,7 @@ function Page() {
             <Flex flexGrow={1} gap={2.5} justify="flex-end" align="center">
               <SearchButtonInput value={search} onChange={setSearch} />
               <AddFilterButton from="/p/$projectId/users" filterConfig={filterConfig} />
+              <TimespanSelect from="/_layout/p/$projectId/users/" excludeLive />
             </Flex>
           </Flex>
           <Box
@@ -313,8 +369,7 @@ function Page() {
           </Box>
         )}
       </Card.Root>
-
-      {data && !isInitialized && <ProjectInitCard projectToken={data.projectToken} />}
+      ){data && !isInitialized && <ProjectInitCard projectToken={data.projectToken} />}
     </FilterContextProvider>
   );
 }

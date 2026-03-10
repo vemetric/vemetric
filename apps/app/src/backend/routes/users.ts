@@ -8,7 +8,7 @@ import { dbFunnel } from 'database';
 import { addDays, addMonths, startOfDay } from 'date-fns';
 import { z } from 'zod';
 import { getFilterFunnelsData } from '../utils/filter';
-import { projectProcedure, router } from '../utils/trpc';
+import { projectProcedure, router, timespanProcedure } from '../utils/trpc';
 
 const EVENTS_PER_PAGE = 50;
 const USERS_PER_PAGE = 50;
@@ -17,7 +17,7 @@ const getFreePlanStartDate = (isSubscriptionActive: boolean) =>
   isSubscriptionActive ? undefined : addDays(startOfDay(new Date()), -30);
 
 export const usersRouter = router({
-  list: projectProcedure
+  list: timespanProcedure
     .input(
       z.object({
         page: z.number().min(1).default(1),
@@ -29,10 +29,10 @@ export const usersRouter = router({
     .query(async (opts) => {
       const {
         input: { page, filterConfig, sortConfig, search },
-        ctx: { projectId, project, subscriptionStatus },
+        ctx: { projectId, project, startDate, endDate },
       } = opts;
 
-      const startDate = getFreePlanStartDate(subscriptionStatus.isActive);
+      
       const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
 
       const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
@@ -49,6 +49,7 @@ export const usersRouter = router({
           filterConfig,
           sortConfig,
           startDate,
+          endDate,
           search,
         ),
       ]);

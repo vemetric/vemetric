@@ -6,6 +6,15 @@ import { logger } from '../utils/api-logger';
 export const loggingMiddleware = createMiddleware<PublicApiHonoEnv>(async (c, next) => {
   const start = Date.now();
   let status = 200;
+  let content = '';
+
+  try {
+    const reqClone = c.req.raw.clone();
+    content = reqClone.body ? await Bun.readableStreamToText(reqClone.body) : '';
+  } catch (err) {
+    logger.error({ err }, 'Error while cloning and reading public API req body content');
+  }
+  c.set('requestContent', content);
 
   try {
     await next();

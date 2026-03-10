@@ -3,6 +3,7 @@ import { HTTPException } from 'hono/http-exception';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { ZodIssue } from 'zod';
 import { logger } from './api-logger';
+import type { PublicApiHonoEnv } from '../types';
 
 export class ApiError extends HTTPException {
   code: string;
@@ -26,7 +27,7 @@ export function createValidationErrorResponse(issues: ZodIssue[]) {
   };
 }
 
-export function errorHandler(err: Error, c: Context) {
+export function errorHandler(err: Error, c: Context<PublicApiHonoEnv>) {
   if (err instanceof ApiError) {
     return c.json({ error: { code: err.code, message: err.message } }, err.status);
   }
@@ -35,7 +36,19 @@ export function errorHandler(err: Error, c: Context) {
     return c.json({ error: { code: 'HTTP_ERROR', message: err.message } }, err.status);
   }
 
-  logger.error({ err }, 'Unhandled public API error');
+  const apiKey = c.var.apiKey;
+  logger.error(
+    {
+      method: c.req.method,
+      path: c.req.path,
+      queryParams: c.req.query(),
+      reqContent: c.var.requestContent,
+      apiKeyId: apiKey?.id,
+      projectId: apiKey?.projectId,
+      err,
+    },
+    'Unhandled public API error',
+  );
   return c.json(
     {
       error: {

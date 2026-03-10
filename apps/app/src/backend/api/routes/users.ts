@@ -327,7 +327,8 @@ export function registerUserRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
         resolvedUserId = undefined;
       }
     } else {
-      resolvedUserId = (await clickhouseUser.findByIdentifier(projectId, query.identifier as string))?.id;
+      const identifier = query.identifier!;
+      resolvedUserId = (await clickhouseUser.findByIdentifier(projectId, identifier))?.id;
     }
 
     if (resolvedUserId === undefined) {

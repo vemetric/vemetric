@@ -4,8 +4,14 @@ import type { IUserSortConfig } from '@vemetric/common/sort';
 import { clickhouseEvent, clickhouseUser, getUserFilterQueries } from 'clickhouse';
 import { getFilterFunnelsData } from '../../utils/filter';
 import { isRetentionRestricted, RETENTION_UPGRADE_MESSAGE } from '../../utils/retention';
-import { authorizationHeaderSchema, commonOpenApiErrorResponses } from '../schemas/common';
 import {
+  authorizationHeaderSchema,
+  commonOpenApiErrorResponses,
+  planLimitExceededOpenApiResponse,
+} from '../schemas/common';
+import {
+  userEventsRequestSchema,
+  userEventsResponseSchema,
   userSingleQuerySchema,
   usersListRequestSchema,
   usersListResponseSchema,
@@ -46,19 +52,7 @@ const usersListRoute = createRoute({
         },
       },
     },
-    403: {
-      description: 'Requested date range is not allowed for the current plan',
-      content: {
-        'application/json': {
-          schema: z.object({
-            error: z.object({
-              code: z.literal('PLAN_LIMIT_EXCEEDED'),
-              message: z.string(),
-            }),
-          }),
-        },
-      },
-    },
+    403: planLimitExceededOpenApiResponse,
     ...commonOpenApiErrorResponses,
   },
 });
@@ -81,6 +75,56 @@ const usersSingleRoute = createRoute({
         },
       },
     },
+    404: {
+      description: 'User was not found',
+      content: {
+        'application/json': {
+          schema: z.object({
+            error: z
+              .object({
+                code: z.literal('USER_NOT_FOUND').openapi({
+                  description: 'Machine-readable error code.',
+                }),
+                message: z.string().openapi({
+                  description: 'Human-readable error message.',
+                }),
+              })
+              .openapi({ description: 'Error details.' }),
+          }),
+        },
+      },
+    },
+    ...commonOpenApiErrorResponses,
+  },
+});
+
+const userEventsRoute = createRoute({
+  method: 'post',
+  path: '/v1/users/events',
+  summary: 'List user events',
+  description: 'Returns events for one user within a specified date range and with optional filters.',
+  request: {
+    headers: authorizationHeaderSchema,
+    query: userSingleQuerySchema,
+    body: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: userEventsRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: 'Success',
+      content: {
+        'application/json': {
+          schema: userEventsResponseSchema,
+        },
+      },
+    },
+    403: planLimitExceededOpenApiResponse,
     404: {
       description: 'User was not found',
       content: {
@@ -244,6 +288,85 @@ export function registerUserRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
           data: user?.customData ?? {},
           anonymous: identifier === null,
         },
+      },
+      200,
+    );
+  });
+
+  api.openapi(userEventsRoute, async ({ req, json, var: { project, subscriptionStatus } }) => {
+    const query = req.valid('query');
+    const payload = req.valid('json');
+    const projectId = BigInt(project.id);
+
+    const resolvedDateRange = resolveApiDateRange(payload.dateRange);
+    const startDate = resolvedDateRange.startDate;
+    const endDate = resolvedDateRange.endDate;
+
+    if (
+      isRetentionRestricted({
+        timespan: resolvedDateRange.timespan,
+        startDate,
+        isSubscriptionActive: subscriptionStatus.isActive,
+      })
+    ) {
+      throw new ApiError(403, 'PLAN_LIMIT_EXCEEDED', RETENTION_UPGRADE_MESSAGE);
+    }
+
+    let resolvedUserId: bigint | undefined;
+    if (query.id !== undefined) {
+      resolvedUserId = BigInt(query.id);
+      const [userRecord, latestEvent] = await Promise.all([
+        clickhouseUser.findById(projectId, resolvedUserId),
+        clickhouseEvent.getLatestEventsByUserId({
+          projectId,
+          userId: resolvedUserId,
+          limit: 1,
+        }),
+      ]);
+      if (!userRecord && latestEvent.length === 0) {
+        resolvedUserId = undefined;
+      }
+    } else {
+      const identifier = query.identifier!;
+      resolvedUserId = (await clickhouseUser.findByIdentifier(projectId, identifier))?.id;
+    }
+
+    if (resolvedUserId === undefined) {
+      throw new ApiError(404, 'USER_NOT_FOUND', 'User not found');
+    }
+
+    const filterConfig = mapApiFilterConfig(payload.filters, payload.filtersOperator);
+    const events = await clickhouseEvent.getLatestEventsByUserId({
+      projectId,
+      userId: resolvedUserId,
+      limit: payload.limit,
+      offset: payload.offset,
+      startDate,
+      endDate,
+      filterConfig,
+    });
+
+    return json(
+      {
+        period: {
+          from: formatApiDate(startDate),
+          to: formatApiDate(endDate ?? new Date()),
+        },
+        pagination: {
+          limit: payload.limit,
+          offset: payload.offset,
+          returned: events.length,
+        },
+        events: events.map((event) => ({
+          sessionId: event.sessionId,
+          name: event.name,
+          isPageView: Boolean(event.isPageView),
+          createdAt: toApiTimestamp(event.createdAt) as string,
+          origin: normalizeNullableString(event.origin),
+          path: normalizeNullableString(event.pathname),
+          hash: normalizeNullableString(event.urlHash),
+          data: event.customData ?? {},
+        })),
       },
       200,
     );

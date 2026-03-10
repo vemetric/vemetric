@@ -122,3 +122,17 @@ export const commonOpenApiErrorResponses = {
     content: getJsonErrorResponseContent(z.literal('INTERNAL_SERVER_ERROR')),
   },
 } as const;
+
+export const planLimitExceededOpenApiResponse = {
+  description: 'Requested date range is not allowed for the current plan',
+  content: {
+    'application/json': {
+      schema: z.object({
+        error: z.object({
+          code: z.literal('PLAN_LIMIT_EXCEEDED'),
+          message: z.string(),
+        }),
+      }),
+    },
+  },
+} as const;

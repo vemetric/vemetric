@@ -290,4 +290,116 @@ describe('GET /api/v1/users/single (contract)', () => {
     expect(body.error.code).toBe('VALIDATION_ERROR');
     expectValidationDetail(body, 'id', 'id must be a numeric user id');
   });
+
+  it('rejects unsupported filter types for user events', async () => {
+    const app = createPublicApi();
+
+    const response = await app.request('/v1/users/events?id=1', {
+      method: 'POST',
+      headers: AUTH_HEADERS,
+      body: JSON.stringify({
+        dateRange: '30days',
+        filters: [
+          {
+            type: 'funnel',
+            id: '550e8400-e29b-41d4-a716-446655440000',
+            step: 0,
+            operator: 'completed',
+          },
+        ],
+      }),
+    });
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expectValidationDetail(
+      body,
+      'filters.0.type',
+      "Invalid discriminator value. Expected 'event' | 'page' | 'browser' | 'device' | 'os'",
+    );
+  });
+});
+
+describe('POST /api/v1/users/events (contract)', () => {
+  const findByKeyHash = findByKeyHashMock as Mock;
+  const getRedisClient = getRedisClientMock as Mock;
+
+  beforeEach(() => {
+    findByKeyHash.mockReset();
+    getRedisClient.mockReset();
+
+    findByKeyHash.mockResolvedValue(createMockApiKey());
+    getRedisClient.mockResolvedValue({
+      eval: vi.fn().mockResolvedValue([1, 60]),
+    });
+  });
+
+  it('rejects missing dateRange', async () => {
+    const app = createPublicApi();
+
+    const response = await app.request('/v1/users/events?id=1', {
+      method: 'POST',
+      headers: AUTH_HEADERS,
+      body: JSON.stringify({}),
+    });
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expectValidationDetail(body, 'dateRange', 'Invalid input');
+  });
+
+  it('rejects when id and identifier are both missing', async () => {
+    const app = createPublicApi();
+
+    const response = await app.request('/v1/users/events', {
+      method: 'POST',
+      headers: AUTH_HEADERS,
+      body: JSON.stringify({
+        dateRange: '30days',
+      }),
+    });
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expectValidationDetail(body, 'id', 'Provide exactly one of id or identifier');
+    expectValidationDetail(body, 'identifier', 'Provide exactly one of id or identifier');
+  });
+
+  it('rejects when id and identifier are both provided', async () => {
+    const app = createPublicApi();
+
+    const response = await app.request('/v1/users/events?id=1&identifier=user-1', {
+      method: 'POST',
+      headers: AUTH_HEADERS,
+      body: JSON.stringify({
+        dateRange: '30days',
+      }),
+    });
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expectValidationDetail(body, 'id', 'Provide exactly one of id or identifier');
+    expectValidationDetail(body, 'identifier', 'Provide exactly one of id or identifier');
+  });
+
+  it('rejects non-numeric id', async () => {
+    const app = createPublicApi();
+
+    const response = await app.request('/v1/users/events?id=abc', {
+      method: 'POST',
+      headers: AUTH_HEADERS,
+      body: JSON.stringify({
+        dateRange: '30days',
+      }),
+    });
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expectValidationDetail(body, 'id', 'id must be a numeric user id');
+  });
 });

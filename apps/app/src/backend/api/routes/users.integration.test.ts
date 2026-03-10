@@ -55,6 +55,24 @@ async function getSingleUser(
   });
 }
 
+async function postUserEvents(
+  query: Record<string, string>,
+  body: unknown,
+  headers: {
+    Authorization: string;
+    'Content-Type': 'application/json';
+  },
+) {
+  const app = createPublicApi();
+  const search = new URLSearchParams(query);
+
+  return app.request(`/v1/users/events?${search.toString()}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  });
+}
+
 describe('POST /api/v1/users (integration, seeded fixtures)', () => {
   const findByKeyHash = findByKeyHashMock as Mock;
   const getRedisClient = getRedisClientMock as Mock;
@@ -489,6 +507,180 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
         avatarUrl: null,
         data: {},
         anonymous: true,
+      },
+    });
+  });
+
+  it('returns events for a user by id within dateRange', async () => {
+    const response = await postUserEvents(
+      { id: '3' },
+      {
+        dateRange: ['2026-01-19T00:00:00Z', '2026-01-19T23:59:59Z'],
+      },
+      isolated.authHeaders,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      period: {
+        from: '2026-01-19T00:00:00Z',
+        to: '2026-01-19T23:59:59Z',
+      },
+      pagination: {
+        limit: 100,
+        offset: 0,
+        returned: 5,
+      },
+      events: [
+        {
+          sessionId: `${isolated.projectId}_s3`,
+          name: 'signup',
+          isPageView: false,
+          createdAt: '2026-01-19T09:15:00Z',
+          origin: 'https://example.com',
+          path: '/signup',
+          hash: null,
+          data: { plan: 'pro' },
+        },
+        {
+          sessionId: `${isolated.projectId}_s3`,
+          name: 'signup',
+          isPageView: false,
+          createdAt: '2026-01-19T09:11:00Z',
+          origin: 'https://example.com',
+          path: '/signup',
+          hash: null,
+          data: { plan: 'starter' },
+        },
+        {
+          sessionId: `${isolated.projectId}_s3`,
+          name: '$$pageView',
+          isPageView: true,
+          createdAt: '2026-01-19T09:10:00Z',
+          origin: 'https://example.com',
+          path: '/pricing',
+          hash: null,
+          data: {},
+        },
+        {
+          sessionId: `${isolated.projectId}_s3`,
+          name: '$$pageView',
+          isPageView: true,
+          createdAt: '2026-01-19T09:05:00Z',
+          origin: 'https://example.com',
+          path: '/features',
+          hash: null,
+          data: {},
+        },
+        {
+          sessionId: `${isolated.projectId}_s3`,
+          name: '$$pageView',
+          isPageView: true,
+          createdAt: '2026-01-19T09:01:00Z',
+          origin: 'https://example.com',
+          path: '/',
+          hash: null,
+          data: {},
+        },
+      ],
+    });
+  });
+
+  it('returns events for a user by identifier', async () => {
+    const response = await postUserEvents(
+      { identifier: 'user-1' },
+      {
+        dateRange: ['2026-01-18T00:00:00Z', '2026-01-18T23:59:59Z'],
+      },
+      isolated.authHeaders,
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.pagination.returned).toBe(2);
+    expect(body.events.map((event: { createdAt: string }) => event.createdAt)).toEqual([
+      '2026-01-18T09:02:00Z',
+      '2026-01-18T09:01:00Z',
+    ]);
+  });
+
+  it('applies event filters on returned user events', async () => {
+    const response = await postUserEvents(
+      { id: '3' },
+      {
+        dateRange: ['2026-01-19T00:00:00Z', '2026-01-19T23:59:59Z'],
+        filters: [
+          {
+            type: 'event',
+            name: {
+              operator: 'eq',
+              value: 'signup',
+            },
+          },
+        ],
+      },
+      isolated.authHeaders,
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.events).toHaveLength(2);
+    expect(body.events.every((event: { name: string }) => event.name === 'signup')).toBe(true);
+  });
+
+  it('supports limit and offset pagination for user events', async () => {
+    const response = await postUserEvents(
+      { id: '3' },
+      {
+        dateRange: ['2026-01-19T00:00:00Z', '2026-01-19T23:59:59Z'],
+        limit: 2,
+        offset: 1,
+      },
+      isolated.authHeaders,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      pagination: {
+        limit: 2,
+        offset: 1,
+        returned: 2,
+      },
+      events: [{ createdAt: '2026-01-19T09:11:00Z' }, { createdAt: '2026-01-19T09:10:00Z' }],
+    });
+  });
+
+  it('returns 404 when retrieving events for unknown identifier', async () => {
+    const response = await postUserEvents(
+      { identifier: 'does-not-exist@example.com' },
+      {
+        dateRange: '30days',
+      },
+      isolated.authHeaders,
+    );
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'USER_NOT_FOUND',
+        message: 'User not found',
+      },
+    });
+  });
+
+  it('returns PLAN_LIMIT_EXCEEDED when events dateRange exceeds free-plan retention', async () => {
+    const response = await postUserEvents(
+      { id: '3' },
+      {
+        dateRange: '1year',
+      },
+      isolated.authHeaders,
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'PLAN_LIMIT_EXCEEDED',
       },
     });
   });

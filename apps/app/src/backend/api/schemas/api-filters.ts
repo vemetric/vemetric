@@ -313,6 +313,14 @@ const funnelApiFilterSchema = z
     },
   });
 
+export const apiEventFilterSchema = z.discriminatedUnion('type', [
+  eventApiFilterSchema,
+  pageApiFilterSchema,
+  browserApiFilterSchema,
+  deviceApiFilterSchema,
+  osApiFilterSchema,
+]);
+
 export const apiFilterSchema = z.discriminatedUnion('type', [
   pageApiFilterSchema,
   eventApiFilterSchema,

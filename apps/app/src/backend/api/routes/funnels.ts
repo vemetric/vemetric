@@ -5,7 +5,7 @@ import { clickhouseEvent, getUserFilterQueries } from 'clickhouse';
 import { dbFunnel } from 'database';
 import { getFilterFunnelsData } from '../../utils/filter';
 import { isRetentionRestricted, RETENTION_UPGRADE_MESSAGE } from '../../utils/retention';
-import { authorizationHeaderSchema, commonOpenApiErrorResponses } from '../schemas/common';
+import { authorizationHeaderSchema, commonOpenApiErrorResponses, planLimitExceededOpenApiResponse } from '../schemas/common';
 import {
   funnelIdSchema,
   funnelResultsRequestSchema,
@@ -67,19 +67,7 @@ const funnelResultsRoute = createRoute({
         },
       },
     },
-    403: {
-      description: 'Requested date range is not allowed for the current plan',
-      content: {
-        'application/json': {
-          schema: z.object({
-            error: z.object({
-              code: z.literal('PLAN_LIMIT_EXCEEDED'),
-              message: z.string(),
-            }),
-          }),
-        },
-      },
-    },
+    403: planLimitExceededOpenApiResponse,
     404: {
       description: 'Funnel was not found',
       content: {

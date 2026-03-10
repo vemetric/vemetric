@@ -1,7 +1,8 @@
 import { z } from '@hono/zod-openapi';
 import { sortDirectionSchema } from '@vemetric/common/sort';
-import { apiFilterSchema, apiFiltersOperatorSchema, eventApiFilterSchema } from './api-filters';
+import { apiFilterSchema, apiEventFilterSchema, apiFiltersOperatorSchema, eventApiFilterSchema } from './api-filters';
 import { apiDateRangeSchema, apiTimestampSchema } from './common';
+import { apiEventItemSchema } from './event';
 
 const usersOrderByFieldSchema = z.enum(['lastSeenAt', 'displayName', 'identifier', 'country']).openapi({
   description: 'Sortable user field.',
@@ -220,4 +221,87 @@ export const usersSingleResponseSchema = z
   })
   .openapi({
     description: 'Successful single user response payload.',
+  });
+
+export const userEventsRequestSchema = z
+  .object({
+    dateRange: apiDateRangeSchema,
+    filters: z
+      .array(apiEventFilterSchema)
+      .optional()
+      .openapi({
+        description: 'Optional filters to restrict returned events.',
+        'x-vemetric-docs': { collapseByDefault: true },
+      }),
+    filtersOperator: apiFiltersOperatorSchema.default('and').openapi({
+      description: 'Operator to apply between multiple filters.',
+    }),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(1000)
+      .default(100)
+      .openapi({ description: 'Limits the number of returned events. Max value is 1000.' }),
+    offset: z
+      .number()
+      .int()
+      .min(0)
+      .default(0)
+      .openapi({ description: 'Number of events to skip from the start of the result set.' }),
+  })
+  .superRefine((data, ctx) => {
+    if (Array.isArray(data.dateRange)) {
+      const [rawStart, rawEnd] = data.dateRange;
+      const start = new Date(rawStart);
+      const end = new Date(rawEnd);
+
+      if (start.getTime() > end.getTime()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['dateRange'],
+          message: 'Start date must be before or equal to end date',
+        });
+      }
+    }
+  })
+  .openapi({
+    description: 'Request payload for querying one user’s events.',
+  });
+
+export const userEventsResponseSchema = z
+  .object({
+    period: z
+      .object({
+        from: apiTimestampSchema.openapi({
+          description: 'Resolved UTC start timestamp for the events query window.',
+        }),
+        to: apiTimestampSchema.openapi({
+          description: 'Resolved UTC end timestamp for the events query window.',
+        }),
+      })
+      .openapi({
+        description: 'Resolved query period.',
+      }),
+    pagination: z
+      .object({
+        limit: z.number().int().min(1).openapi({
+          description: 'Applied row limit.',
+        }),
+        offset: z.number().int().min(0).openapi({
+          description: 'Applied row offset.',
+        }),
+        returned: z.number().int().min(0).openapi({
+          description: 'Number of event rows returned in `events`.',
+        }),
+      })
+      .openapi({
+        description: 'Pagination metadata.',
+      }),
+    events: z.array(apiEventItemSchema).openapi({
+      description: 'List of user events for the requested page.',
+    }),
+  })
+  .openapi({
+    description: 'Successful user events response payload.',
   });

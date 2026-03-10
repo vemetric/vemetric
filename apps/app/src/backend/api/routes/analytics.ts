@@ -1,11 +1,11 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
-import { createRoute, z } from '@hono/zod-openapi';
+import { createRoute } from '@hono/zod-openapi';
 import { getUserFilterQueries, parseMetricsQueryGroupingToken } from 'clickhouse';
 import { getFilterFunnelsData } from '../../utils/filter';
 import { isRetentionRestricted, RETENTION_UPGRADE_MESSAGE } from '../../utils/retention';
 import { DEFAULT_METRICS } from '../consts/analytics';
 import { analyticsQueryRequestSchema, analyticsQueryResponseSchema } from '../schemas/analytics';
-import { authorizationHeaderSchema, commonOpenApiErrorResponses } from '../schemas/common';
+import { authorizationHeaderSchema, commonOpenApiErrorResponses, planLimitExceededOpenApiResponse } from '../schemas/common';
 import type { PublicApiHonoEnv } from '../types';
 import { buildGroupObject, resolveAutoIntervalGrouping } from '../utils/analytics/grouping';
 import { getEmptyMetricValue, normalizeMetricValue } from '../utils/analytics/metrics';
@@ -40,19 +40,7 @@ const analyticsRoute = createRoute({
         },
       },
     },
-    403: {
-      description: 'Requested date range is not allowed for the current plan',
-      content: {
-        'application/json': {
-          schema: z.object({
-            error: z.object({
-              code: z.literal('PLAN_LIMIT_EXCEEDED'),
-              message: z.string(),
-            }),
-          }),
-        },
-      },
-    },
+    403: planLimitExceededOpenApiResponse,
     ...commonOpenApiErrorResponses,
   },
 });

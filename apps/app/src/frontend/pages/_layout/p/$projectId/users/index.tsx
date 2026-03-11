@@ -373,7 +373,7 @@ function Page() {
           </Box>
         )}
       </Card.Root>
-      ){data && !isInitialized && <ProjectInitCard projectToken={data.projectToken} />}
+      {data && !isInitialized && <ProjectInitCard projectToken={data.projectToken} />}
     </FilterContextProvider>
   );
 }

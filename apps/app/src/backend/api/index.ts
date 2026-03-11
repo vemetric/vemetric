@@ -29,7 +29,8 @@ export function createPublicApi() {
     },
   });
 
-  api.get('/docs', (c) => c.redirect('https://vemetric.com/docs/api', 302));
+  api.get('/', (c) => c.redirect('https://vemetric.com/docs/api/getting-started', 302));
+  api.get('/docs', (c) => c.redirect('https://vemetric.com/docs/api/getting-started', 302));
 
   api.use('/v1/*', loggingMiddleware);
   api.use('/v1/*', authMiddleware);

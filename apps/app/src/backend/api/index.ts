@@ -9,6 +9,8 @@ import { registerUserRoutes } from './routes/users';
 import type { PublicApiHonoEnv } from './types';
 import { createValidationErrorResponse, errorHandler } from './utils/errors';
 
+export const API_DOCS_URL = 'https://vemetric.com/docs/api/getting-started';
+
 export function createPublicApi() {
   const rateLimitMiddleware = createRateLimitMiddleware();
 
@@ -29,8 +31,8 @@ export function createPublicApi() {
     },
   });
 
-  api.get('/', (c) => c.redirect('https://vemetric.com/docs/api/getting-started', 302));
-  api.get('/docs', (c) => c.redirect('https://vemetric.com/docs/api/getting-started', 302));
+  api.get('/', (c) => c.redirect(API_DOCS_URL, 302));
+  api.get('/docs', (c) => c.redirect(API_DOCS_URL, 302));
 
   api.use('/v1/*', loggingMiddleware);
   api.use('/v1/*', authMiddleware);

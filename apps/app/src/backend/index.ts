@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/bun';
 import { clickhouseClient } from 'clickhouse';
 import { Hono } from 'hono';
-import { createPublicApi } from './api';
+import { API_DOCS_URL, createPublicApi } from './api';
 import { createBackendApp } from './backend-app';
 import { createStaticApp } from './static-app';
 import { logger } from './utils/backend-logger';
@@ -19,6 +19,8 @@ export const app = new Hono();
 const backendApp = createBackendApp();
 const publicApi = createPublicApi();
 
+app.get('/api', (c) => c.redirect(API_DOCS_URL, 302));
+app.get('/api/', (c) => c.redirect(API_DOCS_URL, 302));
 app.route('/_api', backendApp);
 app.route('/api', publicApi);
 

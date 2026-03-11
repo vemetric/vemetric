@@ -13,22 +13,29 @@ import { FilterContextProvider } from '@/components/filter/filter-context';
 import { PageDotBackground } from '@/components/page-dot-background';
 import { EventCard, EventCardSkeleton } from '@/components/pages/events/event-card';
 import { DateSeparator } from '@/components/pages/user/date-separator';
+import { TimespanSelect } from '@/components/timespan-select';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
 import { Tooltip } from '@/components/ui/tooltip';
+import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { EventsPageStoreProvider } from '@/stores/events-page-store';
 import { useSetBreadcrumbs, useSetDocsLink } from '@/stores/header-store';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import { observeResize } from '@/utils/dom';
+import { timeSpanSearchMiddleware, timespanSearchSchema } from '@/utils/timespans';
 import { trpc } from '@/utils/trpc';
 
 const eventsSearchSchema = z.object({
+  ...timespanSearchSchema.shape,
   f: filterConfigSchema,
 });
 
 export const Route = createFileRoute('/_layout/p/$projectId/events/')({
   validateSearch: zodValidator(eventsSearchSchema),
+  search: {
+    middlewares: [timeSpanSearchMiddleware],
+  },
   component: RouteComponent,
 });
 
@@ -38,10 +45,12 @@ function RouteComponent() {
   const hasActiveFilters = filterConfig && filterConfig.filters.length > 0;
   const filterContainerRef = useRef<HTMLDivElement>(null);
   const [filterContainerHeight, setFilterContainerHeight] = useState(0);
-
+  const { timespan, startDate, endDate } = useTimespanParam({ from: '/_layout/p/$projectId/events/' });
   const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery({
     projectId,
-    timespan: '30days',
+    timespan,
+    startDate,
+    endDate,
   });
 
   const {
@@ -51,7 +60,7 @@ function RouteComponent() {
     hasNextPage,
     isFetchingNextPage,
   } = trpc.events.list.useInfiniteQuery(
-    { projectId, filterConfig },
+    { projectId, filterConfig, timespan, startDate, endDate },
     {
       keepPreviousData: true,
       getNextPageParam: (lastPage) => lastPage.nextCursor,
@@ -154,6 +163,7 @@ function RouteComponent() {
             <FilterContainer filterConfig={filterConfig} from="/p/$projectId/events" />
             <Flex flexGrow={1} gap={2.5} justify="flex-end">
               <AddFilterButton from="/p/$projectId/events" filterConfig={filterConfig} />
+              <TimespanSelect from="/_layout/p/$projectId/events/" excludeLive />
             </Flex>
           </Flex>
           <Box h={3} w="full" bg={hasActiveFilters ? 'bg.content' : 'transparent'} />

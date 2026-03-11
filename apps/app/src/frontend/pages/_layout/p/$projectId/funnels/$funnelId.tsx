@@ -209,9 +209,7 @@ function RouteComponent() {
         browserNames: filterableData?.browserNames ?? [],
         deviceTypes: filterableData?.deviceTypes ?? [],
         osNames: filterableData?.osNames ?? [],
-
-        disabledFilters: ['funnel'],
-        funnels: [],
+        funnels: filterableData?.funnels ?? [],
       }}
     >
       <PageDotBackground />

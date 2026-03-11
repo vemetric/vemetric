@@ -84,7 +84,7 @@ Default: all supported metrics.
 ### Filters
 
 - `filters` is optional.
-- `filtersOperator` is optional (`and` default, `or` supported).
+- `filters_operator` is optional (`and` default, `or` supported).
 - If omitted, no filters are applied.
 - If provided, it must match the public API filter schema.
 
@@ -136,7 +136,7 @@ Public API inherits project subscription limits for date ranges.
   "order_by": [["users", "desc"]],
   "limit": 100,
   "offset": 0,
-  "filtersOperator": "and",
+  "filters_operator": "and",
   "filters": []
 }
 ```
@@ -386,7 +386,7 @@ Rules:
   "metrics": ["events"],
   "group_by": ["event:prop:plan"],
   "order_by": [["events", "desc"]],
-  "filtersOperator": "and",
+  "filters_operator": "and",
   "filters": [
     {
       "type": "event",
@@ -458,7 +458,7 @@ Rules:
 - Require valid `date_range` as preset or 2-item date array
 - For `date_range` array, reject if start > end
 - Enforce UTC-only date input
-- `group_by` can include max one item in v1
+- `group_by` can include max one item
 - `event:prop:*` grouping requires event scoping in `filters`
 - Reject when a metric in `order_by` is not included in `metrics`
 - Reject when a group field in `order_by` is not present in active grouping

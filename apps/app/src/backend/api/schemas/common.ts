@@ -1,4 +1,5 @@
 import { z } from '@hono/zod-openapi';
+import { TIME_SPAN_PRESETS } from '@vemetric/common/charts/timespans';
 
 export const utcDateOnlyRegex = /^\d{4}-\d{2}-\d{2}$/;
 const apiTimestampRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
@@ -21,6 +22,14 @@ export const apiDateInputSchema = z
   .openapi({
     description: 'Either YYYY-MM-DD or UTC ISO-8601 format with second precision (no milliseconds).',
     example: '2026-01-19|2026-01-19T12:30:00Z',
+  });
+
+export const apiDateRangeSchema = z
+  .union([z.enum(TIME_SPAN_PRESETS), z.tuple([apiDateInputSchema, apiDateInputSchema])])
+  .openapi({
+    description:
+      'Can be either one of the preset strings below, or an array with two date strings [start, end]. Date strings can be either in YYYY-MM-DD format or UTC ISO-8601 format with second precision.',
+    example: ['2026-01-01T12:00:00Z', '2026-01-31T12:00:00Z'],
   });
 
 export const authorizationHeaderSchema = z
@@ -74,7 +83,7 @@ const jsonValidationErrorResponseContent = {
                 z.object({
                   field: z.string().openapi({
                     description: 'Path to the invalid request field.',
-                    example: 'group_by.0',
+                    example: 'groupBy.0',
                   }),
                   message: z.string().openapi({
                     description: 'Validation error message for the field.',
@@ -111,5 +120,19 @@ export const commonOpenApiErrorResponses = {
   500: {
     description: 'Unexpected internal error',
     content: getJsonErrorResponseContent(z.literal('INTERNAL_SERVER_ERROR')),
+  },
+} as const;
+
+export const planLimitExceededOpenApiResponse = {
+  description: 'Requested date range is not allowed for the current plan',
+  content: {
+    'application/json': {
+      schema: z.object({
+        error: z.object({
+          code: z.literal('PLAN_LIMIT_EXCEEDED'),
+          message: z.string(),
+        }),
+      }),
+    },
   },
 } as const;

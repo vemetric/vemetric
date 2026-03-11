@@ -7,15 +7,15 @@ export const metricsGroupFieldTokens = [
   'page:origin',
   'page:path',
   'browser',
-  'device_type',
+  'deviceType',
   'os',
   'referrer',
-  'referrer_type',
-  'utm_campaign',
-  'utm_content',
-  'utm_medium',
-  'utm_source',
-  'utm_term',
+  'referrerType',
+  'utmCampaign',
+  'utmContent',
+  'utmMedium',
+  'utmSource',
+  'utmTerm',
   'event:name',
 ] as const;
 
@@ -58,21 +58,18 @@ export function parseMetricsQueryGroupingToken(token: string | null): MetricsQue
 
 function getFieldExpression(token: MetricsGroupFieldToken, scope: MetricsGroupScope): string | null {
   const sharedFields: Record<
-    Exclude<
-      MetricsGroupFieldToken,
-      'page:origin' | 'page:path' | 'browser' | 'device_type' | 'os' | 'event:name'
-    >,
+    Exclude<MetricsGroupFieldToken, 'page:origin' | 'page:path' | 'browser' | 'deviceType' | 'os' | 'event:name'>,
     string
   > = {
     country: 'countryCode',
     city: 'city',
     referrer: 'referrer',
-    referrer_type: 'referrerType',
-    utm_campaign: 'utmCampaign',
-    utm_content: 'utmContent',
-    utm_medium: 'utmMedium',
-    utm_source: 'utmSource',
-    utm_term: 'utmTerm',
+    referrerType: 'referrerType',
+    utmCampaign: 'utmCampaign',
+    utmContent: 'utmContent',
+    utmMedium: 'utmMedium',
+    utmSource: 'utmSource',
+    utmTerm: 'utmTerm',
   };
 
   if (token in sharedFields) {
@@ -91,7 +88,7 @@ function getFieldExpression(token: MetricsGroupFieldToken, scope: MetricsGroupSc
     return scope === 'event' ? 'clientName' : null;
   }
 
-  if (token === 'device_type') {
+  if (token === 'deviceType') {
     return scope === 'event' ? 'deviceType' : null;
   }
 
@@ -112,7 +109,24 @@ export function getMetricsGroupExpression(grouping: MetricsQueryGrouping, scope:
   }
 
   if (grouping.kind === 'interval') {
-    return scope === 'event' ? 'toStartOfDay(createdAt)' : 'toStartOfDay(startedAt)';
+    const dateField = scope === 'event' ? 'createdAt' : 'startedAt';
+
+    switch (grouping.interval) {
+      case 'thirty_seconds':
+        return `toStartOfInterval(${dateField}, INTERVAL 30 SECOND)`;
+      case 'ten_minutes':
+        return `toStartOfTenMinutes(${dateField})`;
+      case 'hourly':
+        return `toStartOfHour(${dateField})`;
+      case 'daily':
+        return `toStartOfDay(${dateField})`;
+      case 'weekly':
+        return `toStartOfWeek(${dateField})`;
+      case 'monthly':
+        return `toStartOfMonth(${dateField})`;
+      default:
+        return `toStartOfDay(${dateField})`;
+    }
   }
 
   if (grouping.kind === 'event_prop') {

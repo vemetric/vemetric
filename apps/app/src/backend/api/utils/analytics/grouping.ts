@@ -1,3 +1,4 @@
+import { getCustomDateRangeInterval, TIME_SPAN_DATA, type TimeSpan } from '@vemetric/common/charts/timespans';
 import { clickhouseDateToISO, type MetricsQueryGrouping } from 'clickhouse';
 import type { MetricRow } from '../../consts/analytics';
 import { formatApiDate } from '../date';
@@ -11,9 +12,9 @@ function formatGroupedFieldValue(token: string, groupKey: string): string {
   switch (token) {
     case 'referrer':
       return 'Direct / None';
-    case 'referrer_type':
+    case 'referrerType':
       return 'unknown';
-    case 'device_type':
+    case 'deviceType':
       return 'unknown';
     default:
       return 'Unknown';
@@ -57,7 +58,7 @@ function normalizeGroupKey(grouping: MetricsQueryGrouping, rawGroupKey: string):
     return rawGroupKey;
   }
 
-  const iso = rawGroupKey.includes('T') ? rawGroupKey : clickhouseDateToISO(rawGroupKey);
+  const iso = rawGroupKey.includes('T') || !rawGroupKey.includes(' ') ? rawGroupKey : clickhouseDateToISO(rawGroupKey);
   return formatApiDate(new Date(iso));
 }
 
@@ -66,4 +67,24 @@ export function normalizeGroupKeys(rows: Array<MetricRow>, grouping: MetricsQuer
     groupKey: normalizeGroupKey(grouping, row.groupKey),
     value: row.value,
   }));
+}
+
+export function resolveAutoIntervalGrouping(
+  grouping: MetricsQueryGrouping,
+  options: {
+    timespan: TimeSpan;
+    startDate: Date;
+    endDate?: Date;
+  },
+): MetricsQueryGrouping {
+  if (grouping.kind !== 'interval' || grouping.interval !== 'auto') {
+    return grouping;
+  }
+
+  const interval =
+    options.timespan === 'custom' && options.endDate
+      ? getCustomDateRangeInterval(options.startDate, options.endDate)
+      : TIME_SPAN_DATA[options.timespan].interval;
+
+  return { ...grouping, interval };
 }

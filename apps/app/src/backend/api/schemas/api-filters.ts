@@ -11,7 +11,7 @@ const apiStringFilterSchema = z.object({
   }),
 });
 
-const pageApiFilterSchema = z
+export const pageApiFilterSchema = z
   .object({
     type: z.literal('page'),
     origin: apiStringFilterSchema.optional().openapi({
@@ -34,7 +34,7 @@ const pageApiFilterSchema = z
     },
   });
 
-const eventApiFilterSchema = z
+export const eventApiFilterSchema = z
   .object({
     type: z.literal('event').openapi({
       description: 'Filter type identifier for event filters.',
@@ -47,11 +47,11 @@ const eventApiFilterSchema = z
         z.object({
           property: z.string().openapi({
             description: 'Event property key inside custom event data.',
-            example: 'plan',
+            example: 'provider',
           }),
           value: apiStringFilterSchema.shape.value.openapi({
             description: 'Event property value to compare against.',
-            example: 'pro',
+            example: 'github',
           }),
           operator: apiStringFilterSchema.shape.operator.openapi({
             description: 'String matching operator for `value`.',
@@ -142,7 +142,7 @@ const referrerApiFilterSchema = z
 
 const referrerUrlApiFilterSchema = z
   .object({
-    type: z.literal('referrer_url').openapi({
+    type: z.literal('referrerUrl').openapi({
       description: 'Filter type identifier for referrer URL filters.',
     }),
     value: apiStringFilterSchema.shape.value.openapi({
@@ -157,7 +157,7 @@ const referrerUrlApiFilterSchema = z
   .openapi({
     description: 'Filter by referrer URL.',
     example: {
-      type: 'referrer_url',
+      type: 'referrerUrl',
       operator: 'contains',
       value: 'google.com',
     },
@@ -165,7 +165,7 @@ const referrerUrlApiFilterSchema = z
 
 const referrerTypeApiFilterSchema = z
   .object({
-    type: z.literal('referrer_type').openapi({
+    type: z.literal('referrerType').openapi({
       description: 'Filter type identifier for referrer type filters.',
     }),
     value: listFilterSchema.shape.value.openapi({
@@ -180,7 +180,7 @@ const referrerTypeApiFilterSchema = z
   .openapi({
     description: 'Filter by referrer category/type.',
     example: {
-      type: 'referrer_type',
+      type: 'referrerType',
       operator: 'oneOf',
       value: ['search'],
     },
@@ -188,31 +188,31 @@ const referrerTypeApiFilterSchema = z
 
 const utmTagsApiFilterSchema = z
   .object({
-    type: z.literal('utm_tags').openapi({
+    type: z.literal('utmTags').openapi({
       description: 'Filter type identifier for UTM tag filters.',
     }),
-    utm_campaign: apiStringFilterSchema.optional().openapi({
+    utmCampaign: apiStringFilterSchema.optional().openapi({
       description: 'Filter by UTM campaign.',
     }),
-    utm_content: apiStringFilterSchema.optional().openapi({
+    utmContent: apiStringFilterSchema.optional().openapi({
       description: 'Filter by UTM content.',
     }),
-    utm_medium: apiStringFilterSchema.optional().openapi({
+    utmMedium: apiStringFilterSchema.optional().openapi({
       description: 'Filter by UTM medium.',
     }),
-    utm_source: apiStringFilterSchema.optional().openapi({
+    utmSource: apiStringFilterSchema.optional().openapi({
       description: 'Filter by UTM source.',
     }),
-    utm_term: apiStringFilterSchema.optional().openapi({
+    utmTerm: apiStringFilterSchema.optional().openapi({
       description: 'Filter by UTM term.',
     }),
   })
   .openapi({
     description: 'Filter by one or more UTM parameters.',
     example: {
-      type: 'utm_tags',
-      utm_source: { operator: 'eq', value: 'google' },
-      utm_medium: { operator: 'eq', value: 'cpc' },
+      type: 'utmTags',
+      utmSource: { operator: 'eq', value: 'google' },
+      utmMedium: { operator: 'eq', value: 'cpc' },
     },
   });
 
@@ -285,6 +285,42 @@ const osApiFilterSchema = z
     },
   });
 
+const funnelApiFilterSchema = z
+  .object({
+    type: z.literal('funnel').openapi({
+      description: 'Filter type identifier for funnel completion filters.',
+    }),
+    id: z.string().uuid().openapi({
+      description: 'Funnel ID to evaluate for completion status.',
+      example: '550e8400-e29b-41d4-a716-446655440000',
+    }),
+    step: z.number().int().min(0).openapi({
+      description: 'Zero-based funnel step index to evaluate.',
+      example: 1,
+    }),
+    operator: z.enum(['completed', 'notCompleted']).openapi({
+      description: 'Whether users must have completed or not completed the selected step.',
+      example: 'completed',
+    }),
+  })
+  .openapi({
+    description: 'Filter users based on funnel step completion.',
+    example: {
+      type: 'funnel',
+      id: '550e8400-e29b-41d4-a716-446655440000',
+      step: 1,
+      operator: 'completed',
+    },
+  });
+
+export const apiEventFilterSchema = z.discriminatedUnion('type', [
+  eventApiFilterSchema,
+  pageApiFilterSchema,
+  browserApiFilterSchema,
+  deviceApiFilterSchema,
+  osApiFilterSchema,
+]);
+
 export const apiFilterSchema = z.discriminatedUnion('type', [
   pageApiFilterSchema,
   eventApiFilterSchema,
@@ -297,6 +333,7 @@ export const apiFilterSchema = z.discriminatedUnion('type', [
   browserApiFilterSchema,
   deviceApiFilterSchema,
   osApiFilterSchema,
+  funnelApiFilterSchema,
 ]);
 
 export const apiFiltersOperatorSchema = filterGroupOperatorsSchema;

@@ -4,8 +4,10 @@ import {
   clickhouseClient,
   clickhouseEvent,
   clickhouseSession,
+  clickhouseUser,
   type ClickhouseEvent,
   type ClickhouseSession,
+  type ClickhouseUser,
 } from 'clickhouse';
 
 type ApiKeyProjectRecord = {
@@ -35,6 +37,13 @@ export type IsolatedAnalyticsSeedContext = {
   apiKeyRecord: ApiKeyProjectRecord;
 };
 
+type IsolatedAnalyticsSeedOptions = {
+  projectId?: string;
+  keySeed?: number;
+  projectName?: string;
+  projectDomain?: string;
+};
+
 const ANALYTICS_TEST_PROJECT_ID = '9000000000000001';
 const ANALYTICS_TEST_KEY_SEED = 1;
 const KEEP_ANALYTICS_TEST_DATA = process.env.KEEP_ANALYTICS_TEST_DATA === '1';
@@ -57,6 +66,8 @@ function baseSession(input: {
   endedAt: string;
   duration: number;
   countryCode: string;
+  userIdentifier?: string;
+  userDisplayName?: string;
   city?: string;
   referrer?: string;
   referrerUrl?: string;
@@ -71,8 +82,8 @@ function baseSession(input: {
     projectId: input.projectId,
     userId: input.userId,
     id: input.id,
-    userIdentifier: `user-${input.userId}`,
-    userDisplayName: `User ${input.userId}`,
+    userIdentifier: input.userIdentifier ?? `user-${input.userId}`,
+    userDisplayName: input.userDisplayName ?? '',
     startedAt: input.startedAt,
     endedAt: input.endedAt,
     duration: input.duration,
@@ -107,6 +118,8 @@ function baseEvent(input: {
   name: string;
   countryCode: string;
   pathname: string;
+  userIdentifier?: string;
+  userDisplayName?: string;
   customData?: Record<string, unknown>;
   city?: string;
   browser?: string;
@@ -132,8 +145,8 @@ function baseEvent(input: {
     name: input.name,
     isPageView: input.isPageView,
     userAgent: 'Mozilla/5.0',
-    userIdentifier: `user-${input.userId}`,
-    userDisplayName: `User ${input.userId}`,
+    userIdentifier: input.userIdentifier ?? `user-${input.userId}`,
+    userDisplayName: input.userDisplayName ?? '',
     requestHeaders: {},
     customData: input.customData ?? {},
     importSource: 'integration-test',
@@ -162,9 +175,12 @@ function baseEvent(input: {
   };
 }
 
-export function createIsolatedAnalyticsSeedContext(): IsolatedAnalyticsSeedContext {
-  const projectId = ANALYTICS_TEST_PROJECT_ID;
-  const rawApiKey = buildRawApiKey(ANALYTICS_TEST_KEY_SEED);
+export function createIsolatedAnalyticsSeedContext(
+  options: IsolatedAnalyticsSeedOptions = {},
+): IsolatedAnalyticsSeedContext {
+  const projectId = options.projectId ?? ANALYTICS_TEST_PROJECT_ID;
+  const keySeed = options.keySeed ?? ANALYTICS_TEST_KEY_SEED;
+  const rawApiKey = buildRawApiKey(keySeed);
   const keyHash = sha256(rawApiKey);
 
   return {
@@ -180,8 +196,8 @@ export function createIsolatedAnalyticsSeedContext(): IsolatedAnalyticsSeedConte
       projectId,
       project: {
         id: projectId,
-        name: 'Analytics Integration Test Project',
-        domain: 'analytics-integration-test.example.com',
+        name: options.projectName ?? 'Analytics Integration Test Project',
+        domain: options.projectDomain ?? 'analytics-integration-test.example.com',
         token: `token_${projectId}`,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         firstEventAt: new Date('2026-01-18T09:00:00.000Z'),
@@ -205,6 +221,11 @@ async function truncateAnalyticsFixtureData(projectId: string): Promise<void> {
 
   await clickhouseClient.command({
     query: 'ALTER TABLE session DELETE WHERE projectId = {projectId:UInt64} SETTINGS mutations_sync = 2',
+    query_params: { projectId },
+  });
+
+  await clickhouseClient.command({
+    query: 'ALTER TABLE user DELETE WHERE projectId = {projectId:UInt64} SETTINGS mutations_sync = 2',
     query_params: { projectId },
   });
 }
@@ -232,6 +253,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
   const projectId = BigInt(context.projectId);
   const dimensionsByUser = {
     1: {
+      userDisplayName: 'Zulu',
       city: 'New York',
       browser: 'Chrome',
       deviceType: 'desktop',
@@ -246,6 +268,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       utmTerm: 'analytics',
     },
     2: {
+      userDisplayName: 'Echo',
       city: '',
       browser: 'Firefox',
       deviceType: 'mobile',
@@ -260,6 +283,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       utmTerm: 'opensource',
     },
     3: {
+      userDisplayName: 'Bravo',
       city: 'San Francisco',
       browser: 'Safari',
       deviceType: 'desktop',
@@ -274,6 +298,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       utmTerm: 'metrics',
     },
     4: {
+      userDisplayName: 'Charlie',
       city: 'Berlin',
       browser: 'Chrome',
       deviceType: 'tablet',
@@ -330,6 +355,27 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       countryCode: 'DE',
       ...dimensionsByUser[4],
     }),
+    // Anonymous user outside analytics test ranges but inside free-plan retention window
+    baseSession({
+      projectId,
+      userId: BigInt(5),
+      id: `${context.projectId}_s5`,
+      startedAt: '2025-12-25 08:00:00',
+      endedAt: '2025-12-25 08:03:00',
+      duration: 45,
+      countryCode: 'DE',
+      userIdentifier: '',
+      userDisplayName: '',
+      city: 'Berlin',
+      referrer: '',
+      referrerUrl: '',
+      referrerType: 'direct',
+      utmSource: '',
+      utmMedium: '',
+      utmCampaign: '',
+      utmContent: '',
+      utmTerm: '',
+    }),
   ];
 
   const events: ClickhouseEvent[] = [
@@ -341,7 +387,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       id: `${context.projectId}_e_pv_1`,
       createdAt: '2026-01-18 09:01:00',
       isPageView: true,
-      name: '',
+      name: '$$pageView',
       countryCode: 'US',
       pathname: '/',
       ...dimensionsByUser[1],
@@ -353,7 +399,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       id: `${context.projectId}_e_pv_2`,
       createdAt: '2026-01-18 10:01:00',
       isPageView: true,
-      name: '',
+      name: '$$pageView',
       countryCode: 'US',
       pathname: '/',
       ...dimensionsByUser[2],
@@ -365,7 +411,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       id: `${context.projectId}_e_pv_3`,
       createdAt: '2026-01-18 10:03:00',
       isPageView: true,
-      name: '',
+      name: '$$pageView',
       countryCode: 'US',
       pathname: '/pricing',
       ...dimensionsByUser[2],
@@ -377,7 +423,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       id: `${context.projectId}_e_pv_4`,
       createdAt: '2026-01-18 10:05:00',
       isPageView: true,
-      name: '',
+      name: '$$pageView',
       countryCode: 'US',
       pathname: '/signup',
       ...dimensionsByUser[2],
@@ -391,7 +437,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       id: `${context.projectId}_e_pv_5`,
       createdAt: '2026-01-19 09:01:00',
       isPageView: true,
-      name: '',
+      name: '$$pageView',
       countryCode: 'US',
       pathname: '/',
       ...dimensionsByUser[3],
@@ -403,7 +449,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       id: `${context.projectId}_e_pv_6`,
       createdAt: '2026-01-19 09:05:00',
       isPageView: true,
-      name: '',
+      name: '$$pageView',
       countryCode: 'US',
       pathname: '/features',
       ...dimensionsByUser[3],
@@ -415,7 +461,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       id: `${context.projectId}_e_pv_7`,
       createdAt: '2026-01-19 09:10:00',
       isPageView: true,
-      name: '',
+      name: '$$pageView',
       countryCode: 'US',
       pathname: '/pricing',
       ...dimensionsByUser[3],
@@ -427,7 +473,7 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       id: `${context.projectId}_e_pv_8`,
       createdAt: '2026-01-19 11:05:00',
       isPageView: true,
-      name: '',
+      name: '$$pageView',
       countryCode: 'DE',
       pathname: '/',
       ...dimensionsByUser[4],
@@ -497,8 +543,156 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
       pathname: '/checkout',
       ...dimensionsByUser[4],
     }),
+    // Anonymous pageview used by users endpoint tests
+    baseEvent({
+      projectId,
+      userId: BigInt(5),
+      sessionId: `${context.projectId}_s5`,
+      id: `${context.projectId}_e_pv_anon_1`,
+      createdAt: '2025-12-25 08:01:00',
+      isPageView: true,
+      name: '$$pageView',
+      countryCode: 'DE',
+      pathname: '/landing',
+      userIdentifier: '',
+      userDisplayName: '',
+      city: 'Berlin',
+      referrer: '',
+      referrerUrl: '',
+      referrerType: 'direct',
+      utmSource: '',
+      utmMedium: '',
+      utmCampaign: '',
+      utmContent: '',
+      utmTerm: '',
+    }),
   ];
 
+  const users: ClickhouseUser[] = [
+    {
+      projectId,
+      id: BigInt(1),
+      identifier: 'user-1',
+      displayName: 'Zulu',
+      avatarUrl: '',
+      createdAt: '2026-01-18 09:00:00',
+      firstSeenAt: '2026-01-18 09:00:00',
+      updatedAt: '2026-01-19 09:15:00',
+      initialDeviceId: BigInt(1),
+      countryCode: 'US',
+      city: 'New York',
+      latitude: null,
+      longitude: null,
+      userAgent: 'Mozilla/5.0',
+      referrer: 'Google',
+      referrerUrl: 'https://google.com',
+      referrerType: 'search',
+      origin: 'https://example.com',
+      pathname: '/',
+      urlHash: '',
+      queryParams: {},
+      utmSource: 'google',
+      utmMedium: 'cpc',
+      utmCampaign: 'winter_launch',
+      utmContent: 'hero_cta',
+      utmTerm: 'analytics',
+      customData: {
+        plan: 'pro',
+        company: 'Acme Inc',
+      },
+    },
+    {
+      projectId,
+      id: BigInt(2),
+      identifier: 'user-2',
+      displayName: 'Echo',
+      avatarUrl: '',
+      createdAt: '2026-01-18 10:00:00',
+      firstSeenAt: '2026-01-18 10:00:00',
+      updatedAt: '2026-01-19 11:20:00',
+      initialDeviceId: BigInt(2),
+      countryCode: 'US',
+      city: '',
+      latitude: null,
+      longitude: null,
+      userAgent: 'Mozilla/5.0',
+      referrer: '',
+      referrerUrl: 'https://news.ycombinator.com',
+      referrerType: 'social',
+      origin: 'https://example.com',
+      pathname: '/',
+      urlHash: '',
+      queryParams: {},
+      utmSource: 'hn',
+      utmMedium: 'social',
+      utmCampaign: 'winter_launch',
+      utmContent: 'text_link',
+      utmTerm: 'opensource',
+      customData: {},
+    },
+    {
+      projectId,
+      id: BigInt(3),
+      identifier: 'user-3',
+      displayName: 'Bravo',
+      avatarUrl: '',
+      createdAt: '2026-01-19 09:00:00',
+      firstSeenAt: '2026-01-19 09:00:00',
+      updatedAt: '2026-01-19 09:15:00',
+      initialDeviceId: BigInt(3),
+      countryCode: 'US',
+      city: 'San Francisco',
+      latitude: null,
+      longitude: null,
+      userAgent: 'Mozilla/5.0',
+      referrer: 'Newsletter',
+      referrerUrl: 'https://newsletter.example.com',
+      referrerType: 'email',
+      origin: 'https://example.com',
+      pathname: '/',
+      urlHash: '',
+      queryParams: {},
+      utmSource: 'newsletter',
+      utmMedium: 'email',
+      utmCampaign: 'jan_push',
+      utmContent: 'button',
+      utmTerm: 'metrics',
+      customData: {
+        plan: 'starter',
+      },
+    },
+    {
+      projectId,
+      id: BigInt(4),
+      identifier: 'user-4',
+      displayName: 'Charlie',
+      avatarUrl: '',
+      createdAt: '2026-01-19 11:00:00',
+      firstSeenAt: '2026-01-19 11:00:00',
+      updatedAt: '2026-01-19 11:20:00',
+      initialDeviceId: BigInt(4),
+      countryCode: 'DE',
+      city: 'Berlin',
+      latitude: null,
+      longitude: null,
+      userAgent: 'Mozilla/5.0',
+      referrer: 'Bing',
+      referrerUrl: 'https://bing.com',
+      referrerType: 'search',
+      origin: 'https://example.com',
+      pathname: '/',
+      urlHash: '',
+      queryParams: {},
+      utmSource: 'bing',
+      utmMedium: 'cpc',
+      utmCampaign: 'jan_push',
+      utmContent: 'ad_1',
+      utmTerm: 'privacy',
+      customData: {},
+    },
+  ];
+
+  await clickhouseUser.insert(users);
   await clickhouseSession.insert(sessions);
   await clickhouseEvent.insert(events);
 }

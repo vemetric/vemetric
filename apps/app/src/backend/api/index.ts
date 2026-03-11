@@ -3,7 +3,9 @@ import { authMiddleware } from './middleware/auth';
 import { loggingMiddleware } from './middleware/logging';
 import { createRateLimitMiddleware } from './middleware/rate-limit';
 import { registerAnalyticsRoutes } from './routes/analytics';
+import { registerFunnelRoutes } from './routes/funnels';
 import { registerProjectRoutes } from './routes/projects';
+import { registerUserRoutes } from './routes/users';
 import type { PublicApiHonoEnv } from './types';
 import { createValidationErrorResponse, errorHandler } from './utils/errors';
 
@@ -35,6 +37,8 @@ export function createPublicApi() {
 
   registerProjectRoutes(api);
   registerAnalyticsRoutes(api);
+  registerUserRoutes(api);
+  registerFunnelRoutes(api);
 
   api.notFound((c) => {
     return c.json(

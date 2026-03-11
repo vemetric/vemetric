@@ -1,17 +1,17 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
-import { createRoute, z } from '@hono/zod-openapi';
+import { createRoute } from '@hono/zod-openapi';
 import { getUserFilterQueries, parseMetricsQueryGroupingToken } from 'clickhouse';
 import { getFilterFunnelsData } from '../../utils/filter';
 import { isRetentionRestricted, RETENTION_UPGRADE_MESSAGE } from '../../utils/retention';
 import { DEFAULT_METRICS } from '../consts/analytics';
 import { analyticsQueryRequestSchema, analyticsQueryResponseSchema } from '../schemas/analytics';
-import { authorizationHeaderSchema, commonOpenApiErrorResponses } from '../schemas/common';
+import { authorizationHeaderSchema, commonOpenApiErrorResponses, planLimitExceededOpenApiResponse } from '../schemas/common';
 import type { PublicApiHonoEnv } from '../types';
-import { buildGroupObject } from '../utils/analytics/grouping';
+import { buildGroupObject, resolveAutoIntervalGrouping } from '../utils/analytics/grouping';
 import { getEmptyMetricValue, normalizeMetricValue } from '../utils/analytics/metrics';
 import { applyOrdering } from '../utils/analytics/ordering';
 import { queryMetricRows } from '../utils/analytics/queries';
-import { mapApiFilterConfig } from '../utils/api-filter-mapper';
+import { mapApiFilterConfig } from '../utils/api-to-internal-filter-mapper';
 import { resolveApiDateRange, formatApiDate } from '../utils/date';
 import { ApiError } from '../utils/errors';
 
@@ -40,19 +40,7 @@ const analyticsRoute = createRoute({
         },
       },
     },
-    403: {
-      description: 'Requested date range is not allowed for the current plan',
-      content: {
-        'application/json': {
-          schema: z.object({
-            error: z.object({
-              code: z.literal('PLAN_LIMIT_EXCEEDED'),
-              message: z.string(),
-            }),
-          }),
-        },
-      },
-    },
+    403: planLimitExceededOpenApiResponse,
     ...commonOpenApiErrorResponses,
   },
 });
@@ -61,9 +49,10 @@ export function registerAnalyticsRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
   api.openapi(analyticsRoute, async ({ req, json, var: { project, subscriptionStatus } }) => {
     const payload = req.valid('json');
 
-    const grouping = parseMetricsQueryGroupingToken(payload.group_by[0] ?? null);
+    const rawGrouping = parseMetricsQueryGroupingToken(payload.groupBy[0] ?? null);
     const filterConfig = mapApiFilterConfig(payload.filters, payload.filtersOperator);
-    const { timespan, startDate, endDate } = resolveApiDateRange(payload.date_range);
+    const { timespan, startDate, endDate } = resolveApiDateRange(payload.dateRange);
+    const grouping = resolveAutoIntervalGrouping(rawGrouping, { timespan, startDate, endDate });
     if (
       isRetentionRestricted({
         timespan,
@@ -123,7 +112,7 @@ export function registerAnalyticsRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
       }, {}),
     }));
 
-    const sortedRows = applyOrdering(rows, payload.order_by);
+    const sortedRows = applyOrdering(rows, payload.orderBy);
     const effectiveLimit = grouping.kind === 'none' ? 1 : payload.limit;
     const effectiveOffset = grouping.kind === 'none' ? 0 : payload.offset;
     const paginatedRows = sortedRows.slice(effectiveOffset, effectiveOffset + effectiveLimit);
@@ -135,10 +124,10 @@ export function registerAnalyticsRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
           to: formatApiDate(endDate ?? new Date()),
         },
         query: {
-          date_range: payload.date_range,
-          group_by: payload.group_by,
+          dateRange: payload.dateRange,
+          groupBy: payload.groupBy,
           metrics: selectedMetrics,
-          order_by: payload.order_by,
+          orderBy: payload.orderBy,
           limit: payload.limit,
           offset: payload.offset,
           ...(payload.filters

@@ -1,8 +1,8 @@
 import { z } from '@hono/zod-openapi';
-import { TIME_SPAN_PRESETS } from '@vemetric/common/charts/timespans';
+import { sortDirectionSchema } from '@vemetric/common/sort';
 import { eventPropertyTokenRegex, metricsGroupFieldTokens, parseMetricsQueryGroupingToken } from 'clickhouse';
 import { apiFiltersOperatorSchema, apiFilterSchema } from './api-filters';
-import { apiDateInputSchema, apiTimestampSchema } from './common';
+import { apiDateRangeSchema, apiTimestampSchema } from './common';
 import type { Metric } from '../consts/analytics';
 import { DEFAULT_METRICS, METRICS, METRICS_SET } from '../consts/analytics';
 import { isSortingGroupField } from '../utils/analytics/grouping';
@@ -34,16 +34,8 @@ const orderByFieldSchema = z.union([
 ]);
 
 const orderBySchema = z
-  .array(z.tuple([orderByFieldSchema, z.enum(['asc', 'desc'])]))
-  .max(1, 'order_by can include max one item in v1');
-
-const dateRangeSchema = z
-  .union([z.enum(TIME_SPAN_PRESETS), z.tuple([apiDateInputSchema, apiDateInputSchema])])
-  .openapi({
-    description:
-      'Date range for the query. Can be either one of the preset strings below, or an array with two date strings [start, end]. Date strings can be either in YYYY-MM-DD format or UTC ISO-8601 format with second precision.',
-    example: ['2026-01-01T12:00:00Z', '2026-01-31T12:00:00Z'],
-  });
+  .array(z.tuple([orderByFieldSchema, sortDirectionSchema]))
+  .max(1, 'orderBy can include max one item');
 
 const aggregateGroupSchema = z.object({}).strict();
 const intervalGroupSchema = z.object({ date: apiTimestampSchema }).openapi({
@@ -83,11 +75,11 @@ const responseMetricsSchema = z
       description: 'Custom events count for this row.',
       example: 43,
     }),
-    bounce_rate: z.number().nullable().optional().openapi({
+    bounceRate: z.number().nullable().optional().openapi({
       description: 'Bounce rate percentage for this row. Can be `null` when not applicable for the selected grouping.',
       example: 34.12,
     }),
-    visit_duration: z.number().nullable().optional().openapi({
+    visitDuration: z.number().nullable().optional().openapi({
       description:
         'Average visit duration in seconds for this row. Can be `null` when not applicable for the selected grouping.',
       example: 1222.45,
@@ -102,22 +94,26 @@ const responseMetricsSchema = z
 
 export const analyticsQueryRequestSchema = z
   .object({
-    date_range: dateRangeSchema,
+    dateRange: apiDateRangeSchema,
     metrics: z.array(z.enum(METRICS)).optional().openapi({
       description: `Metrics to calculate and include in the response.`,
       default: DEFAULT_METRICS,
     }),
-    group_by: z
+    groupBy: z
       .array(groupByTokenSchema)
       .default([])
       .openapi({
         description:
-          'Allowed values: "interval:auto", "country", "city", "page:origin", "page:path", "browser", "device_type", "os", "referrer", "referrer_type", "utm_*", "event:name", or "event:prop:<property_name>". At the moment it\'s only possible to group by one field, please tell us if you need more.',
+          'Allowed values: "interval:auto", "country", "city", "page:origin", "page:path", "browser", "deviceType", "os", "referrer", "referrerType", "utm*", "event:name", or "event:prop:<property_name>". At the moment it\'s only possible to group by one field, please tell us if you need more.',
         example: ['country'],
       }),
-    order_by: orderBySchema.default([]).openapi({
-      description: 'Gives you the ability to order multiple fields by different directions',
+    orderBy: orderBySchema.default([]).openapi({
+      description:
+        "Gives you the ability to order by a specific field and direction. At the moment it's only possible to order by one field.",
       example: [['users', 'desc']],
+      'x-vemetric-docs': {
+        hideTupleVariantChildren: true,
+      },
     }),
     limit: z
       .number()
@@ -144,37 +140,37 @@ export const analyticsQueryRequestSchema = z
     }),
   })
   .superRefine((data, ctx) => {
-    if (data.group_by.length > 1) {
+    if (data.groupBy.length > 1) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['group_by'],
-        message: 'group_by can include max one item in v1',
+        path: ['groupBy'],
+        message: 'groupBy can include max one item',
       });
     }
 
-    if (Array.isArray(data.date_range)) {
-      const [rawStart, rawEnd] = data.date_range;
+    if (Array.isArray(data.dateRange)) {
+      const [rawStart, rawEnd] = data.dateRange;
       const start = new Date(rawStart);
       const end = new Date(rawEnd);
 
       if (start.getTime() > end.getTime()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ['date_range'],
+          path: ['dateRange'],
           message: 'Start date must be before or equal to end date',
         });
       }
     }
 
     const selectedMetrics = data.metrics && data.metrics.length > 0 ? data.metrics : DEFAULT_METRICS;
-    const grouping = parseMetricsQueryGroupingToken(data.group_by[0] ?? null);
+    const grouping = parseMetricsQueryGroupingToken(data.groupBy[0] ?? null);
 
-    data.order_by.forEach(([field], index) => {
+    data.orderBy.forEach(([field], index) => {
       const isMetric = METRICS_SET.has(field as Metric);
       if (isMetric && !selectedMetrics.includes(field as Metric)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ['order_by', index, 0],
+          path: ['orderBy', index, 0],
           message: 'Sort metric must be included in metrics',
         });
       }
@@ -182,7 +178,7 @@ export const analyticsQueryRequestSchema = z
       if (!isMetric && !isSortingGroupField(field, grouping)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ['order_by', index, 0],
+          path: ['orderBy', index, 0],
           message: 'Invalid sort field',
         });
       }
@@ -207,17 +203,17 @@ export const analyticsQueryResponseSchema = z
       }),
     query: z
       .object({
-        date_range: dateRangeSchema.openapi({
-          description: 'Echo of the incoming `date_range` request field.',
+        dateRange: apiDateRangeSchema.openapi({
+          description: 'Echo of the incoming `dateRange` request field.',
         }),
-        group_by: z.array(groupByTokenSchema).max(1).openapi({
-          description: 'Echo of the incoming `group_by` request field.',
+        groupBy: z.array(groupByTokenSchema).max(1).openapi({
+          description: 'Echo of the incoming `groupBy` request field.',
         }),
         metrics: z.array(z.enum(METRICS)).min(1).openapi({
           description: 'Resolved list of metrics used in the query.',
         }),
-        order_by: orderBySchema.openapi({
-          description: 'Echo of the incoming `order_by` request field.',
+        orderBy: orderBySchema.openapi({
+          description: 'Echo of the incoming `orderBy` request field.',
         }),
         limit: z.number().int().min(1).openapi({
           description: 'Echo of the incoming `limit` request field.',
@@ -278,10 +274,10 @@ export const analyticsQueryResponseSchema = z
         to: '2026-01-19T23:59:59Z',
       },
       query: {
-        date_range: '30days',
-        group_by: ['country'],
+        dateRange: '30days',
+        groupBy: ['country'],
         metrics: ['users', 'events'],
-        order_by: [['users', 'desc']],
+        orderBy: [['users', 'desc']],
         limit: 100,
         offset: 0,
       },

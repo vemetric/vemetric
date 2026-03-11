@@ -236,12 +236,14 @@ export const clickhouseEvent = {
     projectId: bigint;
     userId: bigint;
     limit?: number;
+    offset?: number;
     cursor?: string;
     startDate?: Date;
+    endDate?: Date;
     date?: string; // YYYY-MM-DD format
     filterConfig?: IFilterConfig;
   }): Promise<Array<ClickhouseEvent & { isOnline: boolean }>> => {
-    const { projectId, userId, limit = EVENT_LIMIT, cursor, startDate, date, filterConfig } = props;
+    const { projectId, userId, limit = EVENT_LIMIT, offset, cursor, startDate, endDate, date, filterConfig } = props;
 
     // Build filter queries using the existing filter system
     const { filterQueries } = filterConfig
@@ -262,11 +264,13 @@ export const clickhouseEvent = {
         WHERE projectId = ${escape(projectId)} 
         AND userId = ${escape(userId)}${cursorClause}${dateClause}
         ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+        ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
         ${filterQueries || ''}
         GROUP BY id 
         HAVING sum(sign) > 0 
         ORDER BY eventTime DESC 
-        LIMIT ${escape(limit)}`,
+        LIMIT ${escape(limit)}
+        ${offset !== undefined ? `OFFSET ${escape(offset)}` : ''}`,
       format: 'JSONEachRow',
     });
 
@@ -278,72 +282,97 @@ export const clickhouseEvent = {
       };
     });
   },
-  getLatestUsers: withSpan(
-    'getLatestUsers',
-    async (
-      projectId: bigint,
-      pagination: PaginationOptions = { offset: 0, limit: USER_LIMIT },
-      filterQueries: string,
-      filterConfig: IFilterConfig,
-      sortConfig: IUserSortConfig,
-      startDate?: Date,
-      endDate?: Date,
-      search?: string,
-    ) => {
+  queryUsers: withSpan(
+    'queryUsers',
+    async (input: {
+      projectId: bigint;
+      pagination?: PaginationOptions;
+      filterQueries: string;
+      filterConfig?: IFilterConfig;
+      search?: string;
+      startDate?: Date;
+      endDate?: Date;
+      sortConfig?: IUserSortConfig;
+    }) => {
+      const {
+        projectId,
+        pagination = { offset: 0, limit: USER_LIMIT },
+        filterQueries,
+        filterConfig,
+        startDate,
+        search,
+        endDate,
+        sortConfig,
+      } = input;
       const userFilterQueries = filterConfig?.operator === 'and' ? buildUserFilterQueries(filterConfig) : '';
-      const { joinClause, orderByClause, sortSelect, isSortByEvent } = buildUserSortQueries(sortConfig, projectId);
+      const { joinClause, orderByClause, sortSelect, isSortByEvent } = buildUserSortQueries(
+        sortConfig,
+        projectId,
+        startDate,
+        endDate,
+      );
       const searchQuery = search ? `AND displayName ILIKE ${escape('%' + search + '%')}` : '';
 
       const resultSet = await clickhouseClient.query({
-        query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.maxCreatedAt as maxCreatedAt, u.isOnline as isOnline, usr.avatarUrl as avatarUrl${sortSelect}
+        query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.city as city, u.maxCreatedAt as maxCreatedAt, u.isOnline as isOnline, usr.avatarUrl as avatarUrl, usr.customData as customData${sortSelect}
+            FROM (
+              SELECT userId,
+                argMax(userIdentifier, eventCreatedAt) as identifier,
+                argMax(userDisplayName, eventCreatedAt) as displayName,
+                argMax(countryCode, eventCreatedAt) as countryCode,
+                argMax(city, eventCreatedAt) as city,
+                max(eventCreatedAt) as maxCreatedAt,
+                max(eventCreatedAt) >= ${ONLINE_USERS_INTERVAL_QUERY} as isOnline
               FROM (
-                SELECT userId,
-                  argMax(userIdentifier, eventCreatedAt) as identifier,
-                  argMax(userDisplayName, eventCreatedAt) as displayName,
-                  argMax(countryCode, eventCreatedAt) as countryCode,
-                  max(eventCreatedAt) as maxCreatedAt,
-                  max(eventCreatedAt) >= ${ONLINE_USERS_INTERVAL_QUERY} as isOnline
-                FROM (
-                  SELECT any(userId) as userId,
-                    argMax(userIdentifier, createdAt) as userIdentifier,
-                    argMax(userDisplayName, createdAt) as userDisplayName,
-                    argMax(countryCode, createdAt) as countryCode,
-                    max(createdAt) as eventCreatedAt
-                  FROM ${TABLE_NAME}
-                  WHERE projectId=${escape(projectId)}
-                    ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
-                    ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
-                  GROUP BY id
-                  HAVING sum(sign) > 0
-                )
-                WHERE 1=1 ${filterQueries || ''}
-                  ${userFilterQueries ? `AND (${userFilterQueries})` : ''}
-                GROUP BY userId
-              ) u
-              LEFT JOIN (
-                SELECT id, argMax(avatarUrl, updatedAt) as avatarUrl
-                FROM user
+                SELECT any(userId) as userId,
+                  argMax(userIdentifier, createdAt) as userIdentifier,
+                  argMax(userDisplayName, createdAt) as userDisplayName,
+                  argMax(countryCode, createdAt) as countryCode,
+                  argMax(city, createdAt) as city,
+                  max(createdAt) as eventCreatedAt
+                FROM ${TABLE_NAME}
                 WHERE projectId=${escape(projectId)}
+                  ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+                  ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
                 GROUP BY id
-                HAVING argMax(deleted, updatedAt) = 0
-              ) usr ON u.userId = usr.id
-              ${joinClause}
-              WHERE 1=1
-              ${searchQuery}
-              ${orderByClause}
-              LIMIT ${escape(pagination.limit)} OFFSET ${escape(pagination.offset)}`,
+                HAVING sum(sign) > 0
+              )
+              WHERE 1=1 ${filterQueries || ''}
+                ${userFilterQueries ? `AND (${userFilterQueries})` : ''}
+              GROUP BY userId
+            ) u
+            LEFT JOIN (
+              SELECT id, argMax(avatarUrl, updatedAt) as avatarUrl, argMax(customData, updatedAt) as customData
+              FROM user
+              WHERE projectId=${escape(projectId)}
+              GROUP BY id
+              HAVING argMax(deleted, updatedAt) = 0
+            ) usr ON u.userId = usr.id
+            ${joinClause}
+            WHERE 1=1
+            ${searchQuery}
+            ${orderByClause}
+            LIMIT ${escape(pagination.limit)} OFFSET ${escape(pagination.offset)}`,
         format: 'JSONEachRow',
       });
       const result = (await resultSet.json()) as Array<any>;
       return result.map((row) => {
+        const data =
+          typeof row.customData === 'string' && row.customData.length > 0
+            ? (JSON.parse(row.customData) as Record<string, unknown>)
+            : {};
+
         return {
           id: BigInt(row.userId),
           identifier: row.identifier as string,
           displayName: row.displayName as string,
           countryCode: row.countryCode as string,
-          lastSeenAt: row[isSortByEvent ? 'lastEventFiredAt' : 'maxCreatedAt'] as string,
+          city: row.city as string,
+          lastSeenAt: row.maxCreatedAt as string,
+          lastEventFiredAt: isSortByEvent ? ((row.lastEventFiredAt as string | null) ?? null) : null,
           isOnline: Boolean(row.isOnline),
           avatarUrl: row.avatarUrl as string,
+          data,
         };
       });
     },

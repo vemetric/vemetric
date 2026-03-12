@@ -3,6 +3,7 @@ import { authMiddleware } from './middleware/auth';
 import { loggingMiddleware } from './middleware/logging';
 import { createRateLimitMiddleware } from './middleware/rate-limit';
 import { registerAnalyticsRoutes } from './routes/analytics';
+import { registerFilterValueRoutes } from './routes/filter-values';
 import { registerFunnelRoutes } from './routes/funnels';
 import { registerProjectRoutes } from './routes/projects';
 import { registerUserRoutes } from './routes/users';
@@ -40,6 +41,7 @@ export function createPublicApi() {
 
   registerProjectRoutes(api);
   registerAnalyticsRoutes(api);
+  registerFilterValueRoutes(api);
   registerUserRoutes(api);
   registerFunnelRoutes(api);
 

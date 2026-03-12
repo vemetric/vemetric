@@ -17,11 +17,11 @@ if (process.env.SENTRY_URL) {
 export const app = new Hono();
 
 const backendApp = createBackendApp();
-const publicApi = createPublicApi();
+app.route('/_api', backendApp);
 
+const publicApi = createPublicApi();
 app.get('/api', (c) => c.redirect(API_DOCS_URL, 302));
 app.get('/api/', (c) => c.redirect(API_DOCS_URL, 302));
-app.route('/_api', backendApp);
 app.route('/api', publicApi);
 
 if (process.env.NODE_ENV === 'production') {

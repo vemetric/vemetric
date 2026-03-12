@@ -108,21 +108,19 @@ export function registerFilterValueRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
       }
     };
 
-    const data = await Promise.all(
-      payload.fields.map(async (field) => {
-        const values = getValuesForField(field);
-        const pagedValues = values.slice(payload.offset, payload.offset + payload.limit);
-        return {
-          field,
-          pagination: {
-            limit: payload.limit,
-            offset: payload.offset,
-            returned: pagedValues.length,
-          },
-          values: pagedValues,
-        };
-      }),
-    );
+    const data = payload.fields.map((field) => {
+      const values = getValuesForField(field);
+      const pagedValues = values.slice(payload.offset, payload.offset + payload.limit);
+      return {
+        field,
+        pagination: {
+          limit: payload.limit,
+          offset: payload.offset,
+          returned: pagedValues.length,
+        },
+        values: pagedValues,
+      };
+    });
 
     return json(
       {

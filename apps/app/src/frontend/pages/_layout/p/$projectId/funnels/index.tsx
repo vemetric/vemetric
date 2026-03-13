@@ -1,6 +1,7 @@
 import { AspectRatio, Box, Button, Card, Flex, Icon, SimpleGrid, Skeleton } from '@chakra-ui/react';
 import { createFileRoute } from '@tanstack/react-router';
 import { zodValidator } from '@tanstack/zod-adapter';
+import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { TbChartFunnel, TbPlus } from 'react-icons/tb';
 import { z } from 'zod';
@@ -45,6 +46,8 @@ function RouteComponent() {
     timespan,
     startDate,
     endDate,
+  }, {
+    refetchInterval: getTimespanRefetchInterval(timespan),
   });
 
   const {
@@ -60,7 +63,10 @@ function RouteComponent() {
       endDate,
       filterConfig,
     },
-    { keepPreviousData: true },
+    {
+      keepPreviousData: true,
+      refetchInterval: getTimespanRefetchInterval(timespan),
+    },
   );
 
   useSetBreadcrumbs(['Funnels']);
@@ -109,7 +115,7 @@ function RouteComponent() {
                   </Button>
                 </FunnelDialog>
                 <Box w="1px" h="26px" bg="gray.muted" />
-                <TimespanSelect from="/_layout/p/$projectId/funnels/" excludeLive />
+                <TimespanSelect from="/_layout/p/$projectId/funnels/" />
               </Flex>
             </Flex>
             <Box my={3}>

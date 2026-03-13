@@ -12,6 +12,7 @@ import {
 } from '@chakra-ui/react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { zodValidator } from '@tanstack/zod-adapter';
+import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { AnimatePresence, motion } from 'motion/react';
 import React, { useState } from 'react';
@@ -69,6 +70,8 @@ function RouteComponent() {
     timespan,
     startDate,
     endDate,
+  }, {
+    refetchInterval: getTimespanRefetchInterval(timespan),
   });
 
   const {
@@ -83,6 +86,7 @@ function RouteComponent() {
     },
     {
       keepPreviousData: true,
+      refetchInterval: getTimespanRefetchInterval(timespan),
     },
   );
   const isFunnelLoading = _isFunnelLoading || !funnelData;
@@ -255,7 +259,7 @@ function RouteComponent() {
                   </DeletePopover>
                 </Flex>
                 <Box w="1px" h="26px" bg="gray.muted" />
-                <TimespanSelect from="/_layout/p/$projectId/funnels/$funnelId" excludeLive />
+                <TimespanSelect from="/_layout/p/$projectId/funnels/$funnelId" />
               </Flex>
             </Flex>
             <Box my={3}>

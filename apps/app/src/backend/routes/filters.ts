@@ -7,10 +7,10 @@ import { clickhouseEvent } from 'clickhouse';
 import { dbFunnel } from 'database';
 import { addDays, differenceInDays, isAfter, startOfDay } from 'date-fns';
 import { z } from 'zod';
-import { projectOrPublicProcedure, router, timespanProcedure } from '../utils/trpc';
+import { projectOrPublicProcedure, publicTimespanProcedure, router } from '../utils/trpc';
 
 export const filtersRouter = router({
-  getFilterableData: timespanProcedure.query(async (opts) => {
+  getFilterableData: publicTimespanProcedure.query(async (opts) => {
     const {
       ctx: { projectId, project, subscriptionStatus, startDate: _startDate, endDate: _endDate },
     } = opts;

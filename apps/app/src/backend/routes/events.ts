@@ -1,12 +1,12 @@
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { clickhouseEvent } from 'clickhouse';
 import { z } from 'zod';
-import {router, timespanProcedure } from '../utils/trpc';
+import { projectTimespanProcedure, router } from '../utils/trpc';
 
 const EVENTS_PER_PAGE = 50;
 
 export const eventsRouter = router({
-  list: timespanProcedure
+  list: projectTimespanProcedure
     .input(
       z.object({
         cursor: z.string().optional(), // ISO timestamp string

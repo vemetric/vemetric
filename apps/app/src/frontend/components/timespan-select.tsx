@@ -31,10 +31,9 @@ export const todayMinus31Days = addDays(new Date(today.getFullYear(), today.getM
 
 interface Props {
   from: TimespanRoute;
-  excludeLive?: boolean;
 }
 
-export const TimespanSelect = ({ from, excludeLive = false }: Props) => {
+export const TimespanSelect = ({ from }: Props) => {
   const router = useRouter();
   const route = getRouteApi(from);
 
@@ -43,12 +42,6 @@ export const TimespanSelect = ({ from, excludeLive = false }: Props) => {
   const { timespan, startDate, endDate } = useTimespanParam({ from });
 
   const { data, isLoading } = trpc.billing.subscriptionActive.useQuery({ domain, projectId });
-
-  if (excludeLive && timespan === 'live') {
-    return (
-      <Navigate from={router.routesById[route.id].fullPath} params={(prev) => prev} search={{ t: '24hrs' }} replace />
-    );
-  }
 
   let isAllowed = isTimespanAllowed(timespan, Boolean(data?.isSubscriptionActive));
   if (timespan === 'custom' && startDate && !data?.isSubscriptionActive) {
@@ -139,7 +132,6 @@ export const TimespanSelect = ({ from, excludeLive = false }: Props) => {
                   }}
                 >
                   {Object.entries(TIME_SPAN_DATA)
-                    .filter(([key]) => !excludeLive || key !== 'live')
                     .filter(([key]) => key !== 'custom')
                     .map(([key, value]) => {
                       const isDisabled = !isTimespanAllowed(key as TimeSpan, Boolean(data?.isSubscriptionActive));

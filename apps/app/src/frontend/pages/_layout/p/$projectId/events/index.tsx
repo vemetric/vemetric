@@ -45,14 +45,17 @@ function RouteComponent() {
   const filterContainerRef = useRef<HTMLDivElement>(null);
   const [filterContainerHeight, setFilterContainerHeight] = useState(0);
   const { timespan, startDate, endDate } = useTimespanParam({ from: '/_layout/p/$projectId/events/' });
-  const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery({
-    projectId,
-    timespan,
-    startDate,
-    endDate,
-  }, {
-    refetchInterval: getTimespanRefetchInterval(timespan),
-  });
+  const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery(
+    {
+      projectId,
+      timespan,
+      startDate,
+      endDate,
+    },
+    {
+      refetchInterval: getTimespanRefetchInterval(timespan),
+    },
+  );
 
   const {
     data: eventsData,
@@ -161,7 +164,7 @@ function RouteComponent() {
             align="center"
           >
             <FilterContainer filterConfig={filterConfig} from="/p/$projectId/events" />
-            <Flex flexGrow={1} gap={2.5} justify="flex-end">
+            <Flex flexGrow={1} flexWrap="wrap" gap={2.5} justify="flex-end">
               <AddFilterButton from="/p/$projectId/events" filterConfig={filterConfig} />
               <TimespanSelect from="/_layout/p/$projectId/events/" />
             </Flex>

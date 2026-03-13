@@ -41,14 +41,17 @@ function RouteComponent() {
   const { timespan, startDate, endDate } = useTimespanParam({ from: '/_layout/p/$projectId/funnels/' });
   const { activeUsersVisible, setActiveUsersVisible } = useActiveUsersParam({ from: '/_layout/p/$projectId/funnels/' });
 
-  const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery({
-    projectId,
-    timespan,
-    startDate,
-    endDate,
-  }, {
-    refetchInterval: getTimespanRefetchInterval(timespan),
-  });
+  const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery(
+    {
+      projectId,
+      timespan,
+      startDate,
+      endDate,
+    },
+    {
+      refetchInterval: getTimespanRefetchInterval(timespan),
+    },
+  );
 
   const {
     data: funnelsData,
@@ -105,7 +108,7 @@ function RouteComponent() {
                 activeUsersVisible={activeUsersVisible}
                 setActiveUsersVisible={setActiveUsersVisible}
               />
-              <Flex align="center" justify="flex-end" gap={[1.5, 3]} flexGrow={1}>
+              <Flex align="center" flexWrap="wrap" justify="flex-end" gap={[1.5, 3]} flexGrow={1}>
                 <AddFilterButton from="/p/$projectId/funnels" filterConfig={filterConfig} />
                 <Box w="1px" h="26px" bg="gray.muted" />
                 <FunnelDialog>

@@ -133,7 +133,7 @@ function Page() {
         <Box mt={-3} pos="sticky" top={{ base: '44px', md: '122px', lg: '52px' }} zIndex="dropdown">
           <Flex pt={3} bg="bg.content" flexWrap="wrap" w="100%" columnGap={8} rowGap={4} align="center">
             <FilterContainer filterConfig={filterConfig} from="/p/$projectId/users" />
-            <Flex flexGrow={1} gap={2.5} justify="flex-end" align="center">
+            <Flex flexGrow={1} flexWrap="wrap" gap={2.5} justify="flex-end" align="center">
               <SearchButtonInput value={search} onChange={setSearch} />
               <AddFilterButton from="/p/$projectId/users" filterConfig={filterConfig} />
               <TimespanSelect from="/_layout/p/$projectId/users/" />

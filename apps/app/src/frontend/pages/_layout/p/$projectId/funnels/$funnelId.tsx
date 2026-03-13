@@ -65,14 +65,17 @@ function RouteComponent() {
 
   const utils = trpc.useUtils();
 
-  const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery({
-    projectId,
-    timespan,
-    startDate,
-    endDate,
-  }, {
-    refetchInterval: getTimespanRefetchInterval(timespan),
-  });
+  const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery(
+    {
+      projectId,
+      timespan,
+      startDate,
+      endDate,
+    },
+    {
+      refetchInterval: getTimespanRefetchInterval(timespan),
+    },
+  );
 
   const {
     data: funnelData,
@@ -239,7 +242,7 @@ function RouteComponent() {
                   </Button>
                 )}
               </Flex>
-              <Flex align="center" justify="flex-end" gap={[1.5, 3]} flexGrow={[1, 0]}>
+              <Flex align="center" flexWrap="wrap" justify="flex-end" gap={[1.5, 3]} flexGrow={[1, 0]}>
                 <AddFilterButton from="/p/$projectId/funnels/$funnelId" filterConfig={filterConfig} />
                 <Box w="1px" h="26px" bg="gray.muted" />
                 <Flex align="center" gap={2.5}>

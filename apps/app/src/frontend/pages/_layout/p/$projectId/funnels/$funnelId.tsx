@@ -12,6 +12,7 @@ import {
 } from '@chakra-ui/react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { zodValidator } from '@tanstack/zod-adapter';
+import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { AnimatePresence, motion } from 'motion/react';
 import React, { useState } from 'react';
@@ -64,12 +65,17 @@ function RouteComponent() {
 
   const utils = trpc.useUtils();
 
-  const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery({
-    projectId,
-    timespan,
-    startDate,
-    endDate,
-  });
+  const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery(
+    {
+      projectId,
+      timespan,
+      startDate,
+      endDate,
+    },
+    {
+      refetchInterval: getTimespanRefetchInterval(timespan),
+    },
+  );
 
   const {
     data: funnelData,
@@ -83,6 +89,7 @@ function RouteComponent() {
     },
     {
       keepPreviousData: true,
+      refetchInterval: getTimespanRefetchInterval(timespan),
     },
   );
   const isFunnelLoading = _isFunnelLoading || !funnelData;
@@ -235,7 +242,7 @@ function RouteComponent() {
                   </Button>
                 )}
               </Flex>
-              <Flex align="center" justify="flex-end" gap={[1.5, 3]} flexGrow={[1, 0]}>
+              <Flex align="center" flexWrap="wrap" justify="flex-end" gap={[1.5, 3]} flexGrow={[1, 0]}>
                 <AddFilterButton from="/p/$projectId/funnels/$funnelId" filterConfig={filterConfig} />
                 <Box w="1px" h="26px" bg="gray.muted" />
                 <Flex align="center" gap={2.5}>
@@ -255,7 +262,7 @@ function RouteComponent() {
                   </DeletePopover>
                 </Flex>
                 <Box w="1px" h="26px" bg="gray.muted" />
-                <TimespanSelect from="/_layout/p/$projectId/funnels/$funnelId" excludeLive />
+                <TimespanSelect from="/_layout/p/$projectId/funnels/$funnelId" />
               </Flex>
             </Flex>
             <Box my={3}>

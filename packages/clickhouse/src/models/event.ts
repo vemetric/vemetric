@@ -988,9 +988,10 @@ export const clickhouseEvent = {
       limit?: number;
       cursor?: string;
       startDate?: Date;
+      endDate?: Date;
       filterConfig?: IFilterConfig;
     }): Promise<Array<ClickhouseEvent>> => {
-      const { projectId, limit = EVENT_LIMIT, cursor, startDate, filterConfig } = props;
+      const { projectId, limit = EVENT_LIMIT, cursor, startDate, endDate, filterConfig } = props;
 
       const cursorClause = cursor ? `AND createdAt < ${escape(cursor)}` : '';
 
@@ -1015,6 +1016,7 @@ export const clickhouseEvent = {
           PREWHERE projectId = ${escape(projectId)} AND isPageView <> 1
           WHERE 1=1 ${cursorClause}
           ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+          ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
           ${filterQueries || ''}
           GROUP BY id
           HAVING sum(sign) > 0

@@ -256,71 +256,86 @@ export const projectOrPublicProcedure = publicProcedure
     });
   });
 
-export const timespanProcedure = projectOrPublicProcedure
-  .input(
-    z.object({
-      timespan: z.enum(TIME_SPANS),
-      startDate: z.string().optional(),
-      endDate: z.string().optional(),
-    }),
-  )
-  .use(async (opts) => {
-    const {
-      input,
-      ctx: { subscriptionStatus },
-    } = opts;
+const timespanInputSchema = z.object({
+  timespan: z.enum(TIME_SPANS),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+});
 
-    if (input.timespan === 'custom' && !input.startDate) {
-      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Start date is required for custom time span' });
+const resolveTimespanContext = (
+  input: z.infer<typeof timespanInputSchema>,
+  isSubscriptionActive: boolean,
+) => {
+  if (input.timespan === 'custom' && !input.startDate) {
+    throw new TRPCError({ code: 'BAD_REQUEST', message: 'Start date is required for custom time span' });
+  }
+
+  const startDate = getTimeSpanStartDate(input.timespan, input.startDate);
+  if (isNaN(startDate.getTime())) {
+    throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid start date format' });
+  }
+  const endDate = getTimeSpanEndDate(input.timespan, input.endDate || input.startDate);
+
+  let timeSpanData = TIME_SPAN_DATA[input.timespan];
+
+  if (input.timespan === 'custom') {
+    if (!endDate || isNaN(endDate.getTime())) {
+      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid end date format' });
     }
 
-    const startDate = getTimeSpanStartDate(input.timespan, input.startDate);
-    if (isNaN(startDate.getTime())) {
-      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid start date format' });
+    if (isBefore(startDate, timeSpanRangeMin)) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: `Start date cannot be before ${format(timeSpanRangeMin, 'yyyy-MM-dd')}`,
+      });
     }
-    const endDate = getTimeSpanEndDate(input.timespan, input.endDate || input.startDate);
-
-    let timeSpanData = TIME_SPAN_DATA[input.timespan];
-
-    if (input.timespan === 'custom') {
-      if (!endDate || isNaN(endDate.getTime())) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid end date format' });
-      }
-
-      if (isBefore(startDate, timeSpanRangeMin)) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: `Start date cannot be before ${format(timeSpanRangeMin, 'yyyy-MM-dd')}`,
-        });
-      }
-      const timeSpanRangeMax = getTimeSpanRangeMax();
-      if (isAfter(endDate, addDays(timeSpanRangeMax, 2))) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: `End date cannot be after ${format(timeSpanRangeMax, 'yyyy-MM-dd')}`,
-        });
-      }
-
-      const interval = getCustomDateRangeInterval(startDate, endDate);
-      timeSpanData = { ...timeSpanData, interval };
+    const timeSpanRangeMax = getTimeSpanRangeMax();
+    if (isAfter(endDate, addDays(timeSpanRangeMax, 2))) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: `End date cannot be after ${format(timeSpanRangeMax, 'yyyy-MM-dd')}`,
+      });
     }
 
-    if (
-      isRetentionRestricted({
-        timespan: input.timespan,
-        startDate,
-        isSubscriptionActive: subscriptionStatus.isActive,
-      })
-    ) {
-      throw new TRPCError({ code: 'FORBIDDEN', message: RETENTION_UPGRADE_MESSAGE });
-    }
+    const interval = getCustomDateRangeInterval(startDate, endDate);
+    timeSpanData = { ...timeSpanData, interval };
+  }
 
-    return opts.next({
-      ctx: {
-        ...opts.ctx,
-        timeSpanData,
-        startDate,
-        endDate,
-      },
-    });
+  if (
+    isRetentionRestricted({
+      timespan: input.timespan,
+      startDate,
+      isSubscriptionActive,
+    })
+  ) {
+    throw new TRPCError({ code: 'FORBIDDEN', message: RETENTION_UPGRADE_MESSAGE });
+  }
+
+  return {
+    timeSpanData,
+    startDate,
+    endDate,
+  };
+};
+
+export const publicTimespanProcedure = projectOrPublicProcedure.input(timespanInputSchema).use(async (opts) => {
+  const timespanContext = resolveTimespanContext(opts.input, opts.ctx.subscriptionStatus.isActive);
+
+  return opts.next({
+    ctx: {
+      ...opts.ctx,
+      ...timespanContext,
+    },
   });
+});
+
+export const projectTimespanProcedure = projectProcedure.input(timespanInputSchema).use(async (opts) => {
+  const timespanContext = resolveTimespanContext(opts.input, opts.ctx.subscriptionStatus.isActive);
+
+  return opts.next({
+    ctx: {
+      ...opts.ctx,
+      ...timespanContext,
+    },
+  });
+});

@@ -7,7 +7,7 @@ import { dbFunnel } from 'database';
 import { z } from 'zod';
 import { logger } from '../utils/backend-logger';
 import { getFilterFunnelsData } from '../utils/filter';
-import { projectProcedure, router, timespanProcedure } from '../utils/trpc';
+import { projectProcedure, projectTimespanProcedure, router } from '../utils/trpc';
 import { vemetric } from '../utils/vemetric-client';
 
 const upsertFunnelSchema = z.object({
@@ -18,7 +18,7 @@ const upsertFunnelSchema = z.object({
 });
 
 export const funnelsRouter = router({
-  list: timespanProcedure
+  list: projectTimespanProcedure
     .input(
       z.object({
         filterConfig: filterConfigSchema,
@@ -171,7 +171,7 @@ export const funnelsRouter = router({
     return { success: true };
   }),
 
-  getFunnelResults: timespanProcedure
+  getFunnelResults: projectTimespanProcedure
     .input(
       z.object({
         id: z.string(),

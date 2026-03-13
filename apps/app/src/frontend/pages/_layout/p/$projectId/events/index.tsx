@@ -1,6 +1,7 @@
 import { Box, Flex, Spinner, Icon, Button, Card, Link as ChakraLink } from '@chakra-ui/react';
 import { createFileRoute } from '@tanstack/react-router';
 import { zodValidator } from '@tanstack/zod-adapter';
+import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { AnimatePresence } from 'motion/react';
 import React, { useEffect, useRef, useState } from 'react';
@@ -13,22 +14,27 @@ import { FilterContextProvider } from '@/components/filter/filter-context';
 import { PageDotBackground } from '@/components/page-dot-background';
 import { EventCard, EventCardSkeleton } from '@/components/pages/events/event-card';
 import { DateSeparator } from '@/components/pages/user/date-separator';
+import { TimespanSelect } from '@/components/timespan-select';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Status } from '@/components/ui/status';
-import { Tooltip } from '@/components/ui/tooltip';
+import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { EventsPageStoreProvider } from '@/stores/events-page-store';
 import { useSetBreadcrumbs, useSetDocsLink } from '@/stores/header-store';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import { observeResize } from '@/utils/dom';
+import { timeSpanSearchMiddleware, timespanSearchSchema } from '@/utils/timespans';
 import { trpc } from '@/utils/trpc';
 
 const eventsSearchSchema = z.object({
+  ...timespanSearchSchema.shape,
   f: filterConfigSchema,
 });
 
 export const Route = createFileRoute('/_layout/p/$projectId/events/')({
   validateSearch: zodValidator(eventsSearchSchema),
+  search: {
+    middlewares: [timeSpanSearchMiddleware],
+  },
   component: RouteComponent,
 });
 
@@ -38,11 +44,18 @@ function RouteComponent() {
   const hasActiveFilters = filterConfig && filterConfig.filters.length > 0;
   const filterContainerRef = useRef<HTMLDivElement>(null);
   const [filterContainerHeight, setFilterContainerHeight] = useState(0);
-
-  const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery({
-    projectId,
-    timespan: '30days',
-  });
+  const { timespan, startDate, endDate } = useTimespanParam({ from: '/_layout/p/$projectId/events/' });
+  const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery(
+    {
+      projectId,
+      timespan,
+      startDate,
+      endDate,
+    },
+    {
+      refetchInterval: getTimespanRefetchInterval(timespan),
+    },
+  );
 
   const {
     data: eventsData,
@@ -51,17 +64,16 @@ function RouteComponent() {
     hasNextPage,
     isFetchingNextPage,
   } = trpc.events.list.useInfiniteQuery(
-    { projectId, filterConfig },
+    { projectId, filterConfig, timespan, startDate, endDate },
     {
       keepPreviousData: true,
       getNextPageParam: (lastPage) => lastPage.nextCursor,
-      refetchInterval: 5000,
+      refetchInterval: getTimespanRefetchInterval(timespan),
     },
   );
 
-  const nextEventDate = dateTimeFormatter.formatDate(
-    eventsData?.pages[eventsData?.pages.length - 1]?.nextCursor ?? new Date(),
-  );
+  const lastPageCursor = eventsData?.pages[eventsData?.pages.length - 1]?.nextCursor;
+  const nextEventDate = lastPageCursor ? dateTimeFormatter.formatDate(lastPageCursor) : null;
   const nowDate = dateTimeFormatter.formatDate(new Date());
   const events = (eventsData?.pages.flatMap((page) => page.events ?? []) ?? []).map((event) => ({
     ...event,
@@ -152,8 +164,9 @@ function RouteComponent() {
             align="center"
           >
             <FilterContainer filterConfig={filterConfig} from="/p/$projectId/events" />
-            <Flex flexGrow={1} gap={2.5} justify="flex-end">
+            <Flex flexGrow={1} flexWrap="wrap" gap={2.5} justify="flex-end">
               <AddFilterButton from="/p/$projectId/events" filterConfig={filterConfig} />
+              <TimespanSelect from="/_layout/p/$projectId/events/" />
             </Flex>
           </Flex>
           <Box h={3} w="full" bg={hasActiveFilters ? 'bg.content' : 'transparent'} />
@@ -175,38 +188,6 @@ function RouteComponent() {
           mx="auto"
           zIndex="3"
         />
-        <Box
-          pos="fixed"
-          top={0}
-          transition="all 0.2s ease-in-out"
-          transform={{
-            base: `translateY(${58 + filterContainerHeight}px)`,
-            md: `translateY(${140 + filterContainerHeight}px)`,
-            lg: `translateY(${70 + filterContainerHeight}px)`,
-          }}
-          zIndex="dropdown"
-        >
-          <Box w="fit-content">
-            <Tooltip content={`New events will appear automatically`}>
-              <Flex
-                align="center"
-                gap={2}
-                fontSize="sm"
-                fontWeight="medium"
-                color="green.fg"
-                border="1px solid"
-                borderColor="green.emphasized/60"
-                bg="green.subtle/60"
-                rounded="md"
-                px={1.5}
-                py={0.5}
-              >
-                <Status value="success" />
-                Live
-              </Flex>
-            </Tooltip>
-          </Box>
-        </Box>
         <Box pb={4} pos="relative">
           {events.length === 0 ? (
             <Box mt={4} mx="auto" pos="relative" maxW="500px">
@@ -238,7 +219,7 @@ function RouteComponent() {
               <Flex flexDir="column" gap="6" mx="auto" maxW="500px">
                 {groupedEvents.map(([date, events], index) => {
                   const isLastDate = index === groupedEvents.length - 1;
-                  const isCompleteDate = !isLastDate || nextEventDate !== date;
+                  const isCompleteDate = !isLastDate || !nextEventDate || nextEventDate !== date;
 
                   return (
                     <React.Fragment key={date}>

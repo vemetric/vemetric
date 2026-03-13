@@ -1,6 +1,7 @@
 import { AspectRatio, Box, Button, Card, Flex, Icon, SimpleGrid, Skeleton } from '@chakra-ui/react';
 import { createFileRoute } from '@tanstack/react-router';
 import { zodValidator } from '@tanstack/zod-adapter';
+import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { TbChartFunnel, TbPlus } from 'react-icons/tb';
 import { z } from 'zod';
@@ -40,12 +41,17 @@ function RouteComponent() {
   const { timespan, startDate, endDate } = useTimespanParam({ from: '/_layout/p/$projectId/funnels/' });
   const { activeUsersVisible, setActiveUsersVisible } = useActiveUsersParam({ from: '/_layout/p/$projectId/funnels/' });
 
-  const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery({
-    projectId,
-    timespan,
-    startDate,
-    endDate,
-  });
+  const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery(
+    {
+      projectId,
+      timespan,
+      startDate,
+      endDate,
+    },
+    {
+      refetchInterval: getTimespanRefetchInterval(timespan),
+    },
+  );
 
   const {
     data: funnelsData,
@@ -60,7 +66,10 @@ function RouteComponent() {
       endDate,
       filterConfig,
     },
-    { keepPreviousData: true },
+    {
+      keepPreviousData: true,
+      refetchInterval: getTimespanRefetchInterval(timespan),
+    },
   );
 
   useSetBreadcrumbs(['Funnels']);
@@ -99,7 +108,7 @@ function RouteComponent() {
                 activeUsersVisible={activeUsersVisible}
                 setActiveUsersVisible={setActiveUsersVisible}
               />
-              <Flex align="center" justify="flex-end" gap={[1.5, 3]} flexGrow={1}>
+              <Flex align="center" flexWrap="wrap" justify="flex-end" gap={[1.5, 3]} flexGrow={1}>
                 <AddFilterButton from="/p/$projectId/funnels" filterConfig={filterConfig} />
                 <Box w="1px" h="26px" bg="gray.muted" />
                 <FunnelDialog>
@@ -109,7 +118,7 @@ function RouteComponent() {
                   </Button>
                 </FunnelDialog>
                 <Box w="1px" h="26px" bg="gray.muted" />
-                <TimespanSelect from="/_layout/p/$projectId/funnels/" excludeLive />
+                <TimespanSelect from="/_layout/p/$projectId/funnels/" />
               </Flex>
             </Flex>
             <Box my={3}>

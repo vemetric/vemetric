@@ -5,9 +5,10 @@ import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import { COUNTRIES } from '@vemetric/common/countries';
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { userSortConfigSchema } from '@vemetric/common/sort';
-import { TbClock, TbChevronRight, TbChevronLeft, TbClockOff } from 'react-icons/tb';
+import { TbClock, TbChevronRight, TbChevronLeft, TbClockOff, TbUserOff } from 'react-icons/tb';
 import { z } from 'zod';
 import { CountryFlag } from '@/components/country-flag';
+import { DataEmptyState } from '@/components/data-empty-state';
 import { AddFilterButton } from '@/components/filter/add-filter/add-filter-button';
 import { FilterContainer } from '@/components/filter/filter-container';
 import { FilterContextProvider } from '@/components/filter/filter-context';
@@ -174,11 +175,15 @@ function Page() {
 
         {!isLoading && isInitialized ? (
           users.length === 0 ? (
-            <Box textAlign="center" py={4}>
-              <Text textStyle="sm" color="fg.muted">
-                No users found for the selected filters and date range.
-              </Text>
-            </Box>
+            <DataEmptyState
+              size={{ base: 'sm', md: 'md' }}
+              icon={<TbUserOff />}
+              title="No users found"
+              description="Try to adjust the current filters or timeframe."
+              filterConfig={filterConfig}
+              filterRoute={'/p/$projectId/users'}
+              timespanRoute={'/_layout/p/$projectId/users/'}
+            />
           ) : (
             <>
               {users.map((user) => {

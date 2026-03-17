@@ -8,6 +8,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { TbActivity, TbArrowDown } from 'react-icons/tb';
 import { groupBy } from 'remeda';
 import { z } from 'zod';
+import { DataEmptyState } from '@/components/data-empty-state';
 import { AddFilterButton } from '@/components/filter/add-filter/add-filter-button';
 import { FilterContainer } from '@/components/filter/filter-container';
 import { FilterContextProvider } from '@/components/filter/filter-context';
@@ -15,7 +16,6 @@ import { PageDotBackground } from '@/components/page-dot-background';
 import { EventCard, EventCardSkeleton } from '@/components/pages/events/event-card';
 import { DateSeparator } from '@/components/pages/user/date-separator';
 import { TimespanSelect } from '@/components/timespan-select';
-import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { EventsPageStoreProvider } from '@/stores/events-page-store';
@@ -192,16 +192,13 @@ function RouteComponent() {
           {events.length === 0 ? (
             <Box mt={4} mx="auto" pos="relative" maxW="500px">
               <Card.Root rounded="xl">
-                <EmptyState
+                <DataEmptyState
+                  size={{ base: 'sm', md: 'md' }}
                   icon={<TbActivity />}
-                  title={
-                    !filterConfig || filterConfig.filters.length === 0
-                      ? 'No events found'
-                      : 'No events matching your filters'
-                  }
+                  title="No events found"
                   description={
                     <>
-                      Start{' '}
+                      Try to adjust the current filters or timeframe or start{' '}
                       <ChakraLink
                         colorPalette="purple"
                         href="https://vemetric.com/docs/product-analytics/tracking-custom-events"
@@ -211,6 +208,9 @@ function RouteComponent() {
                       in your application to see them here.
                     </>
                   }
+                  filterConfig={filterConfig}
+                  filterRoute={'/p/$projectId/events'}
+                  timespanRoute={'/_layout/p/$projectId/events/'}
                 />
               </Card.Root>
             </Box>

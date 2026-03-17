@@ -3,6 +3,7 @@ import { Card, Icon, AspectRatio, Box, Flex, SimpleGrid, Text, useBreakpointValu
 import { useNavigate } from '@tanstack/react-router';
 import type { ChartInterval, TimeSpan } from '@vemetric/common/charts/timespans';
 import { getCustomDateRangeInterval, isIncompletePeriod, TIME_SPAN_DATA } from '@vemetric/common/charts/timespans';
+import type { IFilterConfig } from '@vemetric/common/filters';
 import { formatNumber } from '@vemetric/common/math';
 import { isSameDay } from 'date-fns';
 import React, { useState } from 'react';
@@ -19,6 +20,7 @@ import {
   Bar,
 } from 'recharts';
 import type { AxisDomain } from 'recharts/types/util/types';
+import { DataEmptyState } from '@/components/data-empty-state';
 import { DeleteIconButton } from '@/components/delete-icon-button';
 import {
   CHART_CATEGORIES,
@@ -26,7 +28,6 @@ import {
   ChartCategoryCard,
 } from '@/components/pages/dashboard/chart-category-card';
 import { DashboardCardHeader } from '@/components/pages/dashboard/dashboard-card-header';
-import { EmptyState } from '@/components/ui/empty-state';
 import { MenuContent, MenuRoot, MenuTrigger, MenuItem } from '@/components/ui/menu';
 import { Status } from '@/components/ui/status';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -163,6 +164,7 @@ interface Props extends CardRootProps {
   allowDecimals?: boolean;
   tickGap?: number;
   publicDashboard?: boolean;
+  filterConfig?: IFilterConfig;
 }
 
 export const DashboardChart = (props: Props) => {
@@ -177,6 +179,7 @@ export const DashboardChart = (props: Props) => {
     maxValue,
     allowDecimals = true,
     publicDashboard = false,
+    filterConfig,
     ...cardProps
   } = props;
   const yAxisDomain = getYAxisDomain(autoMinValue, minValue, maxValue);
@@ -565,10 +568,14 @@ export const DashboardChart = (props: Props) => {
             </Box>
           ) : (
             <Flex pos="absolute" inset={0} justify="center" align="center">
-              <EmptyState
+              <DataEmptyState
                 size={{ base: 'sm', md: 'md' }}
                 icon={<TbActivity />}
-                title="No data available in the selected timeframe"
+                title="No data available"
+                description="Adjust the current filters or timeframe to explore a different slice of data."
+                filterConfig={filterConfig}
+                filterRoute={publicDashboard ? '/public/$domain' : '/p/$projectId'}
+                timespanRoute={publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/'}
               />
             </Flex>
           )}

@@ -151,6 +151,7 @@ function Page() {
                 timespanEndDate={endDate}
                 data={data}
                 trends={trendsData}
+                filterConfig={filterConfig}
               />
               {isPreviousData && (
                 <Box pos="absolute" inset="0" opacity="0.8" zIndex="docked">

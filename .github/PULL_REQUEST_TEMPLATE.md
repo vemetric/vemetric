@@ -6,8 +6,6 @@ Fixes # (issue)
 
 ### Type of Change
 
-<!-- Check the relevant option(s): -->
-
 - [ ] Bug fix
 - [ ] New feature
 - [ ] Refactor / code improvement

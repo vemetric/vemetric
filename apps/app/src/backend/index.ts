@@ -5,6 +5,7 @@ import { API_DOCS_URL, createPublicApi } from './api';
 import { createBackendApp } from './backend-app';
 import { createStaticApp } from './static-app';
 import { logger } from './utils/backend-logger';
+import { startHeapSnapshotSchedule } from './utils/heap-snapshot';
 
 if (process.env.SENTRY_URL) {
   Sentry.init({
@@ -44,5 +45,9 @@ process.on('unhandledRejection', function (err) {
 process.on('beforeExit', () => {
   clickhouseClient.close();
 });
+
+if (process.env.NODE_ENV === 'production') {
+  startHeapSnapshotSchedule();
+}
 
 logger.info('Starting app');

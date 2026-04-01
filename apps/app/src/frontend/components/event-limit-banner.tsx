@@ -9,9 +9,12 @@ export const EventLimitBanner = () => {
   const location = useLocation();
   const { organizationId } = useCurrentOrganization();
 
-  const { data: billingStatus } = trpc.billing.billingStatus.useQuery({
-    organizationId,
-  });
+  const { data: billingStatus } = trpc.billing.billingStatus.useQuery(
+    {
+      organizationId,
+    },
+    { enabled: !!organizationId },
+  );
   const { showLimitWarning } = getPricingPlan(billingStatus);
 
   if (!showLimitWarning) {

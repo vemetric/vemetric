@@ -53,7 +53,7 @@ export const projectsRouter = router({
     }
 
     const splittedDomain = resolvedDomain.split('.');
-    if (splittedDomain.length < 2 || splittedDomain[0].length < 3 || splittedDomain[1].length < 2) {
+    if (splittedDomain.length < 2 || splittedDomain[0].length < 2 || splittedDomain[1].length < 2) {
       throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid domain' });
     }
 

@@ -26,7 +26,7 @@ app.get('/api/', (c) => c.redirect(API_DOCS_URL, 302));
 app.route('/api', publicApi);
 
 if (process.env.NODE_ENV === 'production') {
-  const staticApp = await createStaticApp();
+  const staticApp = createStaticApp();
   app.route('/', staticApp);
 }
 

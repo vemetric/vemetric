@@ -19,12 +19,12 @@ const setCacheHeaders = (pathname: string, c: { header: (name: string, value: st
   }
 };
 
-export async function createStaticApp() {
+export function createStaticApp() {
   const staticApp = new Hono();
 
   const webappDist = `${import.meta.dir}/../../dist`;
   const indexHtmlPath = `${webappDist}/index.html`;
-  const indexHtml = await Bun.file(indexHtmlPath).text();
+  let indexHtml: string | null = null;
 
   staticApp.use(
     '*',
@@ -40,6 +40,9 @@ export async function createStaticApp() {
   staticApp.get('*', async (c) => {
     const accept = c.req.header('accept') ?? '';
     if (accept.includes('text/html')) {
+      if (!indexHtml) {
+        indexHtml = await Bun.file(indexHtmlPath).text();
+      }
       applyIndexHtmlCacheHeaders(c);
       return c.html(indexHtml);
     }

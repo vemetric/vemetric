@@ -1,25 +1,16 @@
-### Description
+## Description
 
-Please include a summary of the change and which issue is fixed. Please also include relevant motivation and context.
+<!-- What does this PR do and why? -->
 
-Fixes # (issue)
+Closes # <!-- optional issue number -->
 
-### Type of Change
+## Testing
 
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Refactor / code improvement
-- [ ] Documentation update
-- [ ] Other (describe below)
+<!-- What did you test? Any manual verification? -->
 
-### How to Test
+## Checklist
 
-Please describe the steps to test your changes. Include any necessary setup and instructions for running tests.
-
-### Screenshots
-
-If applicable, add screenshots to help explain your changes.
-
-### Checklist
-- [ ] All existing tests pass (`bun run test`)
+- [ ] I have run the integration tests (`bun run test:integration`)
 - [ ] I have added tests for new functionality where appropriate
+
+<!-- Screenshots (if applicable): -->

@@ -1,4 +1,5 @@
 import { clickhouseEvent } from 'clickhouse';
+import { format, subDays } from 'date-fns';
 import type { Mock } from 'vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPublicApi } from '../index';
@@ -185,6 +186,10 @@ describe('GET /api/v1/funnels', () => {
     const updatedAt = new Date('2026-03-02T11:30:00.000Z');
     const funnelId = '550e8400-e29b-41d4-a716-446655440000';
 
+    // Use dates within the last 30 days to avoid retention restrictions for free plans
+    const startDateStr = format(subDays(new Date(), 3), 'yyyy-MM-dd');
+    const endDateStr = format(subDays(new Date(), 2), 'yyyy-MM-dd');
+
     mockValidApiKey();
     findById.mockResolvedValueOnce({
       id: funnelId,
@@ -232,18 +237,18 @@ describe('GET /api/v1/funnels', () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        dateRange: ['2026-03-01', '2026-03-02'],
+        dateRange: [startDateStr, endDateStr],
       }),
     });
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       period: {
-        from: '2026-03-01T00:00:00Z',
-        to: '2026-03-02T23:59:59Z',
+        from: `${startDateStr}T00:00:00Z`,
+        to: `${endDateStr}T23:59:59Z`,
       },
       query: {
-        dateRange: ['2026-03-01', '2026-03-02'],
+        dateRange: [startDateStr, endDateStr],
       },
       funnel: {
         id: funnelId,

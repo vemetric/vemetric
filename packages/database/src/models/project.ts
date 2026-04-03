@@ -55,6 +55,7 @@ export const dbProject = {
     id: string,
     data: Partial<{
       name: string;
+      domain: string;
       publicDashboard: boolean;
       eventIcons: Record<string, string>;
       excludedIps: string | null;

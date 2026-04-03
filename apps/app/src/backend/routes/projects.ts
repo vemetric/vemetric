@@ -160,29 +160,35 @@ export const projectsRouter = router({
   edit: projectProcedure.input(z.object({ name: projectNameInput, domain: z.string() })).mutation(async (opts) => {
     const {
       input: { name, domain },
-      ctx: { project },
     } = opts;
 
     const projectId = String(opts.ctx.projectId);
     const resolvedDomain = normalizeProjectDomain(domain);
-    const updates: { name?: string; domain?: string } = {};
-
-    if (name !== project.name) {
-      updates.name = name;
-    }
-
-    if (resolvedDomain !== project.domain) {
-      const existingProject = await dbProject.findByDomain({ domain: resolvedDomain });
-      if (existingProject && existingProject.id !== project.id) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'There already exists a project with this domain' });
+    await serializableTransaction(async (client) => {
+      const currentProject = await dbProject.findById(projectId, client);
+      if (!currentProject) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Project not found' });
       }
 
-      updates.domain = resolvedDomain;
-    }
+      const updates: { name?: string; domain?: string } = {};
 
-    if (Object.keys(updates).length > 0) {
-      await dbProject.update(projectId, updates);
-    }
+      if (name !== currentProject.name) {
+        updates.name = name;
+      }
+
+      if (resolvedDomain !== currentProject.domain) {
+        const existingProject = await dbProject.findByDomain({ domain: resolvedDomain, client });
+        if (existingProject && existingProject.id !== currentProject.id) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'There already exists a project with this domain' });
+        }
+
+        updates.domain = resolvedDomain;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await dbProject.update(projectId, updates, client);
+      }
+    });
 
     return { id: projectId };
   }),

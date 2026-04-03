@@ -55,13 +55,15 @@ export const dbProject = {
     id: string,
     data: Partial<{
       name: string;
+      domain: string;
       publicDashboard: boolean;
       eventIcons: Record<string, string>;
       excludedIps: string | null;
       excludedCountries: string | null;
     }>,
+    client: DbClient = prismaClient,
   ) =>
-    prismaClient.project.update({
+    client.project.update({
       where: { id },
       data,
     }),

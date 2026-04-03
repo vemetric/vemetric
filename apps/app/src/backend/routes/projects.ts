@@ -24,6 +24,28 @@ import { vemetric } from '../utils/vemetric-client';
 const projectNameInput = z.string().min(2);
 const projectInput = z.object({ name: projectNameInput, domain: z.string() });
 
+function normalizeProjectDomain(domain: string) {
+  let resolvedDomain: string;
+  try {
+    let url = domain;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+
+    resolvedDomain = getNormalizedDomain(url);
+  } catch (err) {
+    logger.error({ err, domain }, 'Domain resolution error');
+    throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid domain' });
+  }
+
+  const splittedDomain = resolvedDomain.split('.');
+  if (splittedDomain.length < 2 || splittedDomain[0].length < 2 || splittedDomain[1].length < 2) {
+    throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid domain' });
+  }
+
+  return resolvedDomain;
+}
+
 export const projectsRouter = router({
   create: organizationAdminProcedure.input(projectInput).mutation(async (opts) => {
     const {
@@ -39,23 +61,7 @@ export const projectsRouter = router({
       });
     }
 
-    let resolvedDomain: string;
-    try {
-      let url = domain;
-      if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        url = 'https://' + url;
-      }
-
-      resolvedDomain = getNormalizedDomain(url);
-    } catch (err) {
-      logger.error({ err, domain }, 'Domain resolution error');
-      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid domain' });
-    }
-
-    const splittedDomain = resolvedDomain.split('.');
-    if (splittedDomain.length < 2 || splittedDomain[0].length < 2 || splittedDomain[1].length < 2) {
-      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid domain' });
-    }
+    const resolvedDomain = normalizeProjectDomain(domain);
 
     try {
       const project = await serializableTransaction(async (client) => {
@@ -151,14 +157,38 @@ export const projectsRouter = router({
     };
   }),
 
-  edit: projectProcedure.input(z.object({ name: projectNameInput })).mutation(async (opts) => {
+  edit: projectProcedure.input(z.object({ name: projectNameInput, domain: z.string() })).mutation(async (opts) => {
     const {
-      input: { name },
+      input: { name, domain },
     } = opts;
 
     const projectId = String(opts.ctx.projectId);
+    const resolvedDomain = normalizeProjectDomain(domain);
+    await serializableTransaction(async (client) => {
+      const currentProject = await dbProject.findById(projectId, client);
+      if (!currentProject) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Project not found' });
+      }
 
-    await dbProject.update(projectId, { name });
+      const updates: { name?: string; domain?: string } = {};
+
+      if (name !== currentProject.name) {
+        updates.name = name;
+      }
+
+      if (resolvedDomain !== currentProject.domain) {
+        const existingProject = await dbProject.findByDomain({ domain: resolvedDomain, client });
+        if (existingProject && existingProject.id !== currentProject.id) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'There already exists a project with this domain' });
+        }
+
+        updates.domain = resolvedDomain;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await dbProject.update(projectId, updates, client);
+      }
+    });
 
     return { id: projectId };
   }),

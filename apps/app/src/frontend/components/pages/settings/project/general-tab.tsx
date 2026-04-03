@@ -27,6 +27,7 @@ import {
 } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import { CodeBox } from '@/components/code-box';
+import { InfoTip } from '@/components/info-tip';
 import { LoadingImage } from '@/components/loading-image';
 import { DeleteProjectDialog } from '@/components/pages/settings/project/delete-project-dialog';
 import { ExcludedCountriesCard } from '@/components/pages/settings/project/excluded-countries-card';
@@ -35,6 +36,7 @@ import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
 import { useCurrentOrganization } from '@/hooks/use-current-organization';
+import { authClient } from '@/utils/auth';
 import { getFaviconUrl } from '@/utils/favicon';
 import { trpc } from '@/utils/trpc';
 import { InstallationCard } from './installation-card';
@@ -48,6 +50,7 @@ export const ProjectGeneralTab = (props: Props) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { organizationId, isAdmin } = useCurrentOrganization();
+  const { refetch: refetchAuth } = authClient.useSession();
 
   const {
     data: projectSettings,
@@ -61,7 +64,7 @@ export const ProjectGeneralTab = (props: Props) => {
       setIsLoading(true);
     },
     onSuccess: async () => {
-      await refetch();
+      await Promise.all([refetch(), refetchAuth()]);
       toaster.create({
         title: 'Project updated successfully',
         type: 'success',
@@ -107,14 +110,20 @@ export const ProjectGeneralTab = (props: Props) => {
     editProject({
       projectId,
       name: projectName,
+      domain,
     });
   };
 
   const [projectName, setProjectName] = useState(projectSettings?.name ?? '');
+  const [domain, setDomain] = useState(projectSettings?.domain ?? '');
 
   useEffect(() => {
     setProjectName(projectSettings?.name ?? '');
   }, [projectSettings?.name]);
+
+  useEffect(() => {
+    setDomain(projectSettings?.domain ?? '');
+  }, [projectSettings?.domain]);
 
   if (error) {
     if (error?.data?.httpStatus === 403) {
@@ -169,19 +178,45 @@ export const ProjectGeneralTab = (props: Props) => {
               </InputGroup>
             </Field.Root>
             <Field.Root>
-              <Field.Label>Domain</Field.Label>
+              <Field.Label>
+                Domain
+                <InfoTip
+                  content={
+                    <>
+                      <Text mb="2">
+                        Be careful, changing the domain will result in a different url for your public dashboard (if
+                        enabled).
+                      </Text>
+                      <Text>
+                        If this domain is wrong, reports like top pages, referrers, and outbound links may look
+                        inaccurate.
+                      </Text>
+                    </>
+                  }
+                  colorPalette="purple"
+                />
+              </Field.Label>
               <InputGroup
                 startElement={
-                  projectSettings.domain.length > 3 ? (
-                    <LoadingImage boxSize="16px" src={getFaviconUrl(projectSettings.domain)} />
+                  domain.length > 3 ? (
+                    <LoadingImage boxSize="16px" src={getFaviconUrl(domain)} />
                   ) : (
                     <Icon as={TbWorldQuestion} boxSize="16px" color="#838383" />
                   )
                 }
                 width="full"
               >
-                <Input placeholder="example.com" value={projectSettings.domain} disabled />
+                <Input
+                  placeholder="example.com"
+                  value={domain}
+                  onChange={(e) => setDomain(e.target.value)}
+                  disabled={isLoading}
+                />
               </InputGroup>
+              <Field.HelperText>
+                We suggest to use the root domain for your project, as Vemetric supports tracking across subdomains.
+                (e.g. landing page on <code>example.com</code>, and your app on <code>dashboard.example.com</code>)
+              </Field.HelperText>
             </Field.Root>
             <Field.Root>
               <Field.Label>Public Token</Field.Label>
@@ -190,7 +225,7 @@ export const ProjectGeneralTab = (props: Props) => {
               </CodeBox>
             </Field.Root>
             <Flex justifyContent="flex-end">
-              <Button type="submit" size="sm">
+              <Button type="submit" size="sm" loading={isLoading}>
                 Save
               </Button>
             </Flex>

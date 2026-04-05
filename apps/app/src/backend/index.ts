@@ -5,7 +5,7 @@ import { API_DOCS_URL, createPublicApi } from './api';
 import { createBackendApp } from './backend-app';
 import { createStaticApp } from './static-app';
 import { logger } from './utils/backend-logger';
-import { startHeapSnapshotSchedule } from './utils/heap-snapshot';
+import { startMemoryReportSchedule } from './utils/memory-report';
 
 if (process.env.SENTRY_URL) {
   Sentry.init({
@@ -47,7 +47,7 @@ process.on('beforeExit', () => {
 });
 
 if (process.env.NODE_ENV === 'production') {
-  startHeapSnapshotSchedule();
+  startMemoryReportSchedule();
 }
 
 logger.info('Starting app');

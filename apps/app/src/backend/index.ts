@@ -5,7 +5,7 @@ import { API_DOCS_URL, createPublicApi } from './api';
 import { createBackendApp } from './backend-app';
 import { createStaticApp } from './static-app';
 import { logger } from './utils/backend-logger';
-import { startMemoryReportSchedule } from './utils/memory-report';
+import { memoryTelemetryMiddleware, startMemoryReportSchedule } from './utils/memory-report';
 
 if (process.env.SENTRY_URL) {
   Sentry.init({
@@ -16,6 +16,10 @@ if (process.env.SENTRY_URL) {
 }
 
 export const app = new Hono();
+
+if (process.env.NODE_ENV === 'production') {
+  app.use('*', memoryTelemetryMiddleware);
+}
 
 const backendApp = createBackendApp();
 app.route('/_api', backendApp);

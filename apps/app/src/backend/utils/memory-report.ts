@@ -1,9 +1,99 @@
+import type { Context, MiddlewareHandler } from 'hono';
+import { HTTPException } from 'hono/http-exception';
 import { logger } from './backend-logger';
 
-const MEMORY_REPORT_INTERVAL_MS = 12 * 60 * 60 * 1000;
+type RouteGroup = 'auth' | 'page' | 'public_api' | 'static' | 'trpc' | 'other';
 
-function formatBytes(bytes: number) {
-  return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+type RouteGroupStats = {
+  requests: number;
+  errors: number;
+  inflight: number;
+  inflightMax: number;
+  totalLatencyMs: number;
+  maxLatencyMs: number;
+  totalRequestBytes: number;
+  maxRequestBytes: number;
+  totalResponseBytes: number;
+  maxResponseBytes: number;
+  status2xx: number;
+  status3xx: number;
+  status4xx: number;
+  status5xx: number;
+};
+
+type MemorySnapshot = ReturnType<typeof collectMemorySnapshot>;
+
+const MEMORY_REPORT_INTERVAL_MS = Number(process.env.MEMORY_REPORT_INTERVAL_MS ?? 60 * 60 * 1000);
+const RSS_THRESHOLDS_MB = (process.env.MEMORY_REPORT_RSS_THRESHOLDS_MB ?? '1024,1536,2048')
+  .split(',')
+  .map((value) => Number(value.trim()))
+  .filter((value) => Number.isFinite(value) && value > 0)
+  .sort((left, right) => left - right);
+
+const STATIC_FILE_EXTENSIONS = [
+  '.js',
+  '.css',
+  '.map',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.svg',
+  '.ico',
+  '.webp',
+  '.avif',
+  '.woff',
+  '.woff2',
+  '.ttf',
+  '.eot',
+  '.txt',
+  '.xml',
+  '.json',
+  '.webmanifest',
+  '.pdf',
+  '.mp4',
+  '.webm',
+];
+
+let telemetryInitialized = false;
+let lastMemorySnapshot: MemorySnapshot | null = null;
+let maxInflightInInterval = 0;
+let globalInflight = 0;
+const triggeredThresholds = new Set<number>();
+let routeGroupStats = createEmptyStatsMap();
+
+function createEmptyStats(): RouteGroupStats {
+  return {
+    requests: 0,
+    errors: 0,
+    inflight: 0,
+    inflightMax: 0,
+    totalLatencyMs: 0,
+    maxLatencyMs: 0,
+    totalRequestBytes: 0,
+    maxRequestBytes: 0,
+    totalResponseBytes: 0,
+    maxResponseBytes: 0,
+    status2xx: 0,
+    status3xx: 0,
+    status4xx: 0,
+    status5xx: 0,
+  };
+}
+
+function createEmptyStatsMap(): Record<RouteGroup, RouteGroupStats> {
+  return {
+    auth: createEmptyStats(),
+    page: createEmptyStats(),
+    public_api: createEmptyStats(),
+    static: createEmptyStats(),
+    trpc: createEmptyStats(),
+    other: createEmptyStats(),
+  };
+}
+
+function toMb(bytes: number) {
+  return Number((bytes / 1024 / 1024).toFixed(1));
 }
 
 function getEventListenerCounts(): Record<string, number> {
@@ -14,26 +104,251 @@ function getEventListenerCounts(): Record<string, number> {
   return counts;
 }
 
-function logMemoryUsage() {
+function collectMemorySnapshot() {
   const mem = process.memoryUsage();
   const resource = process.resourceUsage();
 
-  logger.info(
-    {
-      rss: formatBytes(mem.rss),
-      heapTotal: formatBytes(mem.heapTotal),
-      heapUsed: formatBytes(mem.heapUsed),
-      external: formatBytes(mem.external),
-      arrayBuffers: formatBytes(mem.arrayBuffers),
-      processEventListeners: getEventListenerCounts(),
-      uptime: `${(process.uptime() / 3600).toFixed(1)}h`,
-      maxRss: formatBytes(resource.maxRSS * 1024),
-    },
-    'Daily memory usage report',
-  );
+  return {
+    rssMb: toMb(mem.rss),
+    heapTotalMb: toMb(mem.heapTotal),
+    heapUsedMb: toMb(mem.heapUsed),
+    externalMb: toMb(mem.external),
+    arrayBuffersMb: toMb(mem.arrayBuffers),
+    maxRssMb: toMb(resource.maxRSS * 1024),
+    uptimeHours: Number((process.uptime() / 3600).toFixed(1)),
+    processEventListeners: getEventListenerCounts(),
+  };
 }
 
+function getDelta(current: MemorySnapshot, previous: MemorySnapshot | null) {
+  if (!previous) {
+    return {
+      rssMb: 0,
+      heapTotalMb: 0,
+      heapUsedMb: 0,
+      externalMb: 0,
+      arrayBuffersMb: 0,
+    };
+  }
+
+  return {
+    rssMb: Number((current.rssMb - previous.rssMb).toFixed(1)),
+    heapTotalMb: Number((current.heapTotalMb - previous.heapTotalMb).toFixed(1)),
+    heapUsedMb: Number((current.heapUsedMb - previous.heapUsedMb).toFixed(1)),
+    externalMb: Number((current.externalMb - previous.externalMb).toFixed(1)),
+    arrayBuffersMb: Number((current.arrayBuffersMb - previous.arrayBuffersMb).toFixed(1)),
+  };
+}
+
+function incrementStatus(stats: RouteGroupStats, status: number) {
+  if (status >= 500) {
+    stats.status5xx += 1;
+  } else if (status >= 400) {
+    stats.status4xx += 1;
+  } else if (status >= 300) {
+    stats.status3xx += 1;
+  } else if (status >= 200) {
+    stats.status2xx += 1;
+  }
+}
+
+function resolveRouteGroup(method: string, path: string, acceptHeader?: string | null): RouteGroup {
+  if (path.startsWith('/_api/trpc')) {
+    return 'trpc';
+  }
+
+  if (path.startsWith('/_api/auth')) {
+    return 'auth';
+  }
+
+  if (path === '/api' || path === '/api/' || path.startsWith('/api/')) {
+    return 'public_api';
+  }
+
+  if (
+    path.startsWith('/assets/') ||
+    path.startsWith('/workbox-') ||
+    path === '/favicon.ico' ||
+    path === '/robots.txt' ||
+    path === '/manifest.webmanifest' ||
+    path === '/sw.js' ||
+    STATIC_FILE_EXTENSIONS.some((extension) => path.endsWith(extension))
+  ) {
+    return 'static';
+  }
+
+  const normalizedAccept = acceptHeader?.toLowerCase() ?? '';
+  if ((method === 'GET' || method === 'HEAD') && normalizedAccept.includes('text/html')) {
+    return 'page';
+  }
+
+  return 'other';
+}
+
+function readByteCount(value?: string | null) {
+  if (!value) {
+    return 0;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+function logInterval() {
+  try {
+    const memory = collectMemorySnapshot();
+    const memoryDelta = getDelta(memory, lastMemorySnapshot);
+
+    logger.info(
+      {
+        type: 'memory.interval',
+        appName: 'vemetric-backend',
+        hostname: process.env.HOSTNAME,
+        windowSeconds: Math.round(MEMORY_REPORT_INTERVAL_MS / 1000),
+        memory,
+        memoryDeltaSinceLastInterval: memoryDelta,
+        inflightCurrent: globalInflight,
+        inflightMaxInInterval: maxInflightInInterval,
+      },
+      'Memory telemetry interval',
+    );
+
+    for (const [routeGroup, stats] of Object.entries(routeGroupStats) as [RouteGroup, RouteGroupStats][]) {
+      if (stats.requests === 0) {
+        continue;
+      }
+
+      logger.info(
+        {
+          type: 'memory.route_group',
+          appName: 'vemetric-backend',
+          hostname: process.env.HOSTNAME,
+          routeGroup,
+          windowSeconds: Math.round(MEMORY_REPORT_INTERVAL_MS / 1000),
+          requests: stats.requests,
+          errors: stats.errors,
+          inflightMax: stats.inflightMax,
+          avgLatencyMs: Number((stats.totalLatencyMs / stats.requests).toFixed(1)),
+          maxLatencyMs: Number(stats.maxLatencyMs.toFixed(1)),
+          avgRequestBytes: Math.round(stats.totalRequestBytes / stats.requests),
+          maxRequestBytes: stats.maxRequestBytes,
+          avgResponseBytes: Math.round(stats.totalResponseBytes / stats.requests),
+          maxResponseBytes: stats.maxResponseBytes,
+          status2xx: stats.status2xx,
+          status3xx: stats.status3xx,
+          status4xx: stats.status4xx,
+          status5xx: stats.status5xx,
+          rssMb: memory.rssMb,
+          heapUsedMb: memory.heapUsedMb,
+          externalMb: memory.externalMb,
+          arrayBuffersMb: memory.arrayBuffersMb,
+        },
+        'Memory telemetry route group',
+      );
+    }
+
+    for (const thresholdMb of RSS_THRESHOLDS_MB) {
+      if (memory.rssMb < thresholdMb || triggeredThresholds.has(thresholdMb)) {
+        continue;
+      }
+
+      triggeredThresholds.add(thresholdMb);
+      logger.warn(
+        {
+          type: 'memory.threshold',
+          appName: 'vemetric-backend',
+          hostname: process.env.HOSTNAME,
+          thresholdMb,
+          memory,
+          memoryDeltaSinceLastInterval: memoryDelta,
+          inflightCurrent: globalInflight,
+          inflightMaxInInterval: maxInflightInInterval,
+        },
+        'Memory telemetry threshold reached',
+      );
+    }
+
+    lastMemorySnapshot = memory;
+  } catch (error) {
+    logger.error({ err: error }, 'Memory telemetry interval failed');
+  } finally {
+    maxInflightInInterval = globalInflight;
+    routeGroupStats = createEmptyStatsMap();
+  }
+}
+
+export const memoryTelemetryMiddleware: MiddlewareHandler = async (c: Context, next) => {
+  const routeGroup = resolveRouteGroup(c.req.method, c.req.path, c.req.header('accept'));
+  const stats = routeGroupStats[routeGroup];
+  const start = performance.now();
+  const requestBytes = readByteCount(c.req.header('content-length'));
+
+  try {
+    globalInflight += 1;
+    maxInflightInInterval = Math.max(maxInflightInInterval, globalInflight);
+    stats.inflight += 1;
+    stats.inflightMax = Math.max(stats.inflightMax, stats.inflight);
+  } catch (error) {
+    logger.error({ err: error, path: c.req.path, method: c.req.method }, 'Memory telemetry middleware failed');
+  }
+
+  let status = 200;
+  try {
+    await next();
+    status = c.res.status;
+  } catch (error) {
+    if (error instanceof HTTPException) {
+      status = error.status;
+    } else {
+      status = 500;
+    }
+    throw error;
+  } finally {
+    try {
+      const latencyMs = performance.now() - start;
+      const responseBytes = readByteCount(c.res.headers.get('content-length'));
+
+      stats.requests += 1;
+      stats.totalLatencyMs += latencyMs;
+      stats.maxLatencyMs = Math.max(stats.maxLatencyMs, latencyMs);
+      stats.totalRequestBytes += requestBytes;
+      stats.maxRequestBytes = Math.max(stats.maxRequestBytes, requestBytes);
+      stats.totalResponseBytes += responseBytes;
+      stats.maxResponseBytes = Math.max(stats.maxResponseBytes, responseBytes);
+      incrementStatus(stats, status);
+      if (status >= 500) {
+        stats.errors += 1;
+      }
+    } catch (error) {
+      logger.error(
+        { err: error, path: c.req.path, method: c.req.method },
+        'Memory telemetry request accounting failed',
+      );
+    } finally {
+      stats.inflight = Math.max(0, stats.inflight - 1);
+      globalInflight = Math.max(0, globalInflight - 1);
+    }
+  }
+};
+
 export function startMemoryReportSchedule() {
-  logMemoryUsage();
-  setInterval(logMemoryUsage, MEMORY_REPORT_INTERVAL_MS);
+  if (telemetryInitialized) {
+    return;
+  }
+
+  telemetryInitialized = true;
+
+  logger.info(
+    {
+      type: 'memory.telemetry.started',
+      appName: 'vemetric-backend',
+      hostname: process.env.HOSTNAME,
+      intervalMs: MEMORY_REPORT_INTERVAL_MS,
+      rssThresholdsMb: RSS_THRESHOLDS_MB,
+    },
+    'Memory telemetry started',
+  );
+
+  logInterval();
+  setInterval(logInterval, MEMORY_REPORT_INTERVAL_MS);
 }

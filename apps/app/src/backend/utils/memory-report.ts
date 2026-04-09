@@ -3,6 +3,10 @@ import { HTTPException } from 'hono/http-exception';
 import { logger } from './backend-logger';
 
 type RouteGroup = 'auth' | 'page' | 'public_api' | 'static' | 'trpc' | 'other';
+type RouteResolution = {
+  routeGroup: RouteGroup;
+  routeSubgroup: string;
+};
 
 type RouteGroupStats = {
   requests: number;
@@ -61,6 +65,7 @@ let maxInflightInInterval = 0;
 let globalInflight = 0;
 const triggeredThresholds = new Set<number>();
 let routeGroupStats = createEmptyStatsMap();
+let routeSubgroupStats = new Map<string, RouteGroupStats>();
 
 function createEmptyStats(): RouteGroupStats {
   return {
@@ -152,17 +157,64 @@ function incrementStatus(stats: RouteGroupStats, status: number) {
   }
 }
 
-function resolveRouteGroup(method: string, path: string, acceptHeader?: string | null): RouteGroup {
+function getOrCreateSubgroupStats(routeSubgroup: string) {
+  const existing = routeSubgroupStats.get(routeSubgroup);
+  if (existing) {
+    return existing;
+  }
+
+  const stats = createEmptyStats();
+  routeSubgroupStats.set(routeSubgroup, stats);
+  return stats;
+}
+
+function resolveTrpcSubgroup(path: string) {
+  const procedurePath = path.replace(/^\/_api\/trpc\/?/, '');
+  if (!procedurePath) {
+    return 'trpc.unknown';
+  }
+
+  const namespaces = Array.from(
+    new Set(
+      procedurePath
+        .split(',')
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .map((part) => part.split('.')[0] || 'root'),
+    ),
+  );
+
+  if (namespaces.length === 0) {
+    return 'trpc.unknown';
+  }
+
+  if (namespaces.length > 1) {
+    return 'trpc.mixed';
+  }
+
+  return `trpc.${namespaces[0]}`;
+}
+
+function resolveRoute(method: string, path: string, acceptHeader?: string | null): RouteResolution {
   if (path.startsWith('/_api/trpc')) {
-    return 'trpc';
+    return {
+      routeGroup: 'trpc',
+      routeSubgroup: resolveTrpcSubgroup(path),
+    };
   }
 
   if (path.startsWith('/_api/auth')) {
-    return 'auth';
+    return {
+      routeGroup: 'auth',
+      routeSubgroup: 'auth',
+    };
   }
 
   if (path === '/api' || path === '/api/' || path.startsWith('/api/')) {
-    return 'public_api';
+    return {
+      routeGroup: 'public_api',
+      routeSubgroup: 'public_api',
+    };
   }
 
   if (
@@ -174,15 +226,24 @@ function resolveRouteGroup(method: string, path: string, acceptHeader?: string |
     path === '/sw.js' ||
     STATIC_FILE_EXTENSIONS.some((extension) => path.endsWith(extension))
   ) {
-    return 'static';
+    return {
+      routeGroup: 'static',
+      routeSubgroup: 'static',
+    };
   }
 
   const normalizedAccept = acceptHeader?.toLowerCase() ?? '';
   if ((method === 'GET' || method === 'HEAD') && normalizedAccept.includes('text/html')) {
-    return 'page';
+    return {
+      routeGroup: 'page',
+      routeSubgroup: 'page',
+    };
   }
 
-  return 'other';
+  return {
+    routeGroup: 'other',
+    routeSubgroup: 'other',
+  };
 }
 
 function readByteCount(value?: string | null) {
@@ -247,6 +308,41 @@ function logInterval() {
       );
     }
 
+    for (const [routeSubgroup, stats] of Array.from(routeSubgroupStats.entries())) {
+      if (stats.requests === 0) {
+        continue;
+      }
+
+      logger.info(
+        {
+          type: 'memory.route_subgroup',
+          appName: 'vemetric-backend',
+          hostname: process.env.HOSTNAME,
+          routeSubgroup,
+          routeGroup: routeSubgroup.startsWith('trpc.') ? 'trpc' : routeSubgroup,
+          windowSeconds: Math.round(MEMORY_REPORT_INTERVAL_MS / 1000),
+          requests: stats.requests,
+          errors: stats.errors,
+          inflightMax: stats.inflightMax,
+          avgLatencyMs: Number((stats.totalLatencyMs / stats.requests).toFixed(1)),
+          maxLatencyMs: Number(stats.maxLatencyMs.toFixed(1)),
+          avgRequestBytes: Math.round(stats.totalRequestBytes / stats.requests),
+          maxRequestBytes: stats.maxRequestBytes,
+          avgResponseBytes: Math.round(stats.totalResponseBytes / stats.requests),
+          maxResponseBytes: stats.maxResponseBytes,
+          status2xx: stats.status2xx,
+          status3xx: stats.status3xx,
+          status4xx: stats.status4xx,
+          status5xx: stats.status5xx,
+          rssMb: memory.rssMb,
+          heapUsedMb: memory.heapUsedMb,
+          externalMb: memory.externalMb,
+          arrayBuffersMb: memory.arrayBuffersMb,
+        },
+        'Memory telemetry route subgroup',
+      );
+    }
+
     for (const thresholdMb of RSS_THRESHOLDS_MB) {
       if (memory.rssMb < thresholdMb || triggeredThresholds.has(thresholdMb)) {
         continue;
@@ -274,20 +370,24 @@ function logInterval() {
   } finally {
     maxInflightInInterval = globalInflight;
     routeGroupStats = createEmptyStatsMap();
+    routeSubgroupStats = new Map<string, RouteGroupStats>();
   }
 }
 
 export const memoryTelemetryMiddleware: MiddlewareHandler = async (c: Context, next) => {
-  const routeGroup = resolveRouteGroup(c.req.method, c.req.path, c.req.header('accept'));
-  const stats = routeGroupStats[routeGroup];
+  const { routeGroup, routeSubgroup } = resolveRoute(c.req.method, c.req.path, c.req.header('accept'));
+  const groupStats = routeGroupStats[routeGroup];
+  const subgroupStats = getOrCreateSubgroupStats(routeSubgroup);
   const start = performance.now();
   const requestBytes = readByteCount(c.req.header('content-length'));
 
   try {
     globalInflight += 1;
     maxInflightInInterval = Math.max(maxInflightInInterval, globalInflight);
-    stats.inflight += 1;
-    stats.inflightMax = Math.max(stats.inflightMax, stats.inflight);
+    groupStats.inflight += 1;
+    groupStats.inflightMax = Math.max(groupStats.inflightMax, groupStats.inflight);
+    subgroupStats.inflight += 1;
+    subgroupStats.inflightMax = Math.max(subgroupStats.inflightMax, subgroupStats.inflight);
   } catch (error) {
     logger.error({ err: error, path: c.req.path, method: c.req.method }, 'Memory telemetry middleware failed');
   }
@@ -308,16 +408,20 @@ export const memoryTelemetryMiddleware: MiddlewareHandler = async (c: Context, n
       const latencyMs = performance.now() - start;
       const responseBytes = readByteCount(c.res.headers.get('content-length'));
 
-      stats.requests += 1;
-      stats.totalLatencyMs += latencyMs;
-      stats.maxLatencyMs = Math.max(stats.maxLatencyMs, latencyMs);
-      stats.totalRequestBytes += requestBytes;
-      stats.maxRequestBytes = Math.max(stats.maxRequestBytes, requestBytes);
-      stats.totalResponseBytes += responseBytes;
-      stats.maxResponseBytes = Math.max(stats.maxResponseBytes, responseBytes);
-      incrementStatus(stats, status);
+      for (const stats of [groupStats, subgroupStats]) {
+        stats.requests += 1;
+        stats.totalLatencyMs += latencyMs;
+        stats.maxLatencyMs = Math.max(stats.maxLatencyMs, latencyMs);
+        stats.totalRequestBytes += requestBytes;
+        stats.maxRequestBytes = Math.max(stats.maxRequestBytes, requestBytes);
+        stats.totalResponseBytes += responseBytes;
+        stats.maxResponseBytes = Math.max(stats.maxResponseBytes, responseBytes);
+        incrementStatus(stats, status);
+      }
+
       if (status >= 500) {
-        stats.errors += 1;
+        groupStats.errors += 1;
+        subgroupStats.errors += 1;
       }
     } catch (error) {
       logger.error(
@@ -325,7 +429,8 @@ export const memoryTelemetryMiddleware: MiddlewareHandler = async (c: Context, n
         'Memory telemetry request accounting failed',
       );
     } finally {
-      stats.inflight = Math.max(0, stats.inflight - 1);
+      groupStats.inflight = Math.max(0, groupStats.inflight - 1);
+      subgroupStats.inflight = Math.max(0, subgroupStats.inflight - 1);
       globalInflight = Math.max(0, globalInflight - 1);
     }
   }

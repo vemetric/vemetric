@@ -105,6 +105,7 @@ export const UserDetailColumn = (props: Props) => {
     <Box>
       <Box
         position="sticky"
+        zIndex="4"
         top={{ base: '70px', md: '140px', lg: '70px' }}
         css={{
           '& .simplebar-wrapper': {

@@ -93,7 +93,7 @@ app.all('*', async (c) => {
   }
 });
 
-serve({
+serve<WebSocketData>({
   fetch(req, server) {
     const url = new URL(req.url);
     const requestHost = req.headers.get('host');

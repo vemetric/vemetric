@@ -20,7 +20,7 @@ export async function initDeviceWorker() {
       const deviceId = getDeviceId(projectId, userId, deviceData);
 
       await logJobStep(job, `before insertDeviceIfNotExists device=${deviceId}`);
-      await insertDeviceIfNotExists(projectId, userId, deviceId, deviceData);
+      await insertDeviceIfNotExists(projectId, userId, deviceId, deviceData, job);
       await logJobStep(job, 'done');
     },
     {

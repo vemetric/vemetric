@@ -35,7 +35,9 @@ export function createPublicApi() {
   api.get('/', (c) => c.redirect(API_DOCS_URL, 302));
   api.get('/docs', (c) => c.redirect(API_DOCS_URL, 302));
 
-  api.use('/v1/*', loggingMiddleware);
+  if (process.env.NODE_ENV !== 'test') {
+    api.use('/v1/*', loggingMiddleware);
+  }
   api.use('/v1/*', authMiddleware);
   api.use('/v1/*', rateLimitMiddleware);
 

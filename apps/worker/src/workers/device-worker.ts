@@ -3,6 +3,7 @@ import { createDeviceQueueName } from '@vemetric/queues/queue-names';
 import { Worker } from 'bullmq';
 import { getDeviceId } from 'clickhouse';
 import { getDeviceDataFromHeaders, insertDeviceIfNotExists } from '../utils/device';
+import { logJobStep } from '../utils/job-logger';
 
 export async function initDeviceWorker() {
   return new Worker<CreateDeviceQueueProps>(
@@ -12,10 +13,15 @@ export async function initDeviceWorker() {
       const projectId = BigInt(_projectId);
       const userId = BigInt(_userId);
 
+      await logJobStep(job, `start project=${projectId} user=${userId}`);
+      await logJobStep(job, 'before getDeviceDataFromHeaders');
       const deviceData = await getDeviceDataFromHeaders(headers);
+      await logJobStep(job, 'after getDeviceDataFromHeaders');
       const deviceId = getDeviceId(projectId, userId, deviceData);
 
+      await logJobStep(job, `before insertDeviceIfNotExists device=${deviceId}`);
       await insertDeviceIfNotExists(projectId, userId, deviceId, deviceData);
+      await logJobStep(job, 'done');
     },
     {
       connection: {

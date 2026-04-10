@@ -146,7 +146,7 @@
       "name": "health-check",
       "version": "1.0.0",
       "dependencies": {
-        "@clickhouse/client": "^1.11.0",
+        "@clickhouse/client-web": "^1.18.2",
         "@vemetric/node": "0.1.3",
         "uuid": "^11.1.0",
       },
@@ -161,7 +161,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@axiomhq/pino": "^1.3.1",
-        "@clickhouse/client": "^1.11.0",
+        "@clickhouse/client-web": "^1.18.2",
         "@vemetric/common": "workspace:*",
         "@vemetric/logger": "workspace:*",
         "@vemetric/queues": "workspace:*",
@@ -202,7 +202,7 @@
         "ua-parser-js": "^2.0.3",
       },
       "devDependencies": {
-        "@clickhouse/client": "^1.11.0",
+        "@clickhouse/client-web": "^1.18.2",
         "@types/bun": "1.3.11",
         "@vemetric/eslint-config": "workspace:*",
         "csv-parser": "^3.2.0",
@@ -215,7 +215,7 @@
       "name": "clickhouse",
       "version": "0.0.0",
       "dependencies": {
-        "@clickhouse/client": "^1.11.0",
+        "@clickhouse/client-web": "^1.18.2",
         "@sentry/bun": "^9.10.1",
         "@vemetric/common": "workspace:*",
         "@vemetric/logger": "workspace:*",
@@ -653,9 +653,11 @@
 
     "@clack/prompts": ["@clack/prompts@0.11.0", "", { "dependencies": { "@clack/core": "0.5.0", "picocolors": "^1.0.0", "sisteransi": "^1.0.5" } }, "sha512-pMN5FcrEw9hUkZA4f+zLlzivQSeQf5dRGJjSUbvVYDLvpKCdQx5OaknvKzgbtXOizhP+SJJJjqEbOe55uKKfAw=="],
 
-    "@clickhouse/client": ["@clickhouse/client@1.12.1", "", { "dependencies": { "@clickhouse/client-common": "1.12.1" } }, "sha512-7ORY85rphRazqHzImNXMrh4vsaPrpetFoTWpZYueCO2bbO6PXYDXp/GQ4DgxnGIqbWB/Di1Ai+Xuwq2o7DJ36A=="],
+    "@clickhouse/client": ["@clickhouse/client@0.2.10", "", { "dependencies": { "@clickhouse/client-common": "0.2.10" } }, "sha512-ZwBgzjEAFN/ogS0ym5KHVbR7Hx/oYCX01qGp2baEyfN2HM73kf/7Vp3GvMHWRy+zUXISONEtFv7UTViOXnmFrg=="],
 
-    "@clickhouse/client-common": ["@clickhouse/client-common@1.12.1", "", {}, "sha512-ccw1N6hB4+MyaAHIaWBwGZ6O2GgMlO99FlMj0B0UEGfjxM9v5dYVYql6FpP19rMwrVAroYs/IgX2vyZEBvzQLg=="],
+    "@clickhouse/client-common": ["@clickhouse/client-common@1.18.2", "", {}, "sha512-J0SG6q9V31ydxonglpj9xhNRsUxCsF71iEZ784yldqMYwsHixj/9xHFDgBDX3DuMiDx/kPDfXnf+pimp08wIBA=="],
+
+    "@clickhouse/client-web": ["@clickhouse/client-web@1.18.2", "", { "dependencies": { "@clickhouse/client-common": "1.18.2" } }, "sha512-+iFOVZKdsdqdpqc0pupcYuYJBA87f0pH3vROkmJ/xs7QY5C3kCEhcoipjPDjKkyfmYJNq3Ygv0ePbfYhWrmP9Q=="],
 
     "@cloudflare/workerd-darwin-64": ["@cloudflare/workerd-darwin-64@1.20250718.0", "", { "os": "darwin", "cpu": "x64" }, "sha512-FHf4t7zbVN8yyXgQ/r/GqLPaYZSGUVzeR7RnL28Mwj2djyw2ZergvytVc7fdGcczl6PQh+VKGfZCfUqpJlbi9g=="],
 
@@ -3169,6 +3171,8 @@
 
     "@chakra-ui/react/csstype": ["csstype@3.2.3", "", {}, "sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ=="],
 
+    "@clickhouse/client/@clickhouse/client-common": ["@clickhouse/client-common@0.2.10", "", {}, "sha512-BvTY0IXS96y9RUeNCpKL4HUzHmY80L0lDcGN0lmUD6zjOqYMn78+xyHYJ/AIAX7JQsc+/KwFt2soZutQTKxoGQ=="],
+
     "@cspotcode/source-map-support/@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.9", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.0.3", "@jridgewell/sourcemap-codec": "^1.4.10" } }, "sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ=="],
 
     "@emotion/babel-plugin/convert-source-map": ["convert-source-map@1.9.0", "", {}, "sha512-ASFBup0Mz1uyiIjANan1jzLQami9z1PoYSZCiiYW2FczPbenXc45FZdBZLzOT+r6+iciuEModtmCti+hjaAk0A=="],
@@ -3284,8 +3288,6 @@
     "bundle-n-require/esbuild": ["esbuild@0.25.10", "", { "optionalDependencies": { "@esbuild/aix-ppc64": "0.25.10", "@esbuild/android-arm": "0.25.10", "@esbuild/android-arm64": "0.25.10", "@esbuild/android-x64": "0.25.10", "@esbuild/darwin-arm64": "0.25.10", "@esbuild/darwin-x64": "0.25.10", "@esbuild/freebsd-arm64": "0.25.10", "@esbuild/freebsd-x64": "0.25.10", "@esbuild/linux-arm": "0.25.10", "@esbuild/linux-arm64": "0.25.10", "@esbuild/linux-ia32": "0.25.10", "@esbuild/linux-loong64": "0.25.10", "@esbuild/linux-mips64el": "0.25.10", "@esbuild/linux-ppc64": "0.25.10", "@esbuild/linux-riscv64": "0.25.10", "@esbuild/linux-s390x": "0.25.10", "@esbuild/linux-x64": "0.25.10", "@esbuild/netbsd-arm64": "0.25.10", "@esbuild/netbsd-x64": "0.25.10", "@esbuild/openbsd-arm64": "0.25.10", "@esbuild/openbsd-x64": "0.25.10", "@esbuild/openharmony-arm64": "0.25.10", "@esbuild/sunos-x64": "0.25.10", "@esbuild/win32-arm64": "0.25.10", "@esbuild/win32-ia32": "0.25.10", "@esbuild/win32-x64": "0.25.10" }, "bin": { "esbuild": "bin/esbuild" } }, "sha512-9RiGKvCwaqxO2owP61uQ4BgNborAQskMR6QusfWzQqv7AZOg5oGehdY2pRJMTKuwxd1IDBP4rSbI5lHzU7SMsQ=="],
 
     "chalk/supports-color": ["supports-color@7.2.0", "", { "dependencies": { "has-flag": "^4.0.0" } }, "sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw=="],
-
-    "clickhouse-migrations/@clickhouse/client": ["@clickhouse/client@0.2.10", "", { "dependencies": { "@clickhouse/client-common": "0.2.10" } }, "sha512-ZwBgzjEAFN/ogS0ym5KHVbR7Hx/oYCX01qGp2baEyfN2HM73kf/7Vp3GvMHWRy+zUXISONEtFv7UTViOXnmFrg=="],
 
     "concurrently/date-fns": ["date-fns@2.30.0", "", { "dependencies": { "@babel/runtime": "^7.21.0" } }, "sha512-fnULvOpxnC5/Vg3NCiWelDsLiUc9bRwAPs/+LfTLNvetFCtCTN+yQz15C/fs4AwX1R9K5GLtLfn8QW+dWisaAw=="],
 
@@ -3718,8 +3720,6 @@
     "bundle-n-require/esbuild/@esbuild/win32-ia32": ["@esbuild/win32-ia32@0.25.10", "", { "os": "win32", "cpu": "ia32" }, "sha512-QHPDbKkrGO8/cz9LKVnJU22HOi4pxZnZhhA2HYHez5Pz4JeffhDjf85E57Oyco163GnzNCVkZK0b/n4Y0UHcSw=="],
 
     "bundle-n-require/esbuild/@esbuild/win32-x64": ["@esbuild/win32-x64@0.25.10", "", { "os": "win32", "cpu": "x64" }, "sha512-9KpxSVFCu0iK1owoez6aC/s/EdUQLDN3adTxGCqxMVhrPDj6bt5dbrHDXUuq+Bs2vATFBBrQS5vdQ/Ed2P+nbw=="],
-
-    "clickhouse-migrations/@clickhouse/client/@clickhouse/client-common": ["@clickhouse/client-common@0.2.10", "", {}, "sha512-BvTY0IXS96y9RUeNCpKL4HUzHmY80L0lDcGN0lmUD6zjOqYMn78+xyHYJ/AIAX7JQsc+/KwFt2soZutQTKxoGQ=="],
 
     "filelist/minimatch/brace-expansion": ["brace-expansion@2.0.2", "", { "dependencies": { "balanced-match": "^1.0.0" } }, "sha512-Jt0vHyM+jmUBqojB7E1NIYadt0vI0Qxjxd2TErW94wDz+E2LAm5vKMXXwg6ZZBTHPuUlDgQHKXvjGBdfcF1ZDQ=="],
 

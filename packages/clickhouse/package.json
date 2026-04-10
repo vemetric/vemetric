@@ -14,7 +14,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@clickhouse/client": "^1.18.2",
+    "@clickhouse/client-web": "^1.18.2",
     "@sentry/bun": "^9.10.1",
     "@vemetric/common": "workspace:*",
     "@vemetric/logger": "workspace:*",

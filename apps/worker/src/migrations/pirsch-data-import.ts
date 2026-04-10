@@ -1,6 +1,6 @@
 import { createReadStream } from 'fs';
 import { join } from 'path';
-import { ClickHouseLogLevel, createClient } from '@clickhouse/client';
+import { ClickHouseLogLevel, createClient } from '@clickhouse/client-web';
 import type { ClickhouseDevice } from 'clickhouse/src/models/device';
 import { clickhouseDevice } from 'clickhouse/src/models/device';
 import type { ClickhouseEvent } from 'clickhouse/src/models/event';
@@ -110,7 +110,6 @@ async function importRawData() {
     request_timeout: 60000,
     keep_alive: {
       enabled: true,
-      idle_socket_ttl: 8000,
     },
     log: {
       level: ClickHouseLogLevel.INFO,

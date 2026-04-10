@@ -1,4 +1,4 @@
-import { ClickHouseLogLevel, createClient } from '@clickhouse/client';
+import { ClickHouseLogLevel, createClient } from '@clickhouse/client-web';
 import { dbUserIdentificationMap } from 'database';
 import { logger } from '../utils/logger';
 
@@ -16,7 +16,6 @@ async function updateUserIdentifications() {
     request_timeout: 60000,
     keep_alive: {
       enabled: true,
-      idle_socket_ttl: 8000,
     },
     log: {
       level: ClickHouseLogLevel.INFO,

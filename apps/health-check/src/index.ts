@@ -1,4 +1,4 @@
-import { createClient, type ClickHouseClient } from '@clickhouse/client';
+import { createClient, type ClickHouseClient } from '@clickhouse/client-web';
 import { Vemetric } from '@vemetric/node';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -102,9 +102,14 @@ async function runHealthCheck(): Promise<void> {
 
     // Type assertion for the expected structure
     const data = await resultSet.json<ClickhouseEventRow>();
+    const rows = Array.isArray(data)
+      ? data
+      : 'data' in data && Array.isArray(data.data)
+        ? data.data
+        : Object.values(data);
 
-    if (data?.data?.length > 0) {
-      const rawCustomData = data.data[0].customData;
+    if (rows.length > 0) {
+      const rawCustomData = rows[0].customData;
       console.log('Raw customData from Clickhouse:', rawCustomData);
 
       // Adapt parsing based on how customData is stored and returned

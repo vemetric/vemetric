@@ -1,5 +1,5 @@
-import type { ErrorLogParams, Logger, LogParams, WarnLogParams } from '@clickhouse/client';
-import { ClickHouseLogLevel, createClient } from '@clickhouse/client';
+import type { ErrorLogParams, Logger, LogParams, WarnLogParams } from '@clickhouse/client-web';
+import { ClickHouseLogLevel, createClient } from '@clickhouse/client-web';
 import { jsonStringify } from '@vemetric/common/json';
 import { createLogger } from '@vemetric/logger';
 
@@ -38,7 +38,6 @@ export const clickhouseClient = createClient({
   request_timeout: 60000,
   keep_alive: {
     enabled: true,
-    idle_socket_ttl: 5000,
   },
   compression: {
     request: true,

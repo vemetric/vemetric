@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
-import type { ClickHouseClient } from '@clickhouse/client';
-import { ClickHouseLogLevel, createClient } from '@clickhouse/client';
+import type { ClickHouseClient } from '@clickhouse/client-web';
+import { ClickHouseLogLevel, createClient } from '@clickhouse/client-web';
 import { clickhouseDevice } from 'clickhouse/src/models/device';
 import { getDeviceId } from 'clickhouse/src/utils/id';
 import { getDeviceDataFromHeaders } from '../utils/device';
@@ -50,7 +50,6 @@ async function updateDevices() {
     request_timeout: 60000,
     keep_alive: {
       enabled: true,
-      idle_socket_ttl: 8000,
     },
     log: {
       level: ClickHouseLogLevel.INFO,

@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "dev": "bun --env-file=../../.env --env-file=.env run --hot src/index.ts",
-    "build": "tsc --noEmit",
     "start": "bun run src/index.ts",
     "lint": "eslint . --max-warnings 0",
     "tsc": "tsc --noEmit",

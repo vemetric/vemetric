@@ -13,7 +13,7 @@ RUN bun install --ignore-scripts --frozen-lockfile
 
 FROM install AS prisma
 COPY --from=pruner /usr/src/app/out/full/ .
-RUN bun --cwd packages/database run db:generate
+RUN bun run --cwd packages/database db:generate
 
 FROM base AS prod-install
 COPY --from=pruner /usr/src/app/out/json/ .

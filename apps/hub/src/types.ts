@@ -1,4 +1,4 @@
-import type { GeoData } from 'clickhouse';
+import type { GeoData } from '@vemetric/common/geo';
 import type { Project } from 'database';
 import type { Context } from 'hono';
 

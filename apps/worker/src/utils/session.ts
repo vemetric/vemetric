@@ -1,5 +1,5 @@
-import { EMPTY_GEO_DATA } from '@vemetric/common/geo';
-import type { ClickhouseSession, ClickhouseUser, DeviceData, GeoData } from 'clickhouse';
+import { EMPTY_GEO_DATA, type GeoData } from '@vemetric/common/geo';
+import type { ClickhouseSession, ClickhouseUser, DeviceData } from 'clickhouse';
 import { clickhouseSession } from 'clickhouse';
 
 export async function increaseClickhouseSessionDuration(session: ClickhouseSession, now: string) {

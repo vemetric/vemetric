@@ -1,6 +1,7 @@
 import { formatClickhouseDate } from '@vemetric/common/date';
 import type { IFilterConfig, stringOperatorsSchema } from '@vemetric/common/filters';
 import type { FunnelStep } from '@vemetric/common/funnel';
+import type { GeoData } from '@vemetric/common/geo';
 import { jsonStringify } from '@vemetric/common/json';
 import type { IUserSortConfig } from '@vemetric/common/sort';
 import { escape } from 'sqlstring';
@@ -8,7 +9,7 @@ import type { z } from 'zod';
 import { clickhouseClient, clickhouseInsert } from '../client';
 import type { DeviceData } from './device';
 import { EXAMPLE_DEVICE_DATA } from './device';
-import type { FilterOptions, GeoData, ReferrerData, UrlData } from './session';
+import type { FilterOptions, ReferrerData, UrlData } from './session';
 import { EXAMPLE_URL_DATA } from './session';
 import { formatDateExpression } from '../utils/date';
 import { getEventFilterQueries } from '../utils/filters';

@@ -1,6 +1,7 @@
 import type { TimeSpan } from '@vemetric/common/charts/timespans';
 import { formatClickhouseDate, getClickhouseDateNow } from '@vemetric/common/date';
 import type { IFilterConfig } from '@vemetric/common/filters';
+import type { GeoData } from '@vemetric/common/geo';
 import { jsonStringify } from '@vemetric/common/json';
 import type { ISources } from '@vemetric/common/sources';
 import { escape } from 'sqlstring';
@@ -39,13 +40,6 @@ export type ReferrerData = {
   referrer?: string;
   referrerUrl?: string;
   referrerType?: string;
-};
-
-export type GeoData = {
-  countryCode: string;
-  city: string;
-  latitude: number | null;
-  longitude: number | null;
 };
 
 export const EXAMPLE_URL_DATA: Required<UrlData> = {

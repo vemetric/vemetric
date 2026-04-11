@@ -11,6 +11,10 @@ FROM base AS install
 COPY --from=pruner /usr/src/app/out/json/ .
 RUN bun install --ignore-scripts --frozen-lockfile
 
+FROM install AS prisma
+COPY --from=pruner /usr/src/app/out/full/ .
+RUN bun run --cwd packages/database db:generate
+
 FROM base AS prod-install
 COPY --from=pruner /usr/src/app/out/json/ .
 RUN bun install --production --ignore-scripts --frozen-lockfile
@@ -18,6 +22,7 @@ RUN bun install --production --ignore-scripts --frozen-lockfile
 FROM base AS release
 COPY --from=pruner /usr/src/app/out/full/ ./
 COPY --from=prod-install /usr/src/app/node_modules ./node_modules
+COPY --from=prisma /usr/src/app/node_modules/.prisma ./node_modules/.prisma
 
 EXPOSE 4121
  

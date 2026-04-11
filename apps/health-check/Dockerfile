@@ -15,7 +15,12 @@ FROM install AS build
 COPY --from=pruner /usr/src/app/out/full/ .
 RUN bun turbo run build --filter=health-check
 
+FROM base AS prod-install
+COPY --from=pruner /usr/src/app/out/json/ .
+RUN bun install --production --ignore-scripts --frozen-lockfile
+
 FROM base AS release
-COPY --from=build /usr/src/app ./
+COPY --from=pruner /usr/src/app/out/full/ ./
+COPY --from=prod-install /usr/src/app/node_modules ./node_modules
  
 CMD [ "tail", "-f", "/dev/null" ]

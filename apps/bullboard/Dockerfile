@@ -11,12 +11,14 @@ FROM base AS install
 COPY --from=pruner /usr/src/app/out/json/ .
 RUN bun install --ignore-scripts --frozen-lockfile
 
+FROM base AS prod-install
+COPY --from=pruner /usr/src/app/out/json/ .
+RUN bun install --production --ignore-scripts --frozen-lockfile
+
 FROM base AS release
 COPY --from=pruner /usr/src/app/out/full/ ./
-COPY --from=install /usr/src/app/node_modules ./node_modules
-COPY --from=install /usr/src/app/package.json ./package.json
-COPY --from=install /usr/src/app/bun.lock ./bun.lock
- 
+COPY --from=prod-install /usr/src/app/node_modules ./node_modules
+
 EXPOSE 4121
  
 CMD [ "bun", "run", "apps/bullboard/src/index.ts" ]

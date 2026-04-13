@@ -5,6 +5,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "tsc --noEmit",
     "dev": "bun run --hot src/index.ts",
     "start": "bun run src/index.ts",
     "lint": "eslint . --max-warnings 0",

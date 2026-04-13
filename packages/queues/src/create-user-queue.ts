@@ -1,5 +1,5 @@
+import type { GeoData } from '@vemetric/common/geo';
 import { Queue } from 'bullmq';
-import type { GeoData } from 'clickhouse';
 import { createUserQueueName } from './queue-names';
 import { defaultQueueConnection } from './queue-utils';
 

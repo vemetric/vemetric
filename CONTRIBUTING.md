@@ -83,6 +83,7 @@ Therefore, once everything is running, you can access:
 
 - **Web App & Backend**: http://app.vemetric.localhost:4050
 - **Hub (Event Ingestion)**: http://hub.vemetric.localhost:4050
+- **API** http://app.vemetric.localhost:4050/api
 
 In case you want to have the Dev Proxy running on a different port, just specify `VEMETRIC_DEV_PROXY_PORT` in your `.env` file in the root of the monorepo.
 
@@ -146,6 +147,7 @@ vemetric/
 - **Runtime**: Bun (backend services)
 - **Frontend**: React + TypeScript + Vite + Chakra UI v3
 - **Backend**: Hono + tRPC + Better Auth
+- **Api**: Hono + OpenAPI
 - **State Management**: TanStack Query (tRPC) + Valtio
 - **Routing**: TanStack Router
 - **Validation**: Zod throughout the stack

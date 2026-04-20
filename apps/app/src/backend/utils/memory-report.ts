@@ -27,6 +27,7 @@ type RouteGroupStats = {
 
 type MemorySnapshot = ReturnType<typeof collectMemorySnapshot>;
 
+const MEMORY_REPORT_ENABLED = process.env.MEMORY_REPORT_ENABLED === 'true';
 const MEMORY_REPORT_INTERVAL_MS = Number(process.env.MEMORY_REPORT_INTERVAL_MS ?? 60 * 60 * 1000);
 const RSS_THRESHOLDS_MB = (process.env.MEMORY_REPORT_RSS_THRESHOLDS_MB ?? '1024,1536,2048')
   .split(',')
@@ -66,6 +67,10 @@ let globalInflight = 0;
 const triggeredThresholds = new Set<number>();
 let routeGroupStats = createEmptyStatsMap();
 let routeSubgroupStats = new Map<string, RouteGroupStats>();
+
+export function isMemoryReportEnabled() {
+  return MEMORY_REPORT_ENABLED;
+}
 
 function createEmptyStats(): RouteGroupStats {
   return {

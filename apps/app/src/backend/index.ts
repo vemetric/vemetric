@@ -5,7 +5,7 @@ import { API_DOCS_URL, createPublicApi } from './api';
 import { createBackendApp } from './backend-app';
 import { createStaticApp } from './static-app';
 import { logger } from './utils/backend-logger';
-import { memoryTelemetryMiddleware, startMemoryReportSchedule } from './utils/memory-report';
+import { isMemoryReportEnabled, memoryTelemetryMiddleware, startMemoryReportSchedule } from './utils/memory-report';
 
 if (process.env.SENTRY_URL) {
   Sentry.init({
@@ -17,7 +17,7 @@ if (process.env.SENTRY_URL) {
 
 export const app = new Hono();
 
-if (process.env.NODE_ENV === 'production') {
+if (isMemoryReportEnabled()) {
   app.use('*', memoryTelemetryMiddleware);
 }
 
@@ -50,7 +50,7 @@ process.on('beforeExit', () => {
   clickhouseClient.close();
 });
 
-if (process.env.NODE_ENV === 'production') {
+if (isMemoryReportEnabled()) {
   startMemoryReportSchedule();
 }
 

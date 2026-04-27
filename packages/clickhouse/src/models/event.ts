@@ -144,11 +144,11 @@ export const clickhouseEvent = {
           ) as eventNames,
           (
             SELECT 
-              groupArrayDistinct(pathname),
-              groupArrayDistinct(origin),
-              groupArrayDistinct(clientName),
-              groupArrayDistinct(deviceType),
-              groupArrayDistinct(osName)
+              groupArrayDistinct(pathname) as pathnames,
+              groupArrayDistinct(origin) as origins,
+              groupArrayDistinct(clientName) as clientNames,
+              groupArrayDistinct(deviceType) as deviceTypes,
+              groupArrayDistinct(osName) as osNames
             FROM event 
             WHERE projectId = ${escape(projectId)} 
               AND createdAt >= '${formattedStartDate}'
@@ -156,16 +156,16 @@ export const clickhouseEvent = {
           ) as pages,
           (
             SELECT 
-              groupArrayDistinct(referrer),
-              groupArrayDistinct(referrerUrl),
-              groupArrayDistinct(utmCampaign),
-              groupArrayDistinct(utmContent),
-              groupArrayDistinct(utmMedium),
-              groupArrayDistinct(utmSource),
-              groupArrayDistinct(utmTerm),
-              groupArrayDistinct(countryCode),
-              groupArrayDistinct(city),
-              groupArrayDistinct(referrerType)
+              groupArrayDistinct(referrer) as referrers,
+              groupArrayDistinct(referrerUrl) as referrerUrls,
+              groupArrayDistinct(utmCampaign) as utmCampaigns,
+              groupArrayDistinct(utmContent) as utmContents,
+              groupArrayDistinct(utmMedium) as utmMediums,
+              groupArrayDistinct(utmSource) as utmSources,
+              groupArrayDistinct(utmTerm) as utmTerms,
+              groupArrayDistinct(countryCode) as countryCodes,
+              groupArrayDistinct(city) as cities,
+              groupArrayDistinct(referrerType) as referrerTypes
             FROM session 
             WHERE projectId = ${escape(projectId)} 
               AND startedAt >= '${formattedStartDate}'
@@ -178,17 +178,50 @@ export const clickhouseEvent = {
 
     const result = await resultSet.json<{
       eventNames: string[];
-      pages: [string[], string[], string[], string[], string[]];
-      sources: [string[], string[], string[], string[], string[], string[], string[], string[], string[], string[]];
+      pages?: {
+        pathnames?: string[];
+        origins?: string[];
+        clientNames?: string[];
+        deviceTypes?: string[];
+        osNames?: string[];
+      };
+      sources?: {
+        referrers?: string[];
+        referrerUrls?: string[];
+        utmCampaigns?: string[];
+        utmContents?: string[];
+        utmMediums?: string[];
+        utmSources?: string[];
+        utmTerms?: string[];
+        countryCodes?: string[];
+        cities?: string[];
+        referrerTypes?: string[];
+      };
     }>();
 
-    // Return the first (and only) row of results
+    const row = result[0];
+
     return {
-      ...(result[0] ?? {
-        eventNames: [],
-        pages: [],
-        sources: [],
-      }),
+      eventNames: row?.eventNames ?? [],
+      pages: {
+        pathnames: row?.pages?.pathnames ?? [],
+        origins: row?.pages?.origins ?? [],
+        clientNames: row?.pages?.clientNames ?? [],
+        deviceTypes: row?.pages?.deviceTypes ?? [],
+        osNames: row?.pages?.osNames ?? [],
+      },
+      sources: {
+        referrers: row?.sources?.referrers ?? [],
+        referrerUrls: row?.sources?.referrerUrls ?? [],
+        utmCampaigns: row?.sources?.utmCampaigns ?? [],
+        utmContents: row?.sources?.utmContents ?? [],
+        utmMediums: row?.sources?.utmMediums ?? [],
+        utmSources: row?.sources?.utmSources ?? [],
+        utmTerms: row?.sources?.utmTerms ?? [],
+        countryCodes: row?.sources?.countryCodes ?? [],
+        cities: row?.sources?.cities ?? [],
+        referrerTypes: row?.sources?.referrerTypes ?? [],
+      },
     };
   }),
   getFirstPageViewByUserId: async (projectId: bigint, userId: bigint): Promise<ClickhouseEvent | null> => {

@@ -13,15 +13,24 @@ export async function initDeviceWorker() {
       const projectId = BigInt(_projectId);
       const userId = BigInt(_userId);
 
-      await logJobStep(job, `start project=${projectId} user=${userId}`);
-      await logJobStep(job, 'before getDeviceDataFromHeaders');
+      await logJobStep(job, 'device start', { jobId: job.id, projectId, userId });
+      await logJobStep(job, 'device before getDeviceDataFromHeaders', { projectId, userId });
       const deviceData = await getDeviceDataFromHeaders(headers);
-      await logJobStep(job, 'after getDeviceDataFromHeaders');
+      await logJobStep(job, 'device after getDeviceDataFromHeaders', {
+        projectId,
+        userId,
+        osName: deviceData.osName,
+        osVersion: deviceData.osVersion,
+        clientName: deviceData.clientName,
+        clientVersion: deviceData.clientVersion,
+        clientType: deviceData.clientType,
+        deviceType: deviceData.deviceType,
+      });
       const deviceId = getDeviceId(projectId, userId, deviceData);
 
-      await logJobStep(job, `before insertDeviceIfNotExists device=${deviceId}`);
+      await logJobStep(job, 'device before insertDeviceIfNotExists', { projectId, userId, deviceId });
       await insertDeviceIfNotExists(projectId, userId, deviceId, deviceData, job);
-      await logJobStep(job, 'done');
+      await logJobStep(job, 'device done', { projectId, userId, deviceId });
     },
     {
       connection: {

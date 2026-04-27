@@ -42,6 +42,11 @@ export const clickhouseClient = createClient({
   compression: {
     request: true,
   },
+  clickhouse_settings: {
+    // ClickHouse 26 can return UInt64 values as JSON numbers. IDs exceed JS' safe
+    // integer range, so force quoted integers before parsing them into BigInt.
+    output_format_json_quote_64bit_integers: 1,
+  },
   log: {
     LoggerClass: CustomLogger,
     level: ClickHouseLogLevel.INFO,

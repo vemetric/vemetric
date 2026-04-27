@@ -47,13 +47,13 @@ export const filtersRouter = router({
         const eventNameB = getEventName(b);
         return eventNameA.localeCompare(eventNameB);
       }),
-      pagePaths: filterableData.pages[0].filter(Boolean).sort((a, b) => a.localeCompare(b)),
-      origins: filterableData.pages[1].filter(Boolean).sort((a, b) => a.localeCompare(b)),
-      browserNames: filterableData.pages[2].filter(Boolean).sort((a, b) => a.localeCompare(b)),
-      deviceTypes: filterableData.pages[3].filter(Boolean).sort((a, b) => a.localeCompare(b)),
-      osNames: filterableData.pages[4].filter(Boolean).sort((a, b) => a.localeCompare(b)),
-      referrers: filterableData.sources[0].filter(Boolean).sort((a, b) => a.localeCompare(b)),
-      referrerUrls: filterableData.sources[1]
+      pagePaths: filterableData.pages.pathnames.filter(Boolean).sort((a, b) => a.localeCompare(b)),
+      origins: filterableData.pages.origins.filter(Boolean).sort((a, b) => a.localeCompare(b)),
+      browserNames: filterableData.pages.clientNames.filter(Boolean).sort((a, b) => a.localeCompare(b)),
+      deviceTypes: filterableData.pages.deviceTypes.filter(Boolean).sort((a, b) => a.localeCompare(b)),
+      osNames: filterableData.pages.osNames.filter(Boolean).sort((a, b) => a.localeCompare(b)),
+      referrers: filterableData.sources.referrers.filter(Boolean).sort((a, b) => a.localeCompare(b)),
+      referrerUrls: filterableData.sources.referrerUrls
         .filter(Boolean)
         .filter((url) => {
           if (!project) {
@@ -64,17 +64,17 @@ export const filtersRouter = router({
           return !resolvedDomain.endsWith(project.domain);
         })
         .sort((a, b) => a.localeCompare(b)),
-      utmCampaigns: filterableData.sources[2].filter(Boolean).sort((a, b) => a.localeCompare(b)),
-      utmContents: filterableData.sources[3].filter(Boolean).sort((a, b) => a.localeCompare(b)),
-      utmMediums: filterableData.sources[4].filter(Boolean).sort((a, b) => a.localeCompare(b)),
-      utmSources: filterableData.sources[5].filter(Boolean).sort((a, b) => a.localeCompare(b)),
-      utmTerms: filterableData.sources[6].filter(Boolean).sort((a, b) => a.localeCompare(b)),
-      countryCodes: filterableData.sources[7].filter(Boolean).sort((a, b) => {
+      utmCampaigns: filterableData.sources.utmCampaigns.filter(Boolean).sort((a, b) => a.localeCompare(b)),
+      utmContents: filterableData.sources.utmContents.filter(Boolean).sort((a, b) => a.localeCompare(b)),
+      utmMediums: filterableData.sources.utmMediums.filter(Boolean).sort((a, b) => a.localeCompare(b)),
+      utmSources: filterableData.sources.utmSources.filter(Boolean).sort((a, b) => a.localeCompare(b)),
+      utmTerms: filterableData.sources.utmTerms.filter(Boolean).sort((a, b) => a.localeCompare(b)),
+      countryCodes: filterableData.sources.countryCodes.filter(Boolean).sort((a, b) => {
         const countryA = COUNTRIES[a as keyof typeof COUNTRIES] || 'ZZ';
         const countryB = COUNTRIES[b as keyof typeof COUNTRIES] || 'ZZ';
         return countryA.localeCompare(countryB);
       }),
-      cities: filterableData.sources[8].filter(Boolean).sort((a, b) => a.localeCompare(b)),
+      cities: filterableData.sources.cities.filter(Boolean).sort((a, b) => a.localeCompare(b)),
     };
   }),
 

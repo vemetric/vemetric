@@ -2,7 +2,21 @@ import type { Job } from 'bullmq';
 
 const isJobDebugLoggingEnabled = process.env.BULLMQ_JOB_DEBUG_LOGS === 'true';
 
-export async function logJobStep(job: Pick<Job, 'log'> | null | undefined, message: string) {
+function stringifyJobLogDetails(details: Record<string, unknown>) {
+  return JSON.stringify(details, (_key, value: unknown) => {
+    if (typeof value === 'bigint') {
+      return value.toString();
+    }
+
+    return value;
+  });
+}
+
+export async function logJobStep(
+  job: Pick<Job, 'log'> | null | undefined,
+  message: string,
+  details?: Record<string, unknown>,
+) {
   if (!isJobDebugLoggingEnabled) {
     return;
   }
@@ -12,7 +26,7 @@ export async function logJobStep(job: Pick<Job, 'log'> | null | undefined, messa
   }
 
   try {
-    await job.log(message);
+    await job.log(details ? `${message} ${stringifyJobLogDetails(details)}` : message);
   } catch {
     // Best effort only; worker processing should not depend on debug job logs.
   }

@@ -95,7 +95,7 @@ export function registerFilterValueRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
         case 'utmTerm':
           return sortStrings(filterableData.sources.utmTerms);
         case 'country':
-          return [...(filterableData.sources[7] ?? [])]
+          return [...filterableData.sources.countryCodes]
             .filter(Boolean)
             .filter((c) => COUNTRIES[c as keyof typeof COUNTRIES])
             .sort((a, b) => {
@@ -104,7 +104,7 @@ export function registerFilterValueRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
               return countryA.localeCompare(countryB);
             });
         case 'city':
-          return sortStrings(filterableData.sources[8] ?? []);
+          return sortStrings(filterableData.sources.cities);
       }
     };
 

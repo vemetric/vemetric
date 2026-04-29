@@ -23,7 +23,7 @@ services:
     command: redis-server --appendonly yes
 
   clickhouse:
-    image: clickhouse/clickhouse-server:23.10-alpine
+    image: clickhouse/clickhouse-server:26.3.8.4
     container_name: vemetric-clickhouse
     environment:
       - CLICKHOUSE_DB=vemetric

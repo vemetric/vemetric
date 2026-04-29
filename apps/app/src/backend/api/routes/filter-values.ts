@@ -71,31 +71,31 @@ export function registerFilterValueRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
             .filter(Boolean)
             .sort((a, b) => getEventName(a).localeCompare(getEventName(b)));
         case 'page:path':
-          return sortStrings(filterableData.pages[0] ?? []);
+          return sortStrings(filterableData.pages.pathnames);
         case 'page:origin':
-          return sortStrings(filterableData.pages[1] ?? []);
+          return sortStrings(filterableData.pages.origins);
         case 'browser':
-          return sortStrings(filterableData.pages[2] ?? []);
+          return sortStrings(filterableData.pages.clientNames);
         case 'deviceType':
-          return sortStrings(filterableData.pages[3] ?? []);
+          return sortStrings(filterableData.pages.deviceTypes);
         case 'os':
-          return sortStrings(filterableData.pages[4] ?? []);
+          return sortStrings(filterableData.pages.osNames);
         case 'referrer':
-          return sortStrings(filterableData.sources[0] ?? []);
+          return sortStrings(filterableData.sources.referrers);
         case 'referrerType':
-          return sortStrings(filterableData.sources[9] ?? []);
+          return sortStrings(filterableData.sources.referrerTypes);
         case 'utmCampaign':
-          return sortStrings(filterableData.sources[2] ?? []);
+          return sortStrings(filterableData.sources.utmCampaigns);
         case 'utmContent':
-          return sortStrings(filterableData.sources[3] ?? []);
+          return sortStrings(filterableData.sources.utmContents);
         case 'utmMedium':
-          return sortStrings(filterableData.sources[4] ?? []);
+          return sortStrings(filterableData.sources.utmMediums);
         case 'utmSource':
-          return sortStrings(filterableData.sources[5] ?? []);
+          return sortStrings(filterableData.sources.utmSources);
         case 'utmTerm':
-          return sortStrings(filterableData.sources[6] ?? []);
+          return sortStrings(filterableData.sources.utmTerms);
         case 'country':
-          return [...(filterableData.sources[7] ?? [])]
+          return [...filterableData.sources.countryCodes]
             .filter(Boolean)
             .filter((c) => COUNTRIES[c as keyof typeof COUNTRIES])
             .sort((a, b) => {
@@ -104,7 +104,7 @@ export function registerFilterValueRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
               return countryA.localeCompare(countryB);
             });
         case 'city':
-          return sortStrings(filterableData.sources[8] ?? []);
+          return sortStrings(filterableData.sources.cities);
       }
     };
 

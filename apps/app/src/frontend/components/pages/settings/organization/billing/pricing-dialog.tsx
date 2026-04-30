@@ -6,7 +6,7 @@ import { toaster } from '@/components/ui/toaster';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useOpenCrispChat } from '@/stores/crisp-chat-store';
 import { authClient } from '@/utils/auth';
-import { openPaddleCheckout } from '@/utils/paddle';
+import { openPaddleCheckout, returnToBillingSettingsAfterCheckout } from '@/utils/paddle';
 import { PRICING_PLANS } from '@/utils/pricing';
 import { trpc } from '@/utils/trpc';
 import { PricingSlider } from './pricing-slider';
@@ -15,13 +15,20 @@ interface PricingDialogProps {
   organizationId: string;
   open: boolean;
   onOpenChange: (details: { open: boolean }) => void;
+  onCheckoutOpen?: () => Promise<void> | void;
   currentPlan?: {
     pricingPlanIndex: number;
     isYearly: boolean;
   };
 }
 
-export const PricingDialog = ({ open, onOpenChange, currentPlan, organizationId }: PricingDialogProps) => {
+export const PricingDialog = ({
+  open,
+  onOpenChange,
+  onCheckoutOpen,
+  currentPlan,
+  organizationId,
+}: PricingDialogProps) => {
   const openCrispChat = useOpenCrispChat();
   const { data: session } = authClient.useSession();
   const [isYearly, setIsYearly] = useState(currentPlan?.isYearly ?? false);
@@ -72,13 +79,21 @@ export const PricingDialog = ({ open, onOpenChange, currentPlan, organizationId 
     isDowngrade = true;
   }
 
-  const onOpenCheckout = () => {
-    onOpenChange({ open: false });
-    openPaddleCheckout({
-      organizationId,
-      email: session.user.email,
-      pricingPlan,
-      isYearly,
+  const onOpenCheckout = async () => {
+    if (onCheckoutOpen) {
+      returnToBillingSettingsAfterCheckout();
+      await onCheckoutOpen();
+    } else {
+      onOpenChange({ open: false });
+    }
+
+    requestAnimationFrame(() => {
+      openPaddleCheckout({
+        organizationId,
+        email: session.user.email,
+        pricingPlan,
+        isYearly,
+      });
     });
   };
 

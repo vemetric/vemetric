@@ -295,6 +295,13 @@ export const BillingTab = ({ organizationId }: Props) => {
                 search: (prev) => ({ ...prev, pricingDialog: open ? true : undefined }),
               })
             }
+            onCheckoutOpen={() =>
+              navigate({
+                to: location.pathname,
+                resetScroll: false,
+                search: (prev) => ({ ...prev, orgSettings: undefined, pricingDialog: undefined }),
+              })
+            }
             currentPlan={hasActiveSubscription ? { pricingPlanIndex, isYearly } : undefined}
             organizationId={organizationId}
           />

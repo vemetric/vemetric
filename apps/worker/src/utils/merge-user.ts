@@ -51,12 +51,15 @@ export const reassignExistingSessionsToEvents = async (context: UserMigrationCon
 
   // we iterate through all the events and see if we can find a new session to assign it to
   for (const event of existingEvents) {
+    let matchedExistingSession = false;
+
     for (const newSession of newUserSessions) {
       if (!eventBelongsToSession(event.createdAt, newSession)) {
         continue;
       }
 
       sessionIdMapping.set(event.sessionId, newSession.id);
+      matchedExistingSession = true;
 
       // Update the session time bounds if needed
       const eventTime = new Date(clickhouseDateToISO(event.createdAt)).getTime();
@@ -93,7 +96,9 @@ export const reassignExistingSessionsToEvents = async (context: UserMigrationCon
     }
 
     // no new session found, we just keep the old session
-    oldSessionIdsToMigrate.add(event.sessionId);
+    if (!matchedExistingSession) {
+      oldSessionIdsToMigrate.add(event.sessionId);
+    }
   }
 
   const oldSessionsToMigrate = Array.from(oldSessionIdsToMigrate)

@@ -61,14 +61,32 @@ export async function insertDeviceIfNotExists(
   deviceData: DeviceData,
   job?: { log: (row: string) => Promise<number> },
 ) {
-  await logJobStep(job, 'before clickhouseDevice.exists');
+  await logJobStep(job, 'device before clickhouseDevice.exists', { projectId, userId, deviceId });
   const deviceExists = await clickhouseDevice.exists(projectId, deviceId);
-  await logJobStep(job, deviceExists ? 'after clickhouseDevice.exists existing' : 'after clickhouseDevice.exists missing');
+  await logJobStep(
+    job,
+    deviceExists ? 'device after clickhouseDevice.exists existing' : 'device after clickhouseDevice.exists missing',
+    {
+      projectId,
+      userId,
+      deviceId,
+    },
+  );
   if (deviceExists) {
     return;
   }
 
-  await logJobStep(job, 'before clickhouseDevice.insert');
+  await logJobStep(job, 'device before clickhouseDevice.insert', {
+    projectId,
+    userId,
+    deviceId,
+    osName: deviceData.osName,
+    osVersion: deviceData.osVersion,
+    clientName: deviceData.clientName,
+    clientVersion: deviceData.clientVersion,
+    clientType: deviceData.clientType,
+    deviceType: deviceData.deviceType,
+  });
   await clickhouseDevice.insert([
     {
       projectId,
@@ -82,5 +100,5 @@ export async function insertDeviceIfNotExists(
       deviceType: deviceData.deviceType,
     },
   ]);
-  await logJobStep(job, 'after clickhouseDevice.insert');
+  await logJobStep(job, 'device after clickhouseDevice.insert', { projectId, userId, deviceId });
 }

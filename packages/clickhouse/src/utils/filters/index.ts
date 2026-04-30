@@ -296,7 +296,7 @@ export const getEventFilterQueries = (props: { filterConfig: IFilterConfig }) =>
           return;
         }
 
-        eventFilterQueries.push(filterQuery);
+        eventFilterQueries.push(`(isPageView = 1 AND ${filterQuery})`);
         break;
       }
       case 'user': {

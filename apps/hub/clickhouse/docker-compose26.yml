@@ -4,6 +4,7 @@ services:
   clickhouse:
     image: clickhouse/clickhouse-server:26.3.8.4
     container_name: clickhouse
+    user: '1000:1000' # vmtrc:vmtrc on the host
     restart: always
     environment:
       - CLICKHOUSE_DB=vemetric

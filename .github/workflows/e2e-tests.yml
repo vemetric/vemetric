@@ -135,6 +135,15 @@ jobs:
       - name: Install Playwright browser
         run: bunx playwright install chromium
 
+      - name: Print runner diagnostics
+        working-directory: apps/e2e
+        run: |
+          uname -a
+          bun --version
+          bunx playwright --version
+          pwd
+          ls -la
+
       - name: Start app
         run: |
           bun --filter app dev --host 127.0.0.1 --strictPort > app.log 2>&1 &
@@ -152,13 +161,18 @@ jobs:
           cat app.log
           exit 1
 
-      - name: List tests
+      - name: Print app smoke diagnostics
         working-directory: apps/e2e
-        run: bun run e2e:list
+        run: |
+          curl -fsS -I "$E2E_BASE_URL/login"
+          bun run e2e:list
 
       - name: Run Playwright smoke tests
+        timeout-minutes: 4
+        env:
+          DEBUG: pw:api,pw:browser
         working-directory: apps/e2e
-        run: bun run e2e -- --reporter=line
+        run: bun run e2e -- --reporter=line --workers=1 --timeout=30000 --global-timeout=120000 --trace=on
 
       - name: Upload Playwright report
         if: always()

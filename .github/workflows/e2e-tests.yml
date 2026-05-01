@@ -34,6 +34,7 @@ jobs:
       )
     timeout-minutes: 30
     env:
+      CI: 'true'
       E2E_BASE_URL: http://127.0.0.1:4000
       BETTER_AUTH_URL: http://127.0.0.1:4000
       VEMETRIC_DEV_PROXY_DISABLED: 'true'
@@ -150,6 +151,10 @@ jobs:
           done
           cat app.log
           exit 1
+
+      - name: List tests
+        working-directory: apps/e2e
+        run: bun run e2e:list
 
       - name: Run Playwright smoke tests
         working-directory: apps/e2e

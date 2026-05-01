@@ -112,7 +112,7 @@ jobs:
           done
 
           for i in {1..90}; do
-            if curl -fsS "http://localhost:8123/?query=SELECT%201" >/dev/null; then
+            if [ "$(curl -fsS http://localhost:8123/ping)" = "Ok." ]; then
               exit 0
             fi
             sleep 2

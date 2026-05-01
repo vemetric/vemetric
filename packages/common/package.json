@@ -14,9 +14,9 @@
   },
   "dependencies": {
     "@hono/zod-openapi": "^0.19.5",
-    "hono": "^4.6.13",
-    "nanoid": "^5.0.4",
-    "pino": "^9.6.0",
+    "hono": "^4.12.16",
+    "nanoid": "^5.1.11",
+    "pino": "^9.14.0",
     "siphash": "^1.1.0",
     "zod": "3.24.2"
   },

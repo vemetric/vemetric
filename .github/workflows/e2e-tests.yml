@@ -135,9 +135,13 @@ jobs:
 
       - name: Start app
         run: |
-          bun --filter app dev > app.log 2>&1 &
+          bun --filter app dev --host 127.0.0.1 --strictPort > app.log 2>&1 &
           echo $! > app.pid
           for i in {1..60}; do
+            if ! kill -0 "$(cat app.pid)" 2>/dev/null; then
+              cat app.log
+              exit 1
+            fi
             if curl -fsS "$E2E_BASE_URL/login" >/dev/null; then
               exit 0
             fi

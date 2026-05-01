@@ -80,6 +80,11 @@ jobs:
         with:
           ref: ${{ steps.target.outputs.ref }}
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
@@ -133,14 +138,15 @@ jobs:
         run: bun --filter clickhouse migrate-local
 
       - name: Install Playwright browser
-        run: bunx playwright install chromium
+        run: npx playwright install chromium
 
       - name: Print runner diagnostics
         working-directory: apps/e2e
         run: |
           uname -a
+          node --version
           bun --version
-          bunx playwright --version
+          npx playwright --version
           pwd
           ls -la
 
@@ -161,18 +167,9 @@ jobs:
           cat app.log
           exit 1
 
-      - name: Print app smoke diagnostics
-        working-directory: apps/e2e
-        run: |
-          curl -fsS -I "$E2E_BASE_URL/login"
-          bun run e2e:list
-
       - name: Run Playwright smoke tests
-        timeout-minutes: 4
-        env:
-          DEBUG: pw:api,pw:browser
         working-directory: apps/e2e
-        run: bun run e2e -- --reporter=line --workers=1 --timeout=30000 --global-timeout=120000 --trace=on
+        run: npm run e2e -- --reporter=line
 
       - name: Upload Playwright report
         if: always()

@@ -37,6 +37,7 @@ jobs:
       E2E_BASE_URL: http://127.0.0.1:4000
       BETTER_AUTH_URL: http://127.0.0.1:4000
       VEMETRIC_DEV_PROXY_DISABLED: 'true'
+      TURBO_TELEMETRY_DISABLED: '1'
 
     steps:
       - name: Resolve run target
@@ -151,7 +152,8 @@ jobs:
           exit 1
 
       - name: Run Playwright smoke tests
-        run: bun run e2e
+        working-directory: apps/e2e
+        run: bun run e2e -- --reporter=line
 
       - name: Upload Playwright report
         if: always()

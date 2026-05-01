@@ -95,6 +95,32 @@ jobs:
       - name: Start test services
         run: docker compose -p vemetric-e2e-${{ github.run_id }} up -d --wait
 
+      - name: Wait for test services
+        run: |
+          for i in {1..60}; do
+            if docker compose -p vemetric-e2e-${{ github.run_id }} exec -T postgres pg_isready -U postgres -d vemetric; then
+              break
+            fi
+            sleep 2
+          done
+
+          for i in {1..60}; do
+            if docker compose -p vemetric-e2e-${{ github.run_id }} exec -T redis redis-cli ping; then
+              break
+            fi
+            sleep 2
+          done
+
+          for i in {1..90}; do
+            if curl -fsS "http://localhost:8123/?query=SELECT%201" >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+
+          docker compose -p vemetric-e2e-${{ github.run_id }} logs clickhouse
+          exit 1
+
       - name: Generate Prisma client
         run: bun --filter database db:generate
 

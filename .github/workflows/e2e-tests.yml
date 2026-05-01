@@ -137,6 +137,14 @@ jobs:
       - name: Deploy ClickHouse migrations
         run: bun --filter clickhouse migrate-local
 
+      - name: Run app integration tests
+        timeout-minutes: 10
+        run: bun --filter app test:integration
+
+      - name: Run hub integration tests
+        timeout-minutes: 10
+        run: bun --filter hub test:integration
+
       - name: Install Playwright browser
         run: npx playwright install chromium
 

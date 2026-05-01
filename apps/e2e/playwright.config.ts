@@ -9,9 +9,6 @@ export default defineConfig({
   reporter: [['html', { open: 'never' }]],
   use: {
     baseURL: process.env.E2E_BASE_URL || 'https://app.vemetric.local',
-    contextOptions: {
-      reducedMotion: 'reduce',
-    },
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },

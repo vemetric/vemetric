@@ -140,16 +140,6 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install chromium
 
-      - name: Print runner diagnostics
-        working-directory: apps/e2e
-        run: |
-          uname -a
-          node --version
-          bun --version
-          npx playwright --version
-          pwd
-          ls -la
-
       - name: Start app
         run: |
           bun --filter app dev --host 127.0.0.1 --strictPort > app.log 2>&1 &

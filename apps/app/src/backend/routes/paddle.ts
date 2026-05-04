@@ -1,7 +1,7 @@
 import type { EventEntity } from '@paddle/paddle-node-sdk';
 import { EventName } from '@paddle/paddle-node-sdk';
 import { getClientIp } from '@vemetric/common/request-ip';
-import { sendTransactionalMail } from '@vemetric/email/transactional';
+import { sendTransactionalMail, type TemplateData, type TemplateName } from '@vemetric/email/transactional';
 import type { BillingInfo } from 'database';
 import { dbBillingInfo, dbOrganization } from 'database';
 import type { HonoContext } from '../types';
@@ -27,6 +27,34 @@ const allowedIpAdresses = [
   '52.11.166.252',
   '34.212.5.7',
 ];
+
+const sendPaddleTransactionalMail = async <T extends TemplateName>(
+  toAddress: string,
+  templateData: TemplateData<T>,
+) => {
+  try {
+    const result = await sendTransactionalMail(toAddress, templateData);
+    if (!result.success) {
+      logger.error(
+        {
+          response: result.response,
+          template: templateData.template,
+          toAddress,
+        },
+        'Paddle: transactional mail failed',
+      );
+    }
+  } catch (err) {
+    logger.error(
+      {
+        err,
+        template: templateData.template,
+        toAddress,
+      },
+      'Paddle: transactional mail threw an error',
+    );
+  }
+};
 
 export async function validateWebhook(context: HonoContext): Promise<EventEntity | null> {
   const { req } = context;
@@ -118,7 +146,7 @@ export const paddleWebhookHandler = async (context: HonoContext) => {
           },
         });
 
-        await sendTransactionalMail(orgUser.user.email, {
+        await sendPaddleTransactionalMail(orgUser.user.email, {
           template: 'subscriptionCreated',
           props: {
             userName: orgUser.user.name,
@@ -172,7 +200,7 @@ export const paddleWebhookHandler = async (context: HonoContext) => {
 
         // Send cancellation feedback email
         if (isCancellation) {
-          await sendTransactionalMail(orgUser.user.email, {
+          await sendPaddleTransactionalMail(orgUser.user.email, {
             template: 'subscriptionCancelled',
             props: {
               userName: orgUser.user.name,

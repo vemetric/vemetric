@@ -99,8 +99,8 @@ export const buildReferrerTypeFilterQueries = (filterConfig: IFilterConfig) => {
 
   const referrerFilters = filterConfig.filters.filter((filter) => filter.type === 'referrerType');
 
-  const positiveFilters = referrerFilters.filter((filter) => !filter.referrerTypeFilter?.operator.includes('not'));
-  const negativeFilters = referrerFilters.filter((filter) => filter.referrerTypeFilter?.operator.includes('not'));
+  const positiveFilters = referrerFilters.filter((filter) => filter.referrerTypeFilter?.operator !== 'noneOf');
+  const negativeFilters = referrerFilters.filter((filter) => filter.referrerTypeFilter?.operator === 'noneOf');
 
   const positiveQueries = positiveFilters
     .map((filter) => buildReferrerTypeFilterQuery(filter))

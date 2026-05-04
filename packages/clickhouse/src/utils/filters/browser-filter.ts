@@ -23,8 +23,8 @@ export const buildBrowserFilterQueries = (filterConfig: IFilterConfig) => {
 
   const browserFilters = filterConfig.filters.filter((filter) => filter.type === 'browser');
 
-  const positiveFilters = browserFilters.filter((filter) => !filter.browserFilter?.operator.includes('not'));
-  const negativeFilters = browserFilters.filter((filter) => filter.browserFilter?.operator.includes('not'));
+  const positiveFilters = browserFilters.filter((filter) => filter.browserFilter?.operator !== 'noneOf');
+  const negativeFilters = browserFilters.filter((filter) => filter.browserFilter?.operator === 'noneOf');
 
   const positiveQueries = positiveFilters
     .map((filter) => buildBrowserFilterQuery(filter))

@@ -1,6 +1,6 @@
 import { createMiddleware } from 'hono/factory';
 import { getRedisClient } from '../../utils/redis';
-import type { PublicApiEnv } from '../types';
+import type { PublicApiHonoEnv } from '../types';
 import { ApiError } from '../utils/errors';
 
 const DEFAULT_LIMIT = 100;
@@ -24,7 +24,7 @@ export function createRateLimitMiddleware(options: RateLimitMiddlewareOptions = 
   const limit = options.limit ?? DEFAULT_LIMIT;
   const windowSec = options.windowSec ?? DEFAULT_WINDOW_SEC;
 
-  return createMiddleware<PublicApiEnv>(async (c, next) => {
+  return createMiddleware<PublicApiHonoEnv>(async (c, next) => {
     const project = c.get('project');
     if (!project) {
       await next();

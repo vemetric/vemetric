@@ -1,10 +1,11 @@
 import * as Sentry from '@sentry/bun';
 import { clickhouseClient } from 'clickhouse';
 import { Hono } from 'hono';
-import { createPublicApi } from './api';
+import { API_DOCS_URL, createPublicApi } from './api';
 import { createBackendApp } from './backend-app';
 import { createStaticApp } from './static-app';
 import { logger } from './utils/backend-logger';
+import { isMemoryReportEnabled, memoryTelemetryMiddleware, startMemoryReportSchedule } from './utils/memory-report';
 
 if (process.env.SENTRY_URL) {
   Sentry.init({
@@ -16,10 +17,16 @@ if (process.env.SENTRY_URL) {
 
 export const app = new Hono();
 
-const backendApp = createBackendApp();
-const publicApi = createPublicApi();
+if (isMemoryReportEnabled()) {
+  app.use('*', memoryTelemetryMiddleware);
+}
 
+const backendApp = createBackendApp();
 app.route('/_api', backendApp);
+
+const publicApi = createPublicApi();
+app.get('/api', (c) => c.redirect(API_DOCS_URL, 302));
+app.get('/api/', (c) => c.redirect(API_DOCS_URL, 302));
 app.route('/api', publicApi);
 
 if (process.env.NODE_ENV === 'production') {
@@ -42,5 +49,9 @@ process.on('unhandledRejection', function (err) {
 process.on('beforeExit', () => {
   clickhouseClient.close();
 });
+
+if (isMemoryReportEnabled()) {
+  startMemoryReportSchedule();
+}
 
 logger.info('Starting app');

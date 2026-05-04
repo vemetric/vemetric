@@ -22,14 +22,15 @@ interface Props {
 }
 
 export const LocationFilterForm = ({ filter: _filter, onSubmit, buttonText }: Props) => {
-  const { countryCodes } = useFilterContext();
+  const { countryCodes, cities } = useFilterContext();
   const [filter, setFilter] = useState<ILocationFilter>(
     _filter ?? {
       type: 'location',
       countryFilter: { value: [], operator: 'oneOf' },
+      cityFilter: { value: [], operator: 'any' },
     },
   );
-  const { countryFilter = { value: [], operator: 'any' } } = filter;
+  const { countryFilter = { value: [], operator: 'any' }, cityFilter = { value: [], operator: 'any' } } = filter;
 
   return (
     <Flex
@@ -63,6 +64,25 @@ export const LocationFilterForm = ({ filter: _filter, onSubmit, buttonText }: Pr
             setFilter(
               produce(filter, (draft) => {
                 draft.countryFilter = newFilter;
+              }),
+            );
+          }}
+        />
+        <ListFilterRow
+          label="City"
+          values={createListCollection({
+            items: cities.map((city) => ({
+              label: <Text>{city}</Text>,
+              value: city,
+            })),
+            itemToString: (item) => item.value,
+            itemToValue: (item) => item.value,
+          })}
+          filter={cityFilter}
+          onChange={(newFilter) => {
+            setFilter(
+              produce(filter, (draft) => {
+                draft.cityFilter = newFilter;
               }),
             );
           }}

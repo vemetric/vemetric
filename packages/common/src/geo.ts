@@ -1,4 +1,3 @@
-import type { GeoData } from 'clickhouse';
 import type { Logger } from 'pino';
 
 interface GeoDataResponse {
@@ -15,6 +14,13 @@ interface GeoDataResponse {
   asnOrganization: string;
   asnNetwork: string;
 }
+
+export type GeoData = {
+  countryCode: string;
+  city: string;
+  latitude: number | null;
+  longitude: number | null;
+};
 
 export const EMPTY_GEO_DATA: GeoData = {
   countryCode: '',

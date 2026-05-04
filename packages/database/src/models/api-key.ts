@@ -35,7 +35,17 @@ export const dbApiKey = {
   findByKeyHash: ({ keyHash, client = prismaClient }: { keyHash: string; client?: DbClient }) =>
     client.apiKey.findFirst({
       where: { keyHash, revokedAt: null },
-      include: { project: true },
+      include: {
+        project: {
+          include: {
+            organization: {
+              include: {
+                billingInfo: true,
+              },
+            },
+          },
+        },
+      },
     }),
 
   listByProjectId: ({ projectId, client = prismaClient }: { projectId: string; client?: DbClient }) =>

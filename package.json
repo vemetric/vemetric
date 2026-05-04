@@ -10,12 +10,13 @@
     "tsc": "turbo run tsc",
     "test": "turbo run test",
     "test:watch": "turbo run test:watch",
+    "test:integration": "turbo run test:integration",
     "e2e": "turbo run e2e --filter=e2e",
     "e2e:ui": "turbo run e2e:ui --filter=e2e",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "turbo": "turbo"
   },
-  "dependencies": {
+  "devDependencies": {
     "eslint": "^9.18.0",
     "prettier": "^3.0.3",
     "turbo": "2.6.1"
@@ -24,5 +25,5 @@
     "apps/*",
     "packages/*"
   ],
-  "packageManager": "bun@1.2.23"
+  "packageManager": "bun@1.3.11"
 }

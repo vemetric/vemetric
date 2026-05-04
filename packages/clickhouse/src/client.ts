@@ -1,5 +1,5 @@
-import type { ErrorLogParams, Logger, LogParams, WarnLogParams } from '@clickhouse/client';
-import { ClickHouseLogLevel, createClient } from '@clickhouse/client';
+import type { ErrorLogParams, Logger, LogParams, WarnLogParams } from '@clickhouse/client-web';
+import { ClickHouseLogLevel, createClient } from '@clickhouse/client-web';
 import { jsonStringify } from '@vemetric/common/json';
 import { createLogger } from '@vemetric/logger';
 
@@ -38,10 +38,14 @@ export const clickhouseClient = createClient({
   request_timeout: 60000,
   keep_alive: {
     enabled: true,
-    idle_socket_ttl: 5000,
   },
   compression: {
     request: true,
+  },
+  clickhouse_settings: {
+    // ClickHouse 26 can return UInt64 values as JSON numbers. IDs exceed JS' safe
+    // integer range, so force quoted integers before parsing them into BigInt.
+    output_format_json_quote_64bit_integers: 1,
   },
   log: {
     LoggerClass: CustomLogger,

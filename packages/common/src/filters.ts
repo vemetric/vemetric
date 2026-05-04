@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from '@hono/zod-openapi';
 
 const anyOperator = z.literal('any');
 const andOperator = z.literal('and');
@@ -27,9 +27,11 @@ const stringOperators = [
 ] as const;
 export const stringOperatorsSchema = z.union(stringOperators);
 export const stringOperatorValues = stringOperators.map((operator) => operator.value);
-const stringFilterSchema = z.object({
-  value: z.string(),
-  operator: stringOperatorsSchema,
+export const stringFilterSchema = z.object({
+  value: z.string().openapi({ description: 'Value to filter by' }),
+  operator: stringOperatorsSchema.openapi({
+    description: `Operator to apply for the filter. The "any" operator means that any value is accepted and effectively disables the filter.`,
+  }),
 });
 export type IStringFilterOperator = z.infer<typeof stringOperatorsSchema>;
 export type IStringFilter = z.infer<typeof stringFilterSchema>;
@@ -53,9 +55,14 @@ export type INumberFilter = z.infer<typeof numberFilterSchema>;
 
 const listOperators = [anyOperator, oneOfOperator, noneOfOperator] as const;
 export const listOperatorValues = listOperators.map((operator) => operator.value);
-const listFilterSchema = z.object({
-  value: z.array(z.string()),
-  operator: z.union(listOperators),
+export const listOperatorsSchema = z.union(listOperators);
+export const listFilterSchema = z.object({
+  value: z.array(z.string()).openapi({
+    description: 'List of values to filter by',
+  }),
+  operator: listOperatorsSchema.openapi({
+    description: `Operator to apply for the list filter. The "any" operator means that any value is accepted and effectively disables the filter.`,
+  }),
 });
 export type IListFilter = z.infer<typeof listFilterSchema>;
 
@@ -90,6 +97,7 @@ export type IUserFilter = z.infer<typeof userFilterSchema>;
 const locationFilterSchema = z.object({
   type: z.literal('location'),
   countryFilter: listFilterSchema.optional(),
+  cityFilter: listFilterSchema.optional(),
 });
 export type ILocationFilter = z.infer<typeof locationFilterSchema>;
 
@@ -165,6 +173,7 @@ export type IFilter = z.infer<typeof filterSchema>;
 
 const filterGroupOperators = [andOperator, orOperator] as const;
 export const filterGroupOperatorValues = filterGroupOperators.map((operator) => operator.value);
+export const filterGroupOperatorsSchema = z.union(filterGroupOperators);
 export type IFilterGroup = {
   type: 'group';
   filters: Array<IFilter | IFilterGroup>;
@@ -174,13 +183,13 @@ export type IFilterGroup = {
 const filterGroupSchema: z.ZodType<IFilterGroup> = z.object({
   type: z.literal('group'),
   filters: z.array(z.union([filterSchema, z.lazy(() => filterGroupSchema)])),
-  operator: z.union(filterGroupOperators),
+  operator: filterGroupOperatorsSchema,
 });
 
 export const filterConfigSchema = z
   .object({
     filters: z.array(z.union([filterSchema, z.lazy(() => filterGroupSchema)])),
-    operator: z.union(filterGroupOperators),
+    operator: filterGroupOperatorsSchema,
   })
   .optional()
   .catch(undefined);
@@ -208,3 +217,19 @@ export const hasMultipleSubfiltersActive = (filter: IFilter) => {
   }
   return false;
 };
+
+export function hasEventNameFilter(filterConfig?: IFilterConfig): boolean {
+  if (!filterConfig || filterConfig.filters.length === 0) {
+    return false;
+  }
+
+  const hasFilter = (filter: IFilter | IFilterGroup): boolean => {
+    if (filter.type === 'group') {
+      return filter.filters.some((child) => hasFilter(child));
+    }
+
+    return filter.type === 'event' && Boolean(filter.nameFilter?.value);
+  };
+
+  return filterConfig.filters.some((filter) => hasFilter(filter));
+}

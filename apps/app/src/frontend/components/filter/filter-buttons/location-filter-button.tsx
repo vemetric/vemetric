@@ -13,7 +13,9 @@ interface Props {
 }
 
 export const LocationFilterButton = ({ filter, onChange, onDelete }: Props) => {
-  const { countryFilter = { value: [], operator: 'any' } } = filter;
+  const { countryFilter = { value: [], operator: 'any' }, cityFilter = { value: [], operator: 'any' } } = filter;
+  const hasCountryFilter = countryFilter.operator !== 'any';
+  const hasCityFilter = cityFilter.operator !== 'any';
 
   const popoverContent = (
     <Box>
@@ -47,11 +49,16 @@ export const LocationFilterButton = ({ filter, onChange, onDelete }: Props) => {
           <TbMap2 />
           <Text>Location</Text>
         </Flex>
-        <Text fontSize="xs" fontWeight="medium">
-          {countryFilter.operator}
-        </Text>
-        {countryFilter.operator !== 'any' && (
-          <Flex align="center" gap={0} flexWrap="wrap">
+        {!hasCountryFilter && !hasCityFilter && (
+          <Text fontSize="xs" fontWeight="medium">
+            any
+          </Text>
+        )}
+        {hasCountryFilter && (
+          <Flex align="center" gap={1} flexWrap="wrap">
+            <Text fontSize="xs" fontWeight="medium">
+              Country {countryFilter.operator}
+            </Text>
             {countryFilter.value.length > 0 ? (
               countryFilter.value.slice(0, 3).map((code, index) => (
                 <Fragment key={code}>
@@ -68,6 +75,22 @@ export const LocationFilterButton = ({ filter, onChange, onDelete }: Props) => {
               </Text>
             )}
           </Flex>
+        )}
+        {hasCityFilter && (
+          <>
+            <Text fontSize="xs" color="fg.muted">
+              {hasCountryFilter ? '&' : ''}
+            </Text>
+            <Flex align="center" gap={1} flexWrap="wrap">
+              <Text fontSize="xs" fontWeight="medium">
+                City {cityFilter.operator}
+              </Text>
+              <Text fontSize="xs">
+                {cityFilter.value.length > 0 ? cityFilter.value.slice(0, 2).join(', ') : '0'}
+                {cityFilter.value.length > 2 ? ', ...' : ''}
+              </Text>
+            </Flex>
+          </>
         )}
       </Flex>
     </FilterButton>

@@ -1,13 +1,28 @@
-import { EMPTY_GEO_DATA } from '@vemetric/common/geo';
-import type { ClickhouseSession, ClickhouseUser, DeviceData, GeoData } from 'clickhouse';
+import { EMPTY_GEO_DATA, type GeoData } from '@vemetric/common/geo';
+import type { ClickhouseSession, ClickhouseUser, DeviceData } from 'clickhouse';
 import { clickhouseSession } from 'clickhouse';
 
-export async function increaseClickhouseSessionDuration(session: ClickhouseSession, now: string) {
+function fillMissingGeoData(session: ClickhouseSession, geoData: GeoData | undefined) {
+  if (!geoData) {
+    return session;
+  }
+
+  return {
+    ...session,
+    countryCode: session.countryCode || geoData.countryCode,
+    city: session.city || geoData.city,
+    latitude: session.latitude ?? geoData.latitude,
+    longitude: session.longitude ?? geoData.longitude,
+  };
+}
+
+export async function increaseClickhouseSessionDuration(session: ClickhouseSession, now: string, geoData?: GeoData) {
   const duration = Math.round((new Date(now).getTime() - new Date(session.startedAt).getTime()) / 1000);
+
   if (duration > session.duration) {
     await clickhouseSession.insert([
       {
-        ...session,
+        ...fillMissingGeoData(session, geoData),
         endedAt: now,
         duration,
       },

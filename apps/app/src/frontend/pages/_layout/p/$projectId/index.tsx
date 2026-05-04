@@ -33,6 +33,7 @@ const dashboardSearchSchema = z.object({
   f: filterConfigSchema,
   s: sourcesSchema,
   c: z.enum(['map', 'list']).optional(),
+  cl: z.enum(['countries', 'cities']).optional(),
   u: z.enum(['browsers', 'devices', 'os']).optional(),
   ch: chartTogglesSchema, // visible chart categories (default: ['users', 'pageViews'])
   me: z // selected event in the dashboard events card
@@ -106,6 +107,7 @@ function Page() {
         origins: filterableData?.origins ?? [],
         eventNames: filterableData?.eventNames ?? [],
         countryCodes: filterableData?.countryCodes ?? [],
+        cities: filterableData?.cities ?? [],
         referrers: filterableData?.referrers ?? [],
         referrerUrls: filterableData?.referrerUrls ?? [],
         utmCampaigns: filterableData?.utmCampaigns ?? [],
@@ -149,6 +151,7 @@ function Page() {
                 timespanEndDate={endDate}
                 data={data}
                 trends={trendsData}
+                filterConfig={filterConfig}
               />
               {isPreviousData && (
                 <Box pos="absolute" inset="0" opacity="0.8" zIndex="docked">

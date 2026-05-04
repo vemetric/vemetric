@@ -1,40 +1,29 @@
-FROM node:20.9.0-slim AS base
-# OpenSSL required for prisma
-RUN apt-get update && apt-get install -y openssl curl
-# we're currently on bun 1.2.23 because of issues with BullMQ jobs stuck in active state
-RUN npm i -g bun@1.2.23
+FROM oven/bun:1.3.11-slim AS base
+RUN apt-get update && apt-get install -y --no-install-recommends openssl wget && rm -rf /var/lib/apt/lists/*
+WORKDIR /usr/src/app
 
+FROM base AS pruner
+RUN bun add -g turbo@2.6.1
+COPY . .
+RUN bun turbo prune @vemetric/bullboard --docker --out-dir out
 
 FROM base AS install
-WORKDIR /usr/src/app
-
-COPY package.json bun.lock .npmrc ./
-COPY apps/app/package.json ./apps/app/
-COPY apps/bullboard/package.json ./apps/bullboard/
-COPY apps/dev-proxy/package.json ./apps/dev-proxy/
-COPY apps/health-check/package.json ./apps/health-check/
-COPY apps/hub/package.json ./apps/hub/
-COPY apps/worker/package.json ./apps/worker/
-COPY apps/e2e/package.json ./apps/e2e/
-COPY packages/clickhouse/package.json ./packages/clickhouse/
-COPY packages/common/package.json ./packages/common/
-COPY packages/database/package.json ./packages/database/
-COPY packages/email/package.json ./packages/email/
-COPY packages/eslint-config/package.json ./packages/eslint-config/
-COPY packages/logger/package.json ./packages/logger/
-COPY packages/queues/package.json ./packages/queues/
-COPY packages/tsconfig/package.json ./packages/tsconfig/
-
+COPY --from=pruner /usr/src/app/out/json/ .
 RUN bun install --ignore-scripts --frozen-lockfile
 
+FROM install AS prisma
+COPY --from=pruner /usr/src/app/out/full/ .
+RUN bun run --cwd packages/database db:generate
 
-FROM install AS release
-WORKDIR /usr/src/app
+FROM base AS prod-install
+COPY --from=pruner /usr/src/app/out/json/ .
+RUN bun install --production --ignore-scripts --frozen-lockfile
 
-COPY . .
+FROM base AS release
+COPY --from=pruner /usr/src/app/out/full/ ./
+COPY --from=prod-install /usr/src/app/node_modules ./node_modules
+COPY --from=prisma /usr/src/app/node_modules/.prisma ./node_modules/.prisma
 
-RUN bun run build
- 
 EXPOSE 4121
  
 CMD [ "bun", "run", "apps/bullboard/src/index.ts" ]

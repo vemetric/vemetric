@@ -4,6 +4,8 @@ test.describe('Smoke Tests', () => {
   test('login page loads successfully', async ({ page }) => {
     await page.goto('/login');
 
+    await expect(page).toHaveURL(/\/login$/);
+
     // Verify the page title/heading
     await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
 

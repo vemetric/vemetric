@@ -23,8 +23,8 @@ export const buildOsFilterQueries = (filterConfig: IFilterConfig) => {
 
   const osFilters = filterConfig.filters.filter((filter) => filter.type === 'os');
 
-  const positiveFilters = osFilters.filter((filter) => !filter.osFilter?.operator.includes('not'));
-  const negativeFilters = osFilters.filter((filter) => filter.osFilter?.operator.includes('not'));
+  const positiveFilters = osFilters.filter((filter) => filter.osFilter?.operator !== 'noneOf');
+  const negativeFilters = osFilters.filter((filter) => filter.osFilter?.operator === 'noneOf');
 
   const positiveQueries = positiveFilters
     .map((filter) => buildOsFilterQuery(filter))

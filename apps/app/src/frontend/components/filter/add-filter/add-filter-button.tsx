@@ -7,9 +7,9 @@ import { PopoverMenuHeader } from '@/components/popover-menu/popover-menu-header
 import type { RoutesWithFiltering } from '@/hooks/use-filters';
 import { useFilters } from '@/hooks/use-filters';
 import { AddFilterOverview } from './add-filter-overview';
+import { useFilterContext } from '../filter-context';
 import { OPERATOR_BUTTON_MENU_CLASS_NAME } from '../operator-button';
 import { ADD_FILTER_ITEMS } from './add-filters-items';
-import { useFilterContext } from '../filter-context';
 
 const getMotionViewProps = (overview?: boolean) => ({
   initial: { x: overview ? '-100%' : '100%' },

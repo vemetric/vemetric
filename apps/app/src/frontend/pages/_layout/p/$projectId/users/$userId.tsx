@@ -109,6 +109,7 @@ function Page() {
 
         disabledFilters: ['funnel', 'referrer', 'referrerUrl', 'referrerType', 'utmTags', 'location', 'user'],
         countryCodes: [],
+        cities: [],
         funnels: [],
         referrers: [],
         referrerUrls: [],

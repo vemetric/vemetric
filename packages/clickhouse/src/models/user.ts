@@ -1,8 +1,9 @@
+import type { GeoData } from '@vemetric/common/geo';
 import { jsonStringify } from '@vemetric/common/json';
 import { escape } from 'sqlstring';
 import { clickhouseClient, clickhouseInsert } from '../client';
 import type { ClickhouseDevice } from './device';
-import type { GeoData, ReferrerData, UrlData } from './session';
+import type { ReferrerData, UrlData } from './session';
 import { EXAMPLE_URL_DATA } from './session';
 
 const TABLE_NAME = 'user';

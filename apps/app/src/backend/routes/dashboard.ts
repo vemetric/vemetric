@@ -7,7 +7,7 @@ import { dbFunnel } from 'database';
 import { z } from 'zod';
 import { getFilterFunnelsData } from '../utils/filter';
 import { fillTimeSeries, getPreviousPeriodDates } from '../utils/timeseries';
-import { timespanProcedure, router } from '../utils/trpc';
+import { publicTimespanProcedure, router } from '../utils/trpc';
 
 async function fetchMetricsData(projectId: bigint, filterOptions: FilterOptions) {
   const { startDate, endDate, filterQueries } = filterOptions;
@@ -43,7 +43,7 @@ async function fetchMetricsData(projectId: bigint, filterOptions: FilterOptions)
 }
 
 export const dashboardRouter = router({
-  getData: timespanProcedure
+  getData: publicTimespanProcedure
     .input(
       z.object({
         filterConfig: filterConfigSchema,
@@ -134,7 +134,7 @@ export const dashboardRouter = router({
         isInitialized,
       };
     }),
-  getPreviousData: timespanProcedure
+  getPreviousData: publicTimespanProcedure
     .input(
       z.object({
         filterConfig: filterConfigSchema,
@@ -174,7 +174,7 @@ export const dashboardRouter = router({
         visitDuration: metricsData.visitDuration,
       };
     }),
-  getTopSources: timespanProcedure
+  getTopSources: publicTimespanProcedure
     .input(
       z.object({
         filterConfig: filterConfigSchema,
@@ -207,7 +207,7 @@ export const dashboardRouter = router({
         dataSource: source,
       };
     }),
-  getCountries: timespanProcedure
+  getCountries: publicTimespanProcedure
     .input(
       z.object({
         filterConfig: filterConfigSchema,
@@ -228,12 +228,19 @@ export const dashboardRouter = router({
         filterQueries,
         filterConfig,
       });
+      const cities = await clickhouseSession.getCities(projectId, {
+        startDate,
+        endDate,
+        filterQueries,
+        filterConfig,
+      });
 
       return {
         countryCodes,
+        cities,
       };
     }),
-  getBrowsers: timespanProcedure
+  getBrowsers: publicTimespanProcedure
     .input(
       z.object({
         filterConfig: filterConfigSchema,
@@ -259,7 +266,7 @@ export const dashboardRouter = router({
         browsers,
       };
     }),
-  getDevices: timespanProcedure
+  getDevices: publicTimespanProcedure
     .input(
       z.object({
         filterConfig: filterConfigSchema,
@@ -280,7 +287,7 @@ export const dashboardRouter = router({
         devices,
       };
     }),
-  getOperatingSystems: timespanProcedure
+  getOperatingSystems: publicTimespanProcedure
     .input(
       z.object({
         filterConfig: filterConfigSchema,
@@ -306,7 +313,7 @@ export const dashboardRouter = router({
         operatingSystems,
       };
     }),
-  getFunnels: timespanProcedure
+  getFunnels: publicTimespanProcedure
     .input(
       z.object({
         filterConfig: filterConfigSchema,
@@ -360,7 +367,7 @@ export const dashboardRouter = router({
         funnels: funnelsWithResults.sort((a, b) => b.conversionRate - a.conversionRate),
       };
     }),
-  getFunnelSteps: timespanProcedure
+  getFunnelSteps: publicTimespanProcedure
     .input(
       z.object({
         funnelId: z.string(),
@@ -407,7 +414,7 @@ export const dashboardRouter = router({
         firstStepUsers: funnelResults[0]?.userCount || 0,
       };
     }),
-  getEventProperties: timespanProcedure
+  getEventProperties: publicTimespanProcedure
     .input(
       z.object({
         eventName: z.string(),
@@ -441,7 +448,7 @@ export const dashboardRouter = router({
         properties,
       };
     }),
-  getPropertyValues: timespanProcedure
+  getPropertyValues: publicTimespanProcedure
     .input(
       z.object({
         eventName: z.string(),

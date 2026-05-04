@@ -6,6 +6,7 @@
   "scripts": {
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
+    "e2e:list": "playwright test --list",
     "report": "playwright show-report",
     "lint": "eslint . --max-warnings 0",
     "tsc": "tsc --noEmit"

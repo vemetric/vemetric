@@ -1,4 +1,4 @@
-import { Text, Card, Flex, Box, Button, Grid, Icon, Skeleton } from '@chakra-ui/react';
+import { Text, Card, Flex, Box, Button, Grid, Icon, SegmentGroup, Skeleton } from '@chakra-ui/react';
 import { useParams, Link, useSearch, useNavigate } from '@tanstack/react-router';
 import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import { COUNTRIES } from '@vemetric/common/countries';
@@ -11,7 +11,7 @@ import { CardIcon } from '@/components/card-icon';
 import { CountryFlag } from '@/components/country-flag';
 import { NumberCounter } from '@/components/number-counter';
 import { EmptyState } from '@/components/ui/empty-state';
-import { SegmentedControl } from '@/components/ui/segmented-control';
+import { MenuContent, MenuRadioItem, MenuRadioItemGroup, MenuRoot, MenuTrigger } from '@/components/ui/menu';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useFilters } from '@/hooks/use-filters';
 import { useTimespanParam } from '@/hooks/use-timespan-param';
@@ -28,7 +28,9 @@ interface Props {
 
 export const CountriesCard = ({ filterConfig, publicDashboard }: Props) => {
   const params = useParams({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
-  const { c: viewMode = 'map' } = useSearch({ from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/' });
+  const { c: viewMode = 'map', cl: listMode = 'countries' } = useSearch({
+    from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
+  });
   const { timespan, startDate, endDate } = useTimespanParam({
     from: publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/',
   });
@@ -46,12 +48,21 @@ export const CountriesCard = ({ filterConfig, publicDashboard }: Props) => {
     },
   );
 
-  const mostVisitedLocation = data?.countryCodes?.[0];
+  const mostVisitedCountry = data?.countryCodes?.[0];
+  const mostVisitedCity = data?.cities?.[0];
   const [page, setPage] = useState(1);
 
   const setViewMode = (newViewMode: 'list' | 'map') => {
     navigate({
       search: (prev) => ({ ...prev, c: newViewMode === 'map' ? undefined : newViewMode }),
+      params: (prev) => prev,
+      resetScroll: false,
+    });
+  };
+  const setListMode = (newListMode: 'countries' | 'cities') => {
+    setPage(1);
+    navigate({
+      search: (prev) => ({ ...prev, cl: newListMode === 'countries' ? undefined : newListMode }),
       params: (prev) => prev,
       resetScroll: false,
     });
@@ -62,6 +73,11 @@ export const CountriesCard = ({ filterConfig, publicDashboard }: Props) => {
       type: 'location',
       countryFilter: { operator: 'oneOf', value: [countryCode] },
     } as ILocationFilter;
+    const isFiltered = activeFilters.some((f) => isDeepEqual(f, newFilter));
+    if (!isFiltered) {
+      setViewMode('list');
+      setListMode('cities');
+    }
     toggleFilter(newFilter);
   };
 
@@ -74,39 +90,72 @@ export const CountriesCard = ({ filterConfig, publicDashboard }: Props) => {
               <CardIcon size="xs">
                 <TbMap2 />
               </CardIcon>
-              <Text>Countries</Text>
+              <Text>Locations</Text>
             </Flex>
             <Text textStyle="sm" fontWeight="normal" color="fg.muted" pl={0.5}>
-              <NumberCounter value={data?.countryCodes.length ?? 0} /> countr
-              {data?.countryCodes.length === 1 ? 'y' : 'ies'}
+              <NumberCounter
+                value={(listMode === 'countries' ? data?.countryCodes.length : data?.cities?.length) ?? 0}
+              />{' '}
+              {listMode === 'countries'
+                ? data?.countryCodes.length === 1
+                  ? 'country'
+                  : 'countries'
+                : data?.cities?.length === 1
+                  ? 'city'
+                  : 'cities'}
             </Text>
           </Flex>
           <Flex flexGrow={1} justify="flex-end">
-            <SegmentedControl
+            <SegmentGroup.Root
               size="xs"
-              value={viewMode}
-              onValueChange={(e) => setViewMode(e.value as 'list' | 'map')}
-              items={[
-                {
-                  value: 'map',
-                  label: (
-                    <Flex align="center" gap={1}>
-                      <Icon as={TbWorld} />
-                      <Box hideBelow="md">Map</Box>
-                    </Flex>
-                  ),
-                },
-                {
-                  value: 'list',
-                  label: (
+              value={viewMode === 'map' ? 'map' : 'listOptions'}
+              onValueChange={({ value }) => {
+                if (value === 'map') {
+                  setViewMode('map');
+                }
+              }}
+            >
+              <SegmentGroup.Indicator />
+              <SegmentGroup.Item value="map">
+                <SegmentGroup.ItemText>
+                  <Flex align="center" gap={1}>
+                    <Icon as={TbWorld} />
+                    <Box hideBelow="md">Map</Box>
+                  </Flex>
+                </SegmentGroup.ItemText>
+                <SegmentGroup.ItemHiddenInput />
+              </SegmentGroup.Item>
+              <MenuRoot positioning={{ placement: 'bottom-end' }}>
+                <SegmentGroup.Item value="listOptions">
+                  <MenuTrigger asChild>
+                    <Box pos="absolute" inset="0" />
+                  </MenuTrigger>
+                  <SegmentGroup.ItemText>
                     <Flex align="center" gap={1}>
                       <Icon as={TbList} />
-                      <Box hideBelow="md">List</Box>
+                      <Box hideBelow="md">
+                        {viewMode === 'map' ? 'List' : listMode === 'cities' ? 'Cities' : 'Countries'}
+                      </Box>
                     </Flex>
-                  ),
-                },
-              ]}
-            />
+                  </SegmentGroup.ItemText>
+                  <SegmentGroup.ItemHiddenInput />
+                </SegmentGroup.Item>
+                <MenuContent>
+                  <MenuRadioItemGroup
+                    value={viewMode === 'list' ? listMode : undefined}
+                    onValueChange={({ value }) => {
+                      setListMode(value as 'countries' | 'cities');
+                      if (viewMode !== 'list') {
+                        setViewMode('list');
+                      }
+                    }}
+                  >
+                    <MenuRadioItem value="countries">Countries</MenuRadioItem>
+                    <MenuRadioItem value="cities">Cities</MenuRadioItem>
+                  </MenuRadioItemGroup>
+                </MenuContent>
+              </MenuRoot>
+            </SegmentGroup.Root>
           </Flex>
         </Flex>
       </DashboardCardHeader>
@@ -122,93 +171,184 @@ export const CountriesCard = ({ filterConfig, publicDashboard }: Props) => {
         ) : (
           <Box display="flex" flexDir="column" flexGrow={1}>
             <ListCard
-              list={data?.countryCodes}
+              list={listMode === 'countries' ? data?.countryCodes : data?.cities}
               page={page}
               setPage={setPage}
               error={error}
-              emptyState={<EmptyState icon={<TbMap2 />} title="No countries available in the selected timeframe" />}
+              emptyState={
+                <EmptyState
+                  icon={<TbMap2 />}
+                  title={`No ${listMode === 'countries' ? 'countries' : 'cities'} available in the selected timeframe`}
+                />
+              }
             >
               <Grid gridTemplateColumns="minmax(0, 1fr) minmax(50px, auto)" columnGap={2} rowGap={1.5}>
                 <Box mb={1} fontWeight="semibold" fontSize="sm">
-                  Country
+                  {listMode === 'countries' ? 'Country' : 'City'}
                 </Box>
                 <Box fontWeight="semibold" textAlign="center" fontSize="sm">
                   Users
                 </Box>
-                {data?.countryCodes
-                  ?.slice((page - 1) * LIST_CARD_PAGE_SIZE, page * LIST_CARD_PAGE_SIZE)
-                  ?.map(({ countryCode, users }) => {
-                    const newFilter = {
-                      type: 'location',
-                      countryFilter: { operator: 'oneOf', value: [countryCode] },
-                    } as ILocationFilter;
-                    const isFiltered = activeFilters.some((f) => isDeepEqual(f, newFilter));
+                {listMode === 'countries' &&
+                  data?.countryCodes
+                    ?.slice((page - 1) * LIST_CARD_PAGE_SIZE, page * LIST_CARD_PAGE_SIZE)
+                    ?.map(({ countryCode, users }) => {
+                      const newFilter = {
+                        type: 'location',
+                        countryFilter: { operator: 'oneOf', value: [countryCode] },
+                      } as ILocationFilter;
+                      const isFiltered = activeFilters.some((f) => isDeepEqual(f, newFilter));
 
-                    return (
-                      <React.Fragment key={countryCode}>
-                        <Box className="group" pos="relative" truncate>
-                          <CardBar value={users} maxValue={mostVisitedLocation?.users} />
-                          <Flex px={2} py={0.5} pos="relative" gap={1.5} align="center">
-                            <CountryFlag countryCode={countryCode} />
-                            {COUNTRIES[countryCode as keyof typeof COUNTRIES] ?? 'Unknown'}
-                          </Flex>
-                          <Flex
-                            zIndex="1"
-                            pos="absolute"
-                            inset="0"
-                            alignItems="center"
-                            justify="flex-end"
-                            transition="all 0.2s ease-in-out"
-                            bg="linear-gradient(to right, rgba(0, 0, 0, 0) 60%, var(--chakra-colors-bg-card) 95%)"
-                            opacity="0"
-                            gap="2"
-                            _groupHover={{ opacity: '1' }}
-                          >
-                            {'projectId' in params && (
-                              <Tooltip content="View users that are from this country">
-                                <Button
-                                  asChild
-                                  size="xs"
-                                  p={0}
-                                  minW="24px"
-                                  h="24px"
-                                  variant="surface"
-                                  colorScheme="gray"
-                                >
-                                  <Link
-                                    to="/p/$projectId/users"
-                                    params={{ projectId: params.projectId }}
-                                    search={{
-                                      f: { filters: [newFilter], operator: 'and' },
-                                      s: { by: newFilter },
-                                    }}
-                                  >
-                                    <Icon as={TbUsers} />
-                                  </Link>
-                                </Button>
-                              </Tooltip>
-                            )}
-                            <Button
-                              size="xs"
-                              p={0}
-                              mr="1px"
-                              minW="24px"
-                              h="24px"
-                              variant="surface"
-                              colorScheme="gray"
-                              onClick={() => toggleFilter(newFilter)}
+                      return (
+                        <React.Fragment key={countryCode}>
+                          <Box className="group" pos="relative" truncate>
+                            <CardBar value={users} maxValue={mostVisitedCountry?.users} />
+                            <Flex px={2} py={0.5} pos="relative" gap={1.5} align="center">
+                              <CountryFlag countryCode={countryCode} />
+                              {COUNTRIES[countryCode as keyof typeof COUNTRIES] ?? 'Unknown'}
+                            </Flex>
+                            <Flex
+                              zIndex="1"
+                              pos="absolute"
+                              inset="0"
+                              alignItems="center"
+                              justify="flex-end"
+                              transition="all 0.2s ease-in-out"
+                              bg="linear-gradient(to right, rgba(0, 0, 0, 0) 60%, var(--chakra-colors-bg-card) 95%)"
+                              opacity="0"
+                              gap="2"
+                              _groupHover={{ opacity: '1' }}
                             >
-                              <Icon
-                                color={isFiltered ? 'purple.500' : undefined}
-                                as={isFiltered ? TbFilterOff : TbFilter}
-                              />
-                            </Button>
-                          </Flex>
-                        </Box>
-                        <Box textAlign="center">{formatNumber(users)}</Box>
-                      </React.Fragment>
-                    );
-                  })}
+                              {'projectId' in params && (
+                                <Tooltip content="View users that are from this country">
+                                  <Button
+                                    asChild
+                                    size="xs"
+                                    p={0}
+                                    minW="24px"
+                                    h="24px"
+                                    variant="surface"
+                                    colorScheme="gray"
+                                  >
+                                    <Link
+                                      to="/p/$projectId/users"
+                                      params={{ projectId: params.projectId }}
+                                      search={{
+                                        f: { filters: [newFilter], operator: 'and' },
+                                        s: { by: newFilter },
+                                      }}
+                                    >
+                                      <Icon as={TbUsers} />
+                                    </Link>
+                                  </Button>
+                                </Tooltip>
+                              )}
+                              <Button
+                                size="xs"
+                                p={0}
+                                mr="1px"
+                                minW="24px"
+                                h="24px"
+                                variant="surface"
+                                colorScheme="gray"
+                                onClick={() => {
+                                  if (!isFiltered) {
+                                    setListMode('cities');
+                                  }
+                                  toggleFilter(newFilter);
+                                }}
+                              >
+                                <Icon
+                                  color={isFiltered ? 'purple.500' : undefined}
+                                  as={isFiltered ? TbFilterOff : TbFilter}
+                                />
+                              </Button>
+                            </Flex>
+                          </Box>
+                          <Box textAlign="center">{formatNumber(users)}</Box>
+                        </React.Fragment>
+                      );
+                    })}
+                {listMode === 'cities' &&
+                  data?.cities
+                    ?.slice((page - 1) * LIST_CARD_PAGE_SIZE, page * LIST_CARD_PAGE_SIZE)
+                    ?.map(({ city, countryCode, users }) => {
+                      const newFilter = {
+                        type: 'location',
+                        cityFilter: { operator: 'oneOf', value: [city] },
+                      } as ILocationFilter;
+                      const isFiltered = activeFilters.some((f) => isDeepEqual(f, newFilter));
+                      const countryName = COUNTRIES[countryCode as keyof typeof COUNTRIES] ?? 'Unknown';
+                      return (
+                        <React.Fragment key={`${city}-${countryCode}`}>
+                          <Box className="group" pos="relative" truncate>
+                            <CardBar value={users} maxValue={mostVisitedCity?.users} />
+                            <Flex px={2} py={0.5} pos="relative" gap={1.5} align="center">
+                              <CountryFlag countryCode={countryCode} />
+                              <Text truncate>
+                                {city || 'Unknown'}{' '}
+                                <Text as="span" color="fg.muted">
+                                  ({countryName})
+                                </Text>
+                              </Text>
+                            </Flex>
+                            <Flex
+                              zIndex="1"
+                              pos="absolute"
+                              inset="0"
+                              alignItems="center"
+                              justify="flex-end"
+                              transition="all 0.2s ease-in-out"
+                              bg="linear-gradient(to right, rgba(0, 0, 0, 0) 60%, var(--chakra-colors-bg-card) 95%)"
+                              opacity="0"
+                              gap="2"
+                              _groupHover={{ opacity: '1' }}
+                            >
+                              {'projectId' in params && (
+                                <Tooltip content="View users that are from this city">
+                                  <Button
+                                    asChild
+                                    size="xs"
+                                    p={0}
+                                    minW="24px"
+                                    h="24px"
+                                    variant="surface"
+                                    colorScheme="gray"
+                                  >
+                                    <Link
+                                      to="/p/$projectId/users"
+                                      params={{ projectId: params.projectId }}
+                                      search={{
+                                        f: { filters: [newFilter], operator: 'and' },
+                                        s: { by: newFilter },
+                                      }}
+                                    >
+                                      <Icon as={TbUsers} />
+                                    </Link>
+                                  </Button>
+                                </Tooltip>
+                              )}
+                              <Button
+                                size="xs"
+                                p={0}
+                                mr="1px"
+                                minW="24px"
+                                h="24px"
+                                variant="surface"
+                                colorScheme="gray"
+                                onClick={() => toggleFilter(newFilter)}
+                              >
+                                <Icon
+                                  color={isFiltered ? 'purple.500' : undefined}
+                                  as={isFiltered ? TbFilterOff : TbFilter}
+                                />
+                              </Button>
+                            </Flex>
+                          </Box>
+                          <Box textAlign="center">{formatNumber(users)}</Box>
+                        </React.Fragment>
+                      );
+                    })}
               </Grid>
             </ListCard>
           </Box>

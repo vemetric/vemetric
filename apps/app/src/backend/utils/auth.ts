@@ -74,33 +74,21 @@ const options = {
       await sendEmailVerificationLink(user.email, url, verificationCode);
     },
     async afterEmailVerification(user) {
-      const userId = user.id;
-      try {
-        const sequence = getDripSequence('NO_PROJECT');
-        logger.info({ userId, queueName: emailDripQueue.name, sequence }, 'Queuing user for email drip sequence');
-        await addToQueue(
-          emailDripQueue,
-          {
-            userId,
-            sequenceType: sequence.type,
-            stepNumber: 0,
-          },
-          {
-            delay: getStepDelay(sequence.type, 0),
-          },
-        );
-      } catch (err) {
-        logger.error(
-          {
-            err,
-            userId,
-          },
-          'Failed to queue user for email drip sequence',
-        );
-      }
+      await queueNoProjectDrip(user.id);
     },
   },
   databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          if (!user.emailVerified) {
+            return;
+          }
+          // OAuth users are often created as already verified and never hit afterEmailVerification.
+          await queueNoProjectDrip(user.id);
+        },
+      },
+    },
     account: {
       create: {
         after: async (account) => {
@@ -189,5 +177,31 @@ async function createEmailVerificationOtp(email: string): Promise<string | undef
   } catch (err) {
     logger.error({ err, email }, 'Failed to read existing email verification OTP');
     return undefined;
+  }
+}
+
+async function queueNoProjectDrip(userId: string) {
+  try {
+    const sequence = getDripSequence('NO_PROJECT');
+    logger.info({ userId, queueName: emailDripQueue.name, sequence }, 'Queuing user for email drip sequence');
+    await addToQueue(
+      emailDripQueue,
+      {
+        userId,
+        sequenceType: sequence.type,
+        stepNumber: 0,
+      },
+      {
+        delay: getStepDelay(sequence.type, 0),
+      },
+    );
+  } catch (err) {
+    logger.error(
+      {
+        err,
+        userId,
+      },
+      'Failed to queue user for email drip sequence',
+    );
   }
 }

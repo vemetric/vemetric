@@ -8,7 +8,7 @@ import { dbFunnel } from 'database';
 import { addDays, addMonths, startOfDay } from 'date-fns';
 import { z } from 'zod';
 import { getFilterFunnelsData } from '../utils/filter';
-import { projectProcedure, router } from '../utils/trpc';
+import { projectProcedure, projectTimespanProcedure, router } from '../utils/trpc';
 
 const EVENTS_PER_PAGE = 50;
 const USERS_PER_PAGE = 50;
@@ -17,7 +17,7 @@ const getFreePlanStartDate = (isSubscriptionActive: boolean) =>
   isSubscriptionActive ? undefined : addDays(startOfDay(new Date()), -30);
 
 export const usersRouter = router({
-  list: projectProcedure
+  list: projectTimespanProcedure
     .input(
       z.object({
         page: z.number().min(1).default(1),
@@ -29,19 +29,18 @@ export const usersRouter = router({
     .query(async (opts) => {
       const {
         input: { page, filterConfig, sortConfig, search },
-        ctx: { projectId, project, subscriptionStatus },
+        ctx: { projectId, project, startDate, endDate },
       } = opts;
 
-      const startDate = getFreePlanStartDate(subscriptionStatus.isActive);
       const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
 
-      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, funnelsData });
+      const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, endDate, funnelsData });
 
       const offset = (page - 1) * USERS_PER_PAGE;
       const [users] = await Promise.all([
-        clickhouseEvent.getLatestUsers(
+        clickhouseEvent.queryUsers({
           projectId,
-          {
+          pagination: {
             offset,
             limit: USERS_PER_PAGE + 1, // Get one extra to determine if there are more
           },
@@ -49,8 +48,9 @@ export const usersRouter = router({
           filterConfig,
           sortConfig,
           startDate,
+          endDate,
           search,
-        ),
+        }),
       ]);
 
       const hasNextPage = users.length > USERS_PER_PAGE;

@@ -10,3 +10,5 @@ export const getSubscriptionStatus = async (organization: Organization & { billi
     customPlanEvents: organization.customPlanEvents,
   };
 };
+
+export type SubscriptionStatus = Awaited<ReturnType<typeof getSubscriptionStatus>>;

@@ -1,37 +1,52 @@
+import { formatClickhouseDate } from '@vemetric/common/date';
 import type { IUserSortConfig } from '@vemetric/common/sort';
 import { escape } from 'sqlstring';
 import { buildEventFilterQueries } from '../filters/event-filter';
 
-export const buildUserSortQueries = (sortConfig: IUserSortConfig, projectId: bigint) => {
-  const isSortByEvent = sortConfig?.by?.type === 'event' && sortConfig.by.nameFilter;
-  let joinClause = '';
-  let orderByClause = '';
-  let sortSelect = '';
+type UsersOrderByField = 'lastSeenAt' | 'displayName' | 'identifier' | 'countryCode';
 
-  if (isSortByEvent) {
+export const buildUserSortQueries = (
+  sortConfig: IUserSortConfig,
+  projectId: bigint,
+  startDate?: Date,
+  endDate?: Date,
+) => {
+  const sortBy = sortConfig?.by;
+  if (sortBy && typeof sortBy === 'object' && sortBy.type === 'event' && sortBy.nameFilter) {
     const eventFilterQueries = buildEventFilterQueries({
       operator: 'and',
-      filters: [sortConfig.by],
+      filters: [sortBy],
     });
-    // Join on userId, projectId, and filter for the event
-    joinClause = `LEFT JOIN (
+    const direction = sortConfig.direction === 'asc' ? 'ASC' : 'DESC';
+
+    return {
+      joinClause: `LEFT JOIN (
         SELECT userId, maxOrNull(createdAt) as lastEventFiredAt
         FROM event
         WHERE projectId=${escape(projectId)}
+          ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+          ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
           ${eventFilterQueries ? `AND (${eventFilterQueries})` : ''}
           AND isPageView <> 1
         GROUP BY userId
-      ) e ON e.userId = u.userId`;
-    sortSelect = ', e.lastEventFiredAt as lastEventFiredAt';
-    orderByClause = 'ORDER BY e.lastEventFiredAt DESC NULLS LAST';
-  } else {
-    orderByClause = `ORDER BY u.maxCreatedAt DESC`;
+      ) e ON e.userId = u.userId`,
+      sortSelect: ', e.lastEventFiredAt as lastEventFiredAt',
+      orderByClause: `ORDER BY e.lastEventFiredAt ${direction} NULLS LAST, u.userId ASC`,
+      isSortByEvent: true,
+    };
   }
 
+  const orderFieldMap: Partial<Record<UsersOrderByField, string>> = {
+    lastSeenAt: 'maxCreatedAt',
+  };
+  const field = sortConfig?.by.type === 'field' ? sortConfig.by.fieldName : 'lastSeenAt';
+  const direction = sortConfig?.direction === 'asc' ? 'ASC' : 'DESC';
+  const orderColumn = orderFieldMap[field] ?? field;
+
   return {
-    joinClause,
-    orderByClause,
-    sortSelect,
-    isSortByEvent,
+    joinClause: '',
+    sortSelect: '',
+    orderByClause: `ORDER BY u.${orderColumn} ${direction}, u.userId ASC`,
+    isSortByEvent: false,
   };
 };

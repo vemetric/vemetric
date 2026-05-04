@@ -1,12 +1,12 @@
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { clickhouseEvent } from 'clickhouse';
 import { z } from 'zod';
-import { projectProcedure, router } from '../utils/trpc';
+import { projectTimespanProcedure, router } from '../utils/trpc';
 
 const EVENTS_PER_PAGE = 50;
 
 export const eventsRouter = router({
-  list: projectProcedure
+  list: projectTimespanProcedure
     .input(
       z.object({
         cursor: z.string().optional(), // ISO timestamp string
@@ -14,7 +14,7 @@ export const eventsRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const { projectId } = ctx;
+      const { projectId, startDate, endDate } = ctx;
 
       const limit = EVENTS_PER_PAGE + 1; // Get one extra to determine if there are more
 
@@ -24,6 +24,8 @@ export const eventsRouter = router({
         limit,
         cursor: input.cursor, // Used to fetch events before this timestamp
         filterConfig: input.filterConfig,
+        startDate,
+        endDate,
       });
 
       const hasMore = events.length > EVENTS_PER_PAGE;

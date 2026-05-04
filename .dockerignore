@@ -1,3 +1,9 @@
 node_modules
+**/node_modules
 npm-debug.log
 .env*
+.git
+.turbo
+dist
+coverage
+.DS_Store

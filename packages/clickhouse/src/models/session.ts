@@ -1,6 +1,7 @@
 import type { TimeSpan } from '@vemetric/common/charts/timespans';
 import { formatClickhouseDate, getClickhouseDateNow } from '@vemetric/common/date';
 import type { IFilterConfig } from '@vemetric/common/filters';
+import type { GeoData } from '@vemetric/common/geo';
 import { jsonStringify } from '@vemetric/common/json';
 import type { ISources } from '@vemetric/common/sources';
 import { escape } from 'sqlstring';
@@ -8,6 +9,8 @@ import { clickhouseClient, clickhouseInsert } from '../client';
 import { formatDateExpression } from '../utils/date';
 import { buildLocationFilterQueries } from '../utils/filters/location-filter';
 import { buildSourceFilterQueries } from '../utils/filters/source-filter';
+import type { MetricsQueryGrouping } from '../utils/query-group';
+import { getMetricsGroupExpression } from '../utils/query-group';
 import { withSpan } from '../utils/with-span';
 
 export interface FilterOptions {
@@ -37,13 +40,6 @@ export type ReferrerData = {
   referrer?: string;
   referrerUrl?: string;
   referrerType?: string;
-};
-
-export type GeoData = {
-  countryCode: string;
-  city: string;
-  latitude: number | null;
-  longitude: number | null;
 };
 
 export const EXAMPLE_URL_DATA: Required<UrlData> = {
@@ -259,6 +255,34 @@ export const clickhouseSession = {
       users: Number(row.users),
     }));
   },
+  getCities: async (projectId: bigint, filterOptions: Omit<FilterOptions, 'timeSpan'>) => {
+    const { startDate, endDate, filterQueries, filterConfig } = filterOptions;
+    const locationFilterQueries = buildLocationFilterQueries(filterConfig);
+
+    const resultSet = await clickhouseClient.query({
+      query: `WITH lowerUTF8(trim(city)) as normalizedCity
+              SELECT
+                if(normalizedCity = '' OR normalizedCity = 'unknown', '', city) as cityGroup,
+                if(normalizedCity = '' OR normalizedCity = 'unknown', '', countryCode) as countryCodeGroup,
+                count(distinct userId) as users
+              FROM ${TABLE_NAME}
+              WHERE projectId=${escape(projectId)}
+              AND startedAt >= '${formatClickhouseDate(startDate)}'
+              ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
+              ${locationFilterQueries ? `AND (${locationFilterQueries})` : ''}
+              ${(filterQueries || '').replace('sessionId', 'id')}
+              AND deleted = 0
+              GROUP BY cityGroup, countryCodeGroup
+              ORDER BY users DESC;`,
+      format: 'JSONEachRow',
+    });
+    const result = (await resultSet.json()) as Array<any>;
+    return result.map((row) => ({
+      city: row.cityGroup as string,
+      countryCode: row.countryCodeGroup as string,
+      users: Number(row.users),
+    }));
+  },
   getTopSources: async (projectId: bigint, source: ISources, filterOptions: Omit<FilterOptions, 'timeSpan'>) => {
     const { startDate, endDate, filterQueries, filterConfig } = filterOptions;
     const sourceFilterQueries = buildSourceFilterQueries(filterConfig, source);
@@ -305,4 +329,47 @@ export const clickhouseSession = {
       users: Number(row.users),
     }));
   },
+  queryApiVisitDurationRows: withSpan(
+    'queryApiVisitDurationRows',
+    async (input: {
+      projectId: bigint;
+      startDate: Date;
+      endDate?: Date;
+      grouping: MetricsQueryGrouping;
+      filterQueries: string;
+    }) => {
+      const { projectId, startDate, endDate, grouping, filterQueries } = input;
+      const groupExpression = getMetricsGroupExpression(grouping, 'session');
+      if (!groupExpression) {
+        return [];
+      }
+
+      const resultSet = await clickhouseClient.query({
+        query: `
+      SELECT groupKey, avg(maxDuration) as metricValue
+      FROM (
+        SELECT
+          id,
+          ${groupExpression} as groupKey,
+          argMax(duration, endedAt) as maxDuration
+        FROM session
+        WHERE projectId = ${escape(projectId)}
+          AND startedAt >= '${formatClickhouseDate(startDate)}'
+          ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
+          ${(filterQueries || '').replace(/sessionId/g, 'id')}
+        GROUP BY id, groupKey
+        HAVING argMax(deleted, endedAt) = 0 AND maxDuration > 0
+      )
+      GROUP BY groupKey
+    `,
+        format: 'JSONEachRow',
+      });
+
+      const rows = (await resultSet.json()) as Array<{ groupKey: string; metricValue: number | string }>;
+      return rows.map((row) => ({
+        groupKey: String(row.groupKey ?? ''),
+        value: Number(row.metricValue),
+      }));
+    },
+  ),
 };

@@ -1,6 +1,7 @@
 import { formatClickhouseDate } from '@vemetric/common/date';
 import type { IFilterConfig, stringOperatorsSchema } from '@vemetric/common/filters';
 import type { FunnelStep } from '@vemetric/common/funnel';
+import type { GeoData } from '@vemetric/common/geo';
 import { jsonStringify } from '@vemetric/common/json';
 import type { IUserSortConfig } from '@vemetric/common/sort';
 import { escape } from 'sqlstring';
@@ -8,7 +9,7 @@ import type { z } from 'zod';
 import { clickhouseClient, clickhouseInsert } from '../client';
 import type { DeviceData } from './device';
 import { EXAMPLE_DEVICE_DATA } from './device';
-import type { FilterOptions, GeoData, ReferrerData, UrlData } from './session';
+import type { FilterOptions, ReferrerData, UrlData } from './session';
 import { EXAMPLE_URL_DATA } from './session';
 import { formatDateExpression } from '../utils/date';
 import { getEventFilterQueries } from '../utils/filters';
@@ -20,11 +21,13 @@ import { buildOsFilterQueries } from '../utils/filters/os-filter';
 import { buildPageFilterQueries } from '../utils/filters/page-filter';
 import { buildUserFilterQueries } from '../utils/filters/user-filter';
 import { buildFunnelStepConditions, buildWindowFunnelSubquery } from '../utils/funnel';
+import { getMetricsGroupExpression, type MetricsQueryGrouping } from '../utils/query-group';
 import { buildUserSortQueries } from '../utils/sort/user-sort';
 import { withSpan } from '../utils/with-span';
 
 // we round the current date to the nearest 30 seconds and subtract 4 minutes and 30 seconds
 const ONLINE_USERS_INTERVAL_QUERY = 'toStartOfInterval(NOW(), INTERVAL 30 SECOND) - INTERVAL 270 SECOND';
+const BOUNCE_RATE_CALCULATION_QUERY = 'round(countIf(pageViews = 1) / count() * 100, 2)';
 
 const TABLE_NAME = 'event';
 
@@ -113,6 +116,16 @@ interface PaginationOptions {
   limit: number;
 }
 
+function getApiEventMetricExpression(metric: 'users' | 'pageviews' | 'events'): string {
+  if (metric === 'users') {
+    return 'count(distinct userId)';
+  }
+  if (metric === 'pageviews') {
+    return 'countIf(isPageView = 1)';
+  }
+  return 'countIf(isPageView <> 1)';
+}
+
 export const clickhouseEvent = {
   getFilterableData: withSpan('getFilterableData', async (projectId: bigint, startDate: Date, endDate?: Date) => {
     const formattedStartDate = formatClickhouseDate(startDate);
@@ -131,11 +144,11 @@ export const clickhouseEvent = {
           ) as eventNames,
           (
             SELECT 
-              groupArrayDistinct(pathname),
-              groupArrayDistinct(origin),
-              groupArrayDistinct(clientName),
-              groupArrayDistinct(deviceType),
-              groupArrayDistinct(osName)
+              groupArrayDistinct(pathname) as pathnames,
+              groupArrayDistinct(origin) as origins,
+              groupArrayDistinct(clientName) as clientNames,
+              groupArrayDistinct(deviceType) as deviceTypes,
+              groupArrayDistinct(osName) as osNames
             FROM event 
             WHERE projectId = ${escape(projectId)} 
               AND createdAt >= '${formattedStartDate}'
@@ -143,17 +156,20 @@ export const clickhouseEvent = {
           ) as pages,
           (
             SELECT 
-              groupArrayDistinct(referrer),
-              groupArrayDistinct(referrerUrl),
-              groupArrayDistinct(utmCampaign),
-              groupArrayDistinct(utmContent),
-              groupArrayDistinct(utmMedium),
-              groupArrayDistinct(utmSource),
-              groupArrayDistinct(utmTerm),
-              groupArrayDistinct(countryCode)
+              groupArrayDistinct(referrer) as referrers,
+              groupArrayDistinct(referrerUrl) as referrerUrls,
+              groupArrayDistinct(utmCampaign) as utmCampaigns,
+              groupArrayDistinct(utmContent) as utmContents,
+              groupArrayDistinct(utmMedium) as utmMediums,
+              groupArrayDistinct(utmSource) as utmSources,
+              groupArrayDistinct(utmTerm) as utmTerms,
+              groupArrayDistinct(countryCode) as countryCodes,
+              groupArrayDistinct(city) as cities,
+              groupArrayDistinct(referrerType) as referrerTypes
             FROM session 
             WHERE projectId = ${escape(projectId)} 
               AND startedAt >= '${formattedStartDate}'
+              ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
               AND deleted = 0
           ) as sources
       `,
@@ -162,17 +178,50 @@ export const clickhouseEvent = {
 
     const result = await resultSet.json<{
       eventNames: string[];
-      pages: [string[], string[], string[], string[], string[]];
-      sources: [string[], string[], string[], string[], string[], string[], string[], string[]];
+      pages?: {
+        pathnames?: string[];
+        origins?: string[];
+        clientNames?: string[];
+        deviceTypes?: string[];
+        osNames?: string[];
+      };
+      sources?: {
+        referrers?: string[];
+        referrerUrls?: string[];
+        utmCampaigns?: string[];
+        utmContents?: string[];
+        utmMediums?: string[];
+        utmSources?: string[];
+        utmTerms?: string[];
+        countryCodes?: string[];
+        cities?: string[];
+        referrerTypes?: string[];
+      };
     }>();
 
-    // Return the first (and only) row of results
+    const row = result[0];
+
     return {
-      ...(result[0] ?? {
-        eventNames: [],
-        pages: [],
-        sources: [],
-      }),
+      eventNames: row?.eventNames ?? [],
+      pages: {
+        pathnames: row?.pages?.pathnames ?? [],
+        origins: row?.pages?.origins ?? [],
+        clientNames: row?.pages?.clientNames ?? [],
+        deviceTypes: row?.pages?.deviceTypes ?? [],
+        osNames: row?.pages?.osNames ?? [],
+      },
+      sources: {
+        referrers: row?.sources?.referrers ?? [],
+        referrerUrls: row?.sources?.referrerUrls ?? [],
+        utmCampaigns: row?.sources?.utmCampaigns ?? [],
+        utmContents: row?.sources?.utmContents ?? [],
+        utmMediums: row?.sources?.utmMediums ?? [],
+        utmSources: row?.sources?.utmSources ?? [],
+        utmTerms: row?.sources?.utmTerms ?? [],
+        countryCodes: row?.sources?.countryCodes ?? [],
+        cities: row?.sources?.cities ?? [],
+        referrerTypes: row?.sources?.referrerTypes ?? [],
+      },
     };
   }),
   getFirstPageViewByUserId: async (projectId: bigint, userId: bigint): Promise<ClickhouseEvent | null> => {
@@ -223,12 +272,14 @@ export const clickhouseEvent = {
     projectId: bigint;
     userId: bigint;
     limit?: number;
+    offset?: number;
     cursor?: string;
     startDate?: Date;
+    endDate?: Date;
     date?: string; // YYYY-MM-DD format
     filterConfig?: IFilterConfig;
   }): Promise<Array<ClickhouseEvent & { isOnline: boolean }>> => {
-    const { projectId, userId, limit = EVENT_LIMIT, cursor, startDate, date, filterConfig } = props;
+    const { projectId, userId, limit = EVENT_LIMIT, offset, cursor, startDate, endDate, date, filterConfig } = props;
 
     // Build filter queries using the existing filter system
     const { filterQueries } = filterConfig
@@ -249,11 +300,13 @@ export const clickhouseEvent = {
         WHERE projectId = ${escape(projectId)} 
         AND userId = ${escape(userId)}${cursorClause}${dateClause}
         ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+        ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
         ${filterQueries || ''}
         GROUP BY id 
         HAVING sum(sign) > 0 
         ORDER BY eventTime DESC 
-        LIMIT ${escape(limit)}`,
+        LIMIT ${escape(limit)}
+        ${offset !== undefined ? `OFFSET ${escape(offset)}` : ''}`,
       format: 'JSONEachRow',
     });
 
@@ -265,70 +318,97 @@ export const clickhouseEvent = {
       };
     });
   },
-  getLatestUsers: withSpan(
-    'getLatestUsers',
-    async (
-      projectId: bigint,
-      pagination: PaginationOptions = { offset: 0, limit: USER_LIMIT },
-      filterQueries: string,
-      filterConfig: IFilterConfig,
-      sortConfig: IUserSortConfig,
-      startDate?: Date,
-      search?: string,
-    ) => {
+  queryUsers: withSpan(
+    'queryUsers',
+    async (input: {
+      projectId: bigint;
+      pagination?: PaginationOptions;
+      filterQueries: string;
+      filterConfig?: IFilterConfig;
+      search?: string;
+      startDate?: Date;
+      endDate?: Date;
+      sortConfig?: IUserSortConfig;
+    }) => {
+      const {
+        projectId,
+        pagination = { offset: 0, limit: USER_LIMIT },
+        filterQueries,
+        filterConfig,
+        startDate,
+        search,
+        endDate,
+        sortConfig,
+      } = input;
       const userFilterQueries = filterConfig?.operator === 'and' ? buildUserFilterQueries(filterConfig) : '';
-      const { joinClause, orderByClause, sortSelect, isSortByEvent } = buildUserSortQueries(sortConfig, projectId);
+      const { joinClause, orderByClause, sortSelect, isSortByEvent } = buildUserSortQueries(
+        sortConfig,
+        projectId,
+        startDate,
+        endDate,
+      );
       const searchQuery = search ? `AND displayName ILIKE ${escape('%' + search + '%')}` : '';
 
       const resultSet = await clickhouseClient.query({
-        query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.maxCreatedAt as maxCreatedAt, u.isOnline as isOnline, usr.avatarUrl as avatarUrl${sortSelect}
+        query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.city as city, u.maxCreatedAt as maxCreatedAt, u.isOnline as isOnline, usr.avatarUrl as avatarUrl, usr.customData as customData${sortSelect}
+            FROM (
+              SELECT userId,
+                argMax(userIdentifier, eventCreatedAt) as identifier,
+                argMax(userDisplayName, eventCreatedAt) as displayName,
+                argMax(countryCode, eventCreatedAt) as countryCode,
+                argMax(city, eventCreatedAt) as city,
+                max(eventCreatedAt) as maxCreatedAt,
+                max(eventCreatedAt) >= ${ONLINE_USERS_INTERVAL_QUERY} as isOnline
               FROM (
-                SELECT userId,
-                  argMax(userIdentifier, eventCreatedAt) as identifier,
-                  argMax(userDisplayName, eventCreatedAt) as displayName,
-                  argMax(countryCode, eventCreatedAt) as countryCode,
-                  max(eventCreatedAt) as maxCreatedAt,
-                  max(eventCreatedAt) >= ${ONLINE_USERS_INTERVAL_QUERY} as isOnline
-                FROM (
-                  SELECT any(userId) as userId,
-                    argMax(userIdentifier, createdAt) as userIdentifier,
-                    argMax(userDisplayName, createdAt) as userDisplayName,
-                    argMax(countryCode, createdAt) as countryCode,
-                    max(createdAt) as eventCreatedAt
-                  FROM ${TABLE_NAME}
-                  WHERE projectId=${escape(projectId)}
-                    ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
-                  GROUP BY id
-                  HAVING sum(sign) > 0
-                )
-                WHERE 1=1 ${filterQueries || ''}
-                  ${userFilterQueries ? `AND (${userFilterQueries})` : ''}
-                GROUP BY userId
-              ) u
-              LEFT JOIN (
-                SELECT id, argMax(avatarUrl, updatedAt) as avatarUrl
-                FROM user
+                SELECT any(userId) as userId,
+                  argMax(userIdentifier, createdAt) as userIdentifier,
+                  argMax(userDisplayName, createdAt) as userDisplayName,
+                  argMax(countryCode, createdAt) as countryCode,
+                  argMax(city, createdAt) as city,
+                  max(createdAt) as eventCreatedAt
+                FROM ${TABLE_NAME}
                 WHERE projectId=${escape(projectId)}
+                  ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+                  ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
                 GROUP BY id
-                HAVING argMax(deleted, updatedAt) = 0
-              ) usr ON u.userId = usr.id
-              ${joinClause}
-              WHERE 1=1
-              ${searchQuery}
-              ${orderByClause}
-              LIMIT ${escape(pagination.limit)} OFFSET ${escape(pagination.offset)}`,
+                HAVING sum(sign) > 0
+              )
+              WHERE 1=1 ${filterQueries || ''}
+                ${userFilterQueries ? `AND (${userFilterQueries})` : ''}
+              GROUP BY userId
+            ) u
+            LEFT JOIN (
+              SELECT id, argMax(avatarUrl, updatedAt) as avatarUrl, argMax(customData, updatedAt) as customData
+              FROM user
+              WHERE projectId=${escape(projectId)}
+              GROUP BY id
+              HAVING argMax(deleted, updatedAt) = 0
+            ) usr ON u.userId = usr.id
+            ${joinClause}
+            WHERE 1=1
+            ${searchQuery}
+            ${orderByClause}
+            LIMIT ${escape(pagination.limit)} OFFSET ${escape(pagination.offset)}`,
         format: 'JSONEachRow',
       });
       const result = (await resultSet.json()) as Array<any>;
       return result.map((row) => {
+        const data =
+          typeof row.customData === 'string' && row.customData.length > 0
+            ? (JSON.parse(row.customData) as Record<string, unknown>)
+            : {};
+
         return {
           id: BigInt(row.userId),
           identifier: row.identifier as string,
           displayName: row.displayName as string,
           countryCode: row.countryCode as string,
-          lastSeenAt: row[isSortByEvent ? 'lastEventFiredAt' : 'maxCreatedAt'] as string,
+          city: row.city as string,
+          lastSeenAt: row.maxCreatedAt as string,
+          lastEventFiredAt: isSortByEvent ? ((row.lastEventFiredAt as string | null) ?? null) : null,
           isOnline: Boolean(row.isOnline),
           avatarUrl: row.avatarUrl as string,
+          data,
         };
       });
     },
@@ -565,6 +645,113 @@ export const clickhouseEvent = {
       date: row['date'],
     }));
   }),
+  queryApiMetricRows: withSpan(
+    'queryApiMetricRows',
+    async (input: {
+      metric: 'users' | 'pageviews' | 'events';
+      projectId: bigint;
+      startDate: Date;
+      endDate?: Date;
+      grouping: MetricsQueryGrouping;
+      filterQueries: string;
+      filterConfig?: IFilterConfig;
+    }) => {
+      const { metric, projectId, startDate, endDate, grouping, filterQueries, filterConfig } = input;
+      const groupExpression = getMetricsGroupExpression(grouping, 'event');
+      if (!groupExpression) {
+        return [];
+      }
+
+      const metricExpression = getApiEventMetricExpression(metric);
+      const groupingConstraint =
+        grouping.kind === 'event_prop'
+          ? `AND isPageView <> 1 AND JSONExtractString(customData, ${escape(grouping.property ?? '')}) <> ''`
+          : grouping.kind === 'field' && grouping.token === 'page:origin'
+            ? "AND isPageView = 1 AND origin <> ''"
+            : grouping.kind === 'field' && grouping.token === 'page:path'
+              ? "AND isPageView = 1 AND pathname <> ''"
+              : grouping.kind === 'field' && grouping.token === 'event:name'
+                ? "AND isPageView <> 1 AND name <> ''"
+                : '';
+
+      const applyDirectEventFilters =
+        metric === 'events' ||
+        ((grouping.kind === 'field' || grouping.kind === 'event_prop') && grouping.token.startsWith('event:'));
+      const eventFilterQueries = applyDirectEventFilters && filterConfig ? buildEventFilterQueries(filterConfig) : '';
+
+      const applyDirectPageFilters =
+        metric === 'pageviews' || (grouping.kind === 'field' && grouping.token.startsWith('page:'));
+      const pageFilterQueries = applyDirectPageFilters && filterConfig ? buildPageFilterQueries(filterConfig) : '';
+
+      const resultSet = await clickhouseClient.query({
+        query: `
+      SELECT ${groupExpression} as groupKey, ${metricExpression} as metricValue
+      FROM event
+      WHERE projectId = ${escape(projectId)}
+        AND createdAt >= '${formatClickhouseDate(startDate)}'
+        ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
+        ${groupingConstraint}
+        ${eventFilterQueries ? `AND (${eventFilterQueries})` : ''}
+        ${pageFilterQueries ? `AND (${pageFilterQueries})` : ''}
+        ${filterQueries || ''}
+      GROUP BY groupKey
+    `,
+        format: 'JSONEachRow',
+      });
+
+      const rows = (await resultSet.json()) as Array<{ groupKey: string; metricValue: number | string }>;
+      return rows.map((row) => ({
+        groupKey: String(row.groupKey ?? ''),
+        value: Number(row.metricValue),
+      }));
+    },
+  ),
+  queryApiBounceRateRows: withSpan(
+    'queryApiBounceRateRows',
+    async (input: {
+      projectId: bigint;
+      startDate: Date;
+      endDate?: Date;
+      grouping: MetricsQueryGrouping;
+      filterQueries: string;
+    }) => {
+      const { projectId, startDate, endDate, grouping, filterQueries } = input;
+      const groupExpression = getMetricsGroupExpression(grouping, 'event');
+      if (!groupExpression) {
+        return [];
+      }
+
+      const resultSet = await clickhouseClient.query({
+        query: `
+      WITH sessions AS (
+        SELECT
+          sessionId,
+          ${groupExpression} as groupKey,
+          count() as pageViews
+        FROM event
+        WHERE projectId = ${escape(projectId)}
+          AND isPageView = 1
+          AND createdAt >= '${formatClickhouseDate(startDate)}'
+          ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
+          ${filterQueries || ''}
+        GROUP BY sessionId, groupKey
+      )
+      SELECT
+        groupKey,
+        if(count() = 0, 0, ${BOUNCE_RATE_CALCULATION_QUERY}) as metricValue
+      FROM sessions
+      GROUP BY groupKey
+    `,
+        format: 'JSONEachRow',
+      });
+
+      const rows = (await resultSet.json()) as Array<{ groupKey: string; metricValue: number | string }>;
+      return rows.map((row) => ({
+        groupKey: String(row.groupKey ?? ''),
+        value: Number(row.metricValue),
+      }));
+    },
+  ),
   getBounceRateTimeSeries: withSpan(
     'getBounceRateTimeSeries',
     async (projectId: bigint, filterOptions: FilterOptions) => {
@@ -590,7 +777,7 @@ export const clickhouseEvent = {
           date,
           countIf(pageViews = 1) as bounces,
           count() as totalSessions,
-          round(countIf(pageViews = 1) / count() * 100, 2) as bounceRate
+          ${BOUNCE_RATE_CALCULATION_QUERY} as bounceRate
         FROM sessions
         GROUP BY date
         ORDER BY date;`,
@@ -835,9 +1022,10 @@ export const clickhouseEvent = {
       limit?: number;
       cursor?: string;
       startDate?: Date;
+      endDate?: Date;
       filterConfig?: IFilterConfig;
     }): Promise<Array<ClickhouseEvent>> => {
-      const { projectId, limit = EVENT_LIMIT, cursor, startDate, filterConfig } = props;
+      const { projectId, limit = EVENT_LIMIT, cursor, startDate, endDate, filterConfig } = props;
 
       const cursorClause = cursor ? `AND createdAt < ${escape(cursor)}` : '';
 
@@ -862,6 +1050,7 @@ export const clickhouseEvent = {
           PREWHERE projectId = ${escape(projectId)} AND isPageView <> 1
           WHERE 1=1 ${cursorClause}
           ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+          ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
           ${filterQueries || ''}
           GROUP BY id
           HAVING sum(sign) > 0

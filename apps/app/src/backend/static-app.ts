@@ -24,6 +24,7 @@ export function createStaticApp() {
 
   const webappDist = `${import.meta.dir}/../../dist`;
   const indexHtmlPath = `${webappDist}/index.html`;
+  let indexHtml: string | null = null;
 
   staticApp.use(
     '*',
@@ -39,8 +40,11 @@ export function createStaticApp() {
   staticApp.get('*', async (c) => {
     const accept = c.req.header('accept') ?? '';
     if (accept.includes('text/html')) {
+      if (!indexHtml) {
+        indexHtml = await Bun.file(indexHtmlPath).text();
+      }
       applyIndexHtmlCacheHeaders(c);
-      return c.html(await Bun.file(indexHtmlPath).text());
+      return c.html(indexHtml);
     }
 
     return c.text('Not Found', 404);

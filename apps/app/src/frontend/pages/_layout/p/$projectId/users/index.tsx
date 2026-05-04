@@ -1,12 +1,14 @@
 import { Box, Grid, Card, Skeleton, HStack, LinkOverlay, Flex, Icon, Text, IconButton, Span } from '@chakra-ui/react';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { zodValidator } from '@tanstack/zod-adapter';
+import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import { COUNTRIES } from '@vemetric/common/countries';
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { userSortConfigSchema } from '@vemetric/common/sort';
-import { TbClock, TbChevronRight, TbChevronLeft, TbClockOff } from 'react-icons/tb';
+import { TbClock, TbChevronRight, TbChevronLeft, TbClockOff, TbUserOff } from 'react-icons/tb';
 import { z } from 'zod';
 import { CountryFlag } from '@/components/country-flag';
+import { DataEmptyState } from '@/components/data-empty-state';
 import { AddFilterButton } from '@/components/filter/add-filter/add-filter-button';
 import { FilterContainer } from '@/components/filter/filter-container';
 import { FilterContextProvider } from '@/components/filter/filter-context';
@@ -15,15 +17,19 @@ import { UserAvatar } from '@/components/pages/user/user-avatar';
 import { UserSortPopover } from '@/components/pages/user/user-sort-popover';
 import { ProjectInitCard } from '@/components/project-init-card';
 import { SearchButtonInput } from '@/components/search-button-input';
+import { TimespanSelect } from '@/components/timespan-select';
 import { Status } from '@/components/ui/status';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useDebouncedState } from '@/hooks/use-debounced-state';
+import { useTimespanParam } from '@/hooks/use-timespan-param';
 import { useSetBreadcrumbs, useSetDocsLink } from '@/stores/header-store';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
+import { timeSpanSearchMiddleware, timespanSearchSchema } from '@/utils/timespans';
 import { trpc } from '@/utils/trpc';
 import { getUserName } from '@/utils/user';
 
 const usersSearchSchema = z.object({
+  ...timespanSearchSchema.shape,
   p: z.number().min(1).optional().catch(1),
   f: filterConfigSchema,
   s: userSortConfigSchema,
@@ -33,31 +39,50 @@ const usersSearchSchema = z.object({
 export const Route = createFileRoute('/_layout/p/$projectId/users/')({
   validateSearch: zodValidator(usersSearchSchema),
   component: Page,
+  search: {
+    middlewares: [timeSpanSearchMiddleware],
+  },
 });
 
 function Page() {
   const { projectId } = Route.useParams();
   const { p: page = 1, f: filterConfig, s: sortConfig, q } = Route.useSearch();
+  const { timespan, startDate, endDate } = useTimespanParam({ from: '/_layout/p/$projectId/users/' });
+
+  const isEventSort = sortConfig?.by?.type === 'event';
   const navigate = useNavigate({ from: Route.fullPath });
   const [search, setSearch, debouncedSearch] = useDebouncedState({
     defaultValue: q ?? '',
     onUpdate: (value) => navigate({ search: (prev) => ({ ...prev, q: value || undefined, p: undefined }) }),
   });
 
-  const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery({
-    projectId,
-    timespan: '30days',
-  });
+  const { data: filterableData, isLoading: isFilterableDataLoading } = trpc.filters.getFilterableData.useQuery(
+    {
+      projectId,
+      timespan,
+      startDate,
+      endDate,
+    },
+    {
+      refetchInterval: getTimespanRefetchInterval(timespan),
+    },
+  );
 
   const { data, isLoading, isFetching, isPreviousData } = trpc.users.list.useQuery(
     {
       projectId,
       page,
+      timespan,
+      startDate,
+      endDate,
       filterConfig,
       sortConfig,
       search: debouncedSearch,
     },
-    { keepPreviousData: true },
+    {
+      keepPreviousData: true,
+      refetchInterval: getTimespanRefetchInterval(timespan),
+    },
   );
 
   const users = data?.users ?? [];
@@ -91,6 +116,7 @@ function Page() {
         origins: filterableData?.origins ?? [],
         eventNames: filterableData?.eventNames ?? [],
         countryCodes: filterableData?.countryCodes ?? [],
+        cities: filterableData?.cities ?? [],
         referrers: filterableData?.referrers ?? [],
         referrerUrls: filterableData?.referrerUrls ?? [],
         utmCampaigns: filterableData?.utmCampaigns ?? [],
@@ -108,9 +134,10 @@ function Page() {
         <Box mt={-3} pos="sticky" top={{ base: '44px', md: '122px', lg: '52px' }} zIndex="dropdown">
           <Flex pt={3} bg="bg.content" flexWrap="wrap" w="100%" columnGap={8} rowGap={4} align="center">
             <FilterContainer filterConfig={filterConfig} from="/p/$projectId/users" />
-            <Flex flexGrow={1} gap={2.5} justify="flex-end" align="center">
+            <Flex flexGrow={1} flexWrap="wrap" gap={2.5} justify="flex-end" align="center">
               <SearchButtonInput value={search} onChange={setSearch} />
               <AddFilterButton from="/p/$projectId/users" filterConfig={filterConfig} />
+              <TimespanSelect from="/_layout/p/$projectId/users/" />
             </Flex>
           </Flex>
           <Box
@@ -148,14 +175,21 @@ function Page() {
 
         {!isLoading && isInitialized ? (
           users.length === 0 ? (
-            <Box textAlign="center" py={4}>
-              <Text textStyle="sm" color="fg.muted">
-                No users found for the selected filters
-              </Text>
-            </Box>
+            <DataEmptyState
+              size={{ base: 'sm', md: 'md' }}
+              icon={<TbUserOff />}
+              title="No users found"
+              description="Try to adjust the current filters or timeframe."
+              filterConfig={filterConfig}
+              filterRoute={'/p/$projectId/users'}
+              timespanRoute={'/_layout/p/$projectId/users/'}
+            />
           ) : (
             <>
-              {users.map(({ id, identifier, avatarUrl, displayName, countryCode, lastSeenAt, isOnline }) => {
+              {users.map((user) => {
+                const { id, identifier, avatarUrl, displayName, countryCode, lastSeenAt, lastEventFiredAt, isOnline } =
+                  user;
+                const timestamp = isEventSort ? lastEventFiredAt : lastSeenAt;
                 return (
                   <Box
                     key={id}
@@ -215,10 +249,10 @@ function Page() {
                         <Flex justify={{ base: 'flex-end', md: 'flex-start' }}>
                           <Tooltip
                             content={
-                              lastSeenAt
-                                ? sortConfig?.by?.type === 'event'
-                                  ? `Last fired event at ${dateTimeFormatter.formatDateTime(lastSeenAt)}`
-                                  : `Last seen at ${dateTimeFormatter.formatDateTime(lastSeenAt)}`
+                              timestamp
+                                ? isEventSort
+                                  ? `Last fired event at ${dateTimeFormatter.formatDateTime(timestamp)}`
+                                  : `Last seen at ${dateTimeFormatter.formatDateTime(timestamp)}`
                                 : 'Never fired this event'
                             }
                           >
@@ -228,11 +262,11 @@ function Page() {
                               gap={{ base: 2, md: 1 }}
                               flexDir={{ base: 'row-reverse', md: 'row' }}
                             >
-                              <Icon>{lastSeenAt ? <TbClock /> : <TbClockOff />}</Icon>
+                              <Icon>{timestamp ? <TbClock /> : <TbClockOff />}</Icon>
                               <Text textStyle="sm" color="fg.muted">
-                                {lastSeenAt ? (
+                                {timestamp ? (
                                   <>
-                                    {dateTimeFormatter.formatDistanceNow(lastSeenAt, true)}{' '}
+                                    {dateTimeFormatter.formatDistanceNow(timestamp, true)}{' '}
                                     <Span hideBelow="md">ago</Span>
                                   </>
                                 ) : (
@@ -312,7 +346,6 @@ function Page() {
           </Box>
         )}
       </Card.Root>
-
       {data && !isInitialized && <ProjectInitCard projectToken={data.projectToken} />}
     </FilterContextProvider>
   );

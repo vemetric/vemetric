@@ -1,10 +1,13 @@
 import type { ApiKey, Project } from 'database';
+import type { SubscriptionStatus } from '../utils/billing';
 
-export type PublicApiVars = {
+export type PublicApiHonoVars = {
   apiKey: ApiKey;
   project: Project;
+  subscriptionStatus: SubscriptionStatus;
+  requestContent?: string;
 };
 
-export type PublicApiEnv = {
-  Variables: PublicApiVars;
+export type PublicApiHonoEnv = {
+  Variables: PublicApiHonoVars;
 };

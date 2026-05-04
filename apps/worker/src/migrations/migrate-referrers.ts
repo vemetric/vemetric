@@ -1,5 +1,5 @@
-import type { ClickHouseClient } from '@clickhouse/client';
-import { ClickHouseLogLevel, createClient } from '@clickhouse/client';
+import type { ClickHouseClient } from '@clickhouse/client-web';
+import { ClickHouseLogLevel, createClient } from '@clickhouse/client-web';
 import { dbProject } from 'database';
 import { referrers } from '../consts/referrers';
 import { logger } from '../utils/logger';
@@ -175,7 +175,6 @@ async function updateReferrers() {
     request_timeout: 60000,
     keep_alive: {
       enabled: true,
-      idle_socket_ttl: 8000,
     },
     log: {
       level: ClickHouseLogLevel.INFO,

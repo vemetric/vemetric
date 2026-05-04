@@ -1,6 +1,7 @@
 import type { DeviceData } from 'clickhouse';
 import { clickhouseDevice } from 'clickhouse';
 import { UAParser } from 'ua-parser-js';
+import { logJobStep } from './job-logger';
 
 export const UNKNOWN = 'Unknown';
 
@@ -58,12 +59,34 @@ export async function insertDeviceIfNotExists(
   userId: bigint,
   deviceId: bigint,
   deviceData: DeviceData,
+  job?: { log: (row: string) => Promise<number> },
 ) {
+  await logJobStep(job, 'device before clickhouseDevice.exists', { projectId, userId, deviceId });
   const deviceExists = await clickhouseDevice.exists(projectId, deviceId);
+  await logJobStep(
+    job,
+    deviceExists ? 'device after clickhouseDevice.exists existing' : 'device after clickhouseDevice.exists missing',
+    {
+      projectId,
+      userId,
+      deviceId,
+    },
+  );
   if (deviceExists) {
     return;
   }
 
+  await logJobStep(job, 'device before clickhouseDevice.insert', {
+    projectId,
+    userId,
+    deviceId,
+    osName: deviceData.osName,
+    osVersion: deviceData.osVersion,
+    clientName: deviceData.clientName,
+    clientVersion: deviceData.clientVersion,
+    clientType: deviceData.clientType,
+    deviceType: deviceData.deviceType,
+  });
   await clickhouseDevice.insert([
     {
       projectId,
@@ -77,4 +100,5 @@ export async function insertDeviceIfNotExists(
       deviceType: deviceData.deviceType,
     },
   ]);
+  await logJobStep(job, 'device after clickhouseDevice.insert', { projectId, userId, deviceId });
 }

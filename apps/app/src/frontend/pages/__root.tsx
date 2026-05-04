@@ -10,8 +10,11 @@ import { CrispScript } from '@/components/crisp-script';
 import { useColorMode } from '@/components/ui/color-mode';
 import { toaster } from '@/components/ui/toaster';
 import { authClient } from '@/utils/auth';
+import { consumeReturnToBillingSettingsAfterCheckout } from '@/utils/paddle';
 
 let isCheckoutCompleted = false;
+let onCheckoutClosed: ((isCompleted: boolean) => void) | undefined;
+
 initializePaddle({
   environment: (import.meta.env.VITE_PADDLE_ENV as 'sandbox' | 'production') || 'sandbox',
   token: import.meta.env.VITE_PADDLE_TOKEN,
@@ -19,9 +22,8 @@ initializePaddle({
     if (data.name === 'checkout.completed') {
       isCheckoutCompleted = true;
     } else if (data.name === 'checkout.closed') {
-      if (isCheckoutCompleted) {
-        window.location.reload();
-      }
+      onCheckoutClosed?.(isCheckoutCompleted);
+      isCheckoutCompleted = false;
     }
   },
 });
@@ -48,6 +50,28 @@ function RootLayout() {
   const isMobile = useBreakpointValue({ base: true, md: false });
   const { data: session, isPending: isSessionLoading } = authClient.useSession();
   const identifiedUserIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    onCheckoutClosed = async (isCompleted) => {
+      const shouldReturnToBillingSettings = consumeReturnToBillingSettingsAfterCheckout();
+      if (shouldReturnToBillingSettings) {
+        await navigate({
+          to: location.pathname,
+          resetScroll: false,
+          replace: true,
+          search: (prev) => ({ ...prev, orgSettings: 'billing', pricingDialog: undefined }),
+        });
+      }
+
+      if (isCompleted) {
+        window.location.reload();
+      }
+    };
+
+    return () => {
+      onCheckoutClosed = undefined;
+    };
+  }, [location.pathname, navigate]);
 
   useEffect(() => {
     const meta = document.querySelector('meta[name="theme-color"]');

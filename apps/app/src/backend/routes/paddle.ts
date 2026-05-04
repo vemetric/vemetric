@@ -119,7 +119,7 @@ export const paddleWebhookHandler = async (context: HonoContext) => {
         });
 
         await sendTransactionalMail(orgUser.user.email, {
-          template: 'subscriptionStarted',
+          template: 'subscriptionCreated',
           props: {
             userName: orgUser.user.name,
           },

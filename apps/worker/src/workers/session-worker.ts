@@ -28,7 +28,11 @@ export async function initSessionWorker() {
       );
       if (existingSession) {
         await logJobStep(job, 'before increaseClickhouseSessionDuration');
-        await increaseClickhouseSessionDuration(existingSession, createdAt);
+        await increaseClickhouseSessionDuration(
+          existingSession,
+          createdAt,
+          type === 'createOrExtend' ? job.data.geoData : undefined,
+        );
         await logJobStep(job, 'done extended existing session');
       } else {
         if (type === 'extend') {

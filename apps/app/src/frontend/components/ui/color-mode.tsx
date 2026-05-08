@@ -15,6 +15,34 @@ export function ColorModeProvider(props: ColorModeProviderProps) {
 
 export type ColorMode = 'light' | 'dark';
 export type ColorTheme = 'light' | 'dark' | 'system';
+type ThemeTransitionSubscriber = (isTransitioning: boolean) => void;
+
+let isThemeTransitioning = false;
+const themeTransitionSubscribers = new Set<ThemeTransitionSubscriber>();
+
+function setThemeTransitioning(isTransitioning: boolean) {
+  if (isThemeTransitioning === isTransitioning) {
+    return;
+  }
+
+  isThemeTransitioning = isTransitioning;
+
+  for (const subscriber of themeTransitionSubscribers) {
+    subscriber(isThemeTransitioning);
+  }
+}
+
+export function getThemeTransitioning() {
+  return isThemeTransitioning;
+}
+
+export function subscribeThemeTransition(subscriber: ThemeTransitionSubscriber) {
+  themeTransitionSubscribers.add(subscriber);
+
+  return () => {
+    themeTransitionSubscribers.delete(subscriber);
+  };
+}
 
 export interface UseColorModeReturn {
   colorMode: ColorMode;
@@ -47,15 +75,19 @@ function startViewTransition(callback: () => void, targetTheme: 'light' | 'dark'
   // Set transition direction before starting
   const transitionDirection = targetTheme === 'dark' ? 'to-dark' : 'to-light';
   document.documentElement.dataset.themeTransition = transitionDirection;
+  setThemeTransitioning(true);
 
   setViewTransitionOrigin(event);
 
   const transition = document.startViewTransition(callback);
 
   // Clean up after transition completes
-  transition.finished.then(() => {
+  const cleanupThemeTransition = () => {
     delete document.documentElement.dataset.themeTransition;
-  });
+    setThemeTransitioning(false);
+  };
+
+  transition.finished.finally(cleanupThemeTransition);
 }
 
 export function useColorMode(): UseColorModeReturn {

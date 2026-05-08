@@ -1,15 +1,16 @@
 import type { FlexProps } from '@chakra-ui/react';
 import { Flex, Image } from '@chakra-ui/react';
-import { getUserInitials } from '@/utils/avatar-colors';
+import { Facehash } from 'facehash';
 
-interface Props extends FlexProps {
+export interface UserAvatarProps extends FlexProps {
   displayName?: string;
   avatarUrl?: string;
   identifier?: string;
   id: string;
+  enableBlink?: boolean;
 }
 
-export const UserAvatar = ({ displayName, avatarUrl, identifier, id, ...props }: Props) => {
+export const UserAvatar = ({ displayName, avatarUrl, identifier, id, enableBlink, ...props }: UserAvatarProps) => {
   return (
     <Flex
       pos="relative"
@@ -17,24 +18,28 @@ export const UserAvatar = ({ displayName, avatarUrl, identifier, id, ...props }:
       boxSize="32px"
       justify="center"
       align="center"
-      fontWeight="bold"
-      fontSize="sm"
       flexShrink={0}
       overflow="hidden"
-      filter={identifier || displayName ? 'none' : 'grayscale(100%)'}
-      color="white"
+      userSelect="none"
+      filter={identifier || displayName ? 'none' : 'grayscale(60%)'}
       {...props}
     >
-      <Image
-        src={avatarUrl || `https://api.dicebear.com/9.x/glass/svg?seed=${encodeURIComponent(id.trim())}`}
-        alt={displayName || identifier}
-        boxSize="100%"
-        objectFit="cover"
-      />
-      {!avatarUrl && (
-        <Flex pos="absolute" inset={0} bg="blackAlpha.400" justify="center" align="center">
-          {getUserInitials(displayName, identifier)}
-        </Flex>
+      {avatarUrl ? (
+        <Image src={avatarUrl} alt={displayName || identifier} boxSize="100%" objectFit="cover" />
+      ) : (
+        <Facehash
+          enableBlink={enableBlink}
+          name={(displayName || identifier || '?') + id}
+          size={32}
+          colors={[
+            'var(--chakra-colors-red-500)',
+            'var(--chakra-colors-green-500)',
+            'var(--chakra-colors-teal-500)',
+            'var(--chakra-colors-blue-500)',
+            'var(--chakra-colors-pink-500)',
+            'var(--chakra-colors-orange-500)',
+          ]}
+        />
       )}
     </Flex>
   );

@@ -12,6 +12,7 @@ export const PageDotBackground = ({ dotColor = 'var(--chakra-colors-gray-emphasi
       backgroundImage={`radial-gradient(circle at 1px 1px, ${dotColor} 1px, transparent 0)`}
       backgroundSize="15px 15px"
       opacity={0.45}
+      pointerEvents="none"
       {...props}
     />
   );

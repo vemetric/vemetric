@@ -131,7 +131,6 @@ export const EventCard = ({ event, previousEventId, nextEventId }: Props) => {
                         avatarUrl={event.userAvatarUrl}
                         boxSize="10px"
                         rounded="full"
-                        color="transparent"
                       />
                       <Text textStyle="xs" truncate>
                         {getUserName(event.userDisplayName, event.userIdentifier)}

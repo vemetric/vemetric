@@ -29,6 +29,7 @@ import { Route as AuthResetPasswordRouteImport } from './pages/_auth/reset-passw
 import { Route as AuthLoginRouteImport } from './pages/_auth/login'
 import { Route as LayoutPProjectIdRouteImport } from './pages/_layout/p/$projectId'
 import { Route as LayoutPProjectIdIndexRouteImport } from './pages/_layout/p/$projectId/index'
+import { Route as LayoutPProjectIdGlobeRouteImport } from './pages/_layout/p/$projectId/globe'
 import { Route as LayoutPProjectIdUsersIndexRouteImport } from './pages/_layout/p/$projectId/users/index'
 import { Route as LayoutPProjectIdSettingsIndexRouteImport } from './pages/_layout/p/$projectId/settings/index'
 import { Route as LayoutPProjectIdFunnelsIndexRouteImport } from './pages/_layout/p/$projectId/funnels/index'
@@ -136,6 +137,11 @@ const LayoutPProjectIdIndexRoute = LayoutPProjectIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => LayoutPProjectIdRoute,
 } as any)
+const LayoutPProjectIdGlobeRoute = LayoutPProjectIdGlobeRouteImport.update({
+  id: '/globe',
+  path: '/globe',
+  getParentRoute: () => LayoutPProjectIdRoute,
+} as any)
 const LayoutPProjectIdUsersIndexRoute =
   LayoutPProjectIdUsersIndexRouteImport.update({
     id: '/users/',
@@ -197,6 +203,7 @@ export interface FileRoutesByFullPath {
   '/onboarding/waiting': typeof OnboardingWaitingRoute
   '/public/$domain': typeof PublicDomainRoute
   '/p/$projectId': typeof LayoutPProjectIdRouteWithChildren
+  '/p/$projectId/globe': typeof LayoutPProjectIdGlobeRoute
   '/p/$projectId/': typeof LayoutPProjectIdIndexRoute
   '/p/$projectId/funnels/$funnelId': typeof LayoutPProjectIdFunnelsFunnelIdRoute
   '/p/$projectId/user/$identifier': typeof LayoutPProjectIdUserIdentifierRoute
@@ -223,6 +230,7 @@ export interface FileRoutesByTo {
   '/onboarding/project': typeof OnboardingProjectRoute
   '/onboarding/waiting': typeof OnboardingWaitingRoute
   '/public/$domain': typeof PublicDomainRoute
+  '/p/$projectId/globe': typeof LayoutPProjectIdGlobeRoute
   '/p/$projectId': typeof LayoutPProjectIdIndexRoute
   '/p/$projectId/funnels/$funnelId': typeof LayoutPProjectIdFunnelsFunnelIdRoute
   '/p/$projectId/user/$identifier': typeof LayoutPProjectIdUserIdentifierRoute
@@ -253,6 +261,7 @@ export interface FileRoutesById {
   '/onboarding/waiting': typeof OnboardingWaitingRoute
   '/public/$domain': typeof PublicDomainRoute
   '/_layout/p/$projectId': typeof LayoutPProjectIdRouteWithChildren
+  '/_layout/p/$projectId/globe': typeof LayoutPProjectIdGlobeRoute
   '/_layout/p/$projectId/': typeof LayoutPProjectIdIndexRoute
   '/_layout/p/$projectId/funnels/$funnelId': typeof LayoutPProjectIdFunnelsFunnelIdRoute
   '/_layout/p/$projectId/user/$identifier': typeof LayoutPProjectIdUserIdentifierRoute
@@ -282,6 +291,7 @@ export interface FileRouteTypes {
     | '/onboarding/waiting'
     | '/public/$domain'
     | '/p/$projectId'
+    | '/p/$projectId/globe'
     | '/p/$projectId/'
     | '/p/$projectId/funnels/$funnelId'
     | '/p/$projectId/user/$identifier'
@@ -308,6 +318,7 @@ export interface FileRouteTypes {
     | '/onboarding/project'
     | '/onboarding/waiting'
     | '/public/$domain'
+    | '/p/$projectId/globe'
     | '/p/$projectId'
     | '/p/$projectId/funnels/$funnelId'
     | '/p/$projectId/user/$identifier'
@@ -337,6 +348,7 @@ export interface FileRouteTypes {
     | '/onboarding/waiting'
     | '/public/$domain'
     | '/_layout/p/$projectId'
+    | '/_layout/p/$projectId/globe'
     | '/_layout/p/$projectId/'
     | '/_layout/p/$projectId/funnels/$funnelId'
     | '/_layout/p/$projectId/user/$identifier'
@@ -507,6 +519,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutPProjectIdIndexRouteImport
       parentRoute: typeof LayoutPProjectIdRoute
     }
+    '/_layout/p/$projectId/globe': {
+      id: '/_layout/p/$projectId/globe'
+      path: '/globe'
+      fullPath: '/p/$projectId/globe'
+      preLoaderRoute: typeof LayoutPProjectIdGlobeRouteImport
+      parentRoute: typeof LayoutPProjectIdRoute
+    }
     '/_layout/p/$projectId/users/': {
       id: '/_layout/p/$projectId/users/'
       path: '/users'
@@ -574,6 +593,7 @@ const AuthRouteChildren: AuthRouteChildren = {
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 interface LayoutPProjectIdRouteChildren {
+  LayoutPProjectIdGlobeRoute: typeof LayoutPProjectIdGlobeRoute
   LayoutPProjectIdIndexRoute: typeof LayoutPProjectIdIndexRoute
   LayoutPProjectIdFunnelsFunnelIdRoute: typeof LayoutPProjectIdFunnelsFunnelIdRoute
   LayoutPProjectIdUserIdentifierRoute: typeof LayoutPProjectIdUserIdentifierRoute
@@ -585,6 +605,7 @@ interface LayoutPProjectIdRouteChildren {
 }
 
 const LayoutPProjectIdRouteChildren: LayoutPProjectIdRouteChildren = {
+  LayoutPProjectIdGlobeRoute: LayoutPProjectIdGlobeRoute,
   LayoutPProjectIdIndexRoute: LayoutPProjectIdIndexRoute,
   LayoutPProjectIdFunnelsFunnelIdRoute: LayoutPProjectIdFunnelsFunnelIdRoute,
   LayoutPProjectIdUserIdentifierRoute: LayoutPProjectIdUserIdentifierRoute,

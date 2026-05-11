@@ -14,6 +14,7 @@
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE.md)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Status](https://img.shields.io/endpoint?url=https%3A%2F%2Fstatus.vemetric.com%2Fshield-badges%2Fstatus.json&style=flat)](https://status.vemetric.com)
 
 ## About
 

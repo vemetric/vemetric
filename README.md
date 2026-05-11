@@ -1,5 +1,5 @@
 <a href="https://vemetric.com">
-  <img alt="Vemetric is a simple, yet powerful Web- and Product Analytics platform." src="https://github.com/user-attachments/assets/d860fe88-33bf-4baa-a263-cde2169d1bcd">
+  <img width="1200" height="627" alt="Vemetric is a simple, yet powerful Web- and Product Analytics platform." src="https://github.com/user-attachments/assets/febb1b36-58b4-459f-8004-d94352882476" />
 </a>
 
 <h3 align="center">Vemetric</h3>

@@ -11,7 +11,7 @@ export interface GlobeConfig {
 export const DESKTOP_GLOBE_CONFIG: GlobeConfig = {
   minScale: 0.3,
   maxScale: 2.5,
-  defaultScale: 0.9,
+  defaultScale: 1.1,
   offsetResetScale: 0.65,
   mapSamples: 30000,
 };

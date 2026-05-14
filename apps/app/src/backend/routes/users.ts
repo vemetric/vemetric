@@ -120,7 +120,7 @@ export const usersRouter = router({
       z.object({
         userId: z.string(),
         cursor: z.string().optional(), // ISO timestamp string
-        date: z.string().optional(), // YYYY-MM-DD format
+        date: z.string().date().optional(), // YYYY-MM-DD format
         filterConfig: filterConfigSchema,
       }),
     )

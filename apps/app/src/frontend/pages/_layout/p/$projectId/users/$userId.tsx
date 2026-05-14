@@ -19,7 +19,7 @@ import { trpc } from '@/utils/trpc';
 import { getUserName } from '@/utils/user';
 
 const userSearchSchema = z.object({
-  date: z.string().optional(),
+  date: z.string().date().optional(),
   f: filterConfigSchema,
 });
 

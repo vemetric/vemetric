@@ -289,7 +289,7 @@ export const clickhouseEvent = {
       : { filterQueries: '' };
 
     const cursorClause = cursor ? ` AND createdAt < ${escape(cursor)}` : '';
-    const dateClause = date ? ` AND toDate(createdAt) = '${date}'` : '';
+    const dateClause = date ? ` AND toDate(createdAt) = ${escape(date)}` : '';
 
     const resultSet = await clickhouseClient.query({
       query: `

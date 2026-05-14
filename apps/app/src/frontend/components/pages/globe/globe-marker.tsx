@@ -9,6 +9,7 @@ const getMockUserAvatarProps = (user: MockGlobeUser) => ({
   displayName: user.name,
   avatarUrl: user.avatarUrl,
 });
+const getUserCountLabel = (count: number) => (count > 99 ? '99+' : `${count}`);
 
 interface Props {
   id: string;
@@ -16,6 +17,8 @@ interface Props {
 }
 
 export const GlobeMarker = ({ id, users }: Props) => {
+  const showUserCount = users.length > 3;
+
   return (
     <Box
       opacity={`var(--cobe-visible-${id}, 0)`}
@@ -48,6 +51,31 @@ export const GlobeMarker = ({ id, users }: Props) => {
             <GlobeUserAvatar {...getMockUserAvatarProps(users[0])} transform="translate(-5px,-7px) scale(0.7)" />
             <GlobeUserAvatar {...getMockUserAvatarProps(users[1])} transform="translate(7px,0px) scale(0.7)" />
             <GlobeUserAvatar {...getMockUserAvatarProps(users[2])} transform="translate(-2px,5px) scale(0.7)" />
+            {showUserCount && (
+              <Box
+                pos="absolute"
+                top="-9px"
+                right="-9px"
+                minW="21px"
+                h="21px"
+                px="4px"
+                rounded="full"
+                bg="purple.500"
+                color="white"
+                border="1.5px solid"
+                borderColor="bg"
+                boxShadow="sm"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                fontSize="xs"
+                fontWeight="bold"
+                lineHeight="1"
+                title={`${users.length} users`}
+              >
+                {getUserCountLabel(users.length)}
+              </Box>
+            )}
           </>
         )}
       </Box>

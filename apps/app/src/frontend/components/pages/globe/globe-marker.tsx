@@ -1,4 +1,4 @@
-import { Box } from '@chakra-ui/react';
+import { Box, Icon } from '@chakra-ui/react';
 import { GlobeUserAvatar } from './globe-user-avatar';
 import type { MockGlobeUser } from './mock-data';
 
@@ -30,13 +30,24 @@ export const GlobeMarker = ({ id, users }: Props) => {
       left="anchor(center)"
       transform="scale(var(--globe-marker-scale))"
     >
-      <Box
-        pos="absolute"
-        width="2px"
+      <Icon
+        width="10px"
         height={`${MARKER_LINE_HEIGHT}px`}
-        bg="purple.500"
-        transform={`translate(-1px, -${MARKER_LINE_HEIGHT}px)`}
-      />
+        viewBox="0 0 50 100"
+        preserveAspectRatio="none"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        pos="absolute"
+        transform={`translate(-5px, -${MARKER_LINE_HEIGHT}px)`}
+        opacity="0.9"
+        css={{
+          '--path-color': 'var(--chakra-colors-purple-400)',
+        }}
+      >
+        <svg>
+          <path d="M0 0 C-16 34 32 72 15 100 L35 100 C18 72 66 34 50 0 Z" fill="var(--path-color)" />
+        </svg>
+      </Icon>
       <Box pos="absolute" bg="purple.fg" boxSize="4px" rounded="full" transform="translate(-2px, -2px)" />
       <Box pos="absolute" boxSize="32px" transform={`translate(-15px, -${MARKER_LINE_HEIGHT + 26}px)`}>
         {users.length === 1 && <GlobeUserAvatar {...getMockUserAvatarProps(users[0])} />}

@@ -5,7 +5,7 @@ import { useColorMode } from '@/components/ui/color-mode';
 import { GLOBE_THEME_OPTIONS } from './globe-consts';
 
 interface Props {
-  globeRef: RefObject<Globe>;
+  globeRef: RefObject<Globe | null>;
   offsetRef: RefObject<[number, number]>;
   rotationRef: RefObject<{ phi: number; theta: number }>;
 }

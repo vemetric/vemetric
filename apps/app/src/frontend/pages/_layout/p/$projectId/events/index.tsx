@@ -163,9 +163,9 @@ function RouteComponent() {
             rowGap={4}
             align="center"
           >
-            <FilterContainer filterConfig={filterConfig} from="/p/$projectId/events" />
+            <FilterContainer filterConfig={filterConfig} from="/p/$projectId/events/" />
             <Flex flexGrow={1} flexWrap="wrap" gap={2.5} justify="flex-end">
-              <AddFilterButton from="/p/$projectId/events" filterConfig={filterConfig} />
+              <AddFilterButton from="/p/$projectId/events/" filterConfig={filterConfig} />
               <TimespanSelect from="/_layout/p/$projectId/events/" />
             </Flex>
           </Flex>
@@ -209,7 +209,7 @@ function RouteComponent() {
                     </>
                   }
                   filterConfig={filterConfig}
-                  filterRoute={'/p/$projectId/events'}
+                  filterRoute={'/p/$projectId/events/'}
                   timespanRoute={'/_layout/p/$projectId/events/'}
                 />
               </Card.Root>

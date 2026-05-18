@@ -27,8 +27,8 @@ import {
 } from './globe-utils';
 
 interface Props {
-  globeRootRef: RefObject<HTMLDivElement>;
-  globeRef: RefObject<Globe>;
+  globeRootRef: RefObject<HTMLDivElement | null>;
+  globeRef: RefObject<Globe | null>;
   globeConfig: GlobeConfig;
 }
 
@@ -107,18 +107,21 @@ export const useGlobeState = ({ globeRootRef, globeRef, globeConfig }: Props) =>
     };
   }, [globeRef, globeConfig]);
 
-  const updateGlobeView = useCallback((scale: number, offset: [number, number]) => {
-    const globeRoot = globeRootRef.current;
+  const updateGlobeView = useCallback(
+    (scale: number, offset: [number, number]) => {
+      const globeRoot = globeRootRef.current;
 
-    scaleRef.current = scale;
-    offsetRef.current = offset;
+      scaleRef.current = scale;
+      offsetRef.current = offset;
 
-    if (globeRoot) {
-      setMarkerScale(globeRoot, scale, globeConfig);
-    }
+      if (globeRoot) {
+        setMarkerScale(globeRoot, scale, globeConfig);
+      }
 
-    globeRef.current?.update({ scale, offset, ...rotationRef.current });
-  }, [globeRootRef, globeRef, globeConfig]);
+      globeRef.current?.update({ scale, offset, ...rotationRef.current });
+    },
+    [globeRootRef, globeRef, globeConfig],
+  );
 
   const resetFrameRef = useRef<number | null>(null);
   const cancelResetAnimation = () => {

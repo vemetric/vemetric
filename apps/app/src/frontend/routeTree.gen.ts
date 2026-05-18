@@ -208,10 +208,10 @@ export interface FileRoutesByFullPath {
   '/p/$projectId/funnels/$funnelId': typeof LayoutPProjectIdFunnelsFunnelIdRoute
   '/p/$projectId/user/$identifier': typeof LayoutPProjectIdUserIdentifierRoute
   '/p/$projectId/users/$userId': typeof LayoutPProjectIdUsersUserIdRoute
-  '/p/$projectId/events': typeof LayoutPProjectIdEventsIndexRoute
-  '/p/$projectId/funnels': typeof LayoutPProjectIdFunnelsIndexRoute
-  '/p/$projectId/settings': typeof LayoutPProjectIdSettingsIndexRoute
-  '/p/$projectId/users': typeof LayoutPProjectIdUsersIndexRoute
+  '/p/$projectId/events/': typeof LayoutPProjectIdEventsIndexRoute
+  '/p/$projectId/funnels/': typeof LayoutPProjectIdFunnelsIndexRoute
+  '/p/$projectId/settings/': typeof LayoutPProjectIdSettingsIndexRoute
+  '/p/$projectId/users/': typeof LayoutPProjectIdUsersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -296,10 +296,10 @@ export interface FileRouteTypes {
     | '/p/$projectId/funnels/$funnelId'
     | '/p/$projectId/user/$identifier'
     | '/p/$projectId/users/$userId'
-    | '/p/$projectId/events'
-    | '/p/$projectId/funnels'
-    | '/p/$projectId/settings'
-    | '/p/$projectId/users'
+    | '/p/$projectId/events/'
+    | '/p/$projectId/funnels/'
+    | '/p/$projectId/settings/'
+    | '/p/$projectId/users/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -403,14 +403,14 @@ declare module '@tanstack/react-router' {
     '/_layout': {
       id: '/_layout'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof LayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_auth': {
       id: '/_auth'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -529,28 +529,28 @@ declare module '@tanstack/react-router' {
     '/_layout/p/$projectId/users/': {
       id: '/_layout/p/$projectId/users/'
       path: '/users'
-      fullPath: '/p/$projectId/users'
+      fullPath: '/p/$projectId/users/'
       preLoaderRoute: typeof LayoutPProjectIdUsersIndexRouteImport
       parentRoute: typeof LayoutPProjectIdRoute
     }
     '/_layout/p/$projectId/settings/': {
       id: '/_layout/p/$projectId/settings/'
       path: '/settings'
-      fullPath: '/p/$projectId/settings'
+      fullPath: '/p/$projectId/settings/'
       preLoaderRoute: typeof LayoutPProjectIdSettingsIndexRouteImport
       parentRoute: typeof LayoutPProjectIdRoute
     }
     '/_layout/p/$projectId/funnels/': {
       id: '/_layout/p/$projectId/funnels/'
       path: '/funnels'
-      fullPath: '/p/$projectId/funnels'
+      fullPath: '/p/$projectId/funnels/'
       preLoaderRoute: typeof LayoutPProjectIdFunnelsIndexRouteImport
       parentRoute: typeof LayoutPProjectIdRoute
     }
     '/_layout/p/$projectId/events/': {
       id: '/_layout/p/$projectId/events/'
       path: '/events'
-      fullPath: '/p/$projectId/events'
+      fullPath: '/p/$projectId/events/'
       preLoaderRoute: typeof LayoutPProjectIdEventsIndexRouteImport
       parentRoute: typeof LayoutPProjectIdRoute
     }

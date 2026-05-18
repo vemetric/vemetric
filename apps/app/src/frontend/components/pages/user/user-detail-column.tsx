@@ -49,7 +49,7 @@ interface Props {
 export const UserDetailColumn = (props: Props) => {
   const { projectId, userId, countryCode, isUserLoading, isEventsLoading, userName, selectedDate, isOnline } = props;
   const scrollableContentRef = useRef<HTMLDivElement>(null);
-  const scrollableNodeRef = useRef<HTMLDivElement>();
+  const scrollableNodeRef = useRef<HTMLDivElement>(null);
   const [topOverlayVisible, setTopOverlayVisible] = useState(false);
   const [bottomOverlayVisible, setBottomOverlayVisible] = useState(false);
   const calcScrollableOverlays = (target: HTMLDivElement) => {

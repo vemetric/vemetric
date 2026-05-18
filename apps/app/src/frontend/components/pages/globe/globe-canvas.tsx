@@ -1,12 +1,15 @@
-import { Box, Icon, IconButton } from '@chakra-ui/react';
+import { Box, Button, Icon, IconButton } from '@chakra-ui/react';
 import type { Globe } from 'cobe';
 import createGlobe from 'cobe';
 import { useEffect, useRef } from 'react';
-import { TbLock, TbLockOpen, TbPlayerPause, TbPlayerPlay, TbZoomReset } from 'react-icons/tb';
+import { TbBolt, TbLock, TbLockOpen, TbPlayerPause, TbPlayerPlay, TbZoomReset } from 'react-icons/tb';
+import { NumberCounter } from '@/components/number-counter';
+import { TimespanSelect } from '@/components/timespan-select';
 import { DESKTOP_GLOBE_CONFIG, MOBILE_GLOBE_CONFIG } from './globe-consts';
 import { GlobeMarker } from './globe-marker';
+import { GlobeUserPanel } from './globe-user-panel';
 import { setMarkerScale, clampGlobeOffset } from './globe-utils';
-import { MOCK_GLOBE_MARKERS, MOCK_GLOBE_USER_BUCKETS } from './mock-data';
+import { MOCK_GLOBE_MARKERS, MOCK_GLOBE_USER_BUCKETS, MOCK_GLOBE_USERS } from './mock-data';
 import { useGlobeState } from './use-globe-state';
 import { useGlobeThemeOptions } from './use-globe-theme-options';
 
@@ -123,7 +126,7 @@ export const GlobeCanvas = ({ isMobile }: Props) => {
       onPointerDown={startDrag}
       onWheel={handleWheel}
     >
-      <Box pos="absolute" top={4} right={4} zIndex="2" display="flex" gap={2}>
+      <Box pos="absolute" top={3} left={3} zIndex="2" display="flex" gap={2}>
         <IconButton
           aria-label={locked ? 'Unlock globe interaction' : 'Lock globe interaction'}
           size="xs"
@@ -151,6 +154,20 @@ export const GlobeCanvas = ({ isMobile }: Props) => {
         >
           <Icon as={TbZoomReset} />
         </IconButton>
+      </Box>
+      <Box pos="absolute" top={3} right={3} zIndex="2" display="flex" gap={2}>
+        <Box onPointerDown={(event) => event.stopPropagation()}>
+          <TimespanSelect from="/_layout/p/$projectId/globe" />
+        </Box>
+      </Box>
+      <GlobeUserPanel />
+      <Box pos="absolute" bottom={3} right={3} zIndex="2" display="flex" gap={2}>
+        <Button variant="surface" size="xs" rounded="full" onPointerDown={(event) => event.stopPropagation()}>
+          <TbBolt />{' '}
+          <span>
+            Events (<NumberCounter value={MOCK_GLOBE_USERS.length} />)
+          </span>
+        </Button>
       </Box>
       {MOCK_GLOBE_USER_BUCKETS.map((bucket) => (
         <GlobeMarker key={bucket.id} {...bucket} />

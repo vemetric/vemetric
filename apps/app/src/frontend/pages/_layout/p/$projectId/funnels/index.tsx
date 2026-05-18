@@ -109,7 +109,7 @@ function RouteComponent() {
                 setActiveUsersVisible={setActiveUsersVisible}
               />
               <Flex align="center" flexWrap="wrap" justify="flex-end" gap={[1.5, 3]} flexGrow={1}>
-                <AddFilterButton from="/p/$projectId/funnels" filterConfig={filterConfig} />
+                <AddFilterButton from="/p/$projectId/funnels/" filterConfig={filterConfig} />
                 <Box w="1px" h="26px" bg="gray.muted" />
                 <FunnelDialog>
                   <Button variant="surface" size={{ base: 'xs', md: 'sm' }}>
@@ -122,7 +122,7 @@ function RouteComponent() {
               </Flex>
             </Flex>
             <Box my={3}>
-              <FilterContainer filterConfig={filterConfig} from="/p/$projectId/funnels" />
+              <FilterContainer filterConfig={filterConfig} from="/p/$projectId/funnels/" />
             </Box>
           </>
         )}

@@ -1,8 +1,8 @@
-import type { ReactElement } from 'react';
+import type { ReactNode } from 'react';
 import { useEffect } from 'react';
 import { proxy } from 'valtio';
 
-type Breadcrumb = ReactElement | string;
+type Breadcrumb = (() => ReactNode) | string;
 
 export const headerStore = proxy({ breadcrumbs: [] as Array<Breadcrumb>, docsLink: null as string | null });
 

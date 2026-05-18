@@ -156,23 +156,26 @@ function RouteComponent() {
   });
 
   useSetBreadcrumbs([
-    <LinkOverlay key="funnels" asChild>
-      <Link
-        to="/p/$projectId/funnels"
-        params={{ projectId }}
-        search={{ u: activeUsersVisible || undefined, f: filterConfig }}
-      >
-        Funnels
-      </Link>
-    </LinkOverlay>,
-    isFunnelLoading ? (
-      <Skeleton key="funnel-name" w="100px" h="20px" rounded="md" />
-    ) : (
-      <Flex gap="1.5">
-        {funnelData?.funnel?.icon && <CustomIconStyle>{funnelData?.funnel?.icon}</CustomIconStyle>}
-        <Text>{funnelData?.funnel?.name || funnelId}</Text>
-      </Flex>
+    () => (
+      <LinkOverlay asChild>
+        <Link
+          to="/p/$projectId/funnels"
+          params={{ projectId }}
+          search={{ u: activeUsersVisible || undefined, f: filterConfig }}
+        >
+          Funnels
+        </Link>
+      </LinkOverlay>
     ),
+    () =>
+      isFunnelLoading ? (
+        <Skeleton w="100px" h="20px" rounded="md" />
+      ) : (
+        <Flex gap="1.5">
+          {funnelData?.funnel?.icon && <CustomIconStyle>{funnelData?.funnel?.icon}</CustomIconStyle>}
+          <Text>{funnelData?.funnel?.name || funnelId}</Text>
+        </Flex>
+      ),
   ]);
   useSetDocsLink('https://vemetric.com/docs/product-analytics/funnels');
 

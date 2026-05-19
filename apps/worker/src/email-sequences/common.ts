@@ -1,6 +1,6 @@
 import { type EmailDripSequence, type Project } from 'database';
 
-export type SequenceResult = { skipped: true } | { success: boolean; response: { MessageID: string; Message: string } };
+export type SequenceResult = { skipped: true } | { success: boolean; response: { MessageID?: string; Message: string } };
 
 export type SequenceContext = {
   project?: Project;

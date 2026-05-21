@@ -41,3 +41,6 @@ export type FunnelData = RouterOutput['funnels']['list']['funnels'][0];
 export type SessionData = RouterOutput['users']['events']['sessions'][0];
 export type EventData = RouterOutput['users']['events']['events'][0];
 export type ApiKeyItem = RouterOutput['apiKeys']['list'][number];
+export type GlobeUserBucket = RouterOutput['globe']['getMarkers']['buckets'][number];
+export type GlobeMarkerUser = RouterOutput['globe']['getMarkers']['buckets'][number]['users'][number];
+export type GlobePanelUser = RouterOutput['globe']['listUsers']['users'][number];

@@ -36,7 +36,11 @@ export const getThetaBounds = (scale: number, globeConfig: GlobeConfig = DESKTOP
     max: MAX_GLOBE_THETA + (MAX_ZOOMED_GLOBE_THETA - MAX_GLOBE_THETA) * zoomProgress,
   };
 };
-export const clampTheta = (theta: number, scale = DESKTOP_GLOBE_CONFIG.defaultScale, globeConfig = DESKTOP_GLOBE_CONFIG) => {
+export const clampTheta = (
+  theta: number,
+  scale = DESKTOP_GLOBE_CONFIG.defaultScale,
+  globeConfig = DESKTOP_GLOBE_CONFIG,
+) => {
   const { min, max } = getThetaBounds(scale, globeConfig);
 
   return clampNumber(theta, min, max);
@@ -104,7 +108,11 @@ export const getZoomCursorPull = (currentScale: number, nextScale: number, globe
 };
 
 export const getMarkerScale = (scale: number, globeConfig: GlobeConfig) => {
-  const zoomProgress = clampNumber((scale - globeConfig.minScale) / (globeConfig.maxScale - globeConfig.minScale), 0, 1);
+  const zoomProgress = clampNumber(
+    (scale - globeConfig.minScale) / (globeConfig.maxScale - globeConfig.minScale),
+    0,
+    1,
+  );
 
   return MIN_MARKER_SCALE + (MAX_MARKER_SCALE - MIN_MARKER_SCALE) * zoomProgress;
 };

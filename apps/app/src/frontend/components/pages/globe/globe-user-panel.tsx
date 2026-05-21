@@ -1,18 +1,59 @@
-import { Box, Button, Flex, HStack, Icon, Span, Text } from '@chakra-ui/react';
-import { useRef, useState } from 'react';
+import { Box, Button, Flex, HStack, Icon, Skeleton, Span, Spinner, Text } from '@chakra-ui/react';
+import { COUNTRIES } from '@vemetric/common/countries';
+import { useEffect, useRef, useState } from 'react';
 import { TbClock, TbUserSquareRounded } from 'react-icons/tb';
 import { CountryFlag } from '@/components/country-flag';
 import { NumberCounter } from '@/components/number-counter';
 import { CloseButton } from '@/components/ui/close-button';
 import { Tooltip } from '@/components/ui/tooltip';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
-import { MOCK_GLOBE_USERS } from './mock-data';
+import type { GlobePanelUser } from '@/utils/trpc';
+import { getUserName } from '@/utils/user';
 import { UserAvatar } from '../user/user-avatar';
 
-export const GlobeUserPanel = () => {
+interface Props {
+  users: GlobePanelUser[];
+  totalUsers?: number;
+  fetchNextPage: () => void;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  usersCurrentPage: number;
+}
+
+export const GlobeUserPanel = ({
+  users,
+  totalUsers,
+  fetchNextPage,
+  hasNextPage,
+  isFetchingNextPage,
+  usersCurrentPage,
+}: Props) => {
   const [isUserPanelOpen, setUserPanelOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const loadMoreElement = loadMoreRef.current;
+    if (!isUserPanelOpen || !loadMoreElement || !hasNextPage) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting) && !isFetchingNextPage) {
+        observer.disconnect();
+        fetchNextPage();
+      }
+    });
+    observer.observe(loadMoreElement);
+
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, isUserPanelOpen, usersCurrentPage]);
+
+  const userCounter =
+    typeof totalUsers === 'number' ? (
+      <NumberCounter value={totalUsers} />
+    ) : (
+      <Skeleton display="inline-block" width="16px" height="14px" verticalAlign="middle" />
+    );
 
   return (
     <Box pos="absolute" bottom={3} left={3} zIndex="2" display="flex">
@@ -27,13 +68,11 @@ export const GlobeUserPanel = () => {
           shadow="0 0 0px 1px var(--shadow-color)"
           shadowColor="gray.emphasized"
           bg="bg.card"
-          width={isUserPanelOpen ? '500px' : '104px'}
+          width={isUserPanelOpen ? '500px' : '90px'}
           height={isUserPanelOpen ? '500px' : '32px'}
           pointerEvents={isUserPanelOpen ? 'auto' : 'none'}
           overflow="hidden"
           transition="all 0.3s ease-in-out"
-          onPointerDown={(event) => event.stopPropagation()}
-          onWheel={(event) => event.stopPropagation()}
           css={{
             '& > *': {
               opacity: isUserPanelOpen ? 1 : 0,
@@ -51,9 +90,7 @@ export const GlobeUserPanel = () => {
             >
               <Flex align="center" gap={1.5} px={3} py={2}>
                 <TbUserSquareRounded />
-                <Span fontSize="sm">
-                  Users (<NumberCounter value={MOCK_GLOBE_USERS.length} />)
-                </Span>
+                <Span fontSize="sm">Users ({userCounter})</Span>
               </Flex>
               <CloseButton
                 ref={closeButtonRef}
@@ -72,16 +109,22 @@ export const GlobeUserPanel = () => {
             </Flex>
             <Box px={3} py={2.5} flexGrow={1} overflowY="auto">
               <Flex flexDir="column" gap={3}>
-                {MOCK_GLOBE_USERS.map((user) => (
+                {users.map((user) => (
                   <Flex key={user.id} justify="space-between" align="center" gap={3}>
                     <Flex align="center" gap={3}>
-                      <UserAvatar enableBlink id={user.id} displayName={user.name} avatarUrl={user.avatarUrl} />
+                      <UserAvatar
+                        enableBlink
+                        id={user.id}
+                        identifier={user.identifier}
+                        displayName={user.displayName}
+                        avatarUrl={user.avatarUrl}
+                      />
                       <Box lineHeight="shorter">
-                        <Text fontWeight="medium">{user.name}</Text>
+                        <Text fontWeight="medium">{getUserName(user.displayName, user.identifier)}</Text>
                         <Flex gap={1.5} color="fg.muted" align="center">
-                          <CountryFlag countryCode={user.country} />
+                          <CountryFlag countryCode={user.countryCode} />
                           <Text fontSize="sm" color="text.muted">
-                            {user.city}
+                            {COUNTRIES[user.countryCode as keyof typeof COUNTRIES] ?? 'Unknown'}
                           </Text>
                         </Flex>
                       </Box>
@@ -98,6 +141,11 @@ export const GlobeUserPanel = () => {
                     </Tooltip>
                   </Flex>
                 ))}
+                {hasNextPage && (
+                  <Flex ref={loadMoreRef} justify="center" py={2}>
+                    {isFetchingNextPage && <Spinner size="xs" borderWidth="1.5px" />}
+                  </Flex>
+                )}
               </Flex>
             </Box>
           </div>
@@ -109,7 +157,6 @@ export const GlobeUserPanel = () => {
         variant="surface"
         size="xs"
         rounded="full"
-        onPointerDown={(event) => event.stopPropagation()}
         pointerEvents={isUserPanelOpen ? 'none' : 'auto'}
         opacity={isUserPanelOpen ? 0 : 1}
         transition="opacity 0.3s ease-in-out"
@@ -122,10 +169,7 @@ export const GlobeUserPanel = () => {
           });
         }}
       >
-        <TbUserSquareRounded />{' '}
-        <span>
-          Users (<NumberCounter value={MOCK_GLOBE_USERS.length} />)
-        </span>
+        <TbUserSquareRounded /> <span>Users ({userCounter})</span>
       </Button>
     </Box>
   );

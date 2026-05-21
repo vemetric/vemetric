@@ -13,6 +13,7 @@ import { useEmailRoutes } from './routes/email';
 import { eventsRouter } from './routes/events';
 import { filtersRouter } from './routes/filters';
 import { funnelsRouter } from './routes/funnels';
+import { globeRouter } from './routes/globe';
 import { useLandingPageMetrics } from './routes/landing-page';
 import { organizationRouter } from './routes/organization';
 import { paddleWebhookHandler } from './routes/paddle';
@@ -30,6 +31,7 @@ export const trpcRouter = router({
   events: eventsRouter,
   filters: filtersRouter,
   funnels: funnelsRouter,
+  globe: globeRouter,
   projects: projectsRouter,
   organization: organizationRouter,
   billing: billingRouter,

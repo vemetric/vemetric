@@ -413,6 +413,68 @@ export const clickhouseEvent = {
       });
     },
   ),
+  queryGlobeUsers: withSpan(
+    'queryGlobeUsers',
+    async (input: { projectId: bigint; startDate?: Date; endDate?: Date }) => {
+      const { projectId, startDate, endDate } = input;
+
+      const resultSet = await clickhouseClient.query({
+        query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.city as city, u.latitude as latitude, u.longitude as longitude, u.maxCreatedAt as maxCreatedAt, usr.avatarUrl as avatarUrl
+            FROM (
+              SELECT userId,
+                argMax(userIdentifier, eventCreatedAt) as identifier,
+                argMax(userDisplayName, eventCreatedAt) as displayName,
+                argMax(countryCode, eventCreatedAt) as countryCode,
+                argMax(city, eventCreatedAt) as city,
+                argMax(latitude, eventCreatedAt) as latitude,
+                argMax(longitude, eventCreatedAt) as longitude,
+                max(eventCreatedAt) as maxCreatedAt
+              FROM (
+                SELECT any(userId) as userId,
+                  argMax(userIdentifier, createdAt) as userIdentifier,
+                  argMax(userDisplayName, createdAt) as userDisplayName,
+                  argMax(countryCode, createdAt) as countryCode,
+                  argMax(city, createdAt) as city,
+                  argMax(latitude, createdAt) as latitude,
+                  argMax(longitude, createdAt) as longitude,
+                  max(createdAt) as eventCreatedAt
+                FROM ${TABLE_NAME}
+                WHERE projectId=${escape(projectId)}
+                  ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+                  ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
+                  AND latitude IS NOT NULL AND longitude IS NOT NULL
+                GROUP BY id
+                HAVING sum(sign) > 0
+              )
+              GROUP BY userId
+            ) u
+            LEFT JOIN (
+              SELECT id, argMax(avatarUrl, updatedAt) as avatarUrl
+              FROM user
+              WHERE projectId=${escape(projectId)}
+              GROUP BY id
+              HAVING argMax(deleted, updatedAt) = 0
+            ) usr ON u.userId = usr.id
+            ORDER BY u.maxCreatedAt DESC, u.userId DESC`,
+        format: 'JSONEachRow',
+      });
+      const result = (await resultSet.json()) as Array<any>;
+
+      return result
+        .filter((row) => row.latitude !== null && row.longitude !== null)
+        .map((row) => ({
+          id: BigInt(row.userId),
+          identifier: row.identifier as string,
+          displayName: row.displayName as string,
+          countryCode: row.countryCode as string,
+          city: row.city as string,
+          latitude: Number(row.latitude),
+          longitude: Number(row.longitude),
+          lastSeenAt: row.maxCreatedAt as string,
+          avatarUrl: row.avatarUrl as string | undefined,
+        }));
+    },
+  ),
   getAllEventsCount: withSpan('getAllEventsCount', async (projectId: bigint) => {
     const resultSet = await clickhouseClient.query({
       query: `SELECT count() FROM ${TABLE_NAME} WHERE projectId=${escape(projectId)} GROUP BY id HAVING sum(sign) > 0`,

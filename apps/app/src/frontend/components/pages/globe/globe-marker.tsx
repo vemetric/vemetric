@@ -1,29 +1,26 @@
 import { Box, Icon } from '@chakra-ui/react';
+import type { GlobeMarkerUser } from '@/utils/trpc';
 import { GlobeUserAvatar } from './globe-user-avatar';
-import type { MockGlobeUser } from './mock-data';
 
 const MARKER_LINE_HEIGHT = 15;
 
-const getMockUserAvatarProps = (user: MockGlobeUser) => ({
-  id: user.id,
-  displayName: user.name,
-  avatarUrl: user.avatarUrl,
-});
 const getUserCountLabel = (count: number) => (count > 99 ? '99+' : `${count}`);
 
 interface Props {
   id: string;
-  users: Array<MockGlobeUser>;
+  users: Array<GlobeMarkerUser>;
+  userCount: number;
+  setMarkerElement: (id: string, element: HTMLDivElement | null) => void;
 }
 
-export const GlobeMarker = ({ id, users }: Props) => {
-  const showUserCount = users.length > 3;
+export const GlobeMarker = ({ id, users, userCount, setMarkerElement }: Props) => {
+  const showUserCount = userCount > 3;
 
   return (
     <Box
+      ref={(element: HTMLDivElement | null) => setMarkerElement(id, element)}
       opacity={`var(--cobe-visible-${id}, 0)`}
       transition="opacity .2s ease-in-out"
-      zIndex="1"
       pos="absolute"
       positionAnchor={`--cobe-${id}`}
       top="anchor(center)"
@@ -50,18 +47,18 @@ export const GlobeMarker = ({ id, users }: Props) => {
       </Icon>
       <Box pos="absolute" bg="purple.fg" boxSize="4px" rounded="full" transform="translate(-2px, -2px)" />
       <Box pos="absolute" boxSize="32px" transform={`translate(-15px, -${MARKER_LINE_HEIGHT + 26}px)`}>
-        {users.length === 1 && <GlobeUserAvatar {...getMockUserAvatarProps(users[0])} />}
+        {users.length === 1 && <GlobeUserAvatar {...users[0]} />}
         {users.length === 2 && (
           <>
-            <GlobeUserAvatar {...getMockUserAvatarProps(users[0])} transform="translate(-5px,-5px) scale(0.85)" />
-            <GlobeUserAvatar {...getMockUserAvatarProps(users[1])} transform="translate(5px,5px) scale(0.85)" />
+            <GlobeUserAvatar {...users[0]} transform="translate(-5px,-5px) scale(0.85)" />
+            <GlobeUserAvatar {...users[1]} transform="translate(5px,5px) scale(0.85)" />
           </>
         )}
         {users.length > 2 && (
           <>
-            <GlobeUserAvatar {...getMockUserAvatarProps(users[0])} transform="translate(-5px,-7px) scale(0.7)" />
-            <GlobeUserAvatar {...getMockUserAvatarProps(users[1])} transform="translate(7px,0px) scale(0.7)" />
-            <GlobeUserAvatar {...getMockUserAvatarProps(users[2])} transform="translate(-2px,5px) scale(0.7)" />
+            <GlobeUserAvatar {...users[0]} transform="translate(-5px,-7px) scale(0.7)" />
+            <GlobeUserAvatar {...users[1]} transform="translate(7px,0px) scale(0.7)" />
+            <GlobeUserAvatar {...users[2]} transform="translate(-2px,5px) scale(0.7)" />
             {showUserCount && (
               <Box
                 pos="absolute"
@@ -82,9 +79,9 @@ export const GlobeMarker = ({ id, users }: Props) => {
                 fontSize="xs"
                 fontWeight="bold"
                 lineHeight="1"
-                title={`${users.length} users`}
+                title={`${userCount} users`}
               >
-                {getUserCountLabel(users.length)}
+                {getUserCountLabel(userCount)}
               </Box>
             )}
           </>

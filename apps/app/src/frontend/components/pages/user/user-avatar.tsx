@@ -11,6 +11,8 @@ export interface UserAvatarProps extends FlexProps {
 }
 
 export const UserAvatar = ({ displayName, avatarUrl, identifier, id, enableBlink, ...props }: UserAvatarProps) => {
+  const isAnonymous = !displayName && !identifier;
+
   return (
     <Flex
       pos="relative"
@@ -21,7 +23,7 @@ export const UserAvatar = ({ displayName, avatarUrl, identifier, id, enableBlink
       flexShrink={0}
       overflow="hidden"
       userSelect="none"
-      filter={identifier || displayName ? 'none' : 'grayscale(60%)'}
+      filter={isAnonymous ? 'grayscale(100%)' : 'none'}
       {...props}
     >
       {avatarUrl ? (

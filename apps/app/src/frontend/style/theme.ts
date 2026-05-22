@@ -185,6 +185,14 @@ export const vemetricTheme = createSystem(defaultConfig, {
               },
             },
           },
+          loading: {
+            false: {
+              bg: 'gray.emphasized/50',
+              _dark: {
+                bg: 'gray.emphasized',
+              },
+            },
+          },
         },
       }),
     },

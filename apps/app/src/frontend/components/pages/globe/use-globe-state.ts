@@ -38,6 +38,7 @@ export const useGlobeState = ({ globeRootRef, globeRef, globeConfig }: Props) =>
   const autoPhiRef = useRef(0);
   const [autoRotate, setAutoRotate] = useState(initialGlobeViewState.autoRotate);
   const [locked, setLocked] = useState(initialGlobeViewState.locked);
+  const [isDragging, setIsDragging] = useState(false);
   const autoRotateRef = useRef(autoRotate);
   const lockedRef = useRef(locked);
   // TODO: make it smaller on mobile
@@ -180,6 +181,11 @@ export const useGlobeState = ({ globeRootRef, globeRef, globeConfig }: Props) =>
       if (lockedRef.current) return false;
 
       cancelResetAnimation();
+      if (autoRotateRef.current) {
+        autoRotateRef.current = false;
+        setAutoRotate(false);
+      }
+      setIsDragging(true);
       pointerRef.current = {
         x: e.clientX,
         y: e.clientY,
@@ -201,6 +207,7 @@ export const useGlobeState = ({ globeRootRef, globeRef, globeConfig }: Props) =>
       }
     },
     onDragEnd: () => {
+      setIsDragging(false);
       pointerRef.current = null;
     },
   });
@@ -262,6 +269,7 @@ export const useGlobeState = ({ globeRootRef, globeRef, globeConfig }: Props) =>
     rotationRef,
     resetGlobeZoom,
     autoRotate,
+    isDragging,
     toggleAutoRotate,
     locked,
     toggleLocked,

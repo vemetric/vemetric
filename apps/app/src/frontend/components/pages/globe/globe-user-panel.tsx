@@ -1,10 +1,11 @@
 import { Box, Button, Flex, HStack, Icon, Skeleton, Span, Spinner, Text } from '@chakra-ui/react';
 import { COUNTRIES } from '@vemetric/common/countries';
-import { useEffect, useRef, useState } from 'react';
-import { TbClock, TbUserSquareRounded } from 'react-icons/tb';
+import { useEffect, useRef } from 'react';
+import { TbClock, TbUserOff, TbUserSquareRounded } from 'react-icons/tb';
 import { CountryFlag } from '@/components/country-flag';
 import { NumberCounter } from '@/components/number-counter';
 import { CloseButton } from '@/components/ui/close-button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Tooltip } from '@/components/ui/tooltip';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import type { GlobePanelUser } from '@/utils/trpc';
@@ -18,6 +19,8 @@ interface Props {
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   usersCurrentPage: number;
+  isUserPanelOpen: boolean;
+  setUserPanelOpen: (isOpen: boolean) => void;
 }
 
 export const GlobeUserPanel = ({
@@ -27,11 +30,13 @@ export const GlobeUserPanel = ({
   hasNextPage,
   isFetchingNextPage,
   usersCurrentPage,
+  isUserPanelOpen,
+  setUserPanelOpen,
 }: Props) => {
-  const [isUserPanelOpen, setUserPanelOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  const showEmptyState = (totalUsers ?? 0) === 0;
 
   useEffect(() => {
     const loadMoreElement = loadMoreRef.current;
@@ -59,7 +64,6 @@ export const GlobeUserPanel = ({
     <Box pos="absolute" bottom={3} left={3} zIndex="2" display="flex">
       <Box pos="relative">
         <Flex
-          asChild
           flexDir="column"
           pos="absolute"
           left="0"
@@ -67,9 +71,11 @@ export const GlobeUserPanel = ({
           rounded="2xl"
           shadow="0 0 0px 1px var(--shadow-color)"
           shadowColor="gray.emphasized"
-          bg="bg.card"
+          bg="bg.card/90"
+          backdropFilter="blur(15px)"
           width={isUserPanelOpen ? '500px' : '90px'}
-          height={isUserPanelOpen ? '500px' : '32px'}
+          height="auto"
+          maxH={isUserPanelOpen ? '500px' : '32px'}
           pointerEvents={isUserPanelOpen ? 'auto' : 'none'}
           overflow="hidden"
           transition="all 0.3s ease-in-out"
@@ -79,35 +85,45 @@ export const GlobeUserPanel = ({
               transition: 'opacity 0.3s ease-in-out',
             },
           }}
+          inert={isUserPanelOpen ? false : true}
         >
-          <div inert={isUserPanelOpen ? false : true}>
-            <Flex
-              w="full"
-              align="center"
-              justify="space-between"
-              borderBottom="1px solid"
-              borderColor="gray.emphasized"
-            >
-              <Flex align="center" gap={1.5} px={3} py={2}>
-                <TbUserSquareRounded />
-                <Span fontSize="sm">Users ({userCounter})</Span>
-              </Flex>
-              <CloseButton
-                ref={closeButtonRef}
-                size="xs"
-                rounded="none"
-                roundedTopRight="xl"
-                roundedBottomLeft="xl"
-                py={4.5}
-                onClick={() => {
-                  setUserPanelOpen(false);
-                  setTimeout(() => {
-                    buttonRef.current?.focus();
-                  });
-                }}
-              />
+          <Flex
+            w="full"
+            align="center"
+            justify="space-between"
+            borderBottom="1px solid"
+            borderColor="gray.emphasized"
+            bg="bg.card"
+          >
+            <Flex align="center" gap={1.5} px={3} py={2}>
+              <TbUserSquareRounded />
+              <Span fontSize="sm">Users ({userCounter})</Span>
             </Flex>
-            <Box px={3} py={2.5} flexGrow={1} overflowY="auto">
+            <CloseButton
+              ref={closeButtonRef}
+              size="xs"
+              rounded="none"
+              roundedTopRight="xl"
+              roundedBottomLeft="xl"
+              py={4.5}
+              onClick={() => {
+                setUserPanelOpen(false);
+                setTimeout(() => {
+                  buttonRef.current?.focus();
+                });
+              }}
+            />
+          </Flex>
+          <Box px={3} py={2.5} flexGrow={1} overflowY="auto">
+            {showEmptyState ? (
+              <Flex h="150px" align="center" justify="center">
+                <EmptyState
+                  icon={<Icon as={TbUserOff} />}
+                  title="No active users"
+                  description="No users were active in the selected time range."
+                />
+              </Flex>
+            ) : (
               <Flex flexDir="column" gap={3}>
                 {users.map((user) => (
                   <Flex key={user.id} justify="space-between" align="center" gap={3}>
@@ -147,8 +163,8 @@ export const GlobeUserPanel = ({
                   </Flex>
                 )}
               </Flex>
-            </Box>
-          </div>
+            )}
+          </Box>
         </Flex>
       </Box>
       <Button

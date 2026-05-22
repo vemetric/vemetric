@@ -80,6 +80,7 @@ export const GlobeMarker = ({ id, users, userCount, setMarkerElement }: Props) =
                 fontWeight="bold"
                 lineHeight="1"
                 title={`${userCount} users`}
+                userSelect="none"
               >
                 {getUserCountLabel(userCount)}
               </Box>

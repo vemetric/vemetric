@@ -438,11 +438,11 @@ export const clickhouseEvent = {
                   argMax(latitude, createdAt) as latitude,
                   argMax(longitude, createdAt) as longitude,
                   max(createdAt) as eventCreatedAt
-                FROM ${TABLE_NAME}
-                WHERE projectId=${escape(projectId)}
-                  ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
-                  ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
-                  AND latitude IS NOT NULL AND longitude IS NOT NULL
+                FROM ${TABLE_NAME} e
+                WHERE e.projectId=${escape(projectId)}
+                  ${startDate ? `AND e.createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+                  ${endDate ? `AND e.createdAt < '${formatClickhouseDate(endDate)}'` : ''}
+                  AND e.latitude IS NOT NULL AND e.longitude IS NOT NULL
                 GROUP BY id
                 HAVING sum(sign) > 0
               )

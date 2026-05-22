@@ -147,7 +147,7 @@ function Page() {
           />
         </Box>
       ) : (
-        <FilterSkeletons loading mb="3" />
+        <FilterSkeletons loading={isInitialized} mb="3" />
       )}
       <Card.Root overflow="hidden" textStyle="sm" pos="relative">
         <Grid

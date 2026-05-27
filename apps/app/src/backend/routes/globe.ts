@@ -1,9 +1,12 @@
-import { clickhouseEvent } from 'clickhouse';
+import { isEntityUnknown } from '@vemetric/common/event';
+import type { ClickhouseEvent } from 'clickhouse';
+import { clickhouseEvent, clickhouseSession, clickhouseUser } from 'clickhouse';
 import { z } from 'zod';
 import { getGlobeUserBuckets } from '../utils/globe';
-import { projectTimespanProcedure, router } from '../utils/trpc';
+import { projectProcedure, projectTimespanProcedure, router } from '../utils/trpc';
 
 const PANEL_USERS_PER_PAGE = 50;
+const BUCKET_PREVIEW_USERS = 3;
 
 export const globeRouter = router({
   getMarkers: projectTimespanProcedure.query(async (opts) => {
@@ -26,11 +29,81 @@ export const globeRouter = router({
       locatedUsers: locatedUsers.length,
       buckets: buckets.map((bucket) => ({
         ...bucket,
-        users: bucket.users.map((user) => ({
+        users: bucket.users.slice(0, BUCKET_PREVIEW_USERS).map((user) => ({
           ...user,
           id: String(user.id),
         })),
       })),
+    };
+  }),
+  getBucketUsers: projectTimespanProcedure
+    .input(
+      z.object({
+        bucketId: z.string(),
+      }),
+    )
+    .query(async (opts) => {
+      const {
+        input: { bucketId },
+        ctx: { projectId, startDate, endDate },
+      } = opts;
+
+      const locatedUsers = await clickhouseEvent.queryGlobeUsers({ projectId, startDate, endDate });
+      const bucket = getGlobeUserBuckets(locatedUsers).find((candidate) => candidate.id === bucketId);
+
+      return {
+        users:
+          bucket?.users.map((user) => ({
+            ...user,
+            id: String(user.id),
+          })) ?? [],
+      };
+    }),
+  singleUser: projectProcedure.input(z.object({ userId: z.string() })).query(async (opts) => {
+    const {
+      input,
+      ctx: { projectId },
+    } = opts;
+
+    const userId = BigInt(input.userId);
+
+    const [latestEvents, user, latestSession, latestPageView] = await Promise.all([
+      clickhouseEvent.getLatestEventsByUserId({ projectId, userId, limit: 1 }),
+      clickhouseUser.findById(projectId, userId, true),
+      clickhouseSession.findLatestByUserId(projectId, userId),
+      clickhouseEvent.getLatestPageViewByUserId(projectId, userId),
+    ]);
+
+    const latestEvent: (ClickhouseEvent & { isOnline: boolean }) | null = latestEvents[0] ?? null;
+
+    const deviceData = {
+      clientName: isEntityUnknown(latestEvent?.clientName)
+        ? user?.device?.clientName || 'Unknown'
+        : latestEvent?.clientName || 'Unknown',
+      clientVersion: isEntityUnknown(latestEvent?.clientVersion)
+        ? user?.device?.clientVersion || 'Unknown'
+        : latestEvent?.clientVersion || 'Unknown',
+      osName: isEntityUnknown(latestEvent?.osName)
+        ? user?.device?.osName || 'Unknown'
+        : latestEvent?.osName || 'Unknown',
+      osVersion: isEntityUnknown(latestEvent?.osVersion)
+        ? user?.device?.osVersion || 'Unknown'
+        : latestEvent?.osVersion || 'Unknown',
+      deviceType: isEntityUnknown(latestEvent?.deviceType)
+        ? user?.device?.deviceType || 'unknown'
+        : latestEvent?.deviceType || 'unknown',
+    };
+
+    return {
+      latestEvent,
+      latestPageView,
+      latestSession: latestSession
+        ? { ...latestSession, projectId: String(latestSession.projectId), userId: String(latestSession.userId) }
+        : null,
+      user: user
+        ? { ...user, id: String(user.id), displayName: user.displayName || latestEvent?.userDisplayName }
+        : null,
+      deviceData,
     };
   }),
   listUsers: projectTimespanProcedure

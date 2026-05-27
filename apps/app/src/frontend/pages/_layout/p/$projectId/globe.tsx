@@ -61,6 +61,10 @@ function RouteComponent() {
       ) : (
         <GlobeCanvas
           inert={markersData && markersData.isInitialized === false}
+          projectId={projectId}
+          timespan={timespan}
+          startDate={startDate}
+          endDate={endDate}
           isLoading={isLoading}
           isMobile={isMobile}
           buckets={markersData?.buckets ?? []}

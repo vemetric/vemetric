@@ -239,6 +239,21 @@ export const clickhouseEvent = {
     const row = result[0];
     return mapRowToEvent(row);
   },
+  getLatestPageViewByUserId: async (projectId: bigint, userId: bigint): Promise<ClickhouseEvent | null> => {
+    const resultSet = await clickhouseClient.query({
+      query: `SELECT ${EVENT_KEY_SELECTOR} FROM ${TABLE_NAME} WHERE projectId=${escape(projectId)} AND userId=${escape(
+        userId,
+      )} AND isPageView = 1 GROUP BY id HAVING sum(sign) > 0 ORDER BY ${transformKeySelector('createdAt')} DESC LIMIT 1`,
+      format: 'JSONEachRow',
+    });
+    const result = (await resultSet.json()) as Array<any>;
+    if (result.length === 0) {
+      return null;
+    }
+
+    const row = result[0];
+    return mapRowToEvent(row);
+  },
   getFirstEvent: async (projectId: bigint): Promise<Pick<ClickhouseEvent, 'createdAt'> | null> => {
     const resultSet = await clickhouseClient.query({
       query: `SELECT ${transformKeySelector('createdAt')} FROM ${TABLE_NAME} WHERE projectId=${escape(
@@ -419,7 +434,7 @@ export const clickhouseEvent = {
       const { projectId, startDate, endDate } = input;
 
       const resultSet = await clickhouseClient.query({
-        query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.city as city, u.latitude as latitude, u.longitude as longitude, u.maxCreatedAt as maxCreatedAt, usr.avatarUrl as avatarUrl
+        query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.city as city, u.latitude as latitude, u.longitude as longitude, u.maxCreatedAt as maxCreatedAt, u.isOnline as isOnline, usr.avatarUrl as avatarUrl
             FROM (
               SELECT userId,
                 argMax(userIdentifier, eventCreatedAt) as identifier,
@@ -428,7 +443,8 @@ export const clickhouseEvent = {
                 argMax(city, eventCreatedAt) as city,
                 argMax(latitude, eventCreatedAt) as latitude,
                 argMax(longitude, eventCreatedAt) as longitude,
-                max(eventCreatedAt) as maxCreatedAt
+                max(eventCreatedAt) as maxCreatedAt,
+                max(eventCreatedAt) >= ${ONLINE_USERS_INTERVAL_QUERY} as isOnline
               FROM (
                 SELECT any(userId) as userId,
                   argMax(userIdentifier, createdAt) as userIdentifier,
@@ -471,6 +487,7 @@ export const clickhouseEvent = {
           latitude: Number(row.latitude),
           longitude: Number(row.longitude),
           lastSeenAt: row.maxCreatedAt as string,
+          isOnline: Boolean(row.isOnline),
           avatarUrl: row.avatarUrl as string | undefined,
         }));
     },

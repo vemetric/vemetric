@@ -1,4 +1,5 @@
 import { AbsoluteCenter, Box, Button, Icon, IconButton, Spinner } from '@chakra-ui/react';
+import type { TimeSpan } from '@vemetric/common/charts/timespans';
 import type { Globe } from 'cobe';
 import createGlobe from 'cobe';
 import { useEffect, useRef, useState } from 'react';
@@ -25,6 +26,10 @@ import { useGlobeZIndexSync } from './use-globe-zindex-sync';
 
 interface Props {
   inert?: boolean;
+  projectId: string;
+  timespan: TimeSpan;
+  startDate?: string;
+  endDate?: string;
   isLoading: boolean;
   isMobile: boolean;
   buckets: GlobeUserBucket[];
@@ -39,6 +44,10 @@ interface Props {
 
 export const GlobeCanvas = ({
   inert,
+  projectId,
+  timespan,
+  startDate,
+  endDate,
   isMobile,
   buckets,
   panelUsers,
@@ -51,6 +60,7 @@ export const GlobeCanvas = ({
   isLoading,
 }: Props) => {
   const globeConfig = isMobile ? MOBILE_GLOBE_CONFIG : DESKTOP_GLOBE_CONFIG;
+  const [openId, setOpenId] = useState<string | null>(null);
   const globeRootRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<Globe | null>(null);
   const [isUserPanelOpen, setUserPanelOpen] = useState(false);
@@ -177,7 +187,17 @@ export const GlobeCanvas = ({
           }}
         >
           {buckets.map((bucket) => (
-            <GlobeMarker key={bucket.id} {...bucket} setMarkerElement={setMarkerElement} />
+            <GlobeMarker
+              key={bucket.id}
+              projectId={projectId}
+              timespan={timespan}
+              startDate={startDate}
+              endDate={endDate}
+              isOpen={openId === bucket.id}
+              setOpen={(open) => setOpenId(open ? bucket.id : null)}
+              {...bucket}
+              setMarkerElement={setMarkerElement}
+            />
           ))}
         </Box>
         <Box pos="absolute" top={3} left={3} zIndex="2" display="flex" gap={2} pointerEvents="none">
@@ -246,7 +266,7 @@ export const GlobeCanvas = ({
               {showNoLocatedUsers && (
                 <Button size="sm" variant="surface" pointerEvents="auto" onClick={() => setUserPanelOpen(true)}>
                   <Icon as={TbUserSquareRounded} />
-                  View users
+                  View users{totalUsers ? ` (${totalUsers})` : ''}
                 </Button>
               )}
             </EmptyState>

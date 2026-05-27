@@ -5,7 +5,6 @@ import {
   Card,
   Flex,
   Heading,
-  HStack,
   Icon,
   SimpleGrid,
   Skeleton,
@@ -13,15 +12,14 @@ import {
   Text,
   Link as ChakraLink,
 } from '@chakra-ui/react';
-import { COUNTRIES } from '@vemetric/common/countries';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { TbEye, TbDirectionSign, TbUserQuestion, TbDatabaseSearch, TbActivity } from 'react-icons/tb';
 import SimpleBar from 'simplebar-react';
 import { BrowserIcon } from '@/components/browser-icon';
 import { CardIcon } from '@/components/card-icon';
-import { CountryFlag } from '@/components/country-flag';
 import { DeviceIcon } from '@/components/device-icon';
 import { LoadingImage } from '@/components/loading-image';
+import { LocationLabel } from '@/components/location-label';
 import { OsIcon } from '@/components/os-icon';
 import { Status } from '@/components/ui/status';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -153,12 +151,12 @@ export const UserDetailColumn = (props: Props) => {
                           )}
                         </Flex>
                         <Box flexGrow={1} />
-                        <HStack color="fg.muted" textStyle="sm">
-                          <Flex gap={1.5} align="center">
-                            <CountryFlag countryCode={countryCode ?? ''} />
-                            {COUNTRIES[countryCode as keyof typeof COUNTRIES] ?? 'Unknown'}
-                          </Flex>
-                        </HStack>
+                        <LocationLabel
+                          textStyle="sm"
+                          color="fg.muted"
+                          countryCode={user?.countryCode ?? countryCode}
+                          city={user?.city}
+                        />
                       </Flex>
                       <Flex flexDir="column" gap={1.5} align="flex-end">
                         {deviceData?.clientName && (

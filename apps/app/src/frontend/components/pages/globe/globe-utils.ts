@@ -117,7 +117,10 @@ export const getMarkerScale = (scale: number, globeConfig: GlobeConfig) => {
   return MIN_MARKER_SCALE + (MAX_MARKER_SCALE - MIN_MARKER_SCALE) * zoomProgress;
 };
 export const setMarkerScale = (element: HTMLElement, scale: number, globeConfig: GlobeConfig) => {
-  element.style.setProperty('--globe-marker-scale', `${getMarkerScale(scale, globeConfig)}`);
+  const markerScale = getMarkerScale(scale, globeConfig);
+
+  element.style.setProperty('--globe-marker-scale', `${markerScale}`);
+  element.style.setProperty('--globe-marker-scale-inverse', `${1 / markerScale}`);
 };
 
 export const getInitialGlobeViewState = (globeConfig: GlobeConfig): GlobeViewState => {

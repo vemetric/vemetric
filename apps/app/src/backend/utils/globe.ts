@@ -1,6 +1,5 @@
 import type { clickhouseEvent } from 'clickhouse';
 
-const BUCKET_PREVIEW_USERS = 3;
 const USER_BUCKET_DISTANCE_KM = 700;
 const EARTH_RADIUS_KM = 6371;
 
@@ -68,8 +67,5 @@ export function getGlobeUserBuckets(users: LocatedGlobeUser[]) {
     });
   }
 
-  return buckets.map((bucket) => ({
-    ...bucket,
-    users: bucket.users.slice(0, BUCKET_PREVIEW_USERS),
-  }));
+  return buckets;
 }

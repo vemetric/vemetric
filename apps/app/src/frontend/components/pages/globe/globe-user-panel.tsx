@@ -1,6 +1,7 @@
 import { Box, Button, Flex, HStack, Icon, Skeleton, Span, Spinner, Text } from '@chakra-ui/react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { COUNTRIES } from '@vemetric/common/countries';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TbClock, TbUserOff, TbUserSquareRounded } from 'react-icons/tb';
 import { CountryFlag } from '@/components/country-flag';
 import { NumberCounter } from '@/components/number-counter';
@@ -11,6 +12,9 @@ import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import type { GlobePanelUser } from '@/utils/trpc';
 import { getUserName } from '@/utils/user';
 import { UserAvatar } from '../user/user-avatar';
+
+const USER_ROW_HEIGHT = 54;
+const LOADER_ROW_HEIGHT = 32;
 
 interface Props {
   users: GlobePanelUser[];
@@ -35,11 +39,20 @@ export const GlobeUserPanel = ({
 }: Props) => {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const scrollParentRef = useRef<HTMLDivElement | null>(null);
+  const [loadMoreElement, setLoadMoreElement] = useState<HTMLDivElement | null>(null);
   const showEmptyState = (totalUsers ?? 0) === 0;
+  const rowCount = showEmptyState ? 0 : users.length + (hasNextPage ? 1 : 0);
+  const rowVirtualizer = useVirtualizer({
+    count: rowCount,
+    getScrollElement: () => scrollParentRef.current,
+    estimateSize: (index) => (index >= users.length ? LOADER_ROW_HEIGHT : USER_ROW_HEIGHT),
+    getItemKey: (index) => users[index]?.id ?? 'loader',
+    overscan: 8,
+  });
+  const virtualRows = rowVirtualizer.getVirtualItems();
 
   useEffect(() => {
-    const loadMoreElement = loadMoreRef.current;
     if (!isUserPanelOpen || !loadMoreElement || !hasNextPage) return;
 
     const observer = new IntersectionObserver((entries) => {
@@ -51,7 +64,7 @@ export const GlobeUserPanel = ({
     observer.observe(loadMoreElement);
 
     return () => observer.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage, isUserPanelOpen, usersCurrentPage]);
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, isUserPanelOpen, loadMoreElement, usersCurrentPage]);
 
   const userCounter =
     typeof totalUsers === 'number' ? (
@@ -114,7 +127,7 @@ export const GlobeUserPanel = ({
               }}
             />
           </Flex>
-          <Box px={3} py={2.5} flexGrow={1} overflowY="auto">
+          <Box ref={scrollParentRef} px={3} flexGrow={1} overflowY="auto">
             {showEmptyState ? (
               <Flex h="150px" align="center" justify="center">
                 <EmptyState
@@ -124,45 +137,76 @@ export const GlobeUserPanel = ({
                 />
               </Flex>
             ) : (
-              <Flex flexDir="column" gap={3}>
-                {users.map((user) => (
-                  <Flex key={user.id} justify="space-between" align="center" gap={3}>
-                    <Flex align="center" gap={3}>
-                      <UserAvatar
-                        enableBlink
-                        id={user.id}
-                        identifier={user.identifier}
-                        displayName={user.displayName}
-                        avatarUrl={user.avatarUrl}
-                      />
-                      <Box lineHeight="shorter">
-                        <Text fontWeight="medium">{getUserName(user.displayName, user.identifier)}</Text>
-                        <Flex gap={1.5} color="fg.muted" align="center">
-                          <CountryFlag countryCode={user.countryCode} />
-                          <Text fontSize="sm" color="text.muted">
-                            {COUNTRIES[user.countryCode as keyof typeof COUNTRIES] ?? 'Unknown'}
+              <Box h={`${rowVirtualizer.getTotalSize()}px`} pos="relative">
+                {virtualRows.map((virtualRow) => {
+                  const user = users[virtualRow.index];
+
+                  if (!user) {
+                    return (
+                      <Flex
+                        key={virtualRow.key}
+                        ref={setLoadMoreElement}
+                        pos="absolute"
+                        top={0}
+                        left={0}
+                        w="full"
+                        h={`${LOADER_ROW_HEIGHT}px`}
+                        justify="center"
+                        align="center"
+                        transform={`translateY(${virtualRow.start}px)`}
+                      >
+                        {isFetchingNextPage && <Spinner size="xs" borderWidth="1.5px" />}
+                      </Flex>
+                    );
+                  }
+
+                  return (
+                    <Flex
+                      key={virtualRow.key}
+                      pos="absolute"
+                      top={0}
+                      left={0}
+                      w="full"
+                      h={`${USER_ROW_HEIGHT}px`}
+                      transform={`translateY(${virtualRow.start}px)`}
+                      align="center"
+                      justify="space-between"
+                      gap={3}
+                    >
+                      <Flex align="center" gap={3} minW={0}>
+                        <UserAvatar
+                          enableBlink
+                          id={user.id}
+                          identifier={user.identifier}
+                          displayName={user.displayName}
+                          avatarUrl={user.avatarUrl}
+                        />
+                        <Box lineHeight="shorter" minW={0}>
+                          <Text fontWeight="medium" truncate>
+                            {getUserName(user.displayName, user.identifier)}
                           </Text>
-                        </Flex>
-                      </Box>
+                          <Flex gap={1.5} color="fg.muted" align="center">
+                            <CountryFlag countryCode={user.countryCode} />
+                            <Text fontSize="sm" color="text.muted" truncate>
+                              {COUNTRIES[user.countryCode as keyof typeof COUNTRIES] ?? 'Unknown'}
+                            </Text>
+                          </Flex>
+                        </Box>
+                      </Flex>
+                      <Tooltip content={`Last seen at ${dateTimeFormatter.formatDateTime(user.lastSeenAt)}`}>
+                        <HStack flexShrink={0} pos="relative" zIndex="5" gap={{ base: 2, md: 1 }} color="fg.muted">
+                          <Icon>
+                            <TbClock />
+                          </Icon>
+                          <Text textStyle="sm">
+                            {dateTimeFormatter.formatDistanceNow(user.lastSeenAt, true)} <Span hideBelow="md">ago</Span>
+                          </Text>
+                        </HStack>
+                      </Tooltip>
                     </Flex>
-                    <Tooltip content={`Last seen at ${dateTimeFormatter.formatDateTime(user.lastSeenAt)}`}>
-                      <HStack pos="relative" zIndex="5" gap={{ base: 2, md: 1 }} color="fg.muted">
-                        <Icon>
-                          <TbClock />
-                        </Icon>
-                        <Text textStyle="sm">
-                          {dateTimeFormatter.formatDistanceNow(user.lastSeenAt, true)} <Span hideBelow="md">ago</Span>
-                        </Text>
-                      </HStack>
-                    </Tooltip>
-                  </Flex>
-                ))}
-                {hasNextPage && (
-                  <Flex ref={loadMoreRef} justify="center" py={2}>
-                    {isFetchingNextPage && <Spinner size="xs" borderWidth="1.5px" />}
-                  </Flex>
-                )}
-              </Flex>
+                  );
+                })}
+              </Box>
             )}
           </Box>
         </Flex>

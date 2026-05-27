@@ -47,28 +47,17 @@ export const GlobeMarker = (props: Props) => {
   const selectedUser = cardUsers.find((user) => user.id === selectedUserId);
   const showUserDetail = isOpen && Boolean(selectedUserId);
   const showMarkerAvatars = !isOpen || isBucketUsersLoading;
-
-  const [allowListOverflow, _setAllowListOverflow] = useState(false);
-  const allowListTimeoutRef = useRef<number | null>(null);
-  const setAllowListOverflow = (allow: boolean) => {
-    window.clearTimeout(allowListTimeoutRef.current ?? undefined);
-    _setAllowListOverflow(allow);
-    if (allow) {
-      allowListTimeoutRef.current = window.setTimeout(() => _setAllowListOverflow(false), 220);
-    }
-  };
+  const userListScrollOffsetRef = useRef(0);
 
   const closeCard = () => {
     setOpen(false);
     setSelectedUserId(null);
-    setAllowListOverflow(false);
+    userListScrollOffsetRef.current = 0;
   };
   const selectUser = (userId: string) => {
-    setAllowListOverflow(false);
     setSelectedUserId(userId);
   };
   const showUserList = () => {
-    setAllowListOverflow(true);
     setSelectedUserId(null);
   };
 
@@ -127,7 +116,10 @@ export const GlobeMarker = (props: Props) => {
             <GlobeMarkerUserList
               users={cardUsers}
               userCount={userCount}
-              allowOverflow={allowListOverflow}
+              initialScrollOffset={userListScrollOffsetRef.current}
+              onScrollOffsetChange={(scrollOffset) => {
+                userListScrollOffsetRef.current = scrollOffset;
+              }}
               onSelectUser={selectUser}
             />
           )}
@@ -150,7 +142,6 @@ export const GlobeMarker = (props: Props) => {
                 e.stopPropagation();
               }}
               onClick={() => {
-                setAllowListOverflow(true);
                 setOpen(true);
               }}
             >

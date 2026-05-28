@@ -19,17 +19,21 @@ import { GlobeSingleUserAvatar } from './globe-single-user-avatar';
 
 interface Props {
   projectId: string;
-  user: GlobeBucketUser;
+  user?: GlobeBucketUser;
   isSingleUser: boolean;
   onBack: () => void;
+  isBucketUsersLoading: boolean;
 }
 
 export const GlobeMarkerUserDetail = (props: Props) => {
-  const { projectId, user: _user, isSingleUser, onBack } = props;
-  const { data: userData, isLoading } = trpc.globe.singleUser.useQuery({ projectId, userId: _user.id });
+  const { projectId, user: _user, isSingleUser, onBack, isBucketUsersLoading } = props;
+  const { data: userData, isLoading } = trpc.globe.singleUser.useQuery(
+    { projectId, userId: _user?.id ?? '' },
+    { enabled: Boolean(_user) },
+  );
 
   const user = mergeAll([_user, userData?.user]);
-  const displayName = getUserName(user.displayName, user.identifier);
+  const displayName = getUserName(user?.displayName, user?.identifier);
   const { deviceData, latestEvent, latestPageView, latestSession } = userData ?? {};
   const isOnline = Boolean(latestEvent?.isOnline);
   const latestPageViewUrl = latestPageView
@@ -78,14 +82,18 @@ export const GlobeMarkerUserDetail = (props: Props) => {
             </Button>
           )}
           <Box pt={1} pr={2.5}>
-            <GlobeSingleUserAvatar user={user} />
+            {user && (
+              <GlobeSingleUserAvatar user={user} border="1.5px solid" borderColor="bg" rounded="0.6em" boxShadow="sm" />
+            )}
           </Box>
-          <GlobeMarkerCardIdentity user={user} isOnline={isOnline} displayName={displayName} variant="detail" />
+          {user && (
+            <GlobeMarkerCardIdentity user={user} isOnline={isOnline} displayName={displayName} variant="detail" />
+          )}
         </Flex>
       </Card.Header>
       <Card.Body pt={1} pb={3} overflowY="auto">
         <Flex flexDir="column" gap={3}>
-          {isLoading ? (
+          {isLoading || isBucketUsersLoading ? (
             <Flex h="72px" align="center" justify="center">
               <Spinner size="sm" borderWidth="2px" />
             </Flex>
@@ -169,61 +177,63 @@ export const GlobeMarkerUserDetail = (props: Props) => {
           )}
         </Flex>
       </Card.Body>
-      <Card.Footer p={0} flexDir="column" gap={0}>
-        <Flex justify="flex-end" w="100%" px={1.5} pb={1.5}>
-          <Button asChild size="xs" variant="surface" alignSelf="flex-start">
-            <Link to="/p/$projectId/users/$userId" params={{ projectId, userId: user.id }}>
-              <Icon as={TbUserSquareRounded} />
-              View user
-            </Link>
-          </Button>
-        </Flex>
-        {isFooterVisible && (
-          <Flex
-            w="100%"
-            gap={3}
-            align="center"
-            justify="space-between"
-            opacity={0.8}
-            borderTop="1px solid"
-            borderColor="gray.emphasized"
-            pt={3}
-            pb={2}
-            px={2}
-            bg="gray.subtle/50"
-            flexWrap="wrap"
-          >
-            <Tooltip content="Browser">
-              <Flex align="center" gap={1}>
-                <BrowserIcon browserName={deviceData?.clientName ?? ''} />
-                <Text textStyle="xs" fontWeight="medium" truncate>
-                  {deviceData?.clientName ?? 'Unknown'}
-                  {!isEntityUnknown(deviceData?.clientVersion) && (
-                    <Span opacity={0.5}> {deviceData?.clientVersion}</Span>
-                  )}
-                </Text>
-              </Flex>
-            </Tooltip>
-            <Tooltip content="Operating System">
-              <Flex align="center" gap={1}>
-                <OsIcon osName={deviceData?.osName ?? ''} />
-                <Text textStyle="xs" fontWeight="medium" truncate>
-                  {deviceData?.osName ?? 'Unknown'}
-                  {!isEntityUnknown(deviceData?.osVersion) && <Span opacity={0.5}> {deviceData?.osVersion}</Span>}
-                </Text>
-              </Flex>
-            </Tooltip>
-            <Tooltip content="Device">
-              <Flex align="center" gap={1}>
-                <DeviceIcon deviceType={deviceData?.deviceType ?? ''} />
-                <Text textStyle="xs" fontWeight="medium" truncate>
-                  {deviceData?.deviceType ?? 'unknown'}
-                </Text>
-              </Flex>
-            </Tooltip>
+      {user && (
+        <Card.Footer p={0} flexDir="column" gap={0}>
+          <Flex justify="flex-end" w="100%" px={1.5} pb={1.5}>
+            <Button asChild size="xs" variant="surface" alignSelf="flex-start">
+              <Link to="/p/$projectId/users/$userId" params={{ projectId, userId: user.id }}>
+                <Icon as={TbUserSquareRounded} />
+                View user
+              </Link>
+            </Button>
           </Flex>
-        )}
-      </Card.Footer>
+          {isFooterVisible && (
+            <Flex
+              w="100%"
+              gap={3}
+              align="center"
+              justify="space-between"
+              opacity={0.8}
+              borderTop="1px solid"
+              borderColor="gray.emphasized"
+              pt={3}
+              pb={2}
+              px={2}
+              bg="gray.subtle/50"
+              flexWrap="wrap"
+            >
+              <Tooltip content="Browser">
+                <Flex align="center" gap={1}>
+                  <BrowserIcon browserName={deviceData?.clientName ?? ''} />
+                  <Text textStyle="xs" fontWeight="medium" truncate>
+                    {deviceData?.clientName ?? 'Unknown'}
+                    {!isEntityUnknown(deviceData?.clientVersion) && (
+                      <Span opacity={0.5}> {deviceData?.clientVersion}</Span>
+                    )}
+                  </Text>
+                </Flex>
+              </Tooltip>
+              <Tooltip content="Operating System">
+                <Flex align="center" gap={1}>
+                  <OsIcon osName={deviceData?.osName ?? ''} />
+                  <Text textStyle="xs" fontWeight="medium" truncate>
+                    {deviceData?.osName ?? 'Unknown'}
+                    {!isEntityUnknown(deviceData?.osVersion) && <Span opacity={0.5}> {deviceData?.osVersion}</Span>}
+                  </Text>
+                </Flex>
+              </Tooltip>
+              <Tooltip content="Device">
+                <Flex align="center" gap={1}>
+                  <DeviceIcon deviceType={deviceData?.deviceType ?? ''} />
+                  <Text textStyle="xs" fontWeight="medium" truncate>
+                    {deviceData?.deviceType ?? 'unknown'}
+                  </Text>
+                </Flex>
+              </Tooltip>
+            </Flex>
+          )}
+        </Card.Footer>
+      )}
     </>
   );
 };

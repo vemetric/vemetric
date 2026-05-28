@@ -2,7 +2,7 @@ import { AbsoluteCenter, Box, Button, Icon, IconButton, Spinner } from '@chakra-
 import type { TimeSpan } from '@vemetric/common/charts/timespans';
 import type { Globe } from 'cobe';
 import createGlobe from 'cobe';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   TbLock,
   TbLockOpen,
@@ -60,11 +60,16 @@ export const GlobeCanvas = ({
   isLoading,
 }: Props) => {
   const globeConfig = isMobile ? MOBILE_GLOBE_CONFIG : DESKTOP_GLOBE_CONFIG;
-  const [openId, setOpenId] = useState<string | null>(null);
   const globeRootRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<Globe | null>(null);
-  const [isUserPanelOpen, setUserPanelOpen] = useState(false);
   const {
+    openBucketId,
+    selectedMarkerUserId,
+    setSelectedMarkerUserId,
+    changeOpenMarker,
+    isUserPanelOpen,
+    setUserPanelOpen,
+    openPanelUserOnGlobe,
     offsetRef,
     scaleRef,
     rotationRef,
@@ -80,6 +85,7 @@ export const GlobeCanvas = ({
     globeRootRef,
     globeRef,
     globeConfig,
+    buckets,
   });
   const { globeThemeOptionsRef } = useGlobeThemeOptions({ globeRef, offsetRef, rotationRef });
   const { setMarkerElement } = useGlobeZIndexSync({ buckets, rotationRef });
@@ -193,8 +199,10 @@ export const GlobeCanvas = ({
               timespan={timespan}
               startDate={startDate}
               endDate={endDate}
-              isOpen={openId === bucket.id}
-              setOpen={(open) => setOpenId(open ? bucket.id : null)}
+              isOpen={openBucketId === bucket.id}
+              setOpen={changeOpenMarker}
+              selectedUserId={openBucketId === bucket.id ? selectedMarkerUserId : null}
+              setSelectedUserId={setSelectedMarkerUserId}
               {...bucket}
               setMarkerElement={setMarkerElement}
             />
@@ -243,6 +251,7 @@ export const GlobeCanvas = ({
           usersCurrentPage={usersCurrentPage}
           isUserPanelOpen={isUserPanelOpen}
           setUserPanelOpen={setUserPanelOpen}
+          onSelectUser={openPanelUserOnGlobe}
         />
         {(showNoActiveUsers || showNoLocatedUsers) && (
           <AbsoluteCenter zIndex="1" pointerEvents="none" w="min(420px, calc(100% - 32px))">

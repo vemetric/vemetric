@@ -2,9 +2,11 @@ import type { Globe } from 'cobe';
 import type { RefObject } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getThemeTransitioning, subscribeThemeTransition } from '@/components/ui/color-mode';
+import { toaster } from '@/components/ui/toaster';
 import { useBaseDrag } from '@/hooks/use-base-drag';
 import type { GlobeViewState } from '@/utils/local-storage';
 import { globeViewState } from '@/utils/local-storage';
+import type { GlobePanelUser, GlobeUserBucket } from '@/utils/trpc';
 import {
   GLOBE_RESET_DURATION,
   GLOBE_ZOOM_SPEED,
@@ -13,6 +15,7 @@ import {
   ROTATION_SPEED,
   type GlobeConfig,
 } from './globe-consts';
+import type { GlobeRotation } from './globe-utils';
 import {
   clampGlobeOffset,
   clampNumber,
@@ -20,9 +23,13 @@ import {
   easeOutCubic,
   getCursorFocusOffset,
   getDragSensitivity,
+  getFocusedRotation,
   getInitialGlobeViewState,
+  getLocationRotation,
   getPreferredTheta,
   getZoomCursorPull,
+  interpolateOffset,
+  interpolateRotation,
   setMarkerScale,
 } from './globe-utils';
 
@@ -30,11 +37,15 @@ interface Props {
   globeRootRef: RefObject<HTMLDivElement | null>;
   globeRef: RefObject<Globe | null>;
   globeConfig: GlobeConfig;
+  buckets: Array<GlobeUserBucket>;
 }
 
-export const useGlobeState = ({ globeRootRef, globeRef, globeConfig }: Props) => {
+export const useGlobeState = ({ globeRootRef, globeRef, globeConfig, buckets }: Props) => {
   const [initialGlobeViewState] = useState<GlobeViewState>(() => getInitialGlobeViewState(globeConfig));
 
+  const [isUserPanelOpen, setUserPanelOpen] = useState(false);
+  const [openBucketId, setOpenBucketId] = useState<string | null>(null);
+  const [selectedMarkerUserId, setSelectedMarkerUserId] = useState<string | null>(null);
   const autoPhiRef = useRef(0);
   const [autoRotate, setAutoRotate] = useState(initialGlobeViewState.autoRotate);
   const [locked, setLocked] = useState(initialGlobeViewState.locked);
@@ -49,6 +60,11 @@ export const useGlobeState = ({ globeRootRef, globeRef, globeConfig }: Props) =>
     phi: autoPhiRef.current + dragRotationRef.current.phi,
     theta: clampTheta(dragRotationRef.current.theta, scaleRef.current, globeConfig),
   });
+
+  const changeOpenMarker = useCallback((bucketId: string, open: boolean) => {
+    setSelectedMarkerUserId(null);
+    setOpenBucketId(open ? bucketId : null);
+  }, []);
 
   const saveGlobeViewState = () => {
     globeViewState.set({
@@ -174,6 +190,55 @@ export const useGlobeState = ({ globeRootRef, globeRef, globeConfig }: Props) =>
     setLocked(nextLocked);
   };
 
+  const setRotationAndOffset = useCallback((rotation: GlobeRotation, offset: [number, number]) => {
+    dragRotationRef.current = rotation;
+    rotationRef.current = rotation;
+    offsetRef.current = offset;
+  }, []);
+
+  const focusGlobeLocation = useCallback(
+    (location: [number, number]) => {
+      cancelResetAnimation();
+
+      if (autoRotateRef.current) {
+        autoRotateRef.current = false;
+        setAutoRotate(false);
+      }
+
+      const startRotation = {
+        phi: rotationRef.current.phi,
+        theta: clampTheta(rotationRef.current.theta, scaleRef.current, globeConfig),
+      };
+      const targetRotation = getFocusedRotation(
+        startRotation,
+        getLocationRotation(location, scaleRef.current, globeConfig),
+      );
+      const startOffset = offsetRef.current;
+      const startedAt = performance.now();
+
+      autoPhiRef.current = 0;
+
+      const animateFocus = (now: number) => {
+        const progress = easeOutCubic(clampNumber((now - startedAt) / GLOBE_RESET_DURATION, 0, 1));
+        setRotationAndOffset(
+          interpolateRotation(startRotation, targetRotation, progress),
+          interpolateOffset(startOffset, [0, 0], progress),
+        );
+
+        if (progress < 1) {
+          resetFrameRef.current = requestAnimationFrame(animateFocus);
+          return;
+        }
+
+        resetFrameRef.current = null;
+        setRotationAndOffset(targetRotation, [0, 0]);
+      };
+
+      resetFrameRef.current = requestAnimationFrame(animateFocus);
+    },
+    [globeConfig, setRotationAndOffset],
+  );
+
   const pointerRef = useRef<{ x: number; y: number; phi: number; theta: number } | null>(null);
   const startDrag = useBaseDrag({
     draggingTolerance: 5,
@@ -263,7 +328,35 @@ export const useGlobeState = ({ globeRootRef, globeRef, globeConfig }: Props) =>
     updateGlobeView(nextScale, offsetRef.current);
   };
 
+  const openPanelUserOnGlobe = (user: GlobePanelUser) => {
+    if (!user.globeBucketId) {
+      toaster.create({
+        id: 'globe-no-location',
+        title: 'No location data',
+        description: 'This user cannot be shown on the globe because no location is available for this time range.',
+        type: 'info',
+      });
+      return;
+    }
+
+    const bucket = buckets.find((candidate) => candidate.id === user.globeBucketId);
+    if (bucket) {
+      focusGlobeLocation(bucket.location);
+    }
+
+    setUserPanelOpen(false);
+    setOpenBucketId(user.globeBucketId);
+    setSelectedMarkerUserId(user.id);
+  };
+
   return {
+    openBucketId,
+    selectedMarkerUserId,
+    setSelectedMarkerUserId,
+    changeOpenMarker,
+    isUserPanelOpen,
+    setUserPanelOpen,
+    openPanelUserOnGlobe,
     offsetRef,
     scaleRef,
     rotationRef,

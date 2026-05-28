@@ -119,25 +119,33 @@ export const globeRouter = router({
       } = opts;
       const page = input.cursor ?? 1;
 
-      const users = await clickhouseEvent.queryUsers({
-        projectId,
-        startDate,
-        endDate,
-        filterQueries: '',
-        pagination: {
-          offset: (page - 1) * PANEL_USERS_PER_PAGE,
-          limit: PANEL_USERS_PER_PAGE + 1,
-        },
-      });
+      const [users, locatedUsers] = await Promise.all([
+        clickhouseEvent.queryUsers({
+          projectId,
+          startDate,
+          endDate,
+          filterQueries: '',
+          pagination: {
+            offset: (page - 1) * PANEL_USERS_PER_PAGE,
+            limit: PANEL_USERS_PER_PAGE + 1,
+          },
+        }),
+        // TODO: can we improve this once we have H3 stable bucket ids?
+        clickhouseEvent.queryGlobeUsers({ projectId, startDate, endDate }),
+      ]);
       const hasNextPage = users.length > PANEL_USERS_PER_PAGE;
       const paginatedUsers = hasNextPage ? users.slice(0, -1) : users;
+      const globeBucketIdByUserId = new Map(
+        getGlobeUserBuckets(locatedUsers).flatMap((bucket) =>
+          bucket.users.map((user): [string, string] => [String(user.id), bucket.id]),
+        ),
+      );
 
       return {
         users: paginatedUsers.map((user) => ({
           ...user,
           id: String(user.id),
-          latitude: null,
-          longitude: null,
+          globeBucketId: globeBucketIdByUserId.get(String(user.id)) ?? null,
         })),
         nextCursor: hasNextPage ? page + 1 : undefined,
       };

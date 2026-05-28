@@ -25,6 +25,7 @@ interface Props {
   usersCurrentPage: number;
   isUserPanelOpen: boolean;
   setUserPanelOpen: (isOpen: boolean) => void;
+  onSelectUser: (user: GlobePanelUser) => void;
 }
 
 export const GlobeUserPanel = ({
@@ -36,6 +37,7 @@ export const GlobeUserPanel = ({
   usersCurrentPage,
   isUserPanelOpen,
   setUserPanelOpen,
+  onSelectUser,
 }: Props) => {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -161,17 +163,20 @@ export const GlobeUserPanel = ({
                   }
 
                   return (
-                    <Flex
+                    <Button
                       key={virtualRow.key}
+                      variant="ghost"
                       pos="absolute"
                       top={0}
                       left={0}
                       w="full"
                       h={`${USER_ROW_HEIGHT}px`}
                       transform={`translateY(${virtualRow.start}px)`}
-                      align="center"
-                      justify="space-between"
+                      justifyContent="space-between"
                       gap={3}
+                      px={2}
+                      py={1.5}
+                      onClick={() => onSelectUser(user)}
                     >
                       <Flex align="center" gap={3} minW={0}>
                         <UserAvatar
@@ -181,7 +186,7 @@ export const GlobeUserPanel = ({
                           displayName={user.displayName}
                           avatarUrl={user.avatarUrl}
                         />
-                        <Box lineHeight="shorter" minW={0}>
+                        <Box lineHeight="shorter" minW={0} textAlign="left">
                           <Text fontWeight="medium" truncate>
                             {getUserName(user.displayName, user.identifier)}
                           </Text>
@@ -203,7 +208,7 @@ export const GlobeUserPanel = ({
                           </Text>
                         </HStack>
                       </Tooltip>
-                    </Flex>
+                    </Button>
                   );
                 })}
               </Box>

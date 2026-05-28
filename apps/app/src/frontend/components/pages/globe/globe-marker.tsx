@@ -1,9 +1,8 @@
-import { Box, Card, CloseButton, Flex, Icon, Spinner } from '@chakra-ui/react';
+import { Box, Icon } from '@chakra-ui/react';
 import type { TimeSpan } from '@vemetric/common/charts/timespans';
-import { useRef, useState } from 'react';
-import { trpc, type GlobeMarkerUser } from '@/utils/trpc';
-import { GlobeMarkerUserDetail } from './globe-marker-user-detail';
-import { GlobeMarkerUserList } from './globe-marker-user-list';
+import { memo, useRef } from 'react';
+import { type GlobeMarkerUser } from '@/utils/trpc';
+import { GlobeMarkerCard } from './globe-marker-card';
 import { GlobeMultiUserAvatar } from './globe-multi-user-avatar';
 import { GlobeSingleUserAvatar } from './globe-single-user-avatar';
 
@@ -15,14 +14,16 @@ interface Props {
   startDate?: string;
   endDate?: string;
   isOpen: boolean;
-  setOpen: (open: boolean) => void;
+  setOpen: (id: string, open: boolean) => void;
   id: string;
   users: Array<GlobeMarkerUser>;
   userCount: number;
+  selectedUserId?: string | null;
+  setSelectedUserId: (userId: string | null) => void;
   setMarkerElement: (id: string, element: HTMLDivElement | null) => void;
 }
 
-export const GlobeMarker = (props: Props) => {
+export const GlobeMarker = memo((props: Props) => {
   const {
     projectId,
     timespan,
@@ -33,29 +34,17 @@ export const GlobeMarker = (props: Props) => {
     id,
     users: bucketPreviewUsers,
     userCount,
+    selectedUserId,
+    setSelectedUserId,
     setMarkerElement,
   } = props;
 
-  const { data: bucketUsersData, isLoading: isBucketUsersLoading } = trpc.globe.getBucketUsers.useQuery(
-    { projectId, timespan, startDate, endDate, bucketId: id },
-    { enabled: isOpen },
-  );
-  const cardUsers = bucketUsersData?.users ?? [];
-  const [_selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const selectedUserId = _selectedUserId ?? (cardUsers.length === 1 ? cardUsers[0].id : null);
-
-  const selectedUser = cardUsers.find((user) => user.id === selectedUserId);
-  const showUserDetail = isOpen && Boolean(selectedUserId);
-  const showMarkerAvatars = !isOpen || isBucketUsersLoading;
   const userListScrollOffsetRef = useRef(0);
+  const showMarkerAvatars = !isOpen;
 
   const closeCard = () => {
-    setOpen(false);
-    setSelectedUserId(null);
+    setOpen(id, false);
     userListScrollOffsetRef.current = 0;
-  };
-  const selectUser = (userId: string) => {
-    setSelectedUserId(userId);
   };
   const showUserList = () => {
     setSelectedUserId(null);
@@ -73,57 +62,20 @@ export const GlobeMarker = (props: Props) => {
       zIndex={isOpen ? '9999999!important' : undefined}
     >
       {isOpen && (
-        <Card.Root
-          pos="absolute"
-          width="400px"
-          maxH="330px"
-          left="calc(-25px)"
-          top="calc(-60px)"
-          bg="bg.card/80"
-          outline="1.5px solid"
-          outlineColor="bg"
-          backdropFilter="blur(10px)"
-          transform={isOpen ? 'translateY(0px)' : 'translateY(-20px)'}
-          opacity={isOpen ? 1 : 0}
-          transition="all .2s ease-in-out"
-          overflow="hidden"
-          pointerEvents={isOpen ? 'auto' : 'none'}
-          inert={isOpen ? undefined : true}
-          onPointerDown={(e) => {
-            e.stopPropagation();
-          }}
-          onWheel={(e) => {
-            e.stopPropagation();
-          }}
-          cursor="default"
-          _dark={{
-            outlineColor: 'bg.content',
-          }}
-        >
-          <CloseButton onClick={closeCard} pos="absolute" right="0" top="0" size="xs" zIndex={3} />
-          {isBucketUsersLoading ? (
-            <Flex h="120px" align="center" justify="center">
-              <Spinner size="sm" borderWidth="2px" />
-            </Flex>
-          ) : showUserDetail && selectedUser ? (
-            <GlobeMarkerUserDetail
-              projectId={projectId}
-              user={selectedUser}
-              isSingleUser={userCount === 1}
-              onBack={showUserList}
-            />
-          ) : (
-            <GlobeMarkerUserList
-              users={cardUsers}
-              userCount={userCount}
-              initialScrollOffset={userListScrollOffsetRef.current}
-              onScrollOffsetChange={(scrollOffset) => {
-                userListScrollOffsetRef.current = scrollOffset;
-              }}
-              onSelectUser={selectUser}
-            />
-          )}
-        </Card.Root>
+        <GlobeMarkerCard
+          projectId={projectId}
+          timespan={timespan}
+          startDate={startDate}
+          endDate={endDate}
+          id={id}
+          userCount={userCount}
+          markerUsers={bucketPreviewUsers}
+          selectedUserId={selectedUserId}
+          closeCard={closeCard}
+          selectUser={setSelectedUserId}
+          showUserList={showUserList}
+          userListScrollOffsetRef={userListScrollOffsetRef}
+        />
       )}
       <Box transform="scale(var(--globe-marker-scale))">
         <Box
@@ -142,7 +94,7 @@ export const GlobeMarker = (props: Props) => {
                 e.stopPropagation();
               }}
               onClick={() => {
-                setOpen(true);
+                setOpen(id, true);
               }}
             >
               <Icon
@@ -194,4 +146,6 @@ export const GlobeMarker = (props: Props) => {
       </Box>
     </Box>
   );
-};
+});
+
+GlobeMarker.displayName = 'GlobeMarker';

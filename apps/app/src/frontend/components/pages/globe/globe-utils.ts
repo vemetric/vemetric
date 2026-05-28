@@ -139,3 +139,42 @@ export const getInitialGlobeViewState = (globeConfig: GlobeConfig): GlobeViewSta
     locked: storedState?.locked ?? DEFAULT_GLOBE_LOCKED,
   };
 };
+
+export type GlobeRotation = {
+  phi: number;
+  theta: number;
+};
+const getShortestAngleDelta = (delta: number) => Math.atan2(Math.sin(delta), Math.cos(delta));
+export const getLocationRotation = (
+  [latitude, longitude]: [number, number],
+  scale: number,
+  globeConfig: GlobeConfig,
+): GlobeRotation => {
+  const latitudeRadians = (latitude * Math.PI) / 180;
+  const longitudeRadians = (longitude * Math.PI) / 180 - Math.PI;
+  const radius = Math.cos(latitudeRadians);
+  const point = {
+    x: -radius * Math.cos(longitudeRadians),
+    y: Math.sin(latitudeRadians),
+    z: radius * Math.sin(longitudeRadians),
+  };
+  const phi = Math.atan2(-point.x, point.z);
+  const rotatedZ = -Math.sin(phi) * point.x + Math.cos(phi) * point.z;
+
+  return {
+    phi,
+    theta: clampTheta(Math.atan2(point.y, rotatedZ), scale, globeConfig),
+  };
+};
+export const getFocusedRotation = (currentRotation: GlobeRotation, targetRotation: GlobeRotation): GlobeRotation => ({
+  phi: currentRotation.phi + getShortestAngleDelta(targetRotation.phi - currentRotation.phi),
+  theta: targetRotation.theta,
+});
+export const interpolateRotation = (from: GlobeRotation, to: GlobeRotation, progress: number): GlobeRotation => ({
+  phi: from.phi + (to.phi - from.phi) * progress,
+  theta: from.theta + (to.theta - from.theta) * progress,
+});
+export const interpolateOffset = (from: [number, number], to: [number, number], progress: number): [number, number] => [
+  from[0] + (to[0] - from[0]) * progress,
+  from[1] + (to[1] - from[1]) * progress,
+];

@@ -1,4 +1,4 @@
-import { Box, Button, Card, Flex, Heading, HStack, Icon, Text } from '@chakra-ui/react';
+import { Box, Button, Card, Flex, Heading, HStack, Icon, Spinner, Text } from '@chakra-ui/react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useRef } from 'react';
 import { TbClock } from 'react-icons/tb';
@@ -19,10 +19,11 @@ interface Props {
   initialScrollOffset: number;
   onScrollOffsetChange: (scrollOffset: number) => void;
   onSelectUser: (userId: string) => void;
+  isBucketUsersLoading: boolean;
 }
 
 export const GlobeMarkerUserList = (props: Props) => {
-  const { users, userCount, initialScrollOffset, onScrollOffsetChange, onSelectUser } = props;
+  const { users, userCount, initialScrollOffset, onScrollOffsetChange, onSelectUser, isBucketUsersLoading } = props;
   const scrollParentRef = useRef<HTMLDivElement | null>(null);
   const userWithLocation = users.find((user) => user.city && user.city.toLowerCase() !== 'unknown') ?? users[0];
   const rowVirtualizer = useVirtualizer({
@@ -61,63 +62,69 @@ export const GlobeMarkerUserList = (props: Props) => {
         </Flex>
       </Card.Header>
       <Card.Body py={0} px={1} pr={users.length > 4 ? '12px' : 1} overflow="visible" pos="relative" zIndex={2}>
-        <Box
-          ref={scrollParentRef}
-          h={`${Math.min(rowVirtualizer.getTotalSize(), MAX_LIST_HEIGHT)}px`}
-          maxH={`${MAX_LIST_HEIGHT}px`}
-          overflowY="auto"
-          pos="relative"
-          onScroll={(event) => {
-            onScrollOffsetChange(event.currentTarget.scrollTop);
-          }}
-        >
-          <Box h={`${rowVirtualizer.getTotalSize()}px`} pos="relative">
-            {virtualRows.map((virtualRow) => {
-              const user = users[virtualRow.index];
+        {isBucketUsersLoading ? (
+          <Flex h="72px" align="center" justify="center">
+            <Spinner size="sm" borderWidth="2px" />
+          </Flex>
+        ) : (
+          <Box
+            ref={scrollParentRef}
+            h={`${Math.min(rowVirtualizer.getTotalSize(), MAX_LIST_HEIGHT)}px`}
+            maxH={`${MAX_LIST_HEIGHT}px`}
+            overflowY="auto"
+            pos="relative"
+            onScroll={(event) => {
+              onScrollOffsetChange(event.currentTarget.scrollTop);
+            }}
+          >
+            <Box h={`${rowVirtualizer.getTotalSize()}px`} pos="relative">
+              {virtualRows.map((virtualRow) => {
+                const user = users[virtualRow.index];
 
-              return (
-                <Box
-                  key={virtualRow.key}
-                  pos="absolute"
-                  top={0}
-                  left={0}
-                  w="full"
-                  h={`${USER_ROW_CONTENT_HEIGHT}px`}
-                  transform={`translateY(${virtualRow.start}px)`}
-                >
-                  <Button
-                    variant="ghost"
-                    h={`${USER_ROW_CONTENT_HEIGHT}px`}
+                return (
+                  <Box
+                    key={virtualRow.key}
+                    pos="absolute"
+                    top={0}
+                    left={0}
                     w="full"
-                    justifyContent="flex-start"
-                    px={2}
-                    py={1.5}
-                    onClick={() => onSelectUser(user.id)}
+                    h={`${USER_ROW_CONTENT_HEIGHT}px`}
+                    transform={`translateY(${virtualRow.start}px)`}
                   >
-                    <Flex align="center" justify="space-between" gap={3} w="full" minW={0}>
-                      <Flex align="center" gap={0.5} minW={0}>
-                        <Box pt={1} pr={2.5}>
-                          <UserAvatar
-                            id={user.id}
-                            identifier={user.identifier}
-                            displayName={user.displayName}
-                            avatarUrl={user.avatarUrl}
-                            boxSize="28px"
-                          />
-                        </Box>
-                        <GlobeMarkerCardIdentity user={user} isOnline={user.isOnline} />
+                    <Button
+                      variant="ghost"
+                      h={`${USER_ROW_CONTENT_HEIGHT}px`}
+                      w="full"
+                      justifyContent="flex-start"
+                      px={2}
+                      py={1.5}
+                      onClick={() => onSelectUser(user.id)}
+                    >
+                      <Flex align="center" justify="space-between" gap={3} w="full" minW={0}>
+                        <Flex align="center" gap={0.5} minW={0}>
+                          <Box pt={1} pr={2.5}>
+                            <UserAvatar
+                              id={user.id}
+                              identifier={user.identifier}
+                              displayName={user.displayName}
+                              avatarUrl={user.avatarUrl}
+                              boxSize="28px"
+                            />
+                          </Box>
+                          <GlobeMarkerCardIdentity user={user} isOnline={user.isOnline} />
+                        </Flex>
+                        <HStack flexShrink={0} gap={1} color="fg.muted">
+                          <Icon as={TbClock} />
+                          <Text textStyle="xs">{dateTimeFormatter.formatDistanceNow(user.lastSeenAt, true)}</Text>
+                        </HStack>
                       </Flex>
-                      <HStack flexShrink={0} gap={1} color="fg.muted">
-                        <Icon as={TbClock} />
-                        <Text textStyle="xs">{dateTimeFormatter.formatDistanceNow(user.lastSeenAt, true)}</Text>
-                      </HStack>
-                    </Flex>
-                  </Button>
-                </Box>
-              );
-            })}
+                    </Button>
+                  </Box>
+                );
+              })}
+            </Box>
           </Box>
-        </Box>
+        )}
       </Card.Body>
     </>
   );

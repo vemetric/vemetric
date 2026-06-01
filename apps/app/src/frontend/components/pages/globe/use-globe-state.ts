@@ -353,7 +353,9 @@ export const useGlobeState = ({ globeRootRef, globeRef, globeConfig, buckets }: 
   }, [globeRootRef, zoomGlobe]);
 
   const openPanelUserOnGlobe = (user: GlobePanelUser | GlobeJoinedUser) => {
-    if (!user.globeBucketId) {
+    const h3BucketId = user.h3BucketId;
+    const bucket = h3BucketId ? buckets.find((candidate) => candidate.bucketIds.includes(h3BucketId)) : undefined;
+    if (!bucket) {
       toaster.create({
         id: 'globe-no-location',
         title: 'No location data',
@@ -363,13 +365,9 @@ export const useGlobeState = ({ globeRootRef, globeRef, globeConfig, buckets }: 
       return;
     }
 
-    const bucket = buckets.find((candidate) => candidate.id === user.globeBucketId);
-    if (bucket) {
-      focusGlobeLocation(bucket.location);
-    }
-
+    focusGlobeLocation(bucket.location);
     setUserPanelOpen(false);
-    setOpenBucketId(user.globeBucketId);
+    setOpenBucketId(bucket.id);
     setSelectedMarkerUserId(user.id);
   };
 

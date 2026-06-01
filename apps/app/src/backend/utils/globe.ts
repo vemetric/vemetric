@@ -1,20 +1,12 @@
-import type { clickhouseEvent } from 'clickhouse';
+import type { ClickhouseGlobeBucket } from 'clickhouse';
 
-const USER_BUCKET_DISTANCE_KM = 700;
+const VISUAL_BUCKET_DISTANCE_KM = 400;
 const EARTH_RADIUS_KM = 6371;
+const VISUAL_BUCKET_PREVIEW_USERS = 3;
 
-type GlobeUser = Awaited<ReturnType<typeof clickhouseEvent.queryGlobeUsers>>[number];
-type LocatedGlobeUser = GlobeUser & {
-  latitude: number;
-  longitude: number;
+type VisualGlobeBucket = ClickhouseGlobeBucket & {
+  bucketIds: string[];
 };
-
-interface GlobeUserBucket {
-  id: string;
-  location: [number, number];
-  userCount: number;
-  users: LocatedGlobeUser[];
-}
 
 const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
 
@@ -30,42 +22,58 @@ function getDistanceKm(from: [number, number], to: [number, number]) {
   return 2 * EARTH_RADIUS_KM * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function getUsersCenter(users: LocatedGlobeUser[]): [number, number] {
-  const center = users.reduce(
-    (acc, user) => {
-      acc.latitude += user.latitude;
-      acc.longitude += user.longitude;
+function getVisualBucketLocation(buckets: ClickhouseGlobeBucket[]): [number, number] {
+  const center = buckets.reduce(
+    (acc, bucket) => {
+      acc.latitude += bucket.location[0] * bucket.userCount;
+      acc.longitude += bucket.location[1] * bucket.userCount;
+      acc.userCount += bucket.userCount;
+
       return acc;
     },
-    { latitude: 0, longitude: 0 },
+    { latitude: 0, longitude: 0, userCount: 0 },
   );
+  const weightedCenter: [number, number] = [center.latitude / center.userCount, center.longitude / center.userCount];
 
-  return [center.latitude / users.length, center.longitude / users.length];
+  return buckets.reduce((closestBucket, bucket) => {
+    const closestDistance = getDistanceKm(closestBucket.location, weightedCenter);
+    const bucketDistance = getDistanceKm(bucket.location, weightedCenter);
+
+    return bucketDistance < closestDistance ? bucket : closestBucket;
+  }).location;
 }
 
-export function getGlobeUserBuckets(users: LocatedGlobeUser[]) {
-  const buckets: GlobeUserBucket[] = [];
+function getVisualBucketId(bucketIds: string[]) {
+  return `h3-${[...bucketIds].sort().join('-')}`;
+}
 
-  for (const user of users) {
-    const userLocation: [number, number] = [user.latitude, user.longitude];
-    const nearbyBucket = buckets.find(
-      (candidate) => getDistanceKm(candidate.location, userLocation) <= USER_BUCKET_DISTANCE_KM,
+export function getVisualGlobeBuckets(buckets: ClickhouseGlobeBucket[]) {
+  const visualBuckets: Array<VisualGlobeBucket & { sourceBuckets: ClickhouseGlobeBucket[] }> = [];
+
+  for (const bucket of buckets) {
+    const nearbyBucket = visualBuckets.find(
+      (candidate) => getDistanceKm(candidate.location, bucket.location) <= VISUAL_BUCKET_DISTANCE_KM,
     );
 
     if (nearbyBucket) {
-      nearbyBucket.userCount += 1;
-      nearbyBucket.users.push(user);
-      nearbyBucket.location = getUsersCenter(nearbyBucket.users);
+      nearbyBucket.bucketIds.push(bucket.id);
+      nearbyBucket.sourceBuckets.push(bucket);
+      nearbyBucket.userCount += bucket.userCount;
+      nearbyBucket.location = getVisualBucketLocation(nearbyBucket.sourceBuckets);
+      nearbyBucket.id = getVisualBucketId(nearbyBucket.bucketIds);
+      nearbyBucket.users = [...nearbyBucket.users, ...bucket.users].sort((a, b) =>
+        b.lastSeenAt.localeCompare(a.lastSeenAt),
+      );
+      nearbyBucket.users = nearbyBucket.users.slice(0, VISUAL_BUCKET_PREVIEW_USERS);
       continue;
     }
 
-    buckets.push({
-      id: String(user.id),
-      location: userLocation,
-      userCount: 1,
-      users: [user],
+    visualBuckets.push({
+      ...bucket,
+      bucketIds: [bucket.id],
+      sourceBuckets: [bucket],
     });
   }
 
-  return buckets;
+  return visualBuckets.map(({ sourceBuckets: _, ...bucket }) => bucket);
 }

@@ -7,6 +7,7 @@ import type { IUserSortConfig } from '@vemetric/common/sort';
 import { escape } from 'sqlstring';
 import type { z } from 'zod';
 import { clickhouseClient, clickhouseInsert } from '../client';
+import { GLOBE_H3_RESOLUTION, ONLINE_USERS_INTERVAL_QUERY } from '../consts';
 import type { DeviceData } from './device';
 import { EXAMPLE_DEVICE_DATA } from './device';
 import type { FilterOptions, ReferrerData, UrlData } from './session';
@@ -25,8 +26,6 @@ import { getMetricsGroupExpression, type MetricsQueryGrouping } from '../utils/q
 import { buildUserSortQueries } from '../utils/sort/user-sort';
 import { withSpan } from '../utils/with-span';
 
-// we round the current date to the nearest 30 seconds and subtract 4 minutes and 30 seconds
-const ONLINE_USERS_INTERVAL_QUERY = 'toStartOfInterval(NOW(), INTERVAL 30 SECOND) - INTERVAL 270 SECOND';
 const BOUNCE_RATE_CALCULATION_QUERY = 'round(countIf(pageViews = 1) / count() * 100, 2)';
 
 const TABLE_NAME = 'event';
@@ -365,13 +364,15 @@ export const clickhouseEvent = {
       const searchQuery = search ? `AND displayName ILIKE ${escape('%' + search + '%')}` : '';
 
       const resultSet = await clickhouseClient.query({
-        query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.city as city, u.maxCreatedAt as maxCreatedAt, u.isOnline as isOnline, usr.avatarUrl as avatarUrl, usr.customData as customData${sortSelect}
+        query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.city as city, u.maxCreatedAt as maxCreatedAt, u.isOnline as isOnline, if(u.latitude IS NULL OR u.longitude IS NULL, NULL, geoToH3(toFloat64(coalesce(u.latitude, 0)), toFloat64(coalesce(u.longitude, 0)), ${GLOBE_H3_RESOLUTION})) as h3BucketId, usr.avatarUrl as avatarUrl, usr.customData as customData${sortSelect}
             FROM (
               SELECT userId,
                 argMax(userIdentifier, eventCreatedAt) as identifier,
                 argMax(userDisplayName, eventCreatedAt) as displayName,
                 argMax(countryCode, eventCreatedAt) as countryCode,
                 argMax(city, eventCreatedAt) as city,
+                argMaxIf(eventLatitude, eventCreatedAt, eventLatitude IS NOT NULL AND eventLongitude IS NOT NULL) as latitude,
+                argMaxIf(eventLongitude, eventCreatedAt, eventLatitude IS NOT NULL AND eventLongitude IS NOT NULL) as longitude,
                 max(eventCreatedAt) as maxCreatedAt,
                 max(eventCreatedAt) >= ${ONLINE_USERS_INTERVAL_QUERY} as isOnline
               FROM (
@@ -380,6 +381,8 @@ export const clickhouseEvent = {
                   argMax(userDisplayName, createdAt) as userDisplayName,
                   argMax(countryCode, createdAt) as countryCode,
                   argMax(city, createdAt) as city,
+                  argMax(latitude, createdAt) as eventLatitude,
+                  argMax(longitude, createdAt) as eventLongitude,
                   max(createdAt) as eventCreatedAt
                 FROM ${TABLE_NAME}
                 WHERE projectId=${escape(projectId)}
@@ -423,122 +426,10 @@ export const clickhouseEvent = {
           lastEventFiredAt: isSortByEvent ? ((row.lastEventFiredAt as string | null) ?? null) : null,
           isOnline: Boolean(row.isOnline),
           avatarUrl: row.avatarUrl as string,
+          h3BucketId: row.h3BucketId !== null ? String(row.h3BucketId) : null,
           data,
         };
       });
-    },
-  ),
-  queryGlobeUsers: withSpan(
-    'queryGlobeUsers',
-    async (input: { projectId: bigint; startDate?: Date; endDate?: Date }) => {
-      const { projectId, startDate, endDate } = input;
-
-      const resultSet = await clickhouseClient.query({
-        query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.city as city, u.latitude as latitude, u.longitude as longitude, u.maxCreatedAt as maxCreatedAt, u.isOnline as isOnline, usr.avatarUrl as avatarUrl
-            FROM (
-              SELECT userId,
-                argMax(userIdentifier, eventCreatedAt) as identifier,
-                argMax(userDisplayName, eventCreatedAt) as displayName,
-                argMax(countryCode, eventCreatedAt) as countryCode,
-                argMax(city, eventCreatedAt) as city,
-                argMax(latitude, eventCreatedAt) as latitude,
-                argMax(longitude, eventCreatedAt) as longitude,
-                max(eventCreatedAt) as maxCreatedAt,
-                max(eventCreatedAt) >= ${ONLINE_USERS_INTERVAL_QUERY} as isOnline
-              FROM (
-                SELECT any(userId) as userId,
-                  argMax(userIdentifier, createdAt) as userIdentifier,
-                  argMax(userDisplayName, createdAt) as userDisplayName,
-                  argMax(countryCode, createdAt) as countryCode,
-                  argMax(city, createdAt) as city,
-                  argMax(latitude, createdAt) as latitude,
-                  argMax(longitude, createdAt) as longitude,
-                  max(createdAt) as eventCreatedAt
-                FROM ${TABLE_NAME} e
-                WHERE e.projectId=${escape(projectId)}
-                  ${startDate ? `AND e.createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
-                  ${endDate ? `AND e.createdAt < '${formatClickhouseDate(endDate)}'` : ''}
-                  AND e.latitude IS NOT NULL AND e.longitude IS NOT NULL
-                GROUP BY id
-                HAVING sum(sign) > 0
-              )
-              GROUP BY userId
-            ) u
-            LEFT JOIN (
-              SELECT id, argMax(avatarUrl, updatedAt) as avatarUrl
-              FROM user
-              WHERE projectId=${escape(projectId)}
-              GROUP BY id
-              HAVING argMax(deleted, updatedAt) = 0
-            ) usr ON u.userId = usr.id
-            ORDER BY u.maxCreatedAt DESC, u.userId DESC`,
-        format: 'JSONEachRow',
-      });
-      const result = (await resultSet.json()) as Array<any>;
-
-      return result
-        .filter((row) => row.latitude !== null && row.longitude !== null)
-        .map((row) => ({
-          id: BigInt(row.userId),
-          identifier: row.identifier as string,
-          displayName: row.displayName as string,
-          countryCode: row.countryCode as string,
-          city: row.city as string,
-          latitude: Number(row.latitude),
-          longitude: Number(row.longitude),
-          lastSeenAt: row.maxCreatedAt as string,
-          isOnline: Boolean(row.isOnline),
-          avatarUrl: row.avatarUrl as string | undefined,
-        }));
-    },
-  ),
-  queryJoinedUsersSince: withSpan(
-    'queryJoinedUsersSince',
-    async (input: { projectId: bigint; startDate?: Date; endDate?: Date; since: Date; limit: number }) => {
-      const { projectId, startDate, endDate, since, limit } = input;
-
-      const resultSet = await clickhouseClient.query({
-        query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.firstSeenAt as firstSeenAt, usr.avatarUrl as avatarUrl
-            FROM (
-              SELECT userId,
-                argMax(userIdentifier, eventCreatedAt) as identifier,
-                argMax(userDisplayName, eventCreatedAt) as displayName,
-                min(eventCreatedAt) as firstSeenAt
-              FROM (
-                SELECT any(userId) as userId,
-                  argMax(userIdentifier, createdAt) as userIdentifier,
-                  argMax(userDisplayName, createdAt) as userDisplayName,
-                  max(createdAt) as eventCreatedAt
-                FROM ${TABLE_NAME}
-                WHERE projectId=${escape(projectId)}
-                  ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
-                  ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
-                GROUP BY id
-                HAVING sum(sign) > 0
-              )
-              GROUP BY userId
-              HAVING firstSeenAt > '${formatClickhouseDate(since)}'
-            ) u
-            LEFT JOIN (
-              SELECT id, argMax(avatarUrl, updatedAt) as avatarUrl
-              FROM user
-              WHERE projectId=${escape(projectId)}
-              GROUP BY id
-              HAVING argMax(deleted, updatedAt) = 0
-            ) usr ON u.userId = usr.id
-            ORDER BY u.firstSeenAt DESC, u.userId DESC
-            LIMIT ${escape(limit)}`,
-        format: 'JSONEachRow',
-      });
-      const result = (await resultSet.json()) as Array<any>;
-
-      return result.map((row) => ({
-        id: BigInt(row.userId),
-        identifier: row.identifier as string,
-        displayName: row.displayName as string,
-        avatarUrl: row.avatarUrl as string,
-        joinedAt: row.firstSeenAt as string,
-      }));
     },
   ),
   getAllEventsCount: withSpan('getAllEventsCount', async (projectId: bigint) => {

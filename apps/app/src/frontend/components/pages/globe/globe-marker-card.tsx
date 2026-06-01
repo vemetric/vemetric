@@ -11,7 +11,7 @@ interface Props {
   timespan: TimeSpan;
   startDate?: string;
   endDate?: string;
-  id: string;
+  bucketIds: string[];
   userCount: number;
   markerUsers: Array<GlobeMarkerUser>;
   selectedUserId?: string | null;
@@ -27,7 +27,7 @@ export const GlobeMarkerCard = (props: Props) => {
     timespan,
     startDate,
     endDate,
-    id,
+    bucketIds,
     userCount,
     selectedUserId: selectedUserIdFromProps,
     closeCard,
@@ -42,7 +42,7 @@ export const GlobeMarkerCard = (props: Props) => {
     timespan,
     startDate,
     endDate,
-    bucketId: id,
+    bucketIds,
   });
   const cardUsers = bucketUsersData?.users ?? markerUsers ?? [];
   const selectedUserId = selectedUserIdFromProps ?? (cardUsers.length === 1 ? cardUsers[0].id : null);

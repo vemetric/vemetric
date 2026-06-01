@@ -53,9 +53,6 @@ export const MAX_MARKER_SCALE = 2;
 
 export const GLOBE_RESET_DURATION = 450;
 
-export const USER_BUCKET_DISTANCE_KM = 90;
-export const EARTH_RADIUS_KM = 6371;
-
 type GlobeThemeOptions = Pick<
   COBEOptions,
   'dark' | 'diffuse' | 'mapBrightness' | 'mapBaseBrightness' | 'baseColor' | 'markerColor' | 'glowColor'

@@ -1,6 +1,7 @@
 export * from './client';
 export * from './models/device';
 export * from './models/event';
+export * from './models/globe';
 export * from './models/session';
 export * from './models/user';
 export * from './utils/date';

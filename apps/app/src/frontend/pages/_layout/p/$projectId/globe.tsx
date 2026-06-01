@@ -60,7 +60,7 @@ function RouteComponent() {
         <Box w="100%" h="100%" overflow="hidden" pos="relative" />
       ) : (
         <GlobeCanvas
-          inert={markersData && markersData.isInitialized === false}
+          isInitialized={Boolean(markersData?.isInitialized)}
           projectId={projectId}
           timespan={timespan}
           startDate={startDate}

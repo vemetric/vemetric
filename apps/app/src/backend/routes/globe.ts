@@ -1,11 +1,12 @@
 import { isEntityUnknown } from '@vemetric/common/event';
 import type { ClickhouseEvent } from 'clickhouse';
-import { clickhouseEvent, clickhouseSession, clickhouseUser } from 'clickhouse';
+import { clickhouseDateToISO, clickhouseEvent, clickhouseSession, clickhouseUser } from 'clickhouse';
 import { z } from 'zod';
 import { getGlobeUserBuckets } from '../utils/globe';
 import { projectProcedure, projectTimespanProcedure, router } from '../utils/trpc';
 
 const PANEL_USERS_PER_PAGE = 50;
+const JOINED_USERS_LIMIT = 250;
 const BUCKET_PREVIEW_USERS = 3;
 
 export const globeRouter = router({
@@ -148,6 +149,54 @@ export const globeRouter = router({
           globeBucketId: globeBucketIdByUserId.get(String(user.id)) ?? null,
         })),
         nextCursor: hasNextPage ? page + 1 : undefined,
+      };
+    }),
+  getJoinedUsersSince: projectTimespanProcedure
+    .input(
+      z.object({
+        since: z.string().datetime(),
+      }),
+    )
+    .query(async (opts) => {
+      const {
+        input,
+        ctx: { projectId, startDate, endDate },
+      } = opts;
+      const sinceDate = new Date(input.since);
+
+      const [users, locatedUsers] = await Promise.all([
+        clickhouseEvent.queryJoinedUsersSince({
+          projectId,
+          startDate,
+          endDate,
+          since: sinceDate,
+          limit: JOINED_USERS_LIMIT,
+        }),
+        // TODO: can we improve this once we have H3 stable bucket ids?
+        clickhouseEvent.queryGlobeUsers({ projectId, startDate, endDate }),
+      ]);
+      const globeBucketIdByUserId = new Map(
+        getGlobeUserBuckets(locatedUsers).flatMap((bucket) =>
+          bucket.users.map((user): [string, string] => [String(user.id), bucket.id]),
+        ),
+      );
+
+      return {
+        users: users.map((user) => ({
+          id: String(user.id),
+          displayName: user.displayName,
+          identifier: user.identifier,
+          avatarUrl: user.avatarUrl,
+          globeBucketId: globeBucketIdByUserId.get(String(user.id)) ?? null,
+        })),
+        nextSince:
+          users
+            .reduce<Date | null>((latest, user) => {
+              const joinedAt = new Date(clickhouseDateToISO(user.joinedAt));
+
+              return !latest || joinedAt > latest ? joinedAt : latest;
+            }, null)
+            ?.toISOString() ?? input.since,
       };
     }),
 });

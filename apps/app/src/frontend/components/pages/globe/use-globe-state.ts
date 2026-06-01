@@ -6,7 +6,7 @@ import { toaster } from '@/components/ui/toaster';
 import { useBaseDrag } from '@/hooks/use-base-drag';
 import type { GlobeViewState } from '@/utils/local-storage';
 import { globeViewState } from '@/utils/local-storage';
-import type { GlobePanelUser, GlobeUserBucket } from '@/utils/trpc';
+import type { GlobeJoinedUser, GlobePanelUser, GlobeUserBucket } from '@/utils/trpc';
 import {
   GLOBE_RESET_DURATION,
   GLOBE_ZOOM_SPEED,
@@ -39,6 +39,8 @@ interface Props {
   globeConfig: GlobeConfig;
   buckets: Array<GlobeUserBucket>;
 }
+
+const GLOBE_WHEEL_IGNORE_SELECTOR = '[data-globe-wheel-ignore]';
 
 export const useGlobeState = ({ globeRootRef, globeRef, globeConfig, buckets }: Props) => {
   const [initialGlobeViewState] = useState<GlobeViewState>(() => getInitialGlobeViewState(globeConfig));
@@ -277,58 +279,80 @@ export const useGlobeState = ({ globeRootRef, globeRef, globeConfig, buckets }: 
     },
   });
 
-  const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
-    event.stopPropagation();
+  const zoomGlobe = useCallback(
+    (target: HTMLDivElement, clientX: number, clientY: number, deltaY: number) => {
+      if (lockedRef.current) return;
 
-    if (lockedRef.current) return;
+      cancelResetAnimation();
 
-    cancelResetAnimation();
+      const rect = target.getBoundingClientRect();
+      const currentScale = scaleRef.current;
+      const nextScale = clampNumber(
+        currentScale - deltaY * GLOBE_ZOOM_SPEED,
+        globeConfig.minScale,
+        globeConfig.maxScale,
+      );
 
-    const rect = event.currentTarget.getBoundingClientRect();
-    const currentScale = scaleRef.current;
-    const nextScale = clampNumber(
-      currentScale - event.deltaY * GLOBE_ZOOM_SPEED,
-      globeConfig.minScale,
-      globeConfig.maxScale,
-    );
+      if (nextScale <= globeConfig.offsetResetScale) {
+        offsetRef.current = [0, 0];
+      } else {
+        const cursorX = clientX - rect.left - rect.width / 2;
+        const cursorY = clientY - rect.top - rect.height / 2;
+        const scaleRatio = nextScale / currentScale;
+        const nextOffset: [number, number] = [
+          cursorX - (cursorX - offsetRef.current[0]) * scaleRatio,
+          cursorY - (cursorY - offsetRef.current[1]) * scaleRatio,
+        ];
 
-    if (nextScale <= globeConfig.offsetResetScale) {
-      offsetRef.current = [0, 0];
-    } else {
-      const cursorX = event.clientX - rect.left - rect.width / 2;
-      const cursorY = event.clientY - rect.top - rect.height / 2;
-      const scaleRatio = nextScale / currentScale;
-      const nextOffset: [number, number] = [
-        cursorX - (cursorX - offsetRef.current[0]) * scaleRatio,
-        cursorY - (cursorY - offsetRef.current[1]) * scaleRatio,
-      ];
+        if (nextScale > currentScale) {
+          const cursorFocusOffset = getCursorFocusOffset(rect, cursorX, cursorY, nextScale, globeConfig);
+          const cursorPull = getZoomCursorPull(currentScale, nextScale, globeConfig);
+          nextOffset[0] += (cursorFocusOffset[0] - nextOffset[0]) * cursorPull;
+          nextOffset[1] += (cursorFocusOffset[1] - nextOffset[1]) * cursorPull;
+        }
 
-      if (nextScale > currentScale) {
-        const cursorFocusOffset = getCursorFocusOffset(rect, cursorX, cursorY, nextScale, globeConfig);
-        const cursorPull = getZoomCursorPull(currentScale, nextScale, globeConfig);
-        nextOffset[0] += (cursorFocusOffset[0] - nextOffset[0]) * cursorPull;
-        nextOffset[1] += (cursorFocusOffset[1] - nextOffset[1]) * cursorPull;
+        offsetRef.current = clampGlobeOffset(nextOffset, rect, nextScale, globeConfig);
       }
 
-      offsetRef.current = clampGlobeOffset(nextOffset, rect, nextScale, globeConfig);
-    }
+      if (nextScale !== currentScale) {
+        const preferredTheta = getPreferredTheta(nextScale, globeConfig);
+        const thetaPull = nextScale > currentScale ? ZOOM_IN_THETA_PULL : ZOOM_OUT_THETA_PULL;
+        dragRotationRef.current = {
+          ...dragRotationRef.current,
+          theta: clampTheta(
+            dragRotationRef.current.theta + (preferredTheta - dragRotationRef.current.theta) * thetaPull,
+            nextScale,
+            globeConfig,
+          ),
+        };
+      }
+      updateGlobeView(nextScale, offsetRef.current);
+    },
+    [globeConfig, updateGlobeView],
+  );
 
-    if (nextScale !== currentScale) {
-      const preferredTheta = getPreferredTheta(nextScale, globeConfig);
-      const thetaPull = nextScale > currentScale ? ZOOM_IN_THETA_PULL : ZOOM_OUT_THETA_PULL;
-      dragRotationRef.current = {
-        ...dragRotationRef.current,
-        theta: clampTheta(
-          dragRotationRef.current.theta + (preferredTheta - dragRotationRef.current.theta) * thetaPull,
-          nextScale,
-          globeConfig,
-        ),
-      };
-    }
-    updateGlobeView(nextScale, offsetRef.current);
-  };
+  useEffect(() => {
+    const globeRoot = globeRootRef.current;
+    if (!globeRoot) return;
 
-  const openPanelUserOnGlobe = (user: GlobePanelUser) => {
+    const handleNativeWheel = (event: WheelEvent) => {
+      if (event.target instanceof Element && event.target.closest(GLOBE_WHEEL_IGNORE_SELECTOR)) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      zoomGlobe(globeRoot, event.clientX, event.clientY, event.deltaY);
+    };
+
+    globeRoot.addEventListener('wheel', handleNativeWheel, { passive: false });
+
+    return () => {
+      globeRoot.removeEventListener('wheel', handleNativeWheel);
+    };
+  }, [globeRootRef, zoomGlobe]);
+
+  const openPanelUserOnGlobe = (user: GlobePanelUser | GlobeJoinedUser) => {
     if (!user.globeBucketId) {
       toaster.create({
         id: 'globe-no-location',
@@ -367,6 +391,5 @@ export const useGlobeState = ({ globeRootRef, globeRef, globeConfig, buckets }: 
     locked,
     toggleLocked,
     startDrag,
-    handleWheel,
   };
 };

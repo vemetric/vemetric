@@ -46,3 +46,4 @@ export type GlobeUserBucket = RouterOutput['globe']['getMarkers']['buckets'][num
 export type GlobeMarkerUser = RouterOutput['globe']['getMarkers']['buckets'][number]['users'][number];
 export type GlobeBucketUser = RouterOutput['globe']['getBucketUsers']['users'][number];
 export type GlobePanelUser = RouterOutput['globe']['listUsers']['users'][number];
+export type GlobeJoinedUser = RouterOutput['globe']['getJoinedUsersSince']['users'][number];

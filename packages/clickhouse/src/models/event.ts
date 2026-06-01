@@ -492,6 +492,55 @@ export const clickhouseEvent = {
         }));
     },
   ),
+  queryJoinedUsersSince: withSpan(
+    'queryJoinedUsersSince',
+    async (input: { projectId: bigint; startDate?: Date; endDate?: Date; since: Date; limit: number }) => {
+      const { projectId, startDate, endDate, since, limit } = input;
+
+      const resultSet = await clickhouseClient.query({
+        query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.firstSeenAt as firstSeenAt, usr.avatarUrl as avatarUrl
+            FROM (
+              SELECT userId,
+                argMax(userIdentifier, eventCreatedAt) as identifier,
+                argMax(userDisplayName, eventCreatedAt) as displayName,
+                min(eventCreatedAt) as firstSeenAt
+              FROM (
+                SELECT any(userId) as userId,
+                  argMax(userIdentifier, createdAt) as userIdentifier,
+                  argMax(userDisplayName, createdAt) as userDisplayName,
+                  max(createdAt) as eventCreatedAt
+                FROM ${TABLE_NAME}
+                WHERE projectId=${escape(projectId)}
+                  ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
+                  ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
+                GROUP BY id
+                HAVING sum(sign) > 0
+              )
+              GROUP BY userId
+              HAVING firstSeenAt > '${formatClickhouseDate(since)}'
+            ) u
+            LEFT JOIN (
+              SELECT id, argMax(avatarUrl, updatedAt) as avatarUrl
+              FROM user
+              WHERE projectId=${escape(projectId)}
+              GROUP BY id
+              HAVING argMax(deleted, updatedAt) = 0
+            ) usr ON u.userId = usr.id
+            ORDER BY u.firstSeenAt DESC, u.userId DESC
+            LIMIT ${escape(limit)}`,
+        format: 'JSONEachRow',
+      });
+      const result = (await resultSet.json()) as Array<any>;
+
+      return result.map((row) => ({
+        id: BigInt(row.userId),
+        identifier: row.identifier as string,
+        displayName: row.displayName as string,
+        avatarUrl: row.avatarUrl as string,
+        joinedAt: row.firstSeenAt as string,
+      }));
+    },
+  ),
   getAllEventsCount: withSpan('getAllEventsCount', async (projectId: bigint) => {
     const resultSet = await clickhouseClient.query({
       query: `SELECT count() FROM ${TABLE_NAME} WHERE projectId=${escape(projectId)} GROUP BY id HAVING sum(sign) > 0`,

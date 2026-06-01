@@ -25,7 +25,7 @@ import { useGlobeThemeOptions } from './use-globe-theme-options';
 import { useGlobeZIndexSync } from './use-globe-zindex-sync';
 
 interface Props {
-  inert?: boolean;
+  isInitialized: boolean;
   projectId: string;
   timespan: TimeSpan;
   startDate?: string;
@@ -42,23 +42,25 @@ interface Props {
   usersCurrentPage: number;
 }
 
-export const GlobeCanvas = ({
-  inert,
-  projectId,
-  timespan,
-  startDate,
-  endDate,
-  isMobile,
-  buckets,
-  panelUsers,
-  totalUsers,
-  locatedUsers,
-  fetchNextPanelUsers,
-  hasNextPanelUsersPage,
-  isFetchingNextPanelUsersPage,
-  usersCurrentPage,
-  isLoading,
-}: Props) => {
+export const GlobeCanvas = (props: Props) => {
+  const {
+    isInitialized,
+    projectId,
+    timespan,
+    startDate,
+    endDate,
+    isMobile,
+    buckets,
+    panelUsers,
+    totalUsers,
+    locatedUsers,
+    fetchNextPanelUsers,
+    hasNextPanelUsersPage,
+    isFetchingNextPanelUsersPage,
+    usersCurrentPage,
+    isLoading,
+  } = props;
+
   const globeConfig = isMobile ? MOBILE_GLOBE_CONFIG : DESKTOP_GLOBE_CONFIG;
   const globeRootRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<Globe | null>(null);
@@ -80,7 +82,6 @@ export const GlobeCanvas = ({
     locked,
     toggleLocked,
     startDrag,
-    handleWheel,
   } = useGlobeState({
     globeRootRef,
     globeRef,
@@ -174,7 +175,7 @@ export const GlobeCanvas = ({
 
   return (
     <>
-      <Box pos="relative" w="100%" h="100%" inert={inert}>
+      <Box pos="relative" w="100%" h="100%" inert={isInitialized ? false : true}>
         <Box
           ref={globeRootRef}
           w="100%"
@@ -185,7 +186,6 @@ export const GlobeCanvas = ({
           zIndex="0"
           cursor={locked ? 'default' : isDragging ? 'grabbing' : 'grab'}
           onPointerDown={startDrag}
-          onWheel={handleWheel}
           css={{
             '& canvas': {
               animation: isLoading ? 'pulse' : 'none',
@@ -243,6 +243,11 @@ export const GlobeCanvas = ({
           </Box>
         </Box>
         <GlobeUserPanel
+          isInitialized={isInitialized}
+          projectId={projectId}
+          timespan={timespan}
+          startDate={startDate}
+          endDate={endDate}
           users={panelUsers}
           totalUsers={totalUsers}
           fetchNextPage={fetchNextPanelUsers}

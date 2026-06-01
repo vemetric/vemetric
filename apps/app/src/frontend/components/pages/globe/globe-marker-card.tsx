@@ -51,6 +51,7 @@ export const GlobeMarkerCard = (props: Props) => {
 
   return (
     <Card.Root
+      data-globe-wheel-ignore
       pos="absolute"
       width="400px"
       maxH="330px"

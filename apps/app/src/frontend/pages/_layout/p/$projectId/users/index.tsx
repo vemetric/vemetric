@@ -13,6 +13,7 @@ import { AddFilterButton } from '@/components/filter/add-filter/add-filter-butto
 import { FilterContainer } from '@/components/filter/filter-container';
 import { FilterContextProvider } from '@/components/filter/filter-context';
 import { FilterSkeletons } from '@/components/filter/filter-skeletons';
+import { SavedFiltersButton } from '@/components/filter/saved-filters/saved-filters-button';
 import { UserAvatar } from '@/components/pages/user/user-avatar';
 import { UserSortPopover } from '@/components/pages/user/user-sort-popover';
 import { ProjectInitCard } from '@/components/project-init-card';
@@ -137,6 +138,7 @@ function Page() {
             <Flex flexGrow={1} flexWrap="wrap" gap={2.5} justify="flex-end" align="center">
               <SearchButtonInput value={search} onChange={setSearch} />
               <AddFilterButton from="/p/$projectId/users" filterConfig={filterConfig} />
+              <SavedFiltersButton from="/p/$projectId/users" filterConfig={filterConfig} />
               <TimespanSelect from="/_layout/p/$projectId/users/" />
             </Flex>
           </Flex>

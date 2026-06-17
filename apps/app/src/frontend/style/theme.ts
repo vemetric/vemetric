@@ -8,6 +8,7 @@ import {
   menuAnatomy,
   pinInputAnatomy,
   selectAnatomy,
+  switchAnatomy,
   tableAnatomy,
   tabsAnatomy,
   toastAnatomy,
@@ -389,6 +390,18 @@ export const vemetricTheme = createSystem(defaultConfig, {
                 _expanded: {
                   borderColor: 'colorPalette.focusRing',
                 },
+              },
+            },
+          },
+        },
+      }),
+      switch: defineSlotRecipe({
+        slots: switchAnatomy.keys(),
+        variants: {
+          variant: {
+            solid: {
+              control: {
+                bg: { _light: '{colors.gray.200}', _dark: '{colors.gray.700}' },
               },
             },
           },

@@ -5,9 +5,9 @@ import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { TbChartFunnel, TbPlus } from 'react-icons/tb';
 import { z } from 'zod';
-import { AddFilterButton } from '@/components/filter/add-filter/add-filter-button';
 import { FilterContainer } from '@/components/filter/filter-container';
 import { FilterContextProvider } from '@/components/filter/filter-context';
+import { FilterControls } from '@/components/filter/filter-controls';
 import { FilterSkeletons } from '@/components/filter/filter-skeletons';
 import { PageDotBackground } from '@/components/page-dot-background';
 import { ActiveUsersButton } from '@/components/pages/funnels/active-users-button';
@@ -109,7 +109,7 @@ function RouteComponent() {
                 setActiveUsersVisible={setActiveUsersVisible}
               />
               <Flex align="center" flexWrap="wrap" justify="flex-end" gap={[1.5, 3]} flexGrow={1}>
-                <AddFilterButton from="/p/$projectId/funnels" filterConfig={filterConfig} />
+                <FilterControls from="/p/$projectId/funnels" filterConfig={filterConfig} />
                 <Box w="1px" h="26px" bg="gray.muted" />
                 <FunnelDialog>
                   <Button variant="surface" size={{ base: 'xs', md: 'sm' }}>

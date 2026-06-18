@@ -72,7 +72,7 @@ export const savedFiltersRouter = router({
     .mutation(async (opts) => {
       const {
         input: { id, name, icon, filterConfig },
-        ctx: { project },
+        ctx: { user, project },
       } = opts;
 
       const existingFilter = await dbSavedFilter.findById(id);
@@ -85,6 +85,20 @@ export const savedFiltersRouter = router({
         ...(icon !== undefined && { icon }),
         ...(filterConfig !== undefined && { filterConfig }),
       });
+
+      try {
+        await vemetric.trackEvent('SavedFilterUpdated', {
+          userIdentifier: user.id,
+          userDisplayName: user.name,
+          eventData: {
+            projectId: project.id,
+            projectDomain: project.domain,
+            savedFilterId: id,
+          },
+        });
+      } catch (err) {
+        logger.error({ err }, 'Track event error');
+      }
 
       return { id: savedFilter.id };
     }),

@@ -18,11 +18,11 @@ import { AnimatePresence, motion } from 'motion/react';
 import React, { useState } from 'react';
 import { TbChartBarPopular, TbEdit, TbTrash } from 'react-icons/tb';
 import { z } from 'zod';
+import { ConfirmPopover } from '@/components/confirm-popover';
 import { CustomIconStyle } from '@/components/custom-icon-style';
-import { DeletePopover } from '@/components/delete-popover';
-import { AddFilterButton } from '@/components/filter/add-filter/add-filter-button';
 import { FilterContainer } from '@/components/filter/filter-container';
 import { FilterContextProvider } from '@/components/filter/filter-context';
+import { FilterControls } from '@/components/filter/filter-controls';
 import { FilterSkeletons } from '@/components/filter/filter-skeletons';
 import { PageDotBackground } from '@/components/page-dot-background';
 import { ActiveUsersButton } from '@/components/pages/funnels/active-users-button';
@@ -243,7 +243,7 @@ function RouteComponent() {
                 )}
               </Flex>
               <Flex align="center" flexWrap="wrap" justify="flex-end" gap={[1.5, 3]} flexGrow={[1, 0]}>
-                <AddFilterButton from="/p/$projectId/funnels/$funnelId" filterConfig={filterConfig} />
+                <FilterControls from="/p/$projectId/funnels/$funnelId" filterConfig={filterConfig} />
                 <Box w="1px" h="26px" bg="gray.muted" />
                 <Flex align="center" gap={2.5}>
                   <FunnelDialog funnelId={funnelId}>
@@ -251,15 +251,15 @@ function RouteComponent() {
                       <Icon as={TbEdit} />
                     </IconButton>
                   </FunnelDialog>
-                  <DeletePopover
+                  <ConfirmPopover
                     text="Do you really want to delete this funnel?"
-                    onDelete={() => deleteFunnel({ projectId, id: funnelId })}
+                    onConfirm={() => deleteFunnel({ projectId, id: funnelId })}
                     isLoading={isFunnelDeleting}
                   >
                     <IconButton variant="surface" size="xs" color="red.fg">
                       <Icon as={TbTrash} />
                     </IconButton>
-                  </DeletePopover>
+                  </ConfirmPopover>
                 </Flex>
                 <Box w="1px" h="26px" bg="gray.muted" />
                 <TimespanSelect from="/_layout/p/$projectId/funnels/$funnelId" />

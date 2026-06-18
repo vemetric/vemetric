@@ -5,11 +5,10 @@ import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { sourcesSchema } from '@vemetric/common/sources';
 import { z } from 'zod';
-import { AddFilterButton } from '@/components/filter/add-filter/add-filter-button';
 import { FilterContainer } from '@/components/filter/filter-container';
 import { FilterContextProvider } from '@/components/filter/filter-context';
+import { FilterControls } from '@/components/filter/filter-controls';
 import { FilterSkeletons } from '@/components/filter/filter-skeletons';
-import { SavedFiltersButton } from '@/components/filter/saved-filters/saved-filters-button';
 import { BrowsersCard } from '@/components/pages/dashboard/browsers-card';
 import { CountriesCard } from '@/components/pages/dashboard/countries-card';
 import { DashboardChart } from '@/components/pages/dashboard/dashboard-chart';
@@ -133,8 +132,7 @@ function Page() {
               <Flex pt={3} bg="bg.content" flexWrap="wrap" w="100%" columnGap={8} rowGap={4} align="center">
                 <FilterContainer filterConfig={filterConfig} from="/p/$projectId" />
                 <Flex flexGrow={1} gap={2.5} justify="flex-end">
-                  <AddFilterButton from="/p/$projectId" filterConfig={filterConfig} />
-                  <SavedFiltersButton from="/p/$projectId" filterConfig={filterConfig} />
+                  <FilterControls from="/p/$projectId" filterConfig={filterConfig} />
                   <TimespanSelect from="/_layout/p/$projectId/" />
                 </Flex>
               </Flex>

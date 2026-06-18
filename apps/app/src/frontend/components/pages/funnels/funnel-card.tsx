@@ -4,8 +4,8 @@ import type { IFilterConfig } from '@vemetric/common/filters';
 import { formatNumber, formatPercentage } from '@vemetric/common/math';
 import { motion } from 'motion/react';
 import { TbChartFunnel, TbEdit, TbEye, TbTrash, TbUserSquareRounded, TbUsers } from 'react-icons/tb';
+import { ConfirmPopover } from '@/components/confirm-popover';
 import { CustomIconStyle } from '@/components/custom-icon-style';
-import { DeletePopover } from '@/components/delete-popover';
 import { Tooltip } from '@/components/ui/tooltip';
 import { trpc, type FunnelData } from '@/utils/trpc';
 import { FunnelDialog } from './funnel-dialog';
@@ -232,16 +232,16 @@ export const FunnelCard = ({ projectId, funnel, activeUsersVisible, filterConfig
               <Icon as={TbEdit} />
             </IconButton>
           </FunnelDialog>
-          <DeletePopover
+          <ConfirmPopover
             text="Do you really want to delete this funnel?"
-            onDelete={() => deleteFunnel({ projectId, id: funnel.id })}
+            onConfirm={() => deleteFunnel({ projectId, id: funnel.id })}
             isLoading={isLoading}
             placement="top"
           >
             <IconButton variant="surface" size="sm" boxShadow="xs" color="red.fg">
               <Icon as={TbTrash} />
             </IconButton>
-          </DeletePopover>
+          </ConfirmPopover>
         </Flex>
       </Flex>
     </Card.Root>

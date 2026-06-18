@@ -1,8 +1,10 @@
 import { Button, Flex, Icon, IconButton, Popover, Portal, Spinner, Text } from '@chakra-ui/react';
 import type { IFilterConfig } from '@vemetric/common/filters';
+import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
-import { TbBookmark, TbDeviceFloppy, TbEdit, TbTrash } from 'react-icons/tb';
-import { ConfirmDialog } from '@/components/confirm-dialog';
+import { TbBookmark, TbCheck, TbDeviceFloppy, TbEdit, TbTrash } from 'react-icons/tb';
+import { isDeepEqual } from 'remeda';
+import { ConfirmPopover } from '@/components/confirm-popover';
 import { CustomIconStyle } from '@/components/custom-icon-style';
 import { PopoverMenuButton } from '@/components/popover-menu/popover-menu-button';
 import { PopoverMenuHeader } from '@/components/popover-menu/popover-menu-header';
@@ -12,7 +14,13 @@ import { useProjectContext } from '@/contexts/project-context';
 import type { RoutesWithFiltering } from '@/hooks/use-filters';
 import { useFilters } from '@/hooks/use-filters';
 import { trpc, type SavedFilterData } from '@/utils/trpc';
-import { SaveFilterDialog } from './save-filter-dialog';
+import { SaveFilterForm } from './save-filter-form';
+
+const getMotionViewProps = (list?: boolean) => ({
+  initial: { x: list ? '-100%' : '100%' },
+  animate: { x: 0, transition: { duration: 0.2, bounce: 0 } },
+  exit: { x: list ? '-100%' : '100%', transition: { duration: 0.2, bounce: 0 } },
+});
 
 interface Props {
   filterConfig: IFilterConfig;
@@ -21,18 +29,27 @@ interface Props {
 
 export const SavedFiltersButton = ({ filterConfig, from }: Props) => {
   const { projectId } = useProjectContext();
-  const { setFilters } = useFilters({ from });
+  const { setFilters, removeAllFilters } = useFilters({ from });
   const utils = trpc.useUtils();
 
   const [popoverOpen, setPopoverOpen] = useState(false);
-  const [dialog, setDialog] = useState<{ savedFilter?: SavedFilterData } | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<SavedFilterData | null>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
+  // null = the list view, otherwise the save/rename form (empty object = create, savedFilter set = rename).
+  const [editing, setEditing] = useState<{ savedFilter?: SavedFilterData } | null>(null);
+
+  const setView = (next: { savedFilter?: SavedFilterData } | null) => {
+    setIsAnimating(true);
+    setTimeout(() => {
+      setEditing(next);
+      setTimeout(() => setIsAnimating(false), 300);
+    }, 1);
+  };
 
   const { data, isLoading } = trpc.savedFilters.list.useQuery({ projectId: projectId! }, { enabled: !!projectId });
   const savedFilters = data?.savedFilters ?? [];
   const hasActiveFilters = (filterConfig?.filters.length ?? 0) > 0;
 
-  const { mutate: updateFilter } = trpc.savedFilters.update.useMutation({
+  const { mutate: updateFilter, isLoading: isUpdating } = trpc.savedFilters.update.useMutation({
     onSuccess: () => {
       utils.savedFilters.list.invalidate();
       toaster.create({
@@ -46,10 +63,9 @@ export const SavedFiltersButton = ({ filterConfig, from }: Props) => {
     },
   });
 
-  const { mutate: deleteFilter } = trpc.savedFilters.delete.useMutation({
+  const { mutate: deleteFilter, isLoading: isDeleting } = trpc.savedFilters.delete.useMutation({
     onSuccess: () => {
       utils.savedFilters.list.invalidate();
-      setDeleteTarget(null);
       toaster.create({ title: 'Filter deleted', type: 'success' });
     },
     onError: (error) => {
@@ -61,147 +77,161 @@ export const SavedFiltersButton = ({ filterConfig, from }: Props) => {
     return null;
   }
 
-  const loadFilter = (savedFilter: SavedFilterData) => {
-    setFilters(savedFilter.filterConfig);
+  const toggleFilter = (savedFilter: SavedFilterData, isActive: boolean) => {
+    if (isActive) {
+      removeAllFilters();
+    } else {
+      setFilters(savedFilter.filterConfig);
+    }
     setPopoverOpen(false);
   };
 
   return (
-    <>
-      <Popover.Root
-        open={popoverOpen}
-        onOpenChange={({ open }) => setPopoverOpen(open)}
-        positioning={{ placement: 'bottom-end', gutter: 5 }}
-      >
-        <Popover.Trigger asChild>
-          <Button variant="surface" px={2.5} size={{ base: 'xs', md: 'sm' }}>
-            <Icon as={TbBookmark} />
-            Saved
-          </Button>
-        </Popover.Trigger>
-        <Portal>
-          <Popover.Positioner>
-            <Popover.Content w="290px">
-              <PopoverMenuHeader title="Saved filters">
-                <Button
-                  variant="surface"
-                  size="2xs"
-                  rounded="sm"
-                  disabled={!hasActiveFilters}
-                  onClick={() => {
-                    setPopoverOpen(false);
-                    setDialog({});
-                  }}
-                >
-                  Save current
-                </Button>
-              </PopoverMenuHeader>
-              <Flex
-                flexDir="column"
-                bg="purple.muted"
-                roundedBottom="md"
-                overflow="hidden"
-                maxH="280px"
-                overflowY="auto"
-                css={{ '& > *:not(:last-child)': { borderBottom: '1px solid var(--chakra-colors-border-muted)' } }}
-              >
-                {isLoading ? (
-                  <Flex bg="bg" justify="center" py={4}>
-                    <Spinner size="sm" colorPalette="purple" />
-                  </Flex>
-                ) : savedFilters.length === 0 ? (
-                  <Text bg="bg" px={3} py={3} fontSize="sm" color="fg.muted">
-                    No saved filters yet. Build a filter and save it for quick reuse.
-                  </Text>
-                ) : (
-                  savedFilters.map((savedFilter) => (
-                    <Flex key={savedFilter.id}>
-                      <PopoverMenuButton flex={1} minW={0} onClick={() => loadFilter(savedFilter)}>
-                        <Flex align="center" gap={2} minW={0} w="full">
-                          <Flex flexShrink={0} fontSize="sm" align="center">
-                            {savedFilter.icon ? (
-                              <CustomIconStyle transform="scale(0.8)">{savedFilter.icon}</CustomIconStyle>
-                            ) : (
-                              <Icon as={TbBookmark} color="fg.muted" />
-                            )}
-                          </Flex>
-                          <Text fontSize="sm" truncate>
-                            {savedFilter.name}
-                          </Text>
-                        </Flex>
-                      </PopoverMenuButton>
-                      <Flex bg="bg" flexShrink={0} align="center" gap={0.5} pl={1} pr={1.5} color="fg.muted">
-                        <Tooltip content="Overwrite with current filters">
-                          <IconButton
-                            aria-label="Overwrite with current filters"
-                            variant="ghost"
-                            size="2xs"
-                            disabled={!hasActiveFilters}
-                            onClick={() => updateFilter({ projectId, id: savedFilter.id, filterConfig })}
-                          >
-                            <Icon as={TbDeviceFloppy} />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip content="Rename">
-                          <IconButton
-                            aria-label="Rename"
-                            variant="ghost"
-                            size="2xs"
-                            onClick={() => {
-                              setPopoverOpen(false);
-                              setDialog({ savedFilter });
-                            }}
-                          >
-                            <Icon as={TbEdit} />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip content="Delete">
-                          <IconButton
-                            aria-label="Delete"
-                            variant="ghost"
-                            size="2xs"
-                            color="red.fg"
-                            onClick={() => {
-                              setPopoverOpen(false);
-                              setDeleteTarget(savedFilter);
-                            }}
-                          >
-                            <Icon as={TbTrash} />
-                          </IconButton>
-                        </Tooltip>
+    <Popover.Root
+      open={popoverOpen}
+      onOpenChange={({ open }) => setPopoverOpen(open)}
+      positioning={{ placement: 'bottom-end', gutter: 5 }}
+      onExitComplete={() => setEditing(null)}
+    >
+      <Popover.Trigger asChild>
+        <Button
+          variant="surface"
+          size={{ base: 'xs', md: 'sm' }}
+          px={2}
+          roundedLeft="none"
+          border="1.5px dashed"
+          borderLeftWidth="0px"
+          borderColor={hasActiveFilters ? 'purple.500/80' : 'border.emphasized'}
+          boxShadow="none"
+          _focusVisible={{ zIndex: 1 }}
+        >
+          <Icon as={TbBookmark} />
+        </Button>
+      </Popover.Trigger>
+      <Portal>
+        <Popover.Positioner>
+          <Popover.Content overflow={isAnimating ? 'hidden' : 'visible'}>
+            <AnimatePresence initial={false} mode="popLayout">
+              {editing === null && (
+                <motion.div key="list" {...getMotionViewProps(true)}>
+                  <PopoverMenuHeader title="Saved filters">
+                    <Button
+                      variant="surface"
+                      size="2xs"
+                      rounded="sm"
+                      disabled={!hasActiveFilters}
+                      onClick={() => setView({})}
+                    >
+                      Save current
+                    </Button>
+                  </PopoverMenuHeader>
+                  <Flex
+                    flexDir="column"
+                    bg="purple.muted"
+                    roundedBottom="md"
+                    overflow="hidden"
+                    maxH="280px"
+                    overflowY="auto"
+                    css={{
+                      '& > *:not(:last-child)': { borderBottom: '1px solid var(--chakra-colors-border-muted)' },
+                    }}
+                  >
+                    {isLoading ? (
+                      <Flex bg="bg" justify="center" py={4}>
+                        <Spinner size="sm" colorPalette="purple" />
                       </Flex>
-                    </Flex>
-                  ))
-                )}
-              </Flex>
-            </Popover.Content>
-          </Popover.Positioner>
-        </Portal>
-      </Popover.Root>
+                    ) : savedFilters.length === 0 ? (
+                      <Text bg="bg" px={3} py={3} fontSize="sm" color="fg.muted">
+                        No saved filters yet. Build a filter and save it for quick reuse.
+                      </Text>
+                    ) : (
+                      savedFilters.map((savedFilter) => {
+                        const isActive = isDeepEqual(filterConfig, savedFilter.filterConfig);
 
-      <SaveFilterDialog
-        projectId={projectId}
-        filterConfig={filterConfig}
-        savedFilter={dialog?.savedFilter}
-        open={dialog !== null}
-        onOpenChange={(open) => {
-          if (!open) setDialog(null);
-        }}
-      />
-
-      <ConfirmDialog
-        isOpen={deleteTarget !== null}
-        title="Delete saved filter"
-        message={`Do you really want to delete "${deleteTarget?.name ?? ''}"? This cannot be undone.`}
-        confirmText="Delete"
-        cancelText="Cancel"
-        onConfirm={() => {
-          if (deleteTarget) {
-            deleteFilter({ projectId, id: deleteTarget.id });
-          }
-        }}
-        onCancel={() => setDeleteTarget(null)}
-      />
-    </>
+                        return (
+                          <Flex key={savedFilter.id}>
+                            <PopoverMenuButton flex={1} minW={0} onClick={() => toggleFilter(savedFilter, isActive)}>
+                              <Flex align="center" gap={2} minW={0} w="full">
+                                <Flex flexShrink={0} fontSize="sm" align="center">
+                                  {savedFilter.icon ? (
+                                    <CustomIconStyle transform="scale(0.8)">{savedFilter.icon}</CustomIconStyle>
+                                  ) : (
+                                    <Icon as={TbBookmark} color={isActive ? 'purple.fg' : 'fg.muted'} />
+                                  )}
+                                </Flex>
+                                <Text
+                                  fontSize="sm"
+                                  truncate
+                                  flex={1}
+                                  color={isActive ? 'purple.fg' : undefined}
+                                  fontWeight={isActive ? 'medium' : undefined}
+                                >
+                                  {savedFilter.name}
+                                </Text>
+                                {isActive && <Icon as={TbCheck} flexShrink={0} color="purple.fg" />}
+                              </Flex>
+                            </PopoverMenuButton>
+                            <Flex bg="bg" flexShrink={0} align="center" gap={0.5} pl={1} pr={1.5} color="fg.muted">
+                              <ConfirmPopover
+                                text="Overwrite this saved filter with your current filters?"
+                                confirmText="Overwrite"
+                                colorPalette="purple"
+                                onConfirm={() => updateFilter({ projectId, id: savedFilter.id, filterConfig })}
+                                isLoading={isUpdating}
+                                placement="top"
+                              >
+                                <IconButton
+                                  aria-label="Overwrite with current filters"
+                                  variant="ghost"
+                                  size="2xs"
+                                  disabled={!hasActiveFilters}
+                                >
+                                  <Icon as={TbDeviceFloppy} />
+                                </IconButton>
+                              </ConfirmPopover>
+                              <Tooltip content="Rename">
+                                <IconButton
+                                  aria-label="Rename"
+                                  variant="ghost"
+                                  size="2xs"
+                                  onClick={() => setView({ savedFilter })}
+                                >
+                                  <Icon as={TbEdit} />
+                                </IconButton>
+                              </Tooltip>
+                              <ConfirmPopover
+                                text="Do you really want to delete this saved filter?"
+                                onConfirm={() => deleteFilter({ projectId, id: savedFilter.id })}
+                                isLoading={isDeleting}
+                                placement="top"
+                              >
+                                <IconButton aria-label="Delete" variant="ghost" size="2xs" color="red.fg">
+                                  <Icon as={TbTrash} />
+                                </IconButton>
+                              </ConfirmPopover>
+                            </Flex>
+                          </Flex>
+                        );
+                      })
+                    )}
+                  </Flex>
+                </motion.div>
+              )}
+              {editing !== null && (
+                <motion.div key="form" {...getMotionViewProps()}>
+                  <SaveFilterForm
+                    projectId={projectId}
+                    filterConfig={filterConfig}
+                    savedFilter={editing.savedFilter}
+                    onBack={() => setView(null)}
+                    onSuccess={() => setView(null)}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </Popover.Content>
+        </Popover.Positioner>
+      </Portal>
+    </Popover.Root>
   );
 };

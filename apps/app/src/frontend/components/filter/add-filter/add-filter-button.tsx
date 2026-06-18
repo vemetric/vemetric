@@ -20,9 +20,10 @@ const getMotionViewProps = (overview?: boolean) => ({
 interface Props {
   filterConfig: IFilterConfig;
   from: RoutesWithFiltering;
+  grouped?: boolean;
 }
 
-export const AddFilterButton = ({ filterConfig, from }: Props) => {
+export const AddFilterButton = ({ filterConfig, from, grouped }: Props) => {
   const { setFilters } = useFilters({ from });
   const { defaultOperator = 'and' } = useFilterContext();
   const [isAnimating, setIsAnimating] = useState(false);
@@ -70,10 +71,9 @@ export const AddFilterButton = ({ filterConfig, from }: Props) => {
           size={{ base: 'xs', md: 'sm' }}
           border="1.5px dashed"
           borderColor={filterCount === 0 ? 'border.emphasized' : 'purple.500/80'}
+          roundedRight={grouped ? 'none' : undefined}
           boxShadow="none"
-          _expanded={{
-            bg: 'bg.card',
-          }}
+          _focusVisible={{ zIndex: 1 }}
         >
           <Icon
             as={TbFilterPlus}

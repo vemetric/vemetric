@@ -1,7 +1,8 @@
 import { Button, Field, Input, Stack, Spinner, Box, Flex } from '@chakra-ui/react';
 import { useState } from 'react';
+import { TbChartFunnel } from 'react-icons/tb';
 import { ConfirmDialog } from '@/components/confirm-dialog';
-import { FunnelIconButton } from '@/components/funnel-icon-button';
+import { EmojiIconButton } from '@/components/emoji-icon-button';
 import {
   DialogActionTrigger,
   DialogBody,
@@ -89,7 +90,7 @@ export const FunnelDialog = ({ funnelId, children }: FunnelDialogProps) => {
             <Field.Root>
               <Field.Label>Funnel Name & Icon</Field.Label>
               <Flex w="full" gap="2">
-                <FunnelIconButton icon={funnelIcon} onIconChange={setFunnelIcon} />
+                <EmojiIconButton icon={funnelIcon} onIconChange={setFunnelIcon} defaultIcon={<TbChartFunnel />} />
                 <Input
                   size="sm"
                   placeholder="Enter funnel name..."

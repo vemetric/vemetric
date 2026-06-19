@@ -40,7 +40,7 @@ This section will help you set up Vemetric for local development.
 
 Before you begin, ensure you have the following installed:
 
-- **[Bun](https://bun.sh/)** (v1.2.15 or higher) - JavaScript runtime and toolkit
+- **[Bun](https://bun.sh/)** (v1.3.11 or higher) - JavaScript runtime and toolkit
 - **[Docker](https://www.docker.com/)** and **Docker Compose** - For running local services
 - **[Node.js](https://nodejs.org/)** (v20 or higher) - Required for some tooling
 

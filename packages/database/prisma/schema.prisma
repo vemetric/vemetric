@@ -177,6 +177,7 @@ model Project {
   emailDripHistory        EmailDripHistory[]
   apiKeys                 ApiKey[]
   funnels                 Funnel[]
+  savedFilters            SavedFilter[]
   userProjectAccess       UserProjectAccess[]
   invitationProjectAccess InvitationProjectAccess[]
   userIdentificationMaps  UserIdentificationMap[]
@@ -264,6 +265,21 @@ model Funnel {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("funnel")
+}
+
+model SavedFilter {
+  id           String   @id @default(uuid())
+  name         String   @db.VarChar
+  projectId    String
+  filterConfig Json
+  icon         String?  @db.VarChar
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("saved_filter")
 }
 
 enum DripSequenceStatus {

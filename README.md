@@ -1,5 +1,5 @@
 <a href="https://vemetric.com">
-  <img alt="Vemetric is a simple, yet powerful Web- and Product Analytics platform." src="https://github.com/user-attachments/assets/d860fe88-33bf-4baa-a263-cde2169d1bcd">
+  <img width="1200" height="627" alt="Vemetric is a simple, yet powerful Web- and Product Analytics platform." src="https://github.com/user-attachments/assets/febb1b36-58b4-459f-8004-d94352882476" />
 </a>
 
 <h3 align="center">Vemetric</h3>
@@ -14,6 +14,7 @@
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE.md)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Status](https://img.shields.io/endpoint?url=https%3A%2F%2Fstatus.vemetric.com%2Fshield-badges%2Fstatus.json&style=flat)](https://status.vemetric.com)
 
 ## About
 

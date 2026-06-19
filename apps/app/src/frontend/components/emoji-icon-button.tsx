@@ -1,7 +1,6 @@
 import { Popover } from '@chakra-ui/react';
 import EmojiPicker, { Theme } from 'emoji-picker-react';
 import { useState } from 'react';
-import { TbChartFunnel } from 'react-icons/tb';
 import type { CardIconProps } from './card-icon';
 import { CardIcon } from './card-icon';
 import { CustomIconStyle } from './custom-icon-style';
@@ -11,18 +10,18 @@ import { MenuContent, MenuContextTrigger, MenuItem, MenuRoot } from './ui/menu';
 interface Props extends CardIconProps {
   icon: string | null;
   onIconChange: (icon: string | null) => void;
+  /** Fallback icon shown when no custom emoji is set. */
+  defaultIcon: React.ReactNode;
 }
 
-export const FunnelIconButton = ({ icon, onIconChange, ...props }: Props) => {
+export const EmojiIconButton = ({ icon, onIconChange, defaultIcon, ...props }: Props) => {
   const { colorMode } = useColorMode();
   const [emojiPopoverOpen, setEmojiPopoverOpen] = useState(false);
 
-  let displayIcon: React.ReactNode = null;
+  let displayIcon: React.ReactNode = defaultIcon;
 
   if (icon) {
     displayIcon = <CustomIconStyle transform="scale(0.85)">{icon}</CustomIconStyle>;
-  } else {
-    displayIcon = <TbChartFunnel />;
   }
 
   return (

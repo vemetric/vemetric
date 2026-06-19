@@ -14,6 +14,17 @@ export const SocialButtons = () => {
     },
   });
 
+  const { data: discordData } = useQuery({
+    queryKey: ['discord-members'],
+    queryFn: async () => {
+      const response = await fetch('https://discord.com/api/v9/invites/8kwPRwAQkf?with_counts=true');
+      if (!response.ok) {
+        throw new Error('Failed to fetch social stats');
+      }
+      return response.json();
+    },
+  });
+
   return (
     <>
       <Button
@@ -35,10 +46,10 @@ export const SocialButtons = () => {
             whiteSpace="nowrap"
             opacity="0"
             w="0px"
-            _groupHover={{ w: '82px', opacity: '1' }}
+            _groupHover={{ w: '78px', opacity: '1' }}
             transition="all .3s ease-in-out"
           >
-            Join Discord!
+            {discordData?.approximate_member_count ?? 100} Members
           </Box>
         </a>
       </Button>

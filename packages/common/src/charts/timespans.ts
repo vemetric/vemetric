@@ -66,8 +66,10 @@ export const getCustomDateRangeInterval = (startDate: Date, endDate: Date): Char
 };
 
 export const timeSpanRangeMin = new Date(2010, 0, 1); // January 1, 2010
-const now = new Date();
-export const getTimeSpanRangeMax = () => new Date(now.getFullYear(), now.getMonth() + 1, 0); // End of current month
+export const getTimeSpanRangeMax = () => {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + 1, 0); // End of current month
+};
 
 /**
  * Determines if a given date period is "incomplete" (current period that hasn't finished yet).

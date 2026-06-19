@@ -28,6 +28,7 @@ export const DeleteProjectDialog = (props: Props) => {
   const { mutate: requestDeletion, isPending } = trpc.projects.requestDeletion.useMutation({
     onSuccess: () => {
       handleClose();
+
       toaster.create({
         title: 'Check your email',
         description: `We've sent a confirmation link to delete "${projectName}". The link expires in 1 hour.`,

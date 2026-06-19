@@ -17,6 +17,7 @@ import { useLandingPageMetrics } from './routes/landing-page';
 import { organizationRouter } from './routes/organization';
 import { paddleWebhookHandler } from './routes/paddle';
 import { projectsRouter } from './routes/projects';
+import { savedFiltersRouter } from './routes/saved-filters';
 import { usersRouter } from './routes/users';
 import type { HonoContext, HonoContextVars } from './types';
 import { auth, TRUSTED_ORIGINS } from './utils/auth';
@@ -31,6 +32,7 @@ export const trpcRouter = router({
   filters: filtersRouter,
   funnels: funnelsRouter,
   projects: projectsRouter,
+  savedFilters: savedFiltersRouter,
   organization: organizationRouter,
   billing: billingRouter,
   users: usersRouter,

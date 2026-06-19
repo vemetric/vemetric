@@ -2,17 +2,21 @@ import { Button, Flex, Text, Popover } from '@chakra-ui/react';
 import type { PropsWithChildren } from 'react';
 
 interface Props {
-  onDelete: () => void;
+  onConfirm: () => void;
   isLoading: boolean;
   placement?: 'top' | 'bottom';
   text: string;
+  confirmText?: string;
+  colorPalette?: 'red' | 'purple';
 }
 
-export const DeletePopover = ({
-  onDelete,
+export const ConfirmPopover = ({
+  onConfirm,
   isLoading,
   placement = 'bottom',
   text,
+  confirmText = 'Delete',
+  colorPalette = 'red',
   children,
 }: PropsWithChildren<Props>) => {
   return (
@@ -32,8 +36,14 @@ export const DeletePopover = ({
                   Cancel
                 </Button>
               </Popover.CloseTrigger>
-              <Button variant="surface" size="2xs" colorPalette="red" onClick={() => onDelete()} loading={isLoading}>
-                Delete
+              <Button
+                variant="surface"
+                size="2xs"
+                colorPalette={colorPalette}
+                onClick={() => onConfirm()}
+                loading={isLoading}
+              >
+                {confirmText}
               </Button>
             </Flex>
           </Popover.Body>

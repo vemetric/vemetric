@@ -6,9 +6,9 @@ import { useEffect } from 'react';
 import { TbArrowDown, TbActivity } from 'react-icons/tb';
 import { groupBy } from 'remeda';
 import { z } from 'zod';
-import { AddFilterButton } from '@/components/filter/add-filter/add-filter-button';
 import { FilterContainer } from '@/components/filter/filter-container';
 import { FilterContextProvider } from '@/components/filter/filter-context';
+import { FilterControls } from '@/components/filter/filter-controls';
 import { DateSeparator } from '@/components/pages/user/date-separator';
 import { SessionEventGroup } from '@/components/pages/user/session-event-group';
 import { UserDetailColumn } from '@/components/pages/user/user-detail-column';
@@ -144,7 +144,7 @@ function Page() {
             zIndex="5"
           >
             <Flex flexGrow={1} gap={2.5} justify="flex-end" pos="absolute" top={hasFilters ? 4 : 0} right={0}>
-              <AddFilterButton from="/p/$projectId/users/$userId" filterConfig={filterConfig} />
+              <FilterControls from="/p/$projectId/users/$userId" filterConfig={filterConfig} />
             </Flex>
           </Flex>
           <Flex flexDir="column" gap={8} mt={hasFilters ? 4 : 0}>

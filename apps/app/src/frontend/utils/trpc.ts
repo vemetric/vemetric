@@ -38,6 +38,7 @@ type RouterOutput = inferRouterOutputs<TrpcRouter>;
 
 export type DashboardData = RouterOutput['dashboard']['getData'];
 export type FunnelData = RouterOutput['funnels']['list']['funnels'][0];
+export type SavedFilterData = RouterOutput['savedFilters']['list']['savedFilters'][number];
 export type SessionData = RouterOutput['users']['events']['sessions'][0];
 export type EventData = RouterOutput['users']['events']['events'][0];
 export type ApiKeyItem = RouterOutput['apiKeys']['list'][number];

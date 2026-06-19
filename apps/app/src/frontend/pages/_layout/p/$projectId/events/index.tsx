@@ -9,9 +9,9 @@ import { TbActivity, TbArrowDown } from 'react-icons/tb';
 import { groupBy } from 'remeda';
 import { z } from 'zod';
 import { DataEmptyState } from '@/components/data-empty-state';
-import { AddFilterButton } from '@/components/filter/add-filter/add-filter-button';
 import { FilterContainer } from '@/components/filter/filter-container';
 import { FilterContextProvider } from '@/components/filter/filter-context';
+import { FilterControls } from '@/components/filter/filter-controls';
 import { PageDotBackground } from '@/components/page-dot-background';
 import { EventCard, EventCardSkeleton } from '@/components/pages/events/event-card';
 import { DateSeparator } from '@/components/pages/user/date-separator';
@@ -165,7 +165,7 @@ function RouteComponent() {
           >
             <FilterContainer filterConfig={filterConfig} from="/p/$projectId/events" />
             <Flex flexGrow={1} flexWrap="wrap" gap={2.5} justify="flex-end">
-              <AddFilterButton from="/p/$projectId/events" filterConfig={filterConfig} />
+              <FilterControls from="/p/$projectId/events" filterConfig={filterConfig} />
               <TimespanSelect from="/_layout/p/$projectId/events/" />
             </Flex>
           </Flex>

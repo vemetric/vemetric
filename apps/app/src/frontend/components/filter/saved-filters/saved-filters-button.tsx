@@ -3,7 +3,7 @@ import type { IFilterConfig } from '@vemetric/common/filters';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { TbBookmark, TbCheck, TbDeviceFloppy, TbEdit, TbFilterPlus, TbPlus, TbTrash } from 'react-icons/tb';
-import { isDeepEqual } from 'remeda';
+import { isDeepEqual, isDefined } from 'remeda';
 import { ConfirmPopover } from '@/components/confirm-popover';
 import { CustomIconStyle } from '@/components/custom-icon-style';
 import { PopoverMenuButton } from '@/components/popover-menu/popover-menu-button';
@@ -15,6 +15,7 @@ import { useProjectContext } from '@/contexts/project-context';
 import type { RoutesWithFiltering } from '@/hooks/use-filters';
 import { useFilters } from '@/hooks/use-filters';
 import { trpc, type SavedFilterData } from '@/utils/trpc';
+import { useFilterContext } from '../filter-context';
 import { SaveFilterForm } from './save-filter-form';
 
 const getMotionViewProps = (list?: boolean) => ({
@@ -23,6 +24,44 @@ const getMotionViewProps = (list?: boolean) => ({
   exit: { x: list ? '-100%' : '100%', transition: { duration: 0.2, bounce: 0 } },
 });
 
+type FilterConfig = NonNullable<IFilterConfig>;
+type FilterConfigItem = FilterConfig['filters'][number];
+
+const getApplicableFilterConfig = (
+  filterConfig: IFilterConfig,
+  disabledFilters: ReturnType<typeof useFilterContext>['disabledFilters'],
+): { filterConfig: IFilterConfig; filtersRemoved: boolean } => {
+  if (!filterConfig || !disabledFilters?.length) {
+    return { filterConfig, filtersRemoved: false };
+  }
+
+  const disabledFilterSet = new Set<string>(disabledFilters);
+
+  const pruneFilter = (filter: FilterConfigItem): FilterConfigItem | undefined => {
+    if (filter.type === 'group') {
+      const filters = filter.filters.map(pruneFilter).filter(isDefined);
+      return filters.length > 0 ? { ...filter, filters } : undefined;
+    }
+
+    if (disabledFilterSet.has(filter.type)) {
+      return undefined;
+    }
+
+    return filter;
+  };
+
+  const filters = filterConfig.filters.map(pruneFilter).filter(isDefined);
+
+  if (filters.length === 0) {
+    return { filterConfig: undefined, filtersRemoved: true };
+  }
+
+  return {
+    filterConfig: { ...filterConfig, filters },
+    filtersRemoved: !isDeepEqual(filterConfig.filters, filters),
+  };
+};
+
 interface Props {
   filterConfig: IFilterConfig;
   from: RoutesWithFiltering;
@@ -30,6 +69,7 @@ interface Props {
 
 export const SavedFiltersButton = ({ filterConfig, from }: Props) => {
   const { projectId } = useProjectContext();
+  const { disabledFilters } = useFilterContext();
   const { setFilters, removeAllFilters } = useFilters({ from });
   const utils = trpc.useUtils();
 
@@ -82,7 +122,24 @@ export const SavedFiltersButton = ({ filterConfig, from }: Props) => {
     if (isActive) {
       removeAllFilters();
     } else {
-      setFilters(savedFilter.filterConfig);
+      const { filterConfig: applicableFilterConfig, filtersRemoved } = getApplicableFilterConfig(
+        savedFilter.filterConfig,
+        disabledFilters,
+      );
+
+      if (applicableFilterConfig) {
+        setFilters(applicableFilterConfig);
+      } else {
+        removeAllFilters();
+      }
+
+      if (filtersRemoved) {
+        toaster.create({
+          title: 'Not all filters could be applied',
+          description: 'This saved filter contains filter types that are not available on this page.',
+          type: 'info',
+        });
+      }
     }
     setPopoverOpen(false);
   };
@@ -165,7 +222,12 @@ export const SavedFiltersButton = ({ filterConfig, from }: Props) => {
                       </EmptyState>
                     ) : (
                       savedFilters.map((savedFilter) => {
-                        const isActive = isDeepEqual(filterConfig, savedFilter.filterConfig);
+                        const { filterConfig: applicableFilterConfig } = getApplicableFilterConfig(
+                          savedFilter.filterConfig,
+                          disabledFilters,
+                        );
+                        const isActive =
+                          Boolean(applicableFilterConfig) && isDeepEqual(filterConfig, applicableFilterConfig);
 
                         return (
                           <Flex key={savedFilter.id}>

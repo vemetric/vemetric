@@ -110,9 +110,13 @@ function RouteComponent() {
               />
               <Flex align="center" flexWrap="wrap" justify="flex-end" gap={[1.5, 3]} flexGrow={1}>
                 <FilterControls from="/p/$projectId/funnels" filterConfig={filterConfig} />
-                <Box w="1px" h="26px" bg="gray.muted" />
+                <Box w="1px" h="26px" bg="gray.muted" display={{ base: 'none', md: 'block' }} />
                 <FunnelDialog>
-                  <Button variant="surface" size={{ base: 'xs', md: 'sm' }}>
+                  <Button
+                    variant="surface"
+                    size={{ base: 'xs', md: 'sm' }}
+                    display={{ base: 'none', md: 'inline-flex' }}
+                  >
                     <Icon as={TbPlus} />
                     New funnel
                   </Button>

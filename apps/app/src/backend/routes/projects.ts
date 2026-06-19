@@ -1,7 +1,6 @@
 import { TRPCError } from '@trpc/server';
 import { TIME_SPAN_DATA } from '@vemetric/common/charts/timespans';
 import { MAX_EXCLUDED_COUNTRIES } from '@vemetric/common/countries';
-import { getBaseDomain } from '@vemetric/common/env';
 import { getNormalizedDomain } from '@vemetric/common/url';
 import { getDripSequence, getStepDelay } from '@vemetric/email/email-drip-sequences';
 import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
@@ -24,8 +23,6 @@ import { vemetric } from '../utils/vemetric-client';
 
 const projectNameInput = z.string().min(2);
 const projectInput = z.object({ name: projectNameInput, domain: z.string() });
-
-const isLocalhost = getBaseDomain().includes('localhost');
 
 function normalizeProjectDomain(domain: string) {
   let resolvedDomain: string;
@@ -405,25 +402,6 @@ export const projectsRouter = router({
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Project domain does not match' });
       }
 
-      if (isLocalhost) {
-        await serializableTransaction(async (tx) => {
-          await dbProject.delete(projectId, tx);
-        });
-
-        logger.info({ projectId, userId: user.id, domain: project.domain }, 'Project deleted directly (localhost dev)');
-
-        try {
-          await vemetric.trackEvent('ProjectDeleted', {
-            userIdentifier: user.id,
-            eventData: { projectId, domain: project.domain },
-          });
-        } catch (err) {
-          logger.error({ err, projectId, domain: project.domain }, 'Track event error');
-        }
-
-        return { success: true, deleted: true };
-      }
-
       // Rate limit: one email per project per 5 minutes
       const rateLimitKey = `${projectId}:${user.id}`;
       if (!projectDeletionRateLimiter.tryAcquire(rateLimitKey)) {
@@ -438,7 +416,7 @@ export const projectsRouter = router({
 
         logger.info({ projectId, userId: user.id, domain: project.domain }, 'Project deletion email sent');
 
-        return { success: true, deleted: false };
+        return { success: true };
       } catch (err) {
         logger.error({ err, projectId }, 'Failed to send project deletion email');
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to send confirmation email' });

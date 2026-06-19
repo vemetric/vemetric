@@ -26,20 +26,8 @@ export const DeleteProjectDialog = (props: Props) => {
   const [confirmDomain, setConfirmDomain] = useState('');
 
   const { mutate: requestDeletion, isPending } = trpc.projects.requestDeletion.useMutation({
-    onSuccess: (data) => {
+    onSuccess: () => {
       handleClose();
-
-      if (data.deleted) {
-        toaster.create({
-          title: 'Project deleted',
-          description: `"${projectName}" has been permanently deleted.`,
-          type: 'success',
-          duration: 10000,
-          meta: { closable: true },
-        });
-        window.location.href = '/';
-        return;
-      }
 
       toaster.create({
         title: 'Check your email',

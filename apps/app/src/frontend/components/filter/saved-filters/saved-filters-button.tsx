@@ -2,12 +2,13 @@ import { Button, Flex, Icon, IconButton, Popover, Portal, Spinner, Text } from '
 import type { IFilterConfig } from '@vemetric/common/filters';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
-import { TbBookmark, TbCheck, TbDeviceFloppy, TbEdit, TbTrash } from 'react-icons/tb';
+import { TbBookmark, TbCheck, TbDeviceFloppy, TbEdit, TbFilterPlus, TbPlus, TbTrash } from 'react-icons/tb';
 import { isDeepEqual } from 'remeda';
 import { ConfirmPopover } from '@/components/confirm-popover';
 import { CustomIconStyle } from '@/components/custom-icon-style';
 import { PopoverMenuButton } from '@/components/popover-menu/popover-menu-button';
 import { PopoverMenuHeader } from '@/components/popover-menu/popover-menu-header';
+import { EmptyState } from '@/components/ui/empty-state';
 import { toaster } from '@/components/ui/toaster';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useProjectContext } from '@/contexts/project-context';
@@ -86,6 +87,11 @@ export const SavedFiltersButton = ({ filterConfig, from }: Props) => {
     setPopoverOpen(false);
   };
 
+  const saveCurrentButtonProps = {
+    disabled: !hasActiveFilters,
+    onClick: () => setView({}),
+  };
+
   return (
     <Popover.Root
       open={popoverOpen}
@@ -98,11 +104,13 @@ export const SavedFiltersButton = ({ filterConfig, from }: Props) => {
           variant="surface"
           size={{ base: 'xs', md: 'sm' }}
           px={2}
+          minW="0px"
           roundedLeft="none"
           border="1.5px dashed"
           borderLeftWidth="0px"
           borderColor={hasActiveFilters ? 'purple.500/80' : 'border.emphasized'}
           boxShadow="none"
+          aria-label="Saved filters"
           _focusVisible={{ zIndex: 1 }}
         >
           <Icon as={TbBookmark} />
@@ -112,18 +120,14 @@ export const SavedFiltersButton = ({ filterConfig, from }: Props) => {
         <Popover.Positioner>
           <Popover.Content overflow={isAnimating ? 'hidden' : 'visible'}>
             <AnimatePresence initial={false} mode="popLayout">
-              {editing === null && (
+              {editing === null ? (
                 <motion.div key="list" {...getMotionViewProps(true)}>
                   <PopoverMenuHeader title="Saved filters">
-                    <Button
-                      variant="surface"
-                      size="2xs"
-                      rounded="sm"
-                      disabled={!hasActiveFilters}
-                      onClick={() => setView({})}
-                    >
-                      Save current
-                    </Button>
+                    <Tooltip content="You don't have active filters" disabled={hasActiveFilters}>
+                      <Button variant="surface" size="2xs" rounded="sm" {...saveCurrentButtonProps}>
+                        Save current
+                      </Button>
+                    </Tooltip>
                   </PopoverMenuHeader>
                   <Flex
                     flexDir="column"
@@ -141,9 +145,24 @@ export const SavedFiltersButton = ({ filterConfig, from }: Props) => {
                         <Spinner size="sm" colorPalette="purple" />
                       </Flex>
                     ) : savedFilters.length === 0 ? (
-                      <Text bg="bg" px={3} py={3} fontSize="sm" color="fg.muted">
-                        No saved filters yet. Build a filter and save it for quick reuse.
-                      </Text>
+                      <EmptyState
+                        bg="white"
+                        icon={<TbFilterPlus />}
+                        title="No saved filters yet"
+                        description="Build a filter and save it for quick reuse."
+                      >
+                        <Tooltip content="You don't have active filters" disabled={hasActiveFilters}>
+                          <Button
+                            variant="surface"
+                            size={{ base: 'xs', md: 'sm' }}
+                            display={{ base: 'none', md: 'inline-flex' }}
+                            {...saveCurrentButtonProps}
+                          >
+                            <Icon as={TbPlus} />
+                            Save current
+                          </Button>
+                        </Tooltip>
+                      </EmptyState>
                     ) : (
                       savedFilters.map((savedFilter) => {
                         const isActive = isDeepEqual(filterConfig, savedFilter.filterConfig);
@@ -189,9 +208,9 @@ export const SavedFiltersButton = ({ filterConfig, from }: Props) => {
                                   <Icon as={TbDeviceFloppy} />
                                 </IconButton>
                               </ConfirmPopover>
-                              <Tooltip content="Rename">
+                              <Tooltip content="Edit">
                                 <IconButton
-                                  aria-label="Rename"
+                                  aria-label="Edit"
                                   variant="ghost"
                                   size="2xs"
                                   onClick={() => setView({ savedFilter })}
@@ -216,8 +235,7 @@ export const SavedFiltersButton = ({ filterConfig, from }: Props) => {
                     )}
                   </Flex>
                 </motion.div>
-              )}
-              {editing !== null && (
+              ) : (
                 <motion.div key="form" {...getMotionViewProps()}>
                   <SaveFilterForm
                     projectId={projectId}

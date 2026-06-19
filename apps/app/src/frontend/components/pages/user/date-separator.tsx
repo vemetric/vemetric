@@ -12,6 +12,7 @@ export const DateSeparator = ({ children }: Props) => {
         flexGrow={1}
         bg="linear-gradient(to right, rgba(0,0,0,0) 0%, var(--chakra-colors-gray-emphasized) 100%)"
         opacity={0.7}
+        maxW={{ base: '10px', md: 'none' }}
       />
       <Tag.Root size="xl" rounded="md" py={1} px={2} h="auto">
         <Tag.Label display="flex" alignItems="center">

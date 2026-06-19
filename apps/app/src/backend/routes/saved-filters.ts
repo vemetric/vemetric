@@ -48,8 +48,6 @@ export const savedFiltersRouter = router({
           userIdentifier: user.id,
           userDisplayName: user.name,
           eventData: {
-            projectId: project.id,
-            projectDomain: project.domain,
             savedFilterName: name,
           },
         });
@@ -90,11 +88,7 @@ export const savedFiltersRouter = router({
         await vemetric.trackEvent('SavedFilterUpdated', {
           userIdentifier: user.id,
           userDisplayName: user.name,
-          eventData: {
-            projectId: project.id,
-            projectDomain: project.domain,
-            savedFilterId: id,
-          },
+          eventData: { savedFilterName: name || existingFilter.name },
         });
       } catch (err) {
         logger.error({ err }, 'Track event error');
@@ -120,11 +114,7 @@ export const savedFiltersRouter = router({
       await vemetric.trackEvent('SavedFilterDeleted', {
         userIdentifier: user.id,
         userDisplayName: user.name,
-        eventData: {
-          projectId: project.id,
-          projectDomain: project.domain,
-          savedFilterId: id,
-        },
+        eventData: { savedFilterName: existingFilter.name },
       });
     } catch (err) {
       logger.error({ err }, 'Track event error');

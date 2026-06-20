@@ -1,7 +1,6 @@
 import { render } from '@react-email/render';
-import type { MessageSendingResponse } from 'postmark/dist/client/models';
 import type { ComponentProps } from 'react';
-import { getPostmarkClient } from './postmark-client';
+import { sendCloudflareEmail, type EmailSendingSendParams } from './cloudflare-email-client';
 import EmailChangeMail from '../emails/email-change';
 import EmailVerificationMail from '../emails/email-verification';
 import PasswordResetMail from '../emails/password-reset';
@@ -14,8 +13,14 @@ import NoProjectSecond from '../emails/sequences/no-project/second';
 import SubscriptionCancelledMail from '../emails/subscription-cancelled';
 import SubscriptionCreatedMail from '../emails/subscription-created';
 
-export const TRANSACTIONAL_FROM_EMAIL = 'Vemetric <info@vemetric.com>';
-export const TIPS_FROM_EMAIL = 'Vemetric <info@notifications.vemetric.com>';
+export const TRANSACTIONAL_FROM_EMAIL = {
+  name: 'Vemetric',
+  address: 'info@vemetric.com',
+} satisfies EmailSendingSendParams['from'];
+export const TIPS_FROM_EMAIL = {
+  name: 'Vemetric',
+  address: 'info@notifications.vemetric.com',
+} satisfies EmailSendingSendParams['from'];
 
 type MessageStreamId = 'outbound' | 'tips';
 
@@ -84,30 +89,42 @@ export const sendTransactionalMail = async <T extends TemplateName>(
   const emailHtml = await render(<Email {...(templateProps as any)} />);
   const emailPlainText = await render(<Email {...(templateProps as any)} />, { plainText: true });
 
-  let fromAddress = TRANSACTIONAL_FROM_EMAIL;
+  let fromAddress: EmailSendingSendParams['from'] = TRANSACTIONAL_FROM_EMAIL;
   if (messageStreamId === 'tips') {
     fromAddress = TIPS_FROM_EMAIL;
   }
 
-  const { Message } = await import('postmark');
-  const postmarkClient = await getPostmarkClient();
-
-  const message = new Message(fromAddress, template.subject, emailHtml, emailPlainText, toAddress);
-  message.MessageStream = messageStreamId;
-
-  let response: MessageSendingResponse;
   try {
-    response = await postmarkClient.sendEmail(message);
+    const cloudflareResponse = await sendCloudflareEmail({
+      to: toAddress,
+      from: fromAddress,
+      subject: template.subject,
+      html: emailHtml,
+      text: emailPlainText,
+    });
+
+    const failedRecipients = cloudflareResponse.permanent_bounces;
+    const success = failedRecipients.length === 0;
+    const providerMessage = success
+      ? `Email accepted by Cloudflare Email Service (${messageStreamId})`
+      : failedRecipients.join(', ') || 'Cloudflare Email Service failed to send email.';
+
+    return {
+      success,
+      response: {
+        SubmittedAt: new Date().toISOString(),
+        ErrorCode: success ? 0 : -1,
+        Message: providerMessage,
+      },
+    };
   } catch (error: any) {
-    response = {
-      MessageID: '',
-      SubmittedAt: new Date().toISOString(),
-      ErrorCode: -1,
-      Message: error.message,
+    return {
+      success: false,
+      response: {
+        SubmittedAt: new Date().toISOString(),
+        ErrorCode: -1,
+        Message: error.message,
+      },
     };
   }
-
-  const success = response.ErrorCode === 0;
-
-  return { success, response };
 };

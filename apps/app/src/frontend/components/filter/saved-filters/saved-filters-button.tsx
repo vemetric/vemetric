@@ -203,7 +203,7 @@ export const SavedFiltersButton = ({ filterConfig, from }: Props) => {
                       </Flex>
                     ) : savedFilters.length === 0 ? (
                       <EmptyState
-                        bg="white"
+                        bg="bg"
                         icon={<TbFilterPlus />}
                         title="No saved filters yet"
                         description="Build a filter and save it for quick reuse."

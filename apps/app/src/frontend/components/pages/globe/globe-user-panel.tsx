@@ -4,14 +4,16 @@ import type { TimeSpan } from '@vemetric/common/charts/timespans';
 import { COUNTRIES } from '@vemetric/common/countries';
 import { useEffect, useRef, useState } from 'react';
 import { TbClock, TbUserOff, TbUserSquareRounded } from 'react-icons/tb';
+import { useSnapshot } from 'valtio';
 import { CountryFlag } from '@/components/country-flag';
 import { NumberCounter } from '@/components/number-counter';
 import { CloseButton } from '@/components/ui/close-button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Status } from '@/components/ui/status';
 import { Tooltip } from '@/components/ui/tooltip';
+import { useGlobeStore } from '@/stores/globe-store';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
-import type { GlobeJoinedUser, GlobePanelUser } from '@/utils/trpc';
+import type { GlobePanelUser } from '@/utils/trpc';
 import { getUserName } from '@/utils/user';
 import { GlobeJoinNotifications } from './globe-join-notifications';
 import { UserAvatar } from '../user/user-avatar';
@@ -31,9 +33,6 @@ interface Props {
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   usersCurrentPage: number;
-  isUserPanelOpen: boolean;
-  setUserPanelOpen: (isOpen: boolean) => void;
-  onSelectUser: (user: GlobePanelUser | GlobeJoinedUser) => void;
 }
 
 export const GlobeUserPanel = (props: Props) => {
@@ -49,11 +48,10 @@ export const GlobeUserPanel = (props: Props) => {
     hasNextPage,
     isFetchingNextPage,
     usersCurrentPage,
-    isUserPanelOpen,
-    setUserPanelOpen,
-    onSelectUser,
   } = props;
 
+  const { store, actions } = useGlobeStore();
+  const isUserPanelOpen = useSnapshot(store).isUserPanelOpen;
   const buttonRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const scrollParentRef = useRef<HTMLDivElement | null>(null);
@@ -106,7 +104,6 @@ export const GlobeUserPanel = (props: Props) => {
           startDate={startDate}
           endDate={endDate}
           isInitialized={isInitialized}
-          onSelectUser={onSelectUser}
         />
       </Box>
       <Flex>
@@ -155,14 +152,14 @@ export const GlobeUserPanel = (props: Props) => {
                 roundedBottomLeft="xl"
                 py={4.5}
                 onClick={() => {
-                  setUserPanelOpen(false);
+                  actions.setUserPanelOpen(false);
                   setTimeout(() => {
                     buttonRef.current?.focus();
                   });
                 }}
               />
             </Flex>
-            <Box ref={scrollParentRef} px={3} flexGrow={1} overflowY="auto">
+            <Box ref={scrollParentRef} p={1} flexGrow={1} overflowY="auto">
               {showEmptyState ? (
                 <Flex h="150px" align="center" justify="center">
                   <EmptyState
@@ -209,7 +206,7 @@ export const GlobeUserPanel = (props: Props) => {
                         gap={3}
                         px={2}
                         py={1.5}
-                        onClick={() => onSelectUser(user)}
+                        onClick={() => actions.openPanelUserOnGlobe(user)}
                       >
                         <Flex align="center" gap={3} minW={0}>
                           <UserAvatar
@@ -269,7 +266,7 @@ export const GlobeUserPanel = (props: Props) => {
           transitionDelay={isUserPanelOpen ? '0s' : '0.15s'}
           tabIndex={isUserPanelOpen ? -1 : 0}
           onClick={() => {
-            setUserPanelOpen(true);
+            actions.setUserPanelOpen(true);
             setTimeout(() => {
               closeButtonRef.current?.focus();
             });

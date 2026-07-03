@@ -1,5 +1,5 @@
-import type { RefObject } from 'react';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useGlobeStore } from '@/stores/globe-store';
 import type { GlobeUserBucket } from '@/utils/trpc';
 
 const DEPTH_WEIGHT = 1_000_000;
@@ -40,10 +40,12 @@ const getMarkerZIndex = (
 
 interface Props {
   buckets: GlobeUserBucket[];
-  rotationRef: RefObject<{ phi: number; theta: number }>;
 }
 
-export function useGlobeZIndexSync({ buckets, rotationRef }: Props) {
+export function useGlobeZIndexSync({ buckets }: Props) {
+  const {
+    refs: { rotationRef },
+  } = useGlobeStore();
   const markerElementsRef = useRef(new Map<string, HTMLDivElement>());
   const markerPoints = useMemo(
     () =>

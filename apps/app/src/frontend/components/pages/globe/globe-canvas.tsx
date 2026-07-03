@@ -1,26 +1,18 @@
-import { AbsoluteCenter, Box, Button, Icon, IconButton, Spinner } from '@chakra-ui/react';
+import { AbsoluteCenter, Box, Button, Icon, Spinner } from '@chakra-ui/react';
 import type { TimeSpan } from '@vemetric/common/charts/timespans';
-import type { Globe } from 'cobe';
 import createGlobe from 'cobe';
-import { useEffect, useRef } from 'react';
-import {
-  TbLock,
-  TbLockOpen,
-  TbMapPinOff,
-  TbPlayerPause,
-  TbPlayerPlay,
-  TbUserOff,
-  TbUserSquareRounded,
-  TbZoomReset,
-} from 'react-icons/tb';
+import { useEffect } from 'react';
+import { TbMapPinOff, TbUserOff, TbUserSquareRounded } from 'react-icons/tb';
 import { TimespanSelect } from '@/components/timespan-select';
 import { EmptyState } from '@/components/ui/empty-state';
+import { useGlobeStore } from '@/stores/globe-store';
 import type { GlobePanelUser, GlobeUserBucket } from '@/utils/trpc';
 import { DESKTOP_GLOBE_CONFIG, MOBILE_GLOBE_CONFIG } from './globe-consts';
-import { GlobeMarker } from './globe-marker';
+import { GlobeControls } from './globe-controls';
+import { GlobeMarkers } from './globe-markers';
+import { GlobeSurface } from './globe-surface';
 import { GlobeUserPanel } from './globe-user-panel';
-import { setMarkerScale, clampGlobeOffset } from './globe-utils';
-import { useGlobeState } from './use-globe-state';
+import { useGlobeController } from './use-globe-controller';
 import { useGlobeThemeOptions } from './use-globe-theme-options';
 import { useGlobeZIndexSync } from './use-globe-zindex-sync';
 
@@ -62,34 +54,15 @@ export const GlobeCanvas = (props: Props) => {
   } = props;
 
   const globeConfig = isMobile ? MOBILE_GLOBE_CONFIG : DESKTOP_GLOBE_CONFIG;
-  const globeRootRef = useRef<HTMLDivElement>(null);
-  const globeRef = useRef<Globe | null>(null);
   const {
-    openBucketId,
-    selectedMarkerUserId,
-    setSelectedMarkerUserId,
-    changeOpenMarker,
-    isUserPanelOpen,
-    setUserPanelOpen,
-    openPanelUserOnGlobe,
-    offsetRef,
-    scaleRef,
-    rotationRef,
-    resetGlobeZoom,
-    autoRotate,
-    isDragging,
-    toggleAutoRotate,
-    locked,
-    toggleLocked,
-    startDrag,
-  } = useGlobeState({
-    globeRootRef,
-    globeRef,
-    globeConfig,
+    actions,
+    refs: { globeRef, globeRootRef, scaleRef, offsetRef, rotationRef },
+  } = useGlobeStore();
+  const { startDrag } = useGlobeController({
     buckets,
   });
-  const { globeThemeOptionsRef } = useGlobeThemeOptions({ globeRef, offsetRef, rotationRef });
-  const { setMarkerElement } = useGlobeZIndexSync({ buckets, rotationRef });
+  const { globeThemeOptionsRef } = useGlobeThemeOptions();
+  const { setMarkerElement } = useGlobeZIndexSync({ buckets });
   const showNoActiveUsers = !isLoading && totalUsers === 0;
   const showNoLocatedUsers = !isLoading && Boolean(totalUsers && totalUsers > 0) && locatedUsers === 0;
 
@@ -97,13 +70,8 @@ export const GlobeCanvas = (props: Props) => {
     const globeRoot = globeRootRef.current;
     if (!globeRoot) return;
 
-    offsetRef.current = clampGlobeOffset(
-      offsetRef.current,
-      globeRoot.getBoundingClientRect(),
-      scaleRef.current,
-      globeConfig,
-    );
-    setMarkerScale(globeRoot, scaleRef.current, globeConfig);
+    actions.clampGlobeOffsetToRoot();
+    actions.syncMarkerScale();
 
     const getCanvasSize = () => {
       const { width, height } = globeRoot.getBoundingClientRect();
@@ -142,26 +110,14 @@ export const GlobeCanvas = (props: Props) => {
 
     const resizeObserver = new ResizeObserver(() => {
       const renderSize = getCanvasSize();
-      offsetRef.current = clampGlobeOffset(
-        offsetRef.current,
-        globeRoot.getBoundingClientRect(),
-        scaleRef.current,
-        globeConfig,
-      );
-      globe.update({
-        width: renderSize.width,
-        height: renderSize.height,
-        offset: offsetRef.current,
-        ...rotationRef.current,
-      });
+      actions.clampGlobeOffsetToRoot();
+      actions.updateGlobeSize(renderSize.width, renderSize.height);
     });
     resizeObserver.observe(globeRoot);
 
     return () => {
       resizeObserver.disconnect();
-      if (globeRef.current === globe) {
-        globeRef.current = null;
-      }
+      globeRef.current = null;
       globe.destroy();
 
       const cobeRoot = canvas.parentElement;
@@ -171,72 +127,22 @@ export const GlobeCanvas = (props: Props) => {
         canvas.remove();
       }
     };
-  }, [globeThemeOptionsRef, offsetRef, scaleRef, rotationRef, globeConfig, buckets]);
+  }, [globeThemeOptionsRef, globeRef, globeRootRef, offsetRef, scaleRef, rotationRef, globeConfig, buckets, actions]);
 
   return (
     <>
       <Box pos="relative" w="100%" h="100%" inert={isInitialized ? false : true}>
-        <Box
-          ref={globeRootRef}
-          w="100%"
-          h="100%"
-          overflow="hidden"
-          pos="relative"
-          touchAction="none"
-          zIndex="0"
-          cursor={locked ? 'default' : isDragging ? 'grabbing' : 'grab'}
-          onPointerDown={startDrag}
-          css={{
-            '& canvas': {
-              animation: isLoading ? 'pulse' : 'none',
-            },
-          }}
-        >
-          {buckets.map((bucket) => (
-            <GlobeMarker
-              key={bucket.id}
-              projectId={projectId}
-              timespan={timespan}
-              startDate={startDate}
-              endDate={endDate}
-              isOpen={openBucketId === bucket.id}
-              setOpen={changeOpenMarker}
-              selectedUserId={openBucketId === bucket.id ? selectedMarkerUserId : null}
-              setSelectedUserId={setSelectedMarkerUserId}
-              {...bucket}
-              setMarkerElement={setMarkerElement}
-            />
-          ))}
-        </Box>
-        <Box pos="absolute" top={3} left={3} zIndex="2" display="flex" gap={2} pointerEvents="none">
-          <IconButton
-            aria-label={locked ? 'Unlock globe interaction' : 'Lock globe interaction'}
-            size="xs"
-            variant="surface"
-            onClick={toggleLocked}
-            pointerEvents="auto"
-          >
-            <Icon as={locked ? TbLock : TbLockOpen} />
-          </IconButton>
-          <IconButton
-            aria-label={autoRotate ? 'Pause globe rotation' : 'Start globe rotation'}
-            size="xs"
-            variant="surface"
-            onClick={toggleAutoRotate}
-            pointerEvents="auto"
-          >
-            <Icon as={autoRotate ? TbPlayerPause : TbPlayerPlay} />
-          </IconButton>
-          <IconButton
-            aria-label="Reset globe zoom"
-            size="xs"
-            variant="surface"
-            onClick={resetGlobeZoom}
-            pointerEvents="auto"
-          >
-            <Icon as={TbZoomReset} />
-          </IconButton>
-        </Box>
+        <GlobeSurface isLoading={isLoading} startDrag={startDrag}>
+          <GlobeMarkers
+            projectId={projectId}
+            timespan={timespan}
+            startDate={startDate}
+            endDate={endDate}
+            buckets={buckets}
+            setMarkerElement={setMarkerElement}
+          />
+        </GlobeSurface>
+        <GlobeControls />
         <Box pos="absolute" top={3} right={3} zIndex="2" display="flex" gap={2}>
           <Box>
             <TimespanSelect from="/_layout/p/$projectId/globe" />
@@ -254,9 +160,6 @@ export const GlobeCanvas = (props: Props) => {
           hasNextPage={hasNextPanelUsersPage}
           isFetchingNextPage={isFetchingNextPanelUsersPage}
           usersCurrentPage={usersCurrentPage}
-          isUserPanelOpen={isUserPanelOpen}
-          setUserPanelOpen={setUserPanelOpen}
-          onSelectUser={openPanelUserOnGlobe}
         />
         {(showNoActiveUsers || showNoLocatedUsers) && (
           <AbsoluteCenter zIndex="1" pointerEvents="none" w="min(420px, calc(100% - 32px))">
@@ -278,7 +181,7 @@ export const GlobeCanvas = (props: Props) => {
               backdropFilter="blur(8px)"
             >
               {showNoLocatedUsers && (
-                <Button size="sm" variant="surface" pointerEvents="auto" onClick={() => setUserPanelOpen(true)}>
+                <Button size="sm" variant="surface" pointerEvents="auto" onClick={() => actions.setUserPanelOpen(true)}>
                   <Icon as={TbUserSquareRounded} />
                   View users{totalUsers ? ` (${totalUsers})` : ''}
                 </Button>

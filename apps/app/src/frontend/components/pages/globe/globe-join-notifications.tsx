@@ -3,8 +3,8 @@ import type { TimeSpan } from '@vemetric/common/charts/timespans';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect } from 'react';
 import { useSnapshot } from 'valtio';
-import { globeStore, globeStoreActions } from '@/stores/globe-store';
-import { trpc, type GlobeJoinedUser } from '@/utils/trpc';
+import { useGlobeStore } from '@/stores/globe-store';
+import { trpc } from '@/utils/trpc';
 import { UserAvatar } from '../user/user-avatar';
 
 const JOINED_USERS_REFETCH_INTERVAL = 5_000;
@@ -16,20 +16,19 @@ interface Props {
   startDate?: string;
   endDate?: string;
   isInitialized: boolean;
-  onSelectUser: (user: GlobeJoinedUser) => void;
 }
 
 export const GlobeJoinNotifications = (props: Props) => {
-  const { projectId, timespan, startDate, endDate, isInitialized, onSelectUser } = props;
-  const joinedUsersSince = useSnapshot(globeStore).joinedUsersSince;
-  const notifications = useSnapshot(globeStore).joinNotifications;
+  const { projectId, timespan, startDate, endDate, isInitialized } = props;
+  const { store, actions } = useGlobeStore();
+  const { joinedUsersSince, joinNotifications: notifications } = useSnapshot(store);
   const slicedNotifications = notifications.slice(-MAX_NOTIFICATIONS);
   const otherCount = notifications.length - MAX_NOTIFICATIONS;
   const rangeKey = `${projectId}:${timespan}:${startDate ?? ''}:${endDate ?? ''}`;
 
   useEffect(() => {
-    globeStoreActions.resetJoinedUsers();
-  }, [rangeKey]);
+    actions.resetJoinedUsers();
+  }, [rangeKey, actions]);
 
   trpc.globe.getJoinedUsersSince.useQuery(
     { projectId, timespan, startDate, endDate, since: joinedUsersSince },
@@ -37,8 +36,8 @@ export const GlobeJoinNotifications = (props: Props) => {
       enabled: isInitialized,
       refetchInterval: JOINED_USERS_REFETCH_INTERVAL,
       onSuccess: (joinedUsers) => {
-        globeStoreActions.addNotifications(joinedUsers.users);
-        globeStoreActions.setJoinedUsersSince(joinedUsers.nextSince);
+        actions.addNotifications(joinedUsers.users);
+        actions.setJoinedUsersSince(joinedUsers.nextSince);
       },
     },
   );
@@ -79,8 +78,8 @@ export const GlobeJoinNotifications = (props: Props) => {
             p={0.5}
             gap={1.5}
             onClick={() => {
-              globeStoreActions.dismissNotification(notification.id);
-              onSelectUser(user);
+              actions.dismissNotification(notification.id);
+              actions.openPanelUserOnGlobe(user);
             }}
             pointerEvents="auto"
             zIndex={index * -1}

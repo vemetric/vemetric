@@ -3,8 +3,10 @@ import { createFileRoute } from '@tanstack/react-router';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { PageDotBackground } from '@/components/page-dot-background';
 import { GlobeCanvas } from '@/components/pages/globe/globe-canvas';
+import { DESKTOP_GLOBE_CONFIG, MOBILE_GLOBE_CONFIG } from '@/components/pages/globe/globe-consts';
 import { ProjectInitCard } from '@/components/project-init-card';
 import { useTimespanParam } from '@/hooks/use-timespan-param';
+import { GlobeStoreProvider } from '@/stores/globe-store';
 import { useSetBreadcrumbs, useSetDocsLink } from '@/stores/header-store';
 import { timeSpanSearchMiddleware, timespanSearchSchema } from '@/utils/timespans';
 import { trpc } from '@/utils/trpc';
@@ -45,6 +47,7 @@ function RouteComponent() {
   );
   const panelUsers = usersData?.pages.flatMap((page) => page.users) ?? [];
   const usersCurrentPage = usersData?.pages.length ?? 0;
+  const globeConfig = isMobile ? MOBILE_GLOBE_CONFIG : DESKTOP_GLOBE_CONFIG;
 
   useSetBreadcrumbs(['Globe']);
   useSetDocsLink(
@@ -59,23 +62,25 @@ function RouteComponent() {
       {isMobile === undefined ? (
         <Box w="100%" h="100%" overflow="hidden" pos="relative" />
       ) : (
-        <GlobeCanvas
-          isInitialized={Boolean(markersData?.isInitialized)}
-          projectId={projectId}
-          timespan={timespan}
-          startDate={startDate}
-          endDate={endDate}
-          isLoading={isLoading}
-          isMobile={isMobile}
-          buckets={markersData?.buckets ?? []}
-          panelUsers={panelUsers}
-          totalUsers={markersData?.totalUsers}
-          locatedUsers={markersData?.locatedUsers}
-          fetchNextPanelUsers={fetchNextPage}
-          hasNextPanelUsersPage={Boolean(hasNextPage)}
-          isFetchingNextPanelUsersPage={isFetchingNextPage}
-          usersCurrentPage={usersCurrentPage}
-        />
+        <GlobeStoreProvider globeConfig={globeConfig}>
+          <GlobeCanvas
+            isInitialized={Boolean(markersData?.isInitialized)}
+            projectId={projectId}
+            timespan={timespan}
+            startDate={startDate}
+            endDate={endDate}
+            isLoading={isLoading}
+            isMobile={isMobile}
+            buckets={markersData?.buckets ?? []}
+            panelUsers={panelUsers}
+            totalUsers={markersData?.totalUsers}
+            locatedUsers={markersData?.locatedUsers}
+            fetchNextPanelUsers={fetchNextPage}
+            hasNextPanelUsersPage={Boolean(hasNextPage)}
+            isFetchingNextPanelUsersPage={isFetchingNextPage}
+            usersCurrentPage={usersCurrentPage}
+          />
+        </GlobeStoreProvider>
       )}
       {markersData && markersData.isInitialized === false && (
         <ProjectInitCard projectToken={markersData.projectToken} />

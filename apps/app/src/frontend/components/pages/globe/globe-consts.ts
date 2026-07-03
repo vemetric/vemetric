@@ -53,7 +53,7 @@ export const MAX_MARKER_SCALE = 2;
 
 export const GLOBE_RESET_DURATION = 450;
 
-type GlobeThemeOptions = Pick<
+export type GlobeThemeOptions = Pick<
   COBEOptions,
   'dark' | 'diffuse' | 'mapBrightness' | 'mapBaseBrightness' | 'baseColor' | 'markerColor' | 'glowColor'
 >;

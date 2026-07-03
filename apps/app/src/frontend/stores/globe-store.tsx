@@ -60,6 +60,7 @@ interface GlobeRefs {
   offset: [number, number];
   dragRotation: GlobeRotation;
   rotation: GlobeRotation;
+  persistedAutoRotate: boolean;
   pointer: GlobePointerState | null;
   resetFrameId: number | null;
   renderFrameId: number | null;
@@ -78,6 +79,7 @@ const createDefaultGlobeRefs = (globeConfig: GlobeConfig, viewState: GlobeViewSt
     phi: viewState.phi,
     theta: clampTheta(viewState.theta, viewState.scale, globeConfig),
   },
+  persistedAutoRotate: viewState.autoRotate ?? DEFAULT_GLOBE_AUTO_ROTATE,
   pointer: null,
   resetFrameId: null,
   renderFrameId: null,
@@ -178,7 +180,7 @@ const createGlobeActions = (state: GlobeState) => {
         offset: state.refs.offset,
         phi: state.refs.rotation.phi,
         theta: state.refs.rotation.theta,
-        autoRotate: state.autoRotate,
+        autoRotate: state.refs.persistedAutoRotate,
         locked: state.locked,
       });
     },
@@ -235,7 +237,10 @@ const createGlobeActions = (state: GlobeState) => {
       state.autoRotate = autoRotate;
     },
     toggleAutoRotate: () => {
-      state.autoRotate = !state.autoRotate;
+      const autoRotate = !state.autoRotate;
+
+      state.autoRotate = autoRotate;
+      state.refs.persistedAutoRotate = autoRotate;
     },
     toggleLocked: () => {
       state.locked = !state.locked;

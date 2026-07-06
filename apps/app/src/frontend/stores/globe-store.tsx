@@ -330,7 +330,7 @@ const createGlobeActions = (state: GlobeState) => {
       state.isDragging = false;
       state.refs.pointer = null;
     },
-    zoomGlobe: (target: HTMLDivElement, clientX: number, clientY: number, deltaY: number) => {
+    zoomGlobeToScale: (target: HTMLDivElement, clientX: number, clientY: number, targetScale: number) => {
       if (state.locked) return;
 
       const refs = state.refs;
@@ -340,11 +340,7 @@ const createGlobeActions = (state: GlobeState) => {
 
       const rect = target.getBoundingClientRect();
       const currentScale = refs.scale;
-      const nextScale = clampNumber(
-        currentScale - deltaY * GLOBE_ZOOM_SPEED,
-        globeConfig.minScale,
-        globeConfig.maxScale,
-      );
+      const nextScale = clampNumber(targetScale, globeConfig.minScale, globeConfig.maxScale);
 
       if (nextScale <= globeConfig.offsetResetScale) {
         refs.offset = [0, 0];
@@ -381,6 +377,12 @@ const createGlobeActions = (state: GlobeState) => {
       }
 
       actions.updateGlobeView(nextScale, refs.offset);
+    },
+    zoomGlobe: (target: HTMLDivElement, clientX: number, clientY: number, deltaY: number) => {
+      actions.zoomGlobeToScale(target, clientX, clientY, state.refs.scale - deltaY * GLOBE_ZOOM_SPEED);
+    },
+    pinchZoomGlobe: (target: HTMLDivElement, clientX: number, clientY: number, scaleRatio: number) => {
+      actions.zoomGlobeToScale(target, clientX, clientY, state.refs.scale * scaleRatio);
     },
     handleWheel: (event: WheelEvent) => {
       if (event.target instanceof Element && event.target.closest(GLOBE_WHEEL_IGNORE_SELECTOR)) {

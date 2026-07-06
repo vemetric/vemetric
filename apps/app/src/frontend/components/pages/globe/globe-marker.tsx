@@ -1,4 +1,4 @@
-import { Box, Icon } from '@chakra-ui/react';
+import { Box, Icon, Portal, useBreakpointValue } from '@chakra-ui/react';
 import type { TimeSpan } from '@vemetric/common/charts/timespans';
 import { memo, useRef } from 'react';
 import { type GlobeMarkerUser } from '@/utils/trpc';
@@ -41,6 +41,7 @@ export const GlobeMarker = memo((props: Props) => {
     setMarkerElement,
   } = props;
 
+  const isMobile = useBreakpointValue({ base: true, md: false }, { ssr: false });
   const userListScrollOffsetRef = useRef(0);
   const showMarkerAvatars = !isOpen;
 
@@ -65,20 +66,22 @@ export const GlobeMarker = memo((props: Props) => {
       transform={`scale(var(--cobe-visible-${id}, 0))`}
     >
       {isOpen && (
-        <GlobeMarkerCard
-          projectId={projectId}
-          timespan={timespan}
-          startDate={startDate}
-          endDate={endDate}
-          bucketIds={bucketIds}
-          userCount={userCount}
-          markerUsers={bucketPreviewUsers}
-          selectedUserId={selectedUserId}
-          closeCard={closeCard}
-          selectUser={setSelectedUserId}
-          showUserList={showUserList}
-          userListScrollOffsetRef={userListScrollOffsetRef}
-        />
+        <Portal disabled={!isMobile}>
+          <GlobeMarkerCard
+            projectId={projectId}
+            timespan={timespan}
+            startDate={startDate}
+            endDate={endDate}
+            bucketIds={bucketIds}
+            userCount={userCount}
+            markerUsers={bucketPreviewUsers}
+            selectedUserId={selectedUserId}
+            closeCard={closeCard}
+            selectUser={setSelectedUserId}
+            showUserList={showUserList}
+            userListScrollOffsetRef={userListScrollOffsetRef}
+          />
+        </Portal>
       )}
       <Box transform="scale(var(--globe-marker-scale))">
         <Box

@@ -118,9 +118,9 @@ export const GlobeUserPanel = (props: Props) => {
             shadowColor="gray.emphasized"
             bg="bg.card/90"
             backdropFilter="blur(15px)"
-            width={isUserPanelOpen ? '500px' : '90px'}
+            width={isUserPanelOpen ? ['calc(100vw - 25px)', '500px'] : '90px'}
             height="auto"
-            maxH={isUserPanelOpen ? '500px' : '32px'}
+            maxH={isUserPanelOpen ? '480px' : '32px'}
             pointerEvents={isUserPanelOpen ? 'auto' : 'none'}
             overflow="hidden"
             transition="all 0.3s ease-in-out"

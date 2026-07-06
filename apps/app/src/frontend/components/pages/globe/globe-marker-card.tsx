@@ -52,11 +52,14 @@ export const GlobeMarkerCard = (props: Props) => {
   return (
     <Card.Root
       data-globe-wheel-ignore
-      pos="absolute"
-      width="400px"
-      maxH="330px"
-      left="calc(-25px)"
-      top="calc(-60px)"
+      pos={['fixed', undefined, 'absolute']}
+      width={['calc(100dvw - 24px)', undefined, '400px']}
+      maxH={['min(420px, calc(100dvh - 32px))', undefined, '330px']}
+      left={['50%', undefined, 'calc(-25px)']}
+      top={['50%', undefined, 'calc(-60px)']}
+      maxW={{ mdDown: '400px' }}
+      transform={{ mdDown: 'translate(-50%, -50%)' }}
+      zIndex={{ mdDown: 20 }}
       bg="bg.card/80"
       outline="1.5px solid"
       outlineColor="bg"

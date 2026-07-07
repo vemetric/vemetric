@@ -5,7 +5,7 @@ import { COUNTRIES } from '@vemetric/common/countries';
 import type { IFilterConfig, ILocationFilter } from '@vemetric/common/filters';
 import { formatNumber } from '@vemetric/common/math';
 import React, { useState } from 'react';
-import { TbFilter, TbFilterOff, TbMap2, TbUsers, TbList, TbWorld } from 'react-icons/tb';
+import { TbFilter, TbFilterOff, TbMap2, TbUsers, TbList, TbMap, TbWorld } from 'react-icons/tb';
 import { isDeepEqual } from 'remeda';
 import { CardIcon } from '@/components/card-icon';
 import { CountryFlag } from '@/components/country-flag';
@@ -105,7 +105,15 @@ export const CountriesCard = ({ filterConfig, publicDashboard }: Props) => {
                   : 'cities'}
             </Text>
           </Flex>
-          <Flex flexGrow={1} justify="flex-end">
+          <Flex flexGrow={1} justify="flex-end" gap={3}>
+            {!publicDashboard && 'projectId' in params && (
+              <Button asChild size="2xs" variant="surface" colorScheme="gray" rounded="sm">
+                <Link to="/p/$projectId/globe" params={{ projectId: params.projectId }}>
+                  <TbWorld />
+                  Globe
+                </Link>
+              </Button>
+            )}
             <SegmentGroup.Root
               size="xs"
               value={viewMode === 'map' ? 'map' : 'listOptions'}
@@ -119,7 +127,7 @@ export const CountriesCard = ({ filterConfig, publicDashboard }: Props) => {
               <SegmentGroup.Item value="map">
                 <SegmentGroup.ItemText>
                   <Flex align="center" gap={1}>
-                    <Icon as={TbWorld} />
+                    <Icon as={TbMap} />
                     <Box hideBelow="md">Map</Box>
                   </Flex>
                 </SegmentGroup.ItemText>

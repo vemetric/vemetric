@@ -35,7 +35,7 @@ export const useGlobeController = ({ buckets }: Props) => {
   }, [buckets, actions]);
 
   useEffect(() => {
-    const saveIntervalId = window.setInterval(actions.saveGlobeViewState, 1000);
+    const saveIntervalId = window.setInterval(actions.saveGlobeViewState, 5000);
 
     return () => {
       window.clearInterval(saveIntervalId);

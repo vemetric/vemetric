@@ -13,8 +13,8 @@ import { GlobeMarkers } from './globe-markers';
 import { GlobeSurface } from './globe-surface';
 import { GlobeUserPanel } from './globe-user-panel';
 import { useGlobeController } from './use-globe-controller';
+import { COBE_DEVICE_PIXEL_RATIO, useGlobeMarkerSync } from './use-globe-marker-sync';
 import { useGlobeThemeOptions } from './use-globe-theme-options';
-import { useGlobeZIndexSync } from './use-globe-zindex-sync';
 
 interface Props {
   isInitialized: boolean;
@@ -62,7 +62,7 @@ export const GlobeCanvas = (props: Props) => {
     buckets,
   });
   const { globeThemeOptionsRef } = useGlobeThemeOptions();
-  const { setMarkerElement } = useGlobeZIndexSync({ buckets });
+  const { setMarkerElement } = useGlobeMarkerSync({ buckets });
   const showNoActiveUsers = !isLoading && totalUsers === 0;
   const showNoLocatedUsers = !isLoading && Boolean(totalUsers && totalUsers > 0) && locatedUsers === 0;
 
@@ -91,7 +91,7 @@ export const GlobeCanvas = (props: Props) => {
 
     const canvasSize = getCanvasSize();
     const globe = createGlobe(canvas, {
-      devicePixelRatio: 2,
+      devicePixelRatio: COBE_DEVICE_PIXEL_RATIO,
       width: canvasSize.width,
       height: canvasSize.height,
       ...rotationRef.current,
@@ -99,11 +99,7 @@ export const GlobeCanvas = (props: Props) => {
       ...globeThemeOptionsRef.current,
       scale: scaleRef.current,
       offset: offsetRef.current,
-      markers: buckets.map((bucket) => ({
-        location: bucket.location,
-        size: 0,
-        id: bucket.id,
-      })),
+      markers: [],
       markerElevation: 0,
     });
     globeRef.current = globe;
@@ -127,7 +123,7 @@ export const GlobeCanvas = (props: Props) => {
         canvas.remove();
       }
     };
-  }, [globeThemeOptionsRef, globeRef, globeRootRef, offsetRef, scaleRef, rotationRef, globeConfig, buckets, actions]);
+  }, [globeThemeOptionsRef, globeRef, globeRootRef, offsetRef, scaleRef, rotationRef, globeConfig, actions]);
 
   return (
     <>

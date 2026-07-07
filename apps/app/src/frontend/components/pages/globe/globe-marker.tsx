@@ -1,6 +1,6 @@
 import { Box, Icon, Portal, useBreakpointValue } from '@chakra-ui/react';
 import type { TimeSpan } from '@vemetric/common/charts/timespans';
-import { memo, useRef } from 'react';
+import { memo, useCallback, useRef } from 'react';
 import { type GlobeMarkerUser } from '@/utils/trpc';
 import { GlobeMarkerCard } from './globe-marker-card';
 import { GlobeMultiUserAvatar } from './globe-multi-user-avatar';
@@ -44,6 +44,12 @@ export const GlobeMarker = memo((props: Props) => {
   const isMobile = useBreakpointValue({ base: true, md: false }, { ssr: false });
   const userListScrollOffsetRef = useRef(0);
   const showMarkerAvatars = !isOpen;
+  const setRootElement = useCallback(
+    (element: HTMLDivElement | null) => {
+      setMarkerElement(id, element);
+    },
+    [id, setMarkerElement],
+  );
 
   const closeCard = () => {
     setOpen(id, false);
@@ -55,15 +61,13 @@ export const GlobeMarker = memo((props: Props) => {
 
   return (
     <Box
-      ref={(element: HTMLDivElement | null) => setMarkerElement(id, element)}
-      opacity={`var(--cobe-visible-${id}, 0)`}
-      transition="opacity .2s ease-in-out"
+      ref={setRootElement}
+      transition="none"
       pos="absolute"
-      positionAnchor={`--cobe-${id}`}
-      top="anchor(center)"
-      left="anchor(center)"
+      top={0}
+      left={0}
       zIndex={isOpen ? '9999999!important' : undefined}
-      transform={`scale(var(--cobe-visible-${id}, 0))`}
+      transformOrigin="0 0"
     >
       {isOpen && (
         <Portal disabled={!isMobile}>

@@ -15,7 +15,7 @@ const getMotionViewProps = (overview?: boolean) => ({
 
 export const UserSortPopover = () => {
   const { s: sortConfig } = useSearch({ from: '/_layout/p/$projectId/users/' });
-  const navigate = useNavigate({ from: '/p/$projectId/users' });
+  const navigate = useNavigate({ from: '/p/$projectId/users/' });
   const eventSort = sortConfig?.by?.type === 'event' ? sortConfig.by : undefined;
 
   const [isAnimating, setIsAnimating] = useState(false);

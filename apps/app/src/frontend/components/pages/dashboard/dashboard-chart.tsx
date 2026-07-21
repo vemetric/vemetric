@@ -301,7 +301,10 @@ export const DashboardChart = (props: Props) => {
           w="100%"
           ratio={{ base: 9 / 3.5, md: 9 / 3 }}
           css={{
-            '& .recharts-xAxis .recharts-text, & .recharts-yAxis .recharts-text': { fontSize: 'xs', fill: 'gray.500' },
+            '& .recharts-xAxis-tick-labels .recharts-text, & .recharts-yAxis-tick-labels .recharts-text': {
+              fontSize: 'xs',
+              fill: 'gray.500',
+            },
             '& .recharts-area-area': {
               stroke: 'transparent!important',
             },
@@ -310,7 +313,12 @@ export const DashboardChart = (props: Props) => {
           {data.chartTimeSeries.length > 0 ? (
             <Box pos="absolute" inset={0}>
               <ResponsiveContainer>
-                <RechartsComposedChart data={chartData} margin={{ top: showEvents ? 40 : 15 }} maxBarSize={15}>
+                <RechartsComposedChart
+                  data={chartData}
+                  margin={{ top: showEvents ? 40 : 15 }}
+                  maxBarSize={15}
+                  accessibilityLayer={false}
+                >
                   <XAxis
                     dataKey="startDate"
                     interval="preserveStartEnd"
@@ -333,32 +341,12 @@ export const DashboardChart = (props: Props) => {
                     tickFormatter={(value) => formatNumber(value, true)}
                     hide={isMobile}
                   />
-                  <YAxis
-                    yAxisId="bounceRate"
-                    hide
-                    type="number"
-                    domain={yAxisDomain as AxisDomain}
-                    allowDecimals={allowDecimals}
-                  />
-                  <YAxis
-                    yAxisId="visitDuration"
-                    hide
-                    type="number"
-                    domain={yAxisDomain as AxisDomain}
-                    allowDecimals={allowDecimals}
-                  />
-                  <YAxis
-                    yAxisId="events"
-                    hide
-                    type="number"
-                    domain={yAxisDomain as AxisDomain}
-                    allowDecimals={allowDecimals}
-                  />
                   <CartesianGrid
                     vertical={false}
                     stroke="var(--chakra-colors-gray-emphasized)"
                     strokeWidth={0.6}
                     strokeDasharray="12 6"
+                    yAxisId="other"
                   />
 
                   <RechartsTooltip

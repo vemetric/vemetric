@@ -132,8 +132,14 @@ export const SessionEventGroup = (props: Props) => {
             }}
           >
             {events.map((event) => {
+              const isLatestPageView = event.name === '$$pageView' && lastPageViewDate === null;
               const eventCard = (
-                <EventCard key={event.id} event={event} lastPageViewDate={lastPageViewDate ?? session?.endedAt} />
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  lastPageViewDate={lastPageViewDate ?? session?.endedAt}
+                  isCurrentPageView={showOnlineTag && isLatestPageView}
+                />
               );
 
               if (event.name === '$$pageView') {

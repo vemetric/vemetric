@@ -141,6 +141,12 @@ describe('DateTimeFormatter', () => {
     });
   });
 
+  describe('formatDurationBetween', () => {
+    it('should format the duration between two dates', () => {
+      expect(dateTimeFormatter.formatDurationBetween('2024-01-15 14:30:45', '2024-01-15 15:31:50')).toBe('1h 1m 5s');
+    });
+  });
+
   describe('prepareDate', () => {
     it('should handle string dates with space', () => {
       const result = dateTimeFormatter.formatDateTime('2024-01-15 14:30:45');

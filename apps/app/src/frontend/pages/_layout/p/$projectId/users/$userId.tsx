@@ -82,12 +82,14 @@ function Page() {
 
   const userName = getUserName(user?.displayName, user?.identifier);
   useSetBreadcrumbs([
-    <LinkOverlay key="users" asChild>
-      <Link to="/p/$projectId/users" params={{ projectId }}>
-        Users
-      </Link>
-    </LinkOverlay>,
-    isUserLoading ? <Skeleton key="user-name" w="100px" h="20px" rounded="md" /> : userName,
+    () => (
+      <LinkOverlay asChild>
+        <Link to="/p/$projectId/users" params={{ projectId }}>
+          Users
+        </Link>
+      </LinkOverlay>
+    ),
+    () => (isUserLoading ? <Skeleton w="100px" h="20px" rounded="md" /> : userName),
   ]);
   useSetDocsLink('https://vemetric.com/docs/product-analytics/user-journeys');
 

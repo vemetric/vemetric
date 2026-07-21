@@ -24,7 +24,7 @@ function Page() {
   const { tab } = Route.useSearch();
   const { isAdmin } = useCurrentOrganization();
   const selectedTab = !isAdmin && tab === 'api' ? 'general' : tab;
-  const navigate = useNavigate({ from: '/p/$projectId/settings' });
+  const navigate = useNavigate({ from: '/p/$projectId/settings/' });
   useSetBreadcrumbs(['Settings']);
 
   const { open } = useOrgSettingsDialog();

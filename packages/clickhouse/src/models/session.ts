@@ -6,7 +6,12 @@ import { jsonStringify } from '@vemetric/common/json';
 import type { ISources } from '@vemetric/common/sources';
 import { escape } from 'sqlstring';
 import { clickhouseClient, clickhouseInsert } from '../client';
-import { formatDateExpression } from '../utils/date';
+import {
+  ONLINE_USER_INTERVAL_SECONDS,
+  ONLINE_USER_LOOKBACK_SECONDS,
+  ONLINE_USERS_INTERVAL_QUERY,
+} from '../consts';
+import { clickhouseDateToISO, formatDateExpression } from '../utils/date';
 import { buildLocationFilterQueries } from '../utils/filters/location-filter';
 import { buildSourceFilterQueries } from '../utils/filters/source-filter';
 import type { MetricsQueryGrouping } from '../utils/query-group';
@@ -115,6 +120,34 @@ function mapRowToSession(row: any): ClickhouseSession {
   return session;
 }
 
+export function getOnlineSessionsByUserQuery(projectId: bigint) {
+  return `
+    SELECT userId, max(sessionEndedAt) as lastSessionEndedAt
+    FROM (
+      SELECT
+        any(userId) as userId,
+        max(endedAt) as sessionEndedAt
+      FROM ${TABLE_NAME}
+      WHERE projectId=${escape(projectId)}
+        AND endedAt >= ${ONLINE_USERS_INTERVAL_QUERY}
+      GROUP BY id
+      HAVING argMax(deleted, endedAt) = 0
+    )
+    GROUP BY userId
+  `;
+}
+
+export function isSessionOnline(session: Pick<ClickhouseSession, 'endedAt'> | null | undefined) {
+  if (!session) {
+    return false;
+  }
+
+  const intervalMs = ONLINE_USER_INTERVAL_SECONDS * 1_000;
+  const onlineThreshold = Math.floor(Date.now() / intervalMs) * intervalMs - ONLINE_USER_LOOKBACK_SECONDS * 1_000;
+
+  return new Date(clickhouseDateToISO(session.endedAt)).getTime() >= onlineThreshold;
+}
+
 export const clickhouseSession = {
   findById: async (projectId: bigint, userId: bigint, id: string): Promise<ClickhouseSession | null> => {
     const resultSet = await clickhouseClient.query({
@@ -156,6 +189,21 @@ export const clickhouseSession = {
     return result.map((row) => {
       return mapRowToSession(row);
     });
+  },
+  findLatestByUserId: async (projectId: bigint, userId: bigint): Promise<ClickhouseSession | null> => {
+    const resultSet = await clickhouseClient.query({
+      query: `SELECT ${SESSION_KEY_SELECTOR}, max(endedAt) as latestEndedAt FROM ${TABLE_NAME} WHERE projectId=${escape(
+        projectId,
+      )} AND userId=${escape(userId)} GROUP BY id HAVING argMax(deleted, endedAt) = 0 ORDER BY latestEndedAt DESC LIMIT 1`,
+      format: 'JSONEachRow',
+    });
+    const result = (await resultSet.json()) as Array<any>;
+    if (result.length === 0) {
+      return null;
+    }
+
+    const row = result[0];
+    return mapRowToSession(row);
   },
   findByUserIdInTimeRange: async (
     projectId: bigint,

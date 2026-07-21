@@ -11,7 +11,7 @@ import { GLOBE_H3_RESOLUTION, ONLINE_USERS_INTERVAL_QUERY } from '../consts';
 import type { DeviceData } from './device';
 import { EXAMPLE_DEVICE_DATA } from './device';
 import type { FilterOptions, ReferrerData, UrlData } from './session';
-import { EXAMPLE_URL_DATA } from './session';
+import { EXAMPLE_URL_DATA, getOnlineSessionsByUserQuery } from './session';
 import { formatDateExpression } from '../utils/date';
 import { getEventFilterQueries } from '../utils/filters';
 import { buildStringFilterQuery } from '../utils/filters/base-filters';
@@ -292,7 +292,7 @@ export const clickhouseEvent = {
     endDate?: Date;
     date?: string; // YYYY-MM-DD format
     filterConfig?: IFilterConfig;
-  }): Promise<Array<ClickhouseEvent & { isOnline: boolean }>> => {
+  }): Promise<Array<ClickhouseEvent>> => {
     const { projectId, userId, limit = EVENT_LIMIT, offset, cursor, startDate, endDate, date, filterConfig } = props;
 
     // Build filter queries using the existing filter system
@@ -307,8 +307,7 @@ export const clickhouseEvent = {
 
     const resultSet = await clickhouseClient.query({
       query: `
-        SELECT ${EVENT_KEY_SELECTOR}, 
-               max(createdAt) >= ${ONLINE_USERS_INTERVAL_QUERY} as isOnline,
+        SELECT ${EVENT_KEY_SELECTOR},
                max(createdAt) as eventTime
         FROM ${TABLE_NAME} 
         WHERE projectId = ${escape(projectId)} 
@@ -325,12 +324,7 @@ export const clickhouseEvent = {
     });
 
     const result = (await resultSet.json()) as Array<any>;
-    return result.map((row) => {
-      return {
-        ...mapRowToEvent(row),
-        isOnline: Boolean(row['isOnline']),
-      };
-    });
+    return result.map(mapRowToEvent);
   },
   queryUsers: withSpan(
     'queryUsers',
@@ -364,7 +358,7 @@ export const clickhouseEvent = {
       const searchQuery = search ? `AND displayName ILIKE ${escape('%' + search + '%')}` : '';
 
       const resultSet = await clickhouseClient.query({
-        query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.city as city, u.maxCreatedAt as maxCreatedAt, u.isOnline as isOnline, if(u.latitude IS NULL OR u.longitude IS NULL, NULL, geoToH3(toFloat64(coalesce(u.latitude, 0)), toFloat64(coalesce(u.longitude, 0)), ${GLOBE_H3_RESOLUTION})) as h3BucketId, usr.avatarUrl as avatarUrl, usr.customData as customData${sortSelect}
+        query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.city as city, u.maxCreatedAt as maxCreatedAt, ifNull(s.lastSessionEndedAt >= ${ONLINE_USERS_INTERVAL_QUERY}, false) as isOnline, if(u.latitude IS NULL OR u.longitude IS NULL, NULL, geoToH3(toFloat64(coalesce(u.latitude, 0)), toFloat64(coalesce(u.longitude, 0)), ${GLOBE_H3_RESOLUTION})) as h3BucketId, usr.avatarUrl as avatarUrl, usr.customData as customData${sortSelect}
             FROM (
               SELECT userId,
                 argMax(userIdentifier, eventCreatedAt) as identifier,
@@ -373,8 +367,7 @@ export const clickhouseEvent = {
                 argMax(city, eventCreatedAt) as city,
                 argMaxIf(eventLatitude, eventCreatedAt, eventLatitude IS NOT NULL AND eventLongitude IS NOT NULL) as latitude,
                 argMaxIf(eventLongitude, eventCreatedAt, eventLatitude IS NOT NULL AND eventLongitude IS NOT NULL) as longitude,
-                max(eventCreatedAt) as maxCreatedAt,
-                max(eventCreatedAt) >= ${ONLINE_USERS_INTERVAL_QUERY} as isOnline
+                max(eventCreatedAt) as maxCreatedAt
               FROM (
                 SELECT any(userId) as userId,
                   argMax(userIdentifier, createdAt) as userIdentifier,
@@ -395,6 +388,9 @@ export const clickhouseEvent = {
                 ${userFilterQueries ? `AND (${userFilterQueries})` : ''}
               GROUP BY userId
             ) u
+            LEFT JOIN (
+              ${getOnlineSessionsByUserQuery(projectId)}
+            ) s ON u.userId = s.userId
             LEFT JOIN (
               SELECT id, argMax(avatarUrl, updatedAt) as avatarUrl, argMax(customData, updatedAt) as customData
               FROM user
@@ -509,9 +505,12 @@ export const clickhouseEvent = {
   ),
   getCurrentActiveUsers: withSpan('getCurrentActiveUsers', async (projectId: bigint, filterQueries?: string) => {
     const resultSet = await clickhouseClient.query({
-      query: `SELECT count(distinct userId) as users from ${TABLE_NAME} WHERE projectId=${escape(
-        projectId,
-      )} AND createdAt >= ${ONLINE_USERS_INTERVAL_QUERY} ${filterQueries || ''};`,
+      query: `SELECT count() as users
+        FROM (
+          ${getOnlineSessionsByUserQuery(projectId)}
+        )
+        WHERE 1=1
+        ${filterQueries || ''};`,
       format: 'JSONEachRow',
     });
     const result = (await resultSet.json()) as Array<any>;

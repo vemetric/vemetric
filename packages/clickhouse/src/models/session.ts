@@ -6,7 +6,12 @@ import { jsonStringify } from '@vemetric/common/json';
 import type { ISources } from '@vemetric/common/sources';
 import { escape } from 'sqlstring';
 import { clickhouseClient, clickhouseInsert } from '../client';
-import { formatDateExpression } from '../utils/date';
+import {
+  ONLINE_USER_INTERVAL_SECONDS,
+  ONLINE_USER_LOOKBACK_SECONDS,
+  ONLINE_USERS_INTERVAL_QUERY,
+} from '../consts';
+import { clickhouseDateToISO, formatDateExpression } from '../utils/date';
 import { buildLocationFilterQueries } from '../utils/filters/location-filter';
 import { buildSourceFilterQueries } from '../utils/filters/source-filter';
 import type { MetricsQueryGrouping } from '../utils/query-group';
@@ -113,6 +118,34 @@ function mapRowToSession(row: any): ClickhouseSession {
   });
 
   return session;
+}
+
+export function getOnlineSessionsByUserQuery(projectId: bigint) {
+  return `
+    SELECT userId, max(sessionEndedAt) as lastSessionEndedAt
+    FROM (
+      SELECT
+        any(userId) as userId,
+        max(endedAt) as sessionEndedAt
+      FROM ${TABLE_NAME}
+      WHERE projectId=${escape(projectId)}
+        AND endedAt >= ${ONLINE_USERS_INTERVAL_QUERY}
+      GROUP BY id
+      HAVING argMax(deleted, endedAt) = 0
+    )
+    GROUP BY userId
+  `;
+}
+
+export function isSessionOnline(session: Pick<ClickhouseSession, 'endedAt'> | null | undefined) {
+  if (!session) {
+    return false;
+  }
+
+  const intervalMs = ONLINE_USER_INTERVAL_SECONDS * 1_000;
+  const onlineThreshold = Math.floor(Date.now() / intervalMs) * intervalMs - ONLINE_USER_LOOKBACK_SECONDS * 1_000;
+
+  return new Date(clickhouseDateToISO(session.endedAt)).getTime() >= onlineThreshold;
 }
 
 export const clickhouseSession = {

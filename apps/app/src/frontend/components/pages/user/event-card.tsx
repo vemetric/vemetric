@@ -1,4 +1,4 @@
-import { Box, Text, Flex, Card, SimpleGrid, useBreakpointValue, Span, Tag, Grid } from '@chakra-ui/react';
+import { Box, Text, Flex, Card, SimpleGrid, useBreakpointValue, Span, Tag, Grid, Spinner } from '@chakra-ui/react';
 import { isEntityUnknown } from '@vemetric/common/event';
 import { motion } from 'motion/react';
 import { Fragment, useState } from 'react';
@@ -28,9 +28,10 @@ interface Props {
     deviceType?: string;
   };
   lastPageViewDate?: string;
+  isCurrentPageView?: boolean;
 }
 
-export const EventCard = ({ event, lastPageViewDate }: Props) => {
+export const EventCard = ({ event, lastPageViewDate, isCurrentPageView = false }: Props) => {
   const [isOpen, setIsOpen] = useState(false);
   const isDesktop = useBreakpointValue({ base: false, lg: true });
   const isPageView = event.name === '$$pageView';
@@ -52,6 +53,12 @@ export const EventCard = ({ event, lastPageViewDate }: Props) => {
   } else if (event.name === '$$outboundLink') {
     displayName = (event.customData?.href as string) ?? 'Outbound Link';
   }
+
+  const pageViewDuration =
+    isPageView && lastPageViewDate
+      ? dateTimeFormatter.formatDistance(lastPageViewDate, event.createdAt, true)
+      : undefined;
+  const isPageViewDurationPending = isCurrentPageView && pageViewDuration === '0s';
 
   return (
     <Card.Root key={event.id} overflow="hidden" data-event-card>
@@ -78,13 +85,21 @@ export const EventCard = ({ event, lastPageViewDate }: Props) => {
                 {displayName}
               </Text>
             </Flex>
-            {isPageView && lastPageViewDate && event.createdAt !== lastPageViewDate && (
+            {pageViewDuration && (
               <Tooltip
-                content={`Spent ${dateTimeFormatter.formatDistance(lastPageViewDate, event.createdAt)} on this page`}
+                content={
+                  isPageViewDurationPending
+                    ? 'Measuring time on this page'
+                    : `Spent ${dateTimeFormatter.formatDistance(lastPageViewDate!, event.createdAt)} on this page`
+                }
               >
-                <Text textStyle="sm" opacity={0.4} fontWeight="semibold" flexShrink={0}>
-                  {dateTimeFormatter.formatDistance(lastPageViewDate, event.createdAt, true)}
-                </Text>
+                {isPageViewDurationPending ? (
+                  <Spinner size="xs" borderWidth="1.5px" opacity={0.5} flexShrink={0} />
+                ) : (
+                  <Text textStyle="sm" opacity={0.4} fontWeight="semibold" flexShrink={0}>
+                    {pageViewDuration}
+                  </Text>
+                )}
               </Tooltip>
             )}
           </Flex>

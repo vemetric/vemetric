@@ -2,6 +2,7 @@ import { formatClickhouseDate } from '@vemetric/common/date';
 import { escape } from 'sqlstring';
 import { clickhouseClient } from '../client';
 import { GLOBE_H3_RESOLUTION, ONLINE_USERS_INTERVAL_QUERY } from '../consts';
+import { getOnlineSessionsByUserQuery } from './session';
 import { withSpan } from '../utils/with-span';
 
 const TABLE_NAME = 'event';
@@ -31,7 +32,7 @@ export interface ClickhouseGlobeBucket {
 function getGlobeLocatedUsersQuery(props: { projectId: bigint; startDate?: Date; endDate?: Date; userIds?: bigint[] }) {
   const { projectId, startDate, endDate, userIds } = props;
 
-  return `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.city as city, u.latitude as latitude, u.longitude as longitude, geoToH3(toFloat64(u.latitude), toFloat64(u.longitude), ${GLOBE_H3_RESOLUTION}) as h3BucketId, u.maxCreatedAt as maxCreatedAt, u.isOnline as isOnline, usr.avatarUrl as avatarUrl
+  return `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.city as city, u.latitude as latitude, u.longitude as longitude, geoToH3(toFloat64(u.latitude), toFloat64(u.longitude), ${GLOBE_H3_RESOLUTION}) as h3BucketId, u.maxCreatedAt as maxCreatedAt, ifNull(s.lastSessionEndedAt >= ${ONLINE_USERS_INTERVAL_QUERY}, false) as isOnline, usr.avatarUrl as avatarUrl
             FROM (
               SELECT userId,
                 argMax(userIdentifier, eventCreatedAt) as identifier,
@@ -40,8 +41,7 @@ function getGlobeLocatedUsersQuery(props: { projectId: bigint; startDate?: Date;
                 argMax(city, eventCreatedAt) as city,
                 argMax(latitude, eventCreatedAt) as latitude,
                 argMax(longitude, eventCreatedAt) as longitude,
-                max(eventCreatedAt) as maxCreatedAt,
-                max(eventCreatedAt) >= ${ONLINE_USERS_INTERVAL_QUERY} as isOnline
+                max(eventCreatedAt) as maxCreatedAt
               FROM (
                 SELECT any(userId) as userId,
                   argMax(userIdentifier, createdAt) as userIdentifier,
@@ -62,6 +62,9 @@ function getGlobeLocatedUsersQuery(props: { projectId: bigint; startDate?: Date;
               )
               GROUP BY userId
             ) u
+            LEFT JOIN (
+              ${getOnlineSessionsByUserQuery(projectId)}
+            ) s ON u.userId = s.userId
             LEFT JOIN (
               SELECT id, argMax(avatarUrl, updatedAt) as avatarUrl
               FROM user

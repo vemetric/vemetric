@@ -3,7 +3,7 @@ import { filterConfigSchema } from '@vemetric/common/filters';
 import type { FunnelStep } from '@vemetric/common/funnel';
 import { userSortConfigSchema } from '@vemetric/common/sort';
 import type { ClickhouseEvent } from 'clickhouse';
-import { clickhouseEvent, clickhouseSession, clickhouseUser, getUserFilterQueries } from 'clickhouse';
+import { clickhouseEvent, clickhouseSession, clickhouseUser, getUserFilterQueries, isSessionOnline } from 'clickhouse';
 import { dbFunnel } from 'database';
 import { addDays, addMonths, startOfDay } from 'date-fns';
 import { z } from 'zod';
@@ -82,12 +82,15 @@ export const usersRouter = router({
 
     const userId = BigInt(input.userId);
 
-    const [latestEvents, user] = await Promise.all([
+    const [latestEvents, user, latestSession] = await Promise.all([
       clickhouseEvent.getLatestEventsByUserId({ projectId, userId, limit: 1 }),
       clickhouseUser.findById(projectId, userId, true),
+      clickhouseSession.findLatestByUserId(projectId, userId),
     ]);
 
-    const latestEvent: (ClickhouseEvent & { isOnline: boolean }) | null = latestEvents[0] ?? null;
+    const latestEvent: (ClickhouseEvent & { isOnline: boolean }) | null = latestEvents[0]
+      ? { ...latestEvents[0], isOnline: isSessionOnline(latestSession) }
+      : null;
 
     const deviceData = {
       clientName: isEntityUnknown(latestEvent?.clientName)
@@ -110,7 +113,7 @@ export const usersRouter = router({
     return {
       latestEvent,
       user: user
-        ? { ...user, id: String(user.id), displayName: user.displayName || latestEvent.userDisplayName }
+        ? { ...user, id: String(user.id), displayName: user.displayName || latestEvent?.userDisplayName }
         : null,
       deviceData,
     };

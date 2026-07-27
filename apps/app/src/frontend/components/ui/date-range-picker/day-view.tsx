@@ -1,47 +1,46 @@
-import { DatePicker, useDatePickerContext } from '@ark-ui/react/date-picker';
-import { isBefore } from 'date-fns';
-import {
-  DatePickerTable,
-  DatePickerTableCell,
-  DatePickerTableCellTrigger,
-  DatePickerTableHeader,
-  DatePickerTableRow,
-} from '../date-picker';
+import { DatePicker, useDatePickerContext } from '@chakra-ui/react';
+import { isAfter, isBefore } from 'date-fns';
 import { Tooltip } from '../tooltip';
 
 interface Props {
   monthOffset: number;
   minDate: Date;
+  maxDate: Date;
   minRangeDisabledTooltip?: string;
+  maxRangeDisabledTooltip?: string;
 }
 
 export const DayView = (props: Props) => {
-  const { monthOffset, minDate, minRangeDisabledTooltip } = props;
+  const { monthOffset, minDate, maxDate, minRangeDisabledTooltip, maxRangeDisabledTooltip } = props;
   const datePicker = useDatePickerContext();
   const offset = datePicker.getOffset({ months: monthOffset });
 
   return (
-    <DatePickerTable w="100%">
+    <DatePicker.Table w="100%">
       <DatePicker.TableHead>
         <DatePicker.TableRow>
           {datePicker.weekDays.map((weekDay, id) => (
-            <DatePickerTableHeader key={id} fontWeight="semibold" opacity="0.8" textAlign="center" pb={2}>
+            <DatePicker.TableHeader key={id} fontWeight="semibold" opacity="0.8" textAlign="center" pb={2}>
               {weekDay.short}
-            </DatePickerTableHeader>
+            </DatePicker.TableHeader>
           ))}
         </DatePicker.TableRow>
       </DatePicker.TableHead>
       <DatePicker.TableBody>
         {offset.weeks.map((week, id) => (
-          <DatePickerTableRow key={id} _notLast={{ '& > td': { pb: '3px' } }}>
+          <DatePicker.TableRow key={id} _notLast={{ '& > td': { pb: '3px' } }}>
             {week.map((day, id) => {
               const date = new Date(day.year, day.month - 1, day.day);
-              const isDisabled = isBefore(date, minDate);
+              const disabledTooltip = isBefore(date, minDate)
+                ? minRangeDisabledTooltip
+                : isAfter(date, maxDate)
+                  ? maxRangeDisabledTooltip
+                  : undefined;
 
               return (
-                <Tooltip key={id} disabled={!isDisabled || !minRangeDisabledTooltip} content={minRangeDisabledTooltip}>
-                  <DatePickerTableCell value={day} visibleRange={offset.visibleRange} boxSize="45px">
-                    <DatePickerTableCellTrigger
+                <Tooltip key={id} disabled={!disabledTooltip} content={disabledTooltip}>
+                  <DatePicker.TableCell value={day} visibleRange={offset.visibleRange} boxSize="45px">
+                    <DatePicker.TableCellTrigger
                       cursor="pointer"
                       display="flex"
                       alignItems="center"
@@ -82,14 +81,14 @@ export const DayView = (props: Props) => {
                       }}
                     >
                       {day.day}
-                    </DatePickerTableCellTrigger>
-                  </DatePickerTableCell>
+                    </DatePicker.TableCellTrigger>
+                  </DatePicker.TableCell>
                 </Tooltip>
               );
             })}
-          </DatePickerTableRow>
+          </DatePicker.TableRow>
         ))}
       </DatePicker.TableBody>
-    </DatePickerTable>
+    </DatePicker.Table>
   );
 };

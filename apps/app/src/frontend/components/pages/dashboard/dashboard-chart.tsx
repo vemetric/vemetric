@@ -65,6 +65,7 @@ export function transformChartSeries(
 
   const firstStartTime = new Date(data[0].date);
   const lastStartTime = new Date(data[data.length - 1].date);
+  const spansMultipleYears = firstStartTime.getUTCFullYear() !== lastStartTime.getUTCFullYear();
 
   // Find the index where incomplete data starts
   let incompleteStartIndex = -1;
@@ -104,7 +105,7 @@ export function transformChartSeries(
         endDate.setDate(startDate.getDate() + 6);
         break;
       case 'monthly': {
-        if (timespan === '1year') {
+        if (timespan === '1year' || spansMultipleYears) {
           formatMethod = 'formatMonthYear';
         } else {
           formatMethod = 'formatMonth';

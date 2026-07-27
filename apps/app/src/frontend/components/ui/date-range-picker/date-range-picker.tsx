@@ -1,10 +1,7 @@
-import { DatePicker, parseDate } from '@ark-ui/react/date-picker';
-import { Box } from '@chakra-ui/react';
+import { Box, DatePicker, parseDate } from '@chakra-ui/react';
 import { getTimeSpanRangeMax, timeSpanRangeMin } from '@vemetric/common/charts/timespans';
-import { getDaysInMonth } from 'date-fns';
-import { DayView } from './day-view';
-import { DatePickerContent } from '../date-picker';
 import { DateRangePickerControls } from './date-range-picker-controls';
+import { DayView } from './day-view';
 import { MonthView } from './month-view';
 import { YearView } from './year-view';
 
@@ -18,28 +15,31 @@ interface Props {
   minDate?: Date;
   value: { start: DatePickerValue; end: DatePickerValue } | null;
   onRangeSelect: (range: { start: DatePickerValue; end: DatePickerValue }) => void;
-  enableMonthRangeSelection?: boolean;
   minRangeDisabledTooltip?: string;
+  maxRangeDisabledTooltip?: string;
 }
 
 export const DateRangePicker = ({
   minDate: _minDate,
   value,
   onRangeSelect,
-  enableMonthRangeSelection,
   minRangeDisabledTooltip,
+  maxRangeDisabledTooltip,
 }: Props) => {
   const minDate = _minDate ? _minDate : timeSpanRangeMin;
+  const maxDate = getTimeSpanRangeMax();
 
   return (
     <DatePicker.Root
+      unstyled
       inline
       skipAnimationOnMount
       startOfWeek={1}
       selectionMode="range"
       numOfMonths={1}
+      outsideDaySelectable
       min={parseDate(minDate)}
-      max={parseDate(getTimeSpanRangeMax())}
+      max={parseDate(maxDate)}
       defaultValue={
         value
           ? [
@@ -59,59 +59,50 @@ export const DateRangePicker = ({
         });
       }}
     >
-      <DatePickerContent>
-        <DatePicker.Context>
-          {({ focusedValueAsDate }) => (
-            <div>
-              <DatePicker.View view="day">
-                <DateRangePickerControls
-                  onRangeClick={
-                    enableMonthRangeSelection
-                      ? () => {
-                          const month = focusedValueAsDate.getMonth() + 1;
-                          const year = focusedValueAsDate.getFullYear();
-                          onRangeSelect({
-                            start: {
-                              day: 1,
-                              month,
-                              year,
-                            },
-                            end: {
-                              day: getDaysInMonth(focusedValueAsDate),
-                              month,
-                              year,
-                            },
-                          });
-                        }
-                      : undefined
-                  }
+      <DatePicker.Content p="0" minW="0" gap="0" bg="transparent" boxShadow="none">
+        <div>
+          <DatePicker.View view="day">
+            <DateRangePickerControls view="day" minDate={minDate} maxDate={maxDate} />
+            <Box p="1.5">
+              <Box overflow="hidden" rounded="md">
+                <DayView
+                  monthOffset={0}
+                  minDate={minDate}
+                  maxDate={maxDate}
+                  minRangeDisabledTooltip={minRangeDisabledTooltip}
+                  maxRangeDisabledTooltip={maxRangeDisabledTooltip}
                 />
-                <Box p="1.5">
-                  <Box overflow="hidden" rounded="md">
-                    <DayView monthOffset={0} minDate={minDate} minRangeDisabledTooltip={minRangeDisabledTooltip} />
-                  </Box>
-                </Box>
-              </DatePicker.View>
-              <DatePicker.View view="month">
-                <DateRangePickerControls />
-                <Box p="1.5">
-                  <Box overflow="hidden" rounded="md">
-                    <MonthView />
-                  </Box>
-                </Box>
-              </DatePicker.View>
-              <DatePicker.View view="year">
-                <DateRangePickerControls />
-                <Box p="1.5">
-                  <Box overflow="hidden" rounded="md">
-                    <YearView />
-                  </Box>
-                </Box>
-              </DatePicker.View>
-            </div>
-          )}
-        </DatePicker.Context>
-      </DatePickerContent>
+              </Box>
+            </Box>
+          </DatePicker.View>
+          <DatePicker.View view="month">
+            <DateRangePickerControls view="month" minDate={minDate} maxDate={maxDate} />
+            <Box p="1.5">
+              <Box overflow="hidden" rounded="md">
+                <MonthView
+                  minDate={minDate}
+                  maxDate={maxDate}
+                  minRangeDisabledTooltip={minRangeDisabledTooltip}
+                  maxRangeDisabledTooltip={maxRangeDisabledTooltip}
+                />
+              </Box>
+            </Box>
+          </DatePicker.View>
+          <DatePicker.View view="year">
+            <DateRangePickerControls view="year" minDate={minDate} maxDate={maxDate} />
+            <Box p="1.5">
+              <Box overflow="hidden" rounded="md">
+                <YearView
+                  minDate={minDate}
+                  maxDate={maxDate}
+                  minRangeDisabledTooltip={minRangeDisabledTooltip}
+                  maxRangeDisabledTooltip={maxRangeDisabledTooltip}
+                />
+              </Box>
+            </Box>
+          </DatePicker.View>
+        </div>
+      </DatePicker.Content>
     </DatePicker.Root>
   );
 };

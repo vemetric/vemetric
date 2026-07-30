@@ -10,6 +10,7 @@
     "lint": "eslint . --max-warnings 0"
   },
   "dependencies": {
+    "@vemetric/common": "workspace:*",
     "@vemetric/logger": "workspace:*",
     "bullmq": "^5.73.1",
     "database": "workspace:*",

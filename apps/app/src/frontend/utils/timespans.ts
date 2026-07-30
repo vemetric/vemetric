@@ -65,6 +65,38 @@ export const formatTimeSpanDateRange = (startDateStr: string, endDateStr?: strin
   }
 };
 
+interface DatePickerDisabledTooltipOptions {
+  date: Date;
+  minDate: Date;
+  maxDate: Date;
+  minRangeDisabledTooltip?: string;
+  maxRangeDisabledTooltip?: string;
+  disabled?: boolean;
+}
+
+export const getDatePickerDisabledTooltip = ({
+  date,
+  minDate,
+  maxDate,
+  minRangeDisabledTooltip,
+  maxRangeDisabledTooltip,
+  disabled = true,
+}: DatePickerDisabledTooltipOptions) => {
+  if (!disabled || isBefore(date, timeSpanRangeMin)) {
+    return undefined;
+  }
+
+  if (isBefore(date, minDate)) {
+    return minRangeDisabledTooltip;
+  }
+
+  if (isAfter(date, maxDate)) {
+    return maxRangeDisabledTooltip;
+  }
+
+  return undefined;
+};
+
 export const timespanSearchSchema = z.object({
   t: z.enum(TIME_SPANS).optional(),
   sd: z.string().optional(), // start date for custom range

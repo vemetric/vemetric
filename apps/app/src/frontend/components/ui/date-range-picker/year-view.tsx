@@ -1,5 +1,5 @@
 import { Box, Button, DatePicker, useDatePickerContext } from '@chakra-ui/react';
-import { isAfter, isBefore } from 'date-fns';
+import { getDatePickerDisabledTooltip } from '@/utils/timespans';
 import { Tooltip } from '../tooltip';
 
 interface Props {
@@ -21,12 +21,14 @@ export const YearView = ({ minDate, maxDate, minRangeDisabledTooltip, maxRangeDi
             {years.map((year) => {
               const yearStart = new Date(year.value, 0, 1);
               const isCurrentYear = year.value === currentYear;
-              const disabledTooltip =
-                Boolean(year.disabled) && isBefore(yearStart, minDate)
-                  ? minRangeDisabledTooltip
-                  : Boolean(year.disabled) && isAfter(yearStart, maxDate)
-                    ? maxRangeDisabledTooltip
-                    : undefined;
+              const disabledTooltip = getDatePickerDisabledTooltip({
+                date: yearStart,
+                minDate,
+                maxDate,
+                minRangeDisabledTooltip,
+                maxRangeDisabledTooltip,
+                disabled: Boolean(year.disabled),
+              });
 
               return (
                 <DatePicker.TableCell key={year.value} value={year.value}>

@@ -1,5 +1,5 @@
 import { DatePicker, useDatePickerContext } from '@chakra-ui/react';
-import { isAfter, isBefore } from 'date-fns';
+import { getDatePickerDisabledTooltip } from '@/utils/timespans';
 import { Tooltip } from '../tooltip';
 
 interface Props {
@@ -31,11 +31,13 @@ export const DayView = (props: Props) => {
           <DatePicker.TableRow key={id} _notLast={{ '& > td': { pb: '3px' } }}>
             {week.map((day, id) => {
               const date = new Date(day.year, day.month - 1, day.day);
-              const disabledTooltip = isBefore(date, minDate)
-                ? minRangeDisabledTooltip
-                : isAfter(date, maxDate)
-                  ? maxRangeDisabledTooltip
-                  : undefined;
+              const disabledTooltip = getDatePickerDisabledTooltip({
+                date,
+                minDate,
+                maxDate,
+                minRangeDisabledTooltip,
+                maxRangeDisabledTooltip,
+              });
 
               return (
                 <Tooltip key={id} disabled={!disabledTooltip} content={disabledTooltip}>

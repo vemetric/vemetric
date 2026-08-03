@@ -44,10 +44,10 @@ export const GlobeMarkerCard = (props: Props) => {
     endDate,
     bucketIds,
   });
-  const cardUsers = bucketUsersData?.users ?? markerUsers ?? [];
+  const bucketUsers = bucketUsersData?.users ?? [];
+  const cardUsers = bucketUsers.length > 0 ? bucketUsers : markerUsers;
   const selectedUserId = selectedUserIdFromProps ?? (cardUsers.length === 1 ? cardUsers[0].id : null);
   const selectedUser = cardUsers.find((user) => user.id === selectedUserId);
-  const showUserDetail = Boolean(selectedUserId);
 
   return (
     <Card.Root
@@ -77,9 +77,10 @@ export const GlobeMarkerCard = (props: Props) => {
       }}
     >
       <CloseButton onClick={closeCard} pos="absolute" right="0" top="0" size="xs" zIndex={3} />
-      {showUserDetail ? (
+      {selectedUserId ? (
         <GlobeMarkerUserDetail
           projectId={projectId}
+          userId={selectedUserId}
           user={selectedUser}
           isSingleUser={userCount === 1}
           onBack={showUserList}
@@ -95,6 +96,7 @@ export const GlobeMarkerCard = (props: Props) => {
           }}
           onSelectUser={selectUser}
           isBucketUsersLoading={isBucketUsersLoading}
+          hasMoreUsers={Boolean(bucketUsersData?.hasMore)}
         />
       )}
     </Card.Root>

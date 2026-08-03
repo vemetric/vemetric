@@ -28,8 +28,8 @@ export interface ClickhouseGlobeBucket {
   users: ClickhouseGlobeUser[];
 }
 
-function getGlobeLocatedUsersQuery(props: { projectId: bigint; startDate?: Date; endDate?: Date; userIds?: bigint[] }) {
-  const { projectId, startDate, endDate, userIds } = props;
+function getGlobeLocatedUsersQuery(props: { projectId: bigint; startDate?: Date; endDate?: Date }) {
+  const { projectId, startDate, endDate } = props;
 
   return `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.city as city, u.latitude as latitude, u.longitude as longitude, geoToH3(toFloat64(u.latitude), toFloat64(u.longitude), ${GLOBE_H3_RESOLUTION}) as h3BucketId, u.maxCreatedAt as maxCreatedAt, u.isOnline as isOnline, usr.avatarUrl as avatarUrl
             FROM (
@@ -55,7 +55,6 @@ function getGlobeLocatedUsersQuery(props: { projectId: bigint; startDate?: Date;
                 WHERE e.projectId=${escape(projectId)}
                   ${startDate ? `AND e.createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
                   ${endDate ? `AND e.createdAt < '${formatClickhouseDate(endDate)}'` : ''}
-                  ${userIds && userIds.length > 0 ? `AND e.userId IN (${userIds.map((userId) => escape(userId)).join(',')})` : ''}
                   AND e.latitude IS NOT NULL AND e.longitude IS NOT NULL
                 GROUP BY id
                 HAVING sum(sign) > 0
@@ -176,8 +175,9 @@ export const clickhouseGlobe = {
       startDate?: Date;
       endDate?: Date;
       bucketIds: string[];
+      limit: number;
     }): Promise<ClickhouseGlobeUser[]> => {
-      const { projectId, startDate, endDate, bucketIds } = input;
+      const { projectId, startDate, endDate, bucketIds, limit } = input;
 
       const resultSet = await clickhouseClient.query({
         query: `SELECT *
@@ -185,7 +185,8 @@ export const clickhouseGlobe = {
               ${getGlobeLocatedUsersQuery({ projectId, startDate, endDate })}
             )
             WHERE h3BucketId IN (${bucketIds.map((bucketId) => `toUInt64(${escape(bucketId)})`).join(',')})
-            ORDER BY maxCreatedAt DESC, userId DESC`,
+            ORDER BY maxCreatedAt DESC, userId DESC
+            LIMIT ${escape(limit)}`,
         format: 'JSONEachRow',
       });
       const result = (await resultSet.json()) as Array<any>;

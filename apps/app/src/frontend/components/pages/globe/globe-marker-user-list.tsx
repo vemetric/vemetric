@@ -20,10 +20,19 @@ interface Props {
   onScrollOffsetChange: (scrollOffset: number) => void;
   onSelectUser: (userId: string) => void;
   isBucketUsersLoading: boolean;
+  hasMoreUsers: boolean;
 }
 
 export const GlobeMarkerUserList = (props: Props) => {
-  const { users, userCount, initialScrollOffset, onScrollOffsetChange, onSelectUser, isBucketUsersLoading } = props;
+  const {
+    users,
+    userCount,
+    initialScrollOffset,
+    onScrollOffsetChange,
+    onSelectUser,
+    isBucketUsersLoading,
+    hasMoreUsers,
+  } = props;
   const scrollParentRef = useRef<HTMLDivElement | null>(null);
   const userWithLocation = users.find((user) => user.city && user.city.toLowerCase() !== 'unknown') ?? users[0];
   const rowVirtualizer = useVirtualizer({
@@ -56,7 +65,9 @@ export const GlobeMarkerUserList = (props: Props) => {
               />
             </Heading>
             <Text textStyle="xs" color="fg.muted">
-              Select a user to inspect their details.
+              {hasMoreUsers
+                ? `Showing ${users.length} of ${userCount} users, ordered by recent activity.`
+                : 'Select a user to inspect their details.'}
             </Text>
           </Box>
         </Flex>

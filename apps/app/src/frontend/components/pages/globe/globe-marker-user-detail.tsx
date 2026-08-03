@@ -19,6 +19,7 @@ import { GlobeSingleUserAvatar } from './globe-single-user-avatar';
 
 interface Props {
   projectId: string;
+  userId: string;
   user?: GlobeBucketUser;
   isSingleUser: boolean;
   onBack: () => void;
@@ -26,11 +27,8 @@ interface Props {
 }
 
 export const GlobeMarkerUserDetail = (props: Props) => {
-  const { projectId, user: _user, isSingleUser, onBack, isBucketUsersLoading } = props;
-  const { data: userData, isLoading } = trpc.globe.singleUser.useQuery(
-    { projectId, userId: _user?.id ?? '' },
-    { enabled: Boolean(_user) },
-  );
+  const { projectId, userId, user: _user, isSingleUser, onBack, isBucketUsersLoading } = props;
+  const { data: userData, isLoading } = trpc.globe.singleUser.useQuery({ projectId, userId });
 
   const user = mergeAll([_user, userData?.user]);
   const displayName = getUserName(user?.displayName, user?.identifier);

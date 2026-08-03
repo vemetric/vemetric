@@ -6,6 +6,8 @@ import { getVisualGlobeBuckets } from '../utils/globe';
 import { projectProcedure, projectTimespanProcedure, router } from '../utils/trpc';
 
 const PANEL_USERS_PER_PAGE = 50;
+const BUCKET_USERS_LIMIT = 100;
+const MAX_BUCKET_IDS_PER_REQUEST = 100;
 const JOINED_USERS_LIMIT = 250;
 
 export const globeRouter = router({
@@ -39,7 +41,7 @@ export const globeRouter = router({
   getBucketUsers: projectTimespanProcedure
     .input(
       z.object({
-        bucketIds: z.array(z.string()).min(1),
+        bucketIds: z.array(z.string()).min(1).max(MAX_BUCKET_IDS_PER_REQUEST),
       }),
     )
     .query(async (opts) => {
@@ -48,13 +50,22 @@ export const globeRouter = router({
         ctx: { projectId, startDate, endDate },
       } = opts;
 
-      const users = await clickhouseGlobe.queryGlobeBucketUsers({ projectId, startDate, endDate, bucketIds });
+      const users = await clickhouseGlobe.queryGlobeBucketUsers({
+        projectId,
+        startDate,
+        endDate,
+        bucketIds,
+        limit: BUCKET_USERS_LIMIT + 1,
+      });
+      const hasMore = users.length > BUCKET_USERS_LIMIT;
+      const boundedUsers = users.slice(0, BUCKET_USERS_LIMIT);
 
       return {
-        users: users.map((user) => ({
+        users: boundedUsers.map((user) => ({
           ...user,
           id: String(user.id),
         })),
+        hasMore,
       };
     }),
   singleUser: projectProcedure.input(z.object({ userId: z.string() })).query(async (opts) => {

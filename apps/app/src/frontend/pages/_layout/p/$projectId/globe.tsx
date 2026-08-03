@@ -62,7 +62,7 @@ function RouteComponent() {
       {isMobile === undefined ? (
         <Box w="100%" h="100%" overflow="hidden" pos="relative" />
       ) : (
-        <GlobeStoreProvider globeConfig={globeConfig}>
+        <GlobeStoreProvider key={isMobile ? 'mobile' : 'desktop'} globeConfig={globeConfig}>
           <GlobeCanvas
             isInitialized={Boolean(markersData?.isInitialized)}
             projectId={projectId}

@@ -149,15 +149,14 @@ export const globeRouter = router({
         input,
         ctx: { projectId, startDate, endDate },
       } = opts;
-      const sinceDate = new Date(input.since);
-
       const users = await clickhouseGlobe.queryJoinedUsersSince({
         projectId,
         startDate,
         endDate,
-        since: sinceDate,
+        since: new Date(input.since),
         limit: JOINED_USERS_LIMIT,
       });
+      const lastUser = users.at(-1);
 
       return {
         users: users.map((user) => ({
@@ -167,14 +166,7 @@ export const globeRouter = router({
           avatarUrl: user.avatarUrl,
           h3BucketId: user.h3BucketId,
         })),
-        nextSince:
-          users
-            .reduce<Date | null>((latest, user) => {
-              const joinedAt = new Date(clickhouseDateToISO(user.joinedAt));
-
-              return !latest || joinedAt > latest ? joinedAt : latest;
-            }, null)
-            ?.toISOString() ?? input.since,
+        nextSince: lastUser ? new Date(clickhouseDateToISO(lastUser.joinedAt)).toISOString() : input.since,
       };
     }),
 });

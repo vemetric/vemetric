@@ -231,7 +231,7 @@ export const clickhouseGlobe = {
               GROUP BY id
               HAVING argMax(deleted, updatedAt) = 0
             ) usr ON u.userId = usr.id
-            ORDER BY u.firstSeenAt DESC, u.userId DESC
+            ORDER BY u.firstSeenAt ASC, u.userId ASC
             LIMIT ${escape(limit)}`,
         format: 'JSONEachRow',
       });

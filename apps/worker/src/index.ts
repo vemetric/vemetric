@@ -1,5 +1,6 @@
 import type { Worker } from 'bullmq';
 import { logger } from './utils/logger';
+import { getSkippedEnrichmentProjectIds } from './utils/skipped-enrichment-projects';
 import { initCreateUserWorker } from './workers/create-user-worker';
 import { initDeviceWorker } from './workers/device-worker';
 import { initEmailWorker } from './workers/email-worker';
@@ -14,6 +15,14 @@ import { initUpdateUserWorker } from './workers/update-user-worker';
 const workers: Worker[] = [];
 async function main() {
   try {
+    const skippedEnrichmentProjectIds = getSkippedEnrichmentProjectIds();
+    if (skippedEnrichmentProjectIds.length > 0) {
+      logger.warn(
+        { projectIds: skippedEnrichmentProjectIds },
+        'Skipping device and session enrichment for configured projects',
+      );
+    }
+
     workers.push(await initSaltRotation());
     workers.push(await initFirstEventWorker());
     workers.push(await initEventWorker());

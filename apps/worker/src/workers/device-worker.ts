@@ -4,12 +4,17 @@ import { Worker } from 'bullmq';
 import { getDeviceId } from 'clickhouse';
 import { getDeviceDataFromHeaders, insertDeviceIfNotExists } from '../utils/device';
 import { logJobStep } from '../utils/job-logger';
+import { shouldSkipEnrichmentProject } from '../utils/skipped-enrichment-projects';
 
 export async function initDeviceWorker() {
   return new Worker<CreateDeviceQueueProps>(
     createDeviceQueueName,
     async (job) => {
       const { projectId: _projectId, userId: _userId, headers } = job.data;
+      if (shouldSkipEnrichmentProject(_projectId)) {
+        return;
+      }
+
       const projectId = BigInt(_projectId);
       const userId = BigInt(_userId);
 

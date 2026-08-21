@@ -9,6 +9,7 @@ import { logJobStep } from '../utils/job-logger';
 import { logger } from '../utils/logger';
 import { getReferrerFromRequest } from '../utils/referrer';
 import { getSessionData, increaseClickhouseSessionDuration } from '../utils/session';
+import { shouldSkipEnrichmentProject } from '../utils/skipped-enrichment-projects';
 import { getUrlParams } from '../utils/url';
 
 export async function initSessionWorker() {
@@ -16,6 +17,10 @@ export async function initSessionWorker() {
     sessionQueueName,
     async (job) => {
       const { projectId: _projectId, userId: _userId, sessionId, createdAt, type } = job.data;
+      if (shouldSkipEnrichmentProject(_projectId)) {
+        return;
+      }
+
       const projectId = BigInt(_projectId);
       const userId = BigInt(_userId);
 

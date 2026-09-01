@@ -4933,14 +4933,36 @@ export const bots = [
   },
   { regex: 'WebatlaBot', name: 'WebatlaBot', category: 'Crawler', url: 'https://bot.webatla.com/' },
   {
+    regex: 'Kaupr',
+    name: 'Kaupr',
+    category: 'Crawler',
+    url: 'https://kaupr.com/',
+    producer: { name: 'Kaupr Limited', url: 'https://kaupr.com/' },
+  },
+  {
+    regex: 'WRTNBot',
+    name: 'WRTNBot',
+    category: 'AI Data Scraper',
+    url: 'https://wrtn.ai/',
+    producer: { name: 'Rutten Technologies Co., Ltd', url: 'https://wrtn.ai/' },
+  },
+  {
+    regex: 'DomainDrift',
+    name: 'DomainDrift',
+    category: 'Security Checker',
+    url: 'https://domaindrift.io/',
+    producer: { name: 'DRM3 Labs Corp.', url: 'https://drm3.io/' },
+  },
+  { regex: 'MyCellar', name: 'MyCellar', category: 'Crawler', url: 'https://www.mycellar.world/' },
+  {
     regex:
-      '(ABEvalBot|AdsTxtCrawlerTP|ArtelLeadRadar|DNSResearchBot|Dormouse|FinderGo|FormFinder|GitCrawlerBot|HanaleiBot|HubSeedsBot|ImportDomains|KenyaDomainScorer|LetrixLabs|PhishBucketRust|PostitLeadDiscovery|PrivacyPolicyBot|ProductLookoutBot|Robozilla|Secweb-Sectxt|SeoCherryBot|ShopifyChecker|SitemapCrawler\\.de|SleepBot|StudyBot|The Knowledge AI|Thinkbot|ThinkChaos|TprAdsTxtCrawler|WATCrawler)',
+      '(ABEvalBot|AdsTxtCrawlerTP|ArtelLeadRadar|DNSResearchBot|Dormouse|FinderGo|FormFinder|GitCrawlerBot|HanaleiBot|HubSeedsBot|ImportDomains|KenyaDomainScorer|LetrixLabs|PhishBucketRust|PostitLeadDiscovery|PrivacyPolicyBot|ProductLookoutBot|Robozilla|Secweb-Sectxt|SeoCherryBot|ShopifyChecker|SitemapCrawler\\.de|SleepBot|StudyBot|The Knowledge AI|Thinkbot|ThinkChaos|TprAdsTxtCrawler|WATCrawler|ProspectorBR)',
     name: '$1',
     category: 'Crawler',
   },
   {
     regex:
-      '(CheckerProxy|CMSLookup|CSE-Scanner|DomainProbe|FreePBX-Scanner|Goosee-Audit|NetScope-DomainScanner|SecurityScanner|Shodan-Pull|TLM-Audit-Scanner)',
+      '(CheckerProxy|CMSLookup|CSE-Scanner|DomainProbe|FreePBX-Scanner|Goosee-Audit|NetScope-DomainScanner|SecurityScanner|Shodan-Pull|TLM-Audit-Scanner|wp2shell-check)',
     name: '$1',
     category: 'Security Checker',
   },
@@ -4951,7 +4973,7 @@ export const bots = [
   },
   {
     regex:
-      '[a-z0-9_-]*(?:(?<!cu|Hu|power[ _]|m[ _])bot(?![ _]TAB|[ _]?5[0-9]|[ _]Senior|[ _]Junior)|analyzer|appengine|archiver?|checker|collector|crawl|crawler|(?<!node-|uclient-|Mikrotik/\\d\\.[x\\d] |electron-)fetch(?:er)?|(?<!url)grabber|indexer|inspector|lookup|monitor|^parser|probe|(?<!Microsoft |banshee-)project(?!or)|(?<!Google Wap |Blue |SpeedMode; )proxy|(?<!P)research|resolver|robots|(?<!Cam)scanner|scraper|script|searcher|(?<!-)security|spider(?! 8)|study|transcoder|uptime|user[ _]?agent|validator|-(?:AI|Extended|User)/)(?:[^a-z]|$)',
+      '[a-z0-9_-]*(?:(?<!cu|Hu|power[ _]|m[ _])bot(?![ _]TAB|[ _]?5[0-9]|[ _]Senior|[ _]Junior)|analyzer|appengine|archiver?|check(?:er)?|collector|crawl|crawler|(?<!node-|uclient-|Mikrotik/\\d\\.[x\\d] |electron-)fetch(?:er)?|(?<!url)grabber|indexer|inspector|lookup|monitor|^parser|probe|(?<!Microsoft |banshee-)project(?!or)|(?<!Google Wap |Blue |SpeedMode; )proxy|(?<!P)research|resolver|robots|(?<!Cam)scanner|scraper|script|searcher|(?<!-)security|spider(?! 8)|study|transcoder|uptime|user[ _]?agent|validator|-(?:AI|Extended|User)/)(?:[^a-z]|$)',
     name: 'Generic Bot',
   },
   { regex: 'SEBot-WA', name: 'SEBot-WA' },

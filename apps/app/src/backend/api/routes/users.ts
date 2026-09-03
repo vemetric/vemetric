@@ -201,6 +201,7 @@ export function registerUserRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
     const rows = await clickhouseEvent.queryUsers({
       projectId,
       pagination: {
+        type: 'offset',
         limit: payload.limit,
         offset: payload.offset,
       },

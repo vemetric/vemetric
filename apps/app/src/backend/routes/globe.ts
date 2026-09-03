@@ -9,6 +9,10 @@ const PANEL_USERS_PER_PAGE = 50;
 const BUCKET_USERS_LIMIT = 100;
 const MAX_BUCKET_IDS_PER_REQUEST = 100;
 const JOINED_USERS_LIMIT = 250;
+const userCursorSchema = z.object({
+  lastSeenAt: z.string().datetime(),
+  userId: z.string().regex(/^\d+$/),
+});
 
 export const globeRouter = router({
   getMarkers: projectTimespanProcedure.query(async (opts) => {
@@ -118,7 +122,7 @@ export const globeRouter = router({
   listUsers: projectTimespanProcedure
     .input(
       z.object({
-        cursor: z.number().min(1).optional(),
+        cursor: userCursorSchema.optional(),
       }),
     )
     .query(async (opts) => {
@@ -126,7 +130,6 @@ export const globeRouter = router({
         input,
         ctx: { projectId, startDate, endDate },
       } = opts;
-      const page = input.cursor ?? 1;
 
       const users = await clickhouseEvent.queryUsers({
         projectId,
@@ -134,19 +137,32 @@ export const globeRouter = router({
         endDate,
         filterQueries: '',
         pagination: {
-          offset: (page - 1) * PANEL_USERS_PER_PAGE,
+          type: 'lastSeenCursor',
           limit: PANEL_USERS_PER_PAGE + 1,
+          cursor: input.cursor
+            ? {
+                lastSeenAt: new Date(input.cursor.lastSeenAt),
+                userId: BigInt(input.cursor.userId),
+              }
+            : undefined,
         },
       });
       const hasNextPage = users.length > PANEL_USERS_PER_PAGE;
-      const paginatedUsers = hasNextPage ? users.slice(0, -1) : users;
+      const paginatedUsers = users.slice(0, PANEL_USERS_PER_PAGE);
+      const lastUser = paginatedUsers.at(-1);
 
       return {
         users: paginatedUsers.map((user) => ({
           ...user,
           id: String(user.id),
         })),
-        nextCursor: hasNextPage ? page + 1 : undefined,
+        nextCursor:
+          hasNextPage && lastUser
+            ? {
+                lastSeenAt: new Date(clickhouseDateToISO(lastUser.lastSeenAt)).toISOString(),
+                userId: String(lastUser.id),
+              }
+            : undefined,
       };
     }),
   getJoinedUsersSince: projectTimespanProcedure

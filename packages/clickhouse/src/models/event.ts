@@ -7,6 +7,7 @@ import type { IUserSortConfig } from '@vemetric/common/sort';
 import { escape } from 'sqlstring';
 import type { z } from 'zod';
 import { clickhouseClient, clickhouseInsert } from '../client';
+import { GLOBE_H3_RESOLUTION, ONLINE_USERS_INTERVAL_QUERY } from '../consts';
 import type { DeviceData } from './device';
 import { EXAMPLE_DEVICE_DATA } from './device';
 import type { FilterOptions, ReferrerData, UrlData } from './session';
@@ -25,8 +26,6 @@ import { getMetricsGroupExpression, type MetricsQueryGrouping } from '../utils/q
 import { buildUserSortQueries } from '../utils/sort/user-sort';
 import { withSpan } from '../utils/with-span';
 
-// we round the current date to the nearest 30 seconds and subtract 4 minutes and 30 seconds
-const ONLINE_USERS_INTERVAL_QUERY = 'toStartOfInterval(NOW(), INTERVAL 30 SECOND) - INTERVAL 270 SECOND';
 const BOUNCE_RATE_CALCULATION_QUERY = 'round(countIf(pageViews = 1) / count() * 100, 2)';
 
 const TABLE_NAME = 'event';
@@ -111,10 +110,38 @@ const mapRowToEvent = (row: any): ClickhouseEvent => {
 const EVENT_LIMIT = 50;
 const USER_LIMIT = 50;
 
-interface PaginationOptions {
+interface OffsetUserPaginationOptions {
+  type: 'offset';
   offset: number;
   limit: number;
 }
+
+interface LastSeenCursorUserPaginationOptions {
+  type: 'lastSeenCursor';
+  cursor?: {
+    lastSeenAt: Date;
+    userId: bigint;
+  };
+  limit: number;
+}
+
+type QueryUsersInput = {
+  projectId: bigint;
+  filterQueries: string;
+  filterConfig?: IFilterConfig;
+  search?: string;
+  startDate?: Date;
+  endDate?: Date;
+} & (
+  | {
+      pagination?: OffsetUserPaginationOptions;
+      sortConfig?: IUserSortConfig;
+    }
+  | {
+      pagination: LastSeenCursorUserPaginationOptions;
+      sortConfig?: never;
+    }
+);
 
 function getApiEventMetricExpression(metric: 'users' | 'pageviews' | 'events'): string {
   if (metric === 'users') {
@@ -239,6 +266,21 @@ export const clickhouseEvent = {
     const row = result[0];
     return mapRowToEvent(row);
   },
+  getLatestPageViewByUserId: async (projectId: bigint, userId: bigint): Promise<ClickhouseEvent | null> => {
+    const resultSet = await clickhouseClient.query({
+      query: `SELECT ${EVENT_KEY_SELECTOR} FROM ${TABLE_NAME} WHERE projectId=${escape(projectId)} AND userId=${escape(
+        userId,
+      )} AND isPageView = 1 GROUP BY id HAVING sum(sign) > 0 ORDER BY ${transformKeySelector('createdAt')} DESC LIMIT 1`,
+      format: 'JSONEachRow',
+    });
+    const result = (await resultSet.json()) as Array<any>;
+    if (result.length === 0) {
+      return null;
+    }
+
+    const row = result[0];
+    return mapRowToEvent(row);
+  },
   getFirstEvent: async (projectId: bigint): Promise<Pick<ClickhouseEvent, 'createdAt'> | null> => {
     const resultSet = await clickhouseClient.query({
       query: `SELECT ${transformKeySelector('createdAt')} FROM ${TABLE_NAME} WHERE projectId=${escape(
@@ -318,45 +360,40 @@ export const clickhouseEvent = {
       };
     });
   },
-  queryUsers: withSpan(
-    'queryUsers',
-    async (input: {
-      projectId: bigint;
-      pagination?: PaginationOptions;
-      filterQueries: string;
-      filterConfig?: IFilterConfig;
-      search?: string;
-      startDate?: Date;
-      endDate?: Date;
-      sortConfig?: IUserSortConfig;
-    }) => {
-      const {
-        projectId,
-        pagination = { offset: 0, limit: USER_LIMIT },
-        filterQueries,
-        filterConfig,
-        startDate,
-        search,
-        endDate,
-        sortConfig,
-      } = input;
-      const userFilterQueries = filterConfig?.operator === 'and' ? buildUserFilterQueries(filterConfig) : '';
-      const { joinClause, orderByClause, sortSelect, isSortByEvent } = buildUserSortQueries(
-        sortConfig,
-        projectId,
-        startDate,
-        endDate,
-      );
-      const searchQuery = search ? `AND displayName ILIKE ${escape('%' + search + '%')}` : '';
+  queryUsers: withSpan('queryUsers', async (input: QueryUsersInput) => {
+    const {
+      projectId,
+      pagination = { type: 'offset', offset: 0, limit: USER_LIMIT },
+      filterQueries,
+      filterConfig,
+      startDate,
+      search,
+      endDate,
+      sortConfig,
+    } = input;
+    const userFilterQueries = filterConfig?.operator === 'and' ? buildUserFilterQueries(filterConfig) : '';
+    const { joinClause, orderByClause, sortSelect, isSortByEvent } = buildUserSortQueries(
+      sortConfig,
+      projectId,
+      startDate,
+      endDate,
+    );
+    const searchQuery = search ? `AND displayName ILIKE ${escape('%' + search + '%')}` : '';
+    const cursor = pagination.type === 'lastSeenCursor' ? pagination.cursor : undefined;
+    const cursorQuery = cursor
+      ? `AND (u.maxCreatedAt < '${formatClickhouseDate(cursor.lastSeenAt)}' OR (u.maxCreatedAt = '${formatClickhouseDate(cursor.lastSeenAt)}' AND u.userId > ${escape(cursor.userId)}))`
+      : '';
 
-      const resultSet = await clickhouseClient.query({
-        query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.city as city, u.maxCreatedAt as maxCreatedAt, u.isOnline as isOnline, usr.avatarUrl as avatarUrl, usr.customData as customData${sortSelect}
+    const resultSet = await clickhouseClient.query({
+      query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.city as city, u.maxCreatedAt as maxCreatedAt, u.isOnline as isOnline, if(u.latitude IS NULL OR u.longitude IS NULL, NULL, geoToH3(toFloat64(coalesce(u.latitude, 0)), toFloat64(coalesce(u.longitude, 0)), ${GLOBE_H3_RESOLUTION})) as h3BucketId, usr.avatarUrl as avatarUrl, usr.customData as customData${sortSelect}
             FROM (
               SELECT userId,
                 argMax(userIdentifier, eventCreatedAt) as identifier,
                 argMax(userDisplayName, eventCreatedAt) as displayName,
                 argMax(countryCode, eventCreatedAt) as countryCode,
                 argMax(city, eventCreatedAt) as city,
+                argMaxIf(eventLatitude, eventCreatedAt, eventLatitude IS NOT NULL AND eventLongitude IS NOT NULL) as latitude,
+                argMaxIf(eventLongitude, eventCreatedAt, eventLatitude IS NOT NULL AND eventLongitude IS NOT NULL) as longitude,
                 max(eventCreatedAt) as maxCreatedAt,
                 max(eventCreatedAt) >= ${ONLINE_USERS_INTERVAL_QUERY} as isOnline
               FROM (
@@ -365,6 +402,8 @@ export const clickhouseEvent = {
                   argMax(userDisplayName, createdAt) as userDisplayName,
                   argMax(countryCode, createdAt) as countryCode,
                   argMax(city, createdAt) as city,
+                  argMax(latitude, createdAt) as eventLatitude,
+                  argMax(longitude, createdAt) as eventLongitude,
                   max(createdAt) as eventCreatedAt
                 FROM ${TABLE_NAME}
                 WHERE projectId=${escape(projectId)}
@@ -387,32 +426,34 @@ export const clickhouseEvent = {
             ${joinClause}
             WHERE 1=1
             ${searchQuery}
+            ${cursorQuery}
             ${orderByClause}
-            LIMIT ${escape(pagination.limit)} OFFSET ${escape(pagination.offset)}`,
-        format: 'JSONEachRow',
-      });
-      const result = (await resultSet.json()) as Array<any>;
-      return result.map((row) => {
-        const data =
-          typeof row.customData === 'string' && row.customData.length > 0
-            ? (JSON.parse(row.customData) as Record<string, unknown>)
-            : {};
+            LIMIT ${escape(pagination.limit)}
+            ${pagination.type === 'offset' ? `OFFSET ${escape(pagination.offset)}` : ''}`,
+      format: 'JSONEachRow',
+    });
+    const result = (await resultSet.json()) as Array<any>;
+    return result.map((row) => {
+      const data =
+        typeof row.customData === 'string' && row.customData.length > 0
+          ? (JSON.parse(row.customData) as Record<string, unknown>)
+          : {};
 
-        return {
-          id: BigInt(row.userId),
-          identifier: row.identifier as string,
-          displayName: row.displayName as string,
-          countryCode: row.countryCode as string,
-          city: row.city as string,
-          lastSeenAt: row.maxCreatedAt as string,
-          lastEventFiredAt: isSortByEvent ? ((row.lastEventFiredAt as string | null) ?? null) : null,
-          isOnline: Boolean(row.isOnline),
-          avatarUrl: row.avatarUrl as string,
-          data,
-        };
-      });
-    },
-  ),
+      return {
+        id: BigInt(row.userId),
+        identifier: row.identifier as string,
+        displayName: row.displayName as string,
+        countryCode: row.countryCode as string,
+        city: row.city as string,
+        lastSeenAt: row.maxCreatedAt as string,
+        lastEventFiredAt: isSortByEvent ? ((row.lastEventFiredAt as string | null) ?? null) : null,
+        isOnline: Boolean(row.isOnline),
+        avatarUrl: row.avatarUrl as string,
+        h3BucketId: row.h3BucketId !== null ? String(row.h3BucketId) : null,
+        data,
+      };
+    });
+  }),
   getAllEventsCount: withSpan('getAllEventsCount', async (projectId: bigint) => {
     const resultSet = await clickhouseClient.query({
       query: `SELECT count() FROM ${TABLE_NAME} WHERE projectId=${escape(projectId)} GROUP BY id HAVING sum(sign) > 0`,

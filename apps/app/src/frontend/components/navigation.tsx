@@ -14,6 +14,7 @@ import {
   TbDotsVertical,
   TbLogout,
   TbSettings,
+  TbWorldBolt,
 } from 'react-icons/tb';
 import { useAccountSettingsDialog } from '@/hooks/use-account-settings-dialog';
 import { useOpenCrispChat } from '@/stores/crisp-chat-store';
@@ -92,6 +93,15 @@ export const Navigation = (props: CardRootProps) => {
         params={{ projectId }}
       >
         Dashboard
+      </NavigationItem>
+      <NavigationItem
+        isActive={routeId === '/_layout/p/$projectId/globe'}
+        icon={TbWorldBolt}
+        as={Link}
+        to="/p/$projectId/globe"
+        params={{ projectId }}
+      >
+        Globe
       </NavigationItem>
       <NavigationItem
         isActive={routeId.startsWith('/_layout/p/$projectId/users/')}

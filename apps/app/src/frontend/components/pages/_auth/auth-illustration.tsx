@@ -170,7 +170,7 @@ export const AuthIllustration = () => {
                       opacity={animateChart ? 1 : 0}
                       transition="opacity 1s ease-in-out"
                       css={{
-                        '& .recharts-xAxis .recharts-text, & .recharts-yAxis .recharts-text': {
+                        '& .recharts-xAxis-tick-labels .recharts-text, & .recharts-yAxis-tick-labels .recharts-text': {
                           fontSize: 'xs',
                           fill: 'gray.500',
                         },
@@ -181,7 +181,12 @@ export const AuthIllustration = () => {
                     >
                       <Box pos="absolute" inset={0}>
                         <ResponsiveContainer>
-                          <RechartsComposedChart data={chartData} margin={{ top: 15 }} maxBarSize={15}>
+                          <RechartsComposedChart
+                            data={chartData}
+                            margin={{ top: 15 }}
+                            maxBarSize={15}
+                            accessibilityLayer={false}
+                          >
                             <XAxis
                               dataKey="startDate"
                               interval="preserveStartEnd"
@@ -203,32 +208,12 @@ export const AuthIllustration = () => {
                               width={40}
                               tickFormatter={(value) => formatNumber(value, true)}
                             />
-                            <YAxis
-                              yAxisId="bounceRate"
-                              hide
-                              type="number"
-                              domain={yAxisDomain as AxisDomain}
-                              allowDecimals
-                            />
-                            <YAxis
-                              yAxisId="visitDuration"
-                              hide
-                              type="number"
-                              domain={yAxisDomain as AxisDomain}
-                              allowDecimals
-                            />
-                            <YAxis
-                              yAxisId="events"
-                              hide
-                              type="number"
-                              domain={yAxisDomain as AxisDomain}
-                              allowDecimals
-                            />
                             <CartesianGrid
                               vertical={false}
                               stroke="var(--chakra-colors-gray-emphasized)"
                               strokeWidth={0.8}
                               strokeDasharray="10 5"
+                              yAxisId="other"
                             />
 
                             <RechartsTooltip
@@ -353,6 +338,7 @@ export const AuthIllustration = () => {
                                       strokeLinecap="round"
                                       isAnimationActive={true}
                                       animationDuration={2000}
+                                      animationBegin={500}
                                       animationEasing="ease-in-out"
                                       connectNulls={connectNulls}
                                       fill={`url(#${categoryId})`}

@@ -98,6 +98,7 @@ async function waitForStable(
 }
 
 async function createProject(context: ProjectContext) {
+  await cleanupClickHouse(context.projectId);
   await prismaClient.userIdentificationMap.deleteMany({ where: { projectId: context.projectId } });
   await prismaClient.project.deleteMany({ where: { id: context.projectId } });
   await prismaClient.organization.deleteMany({ where: { id: context.organizationId } });
@@ -143,6 +144,10 @@ async function flushRedis() {
   }
 
   await runtime.redis.flushdb();
+}
+
+async function optimizeEvents() {
+  await clickhouseClient.command({ query: 'OPTIMIZE TABLE event FINAL' });
 }
 
 async function waitForQueuesIdle(timeoutMs = 10000) {
@@ -434,9 +439,14 @@ describe.sequential('hub ingestion integration', () => {
         contextId: 'identified-pageview',
       });
 
-      await waitFor('identified user record', async () => {
+      await waitFor('identified user record and pageview', async () => {
         const user = await clickhouseUser.findByIdentifier(BigInt(project.projectId), 'identified-user');
-        return user !== null;
+        if (!user) {
+          return false;
+        }
+
+        const events = await clickhouseEvent.findByUserId(BigInt(project.projectId), user.id);
+        return events.some((event) => event.pathname === '/dashboard');
       });
 
       const identifiedUser = await clickhouseUser.findByIdentifier(BigInt(project.projectId), 'identified-user');
@@ -538,6 +548,7 @@ describe.sequential('hub ingestion integration', () => {
       ]);
       expect(identifiedSessions.length).toBeGreaterThan(0);
       expect(identifiedDevices.length).toBeGreaterThan(0);
+      await optimizeEvents();
       await expectActiveUserMetrics(project.projectId, 1);
     } finally {
       await cleanupProject(project);
@@ -805,6 +816,7 @@ describe.sequential('hub ingestion integration', () => {
       });
 
       await waitForQueuesIdle(30000);
+      await optimizeEvents();
 
       await waitForStable(
         'funnel results to include all expected stages',

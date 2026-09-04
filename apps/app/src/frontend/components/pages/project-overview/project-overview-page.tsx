@@ -107,6 +107,7 @@ const ProjectCard = (props: Props) => {
                         strokeOpacity={0.5}
                         strokeWidth={0.8}
                         strokeDasharray="10 5"
+                        yAxisId="activeUsers"
                       />
                       <defs>
                         <linearGradient

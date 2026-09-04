@@ -180,6 +180,13 @@ class DateTimeFormatter {
     return result;
   }
 
+  formatDurationBetween(from: string | Date, to: string | Date) {
+    const start = this.prepareDate(from).getTime();
+    const end = this.prepareDate(to).getTime();
+
+    return this.formatDuration(Math.max(0, Math.floor((end - start) / 1000)));
+  }
+
   formatDistance(startedAt: string | Date, endedAt: string | Date, short = false) {
     const start = this.prepareDate(startedAt);
     const end = this.prepareDate(endedAt);

@@ -9,7 +9,8 @@ export type TimespanRoute =
   | '/_layout/p/$projectId/funnels/'
   | '/_layout/p/$projectId/funnels/$funnelId'
   | '/_layout/p/$projectId/users/'
-  | '/_layout/p/$projectId/events/';
+  | '/_layout/p/$projectId/events/'
+  | '/_layout/p/$projectId/globe';
 
 interface Props {
   from: TimespanRoute;

@@ -13,6 +13,7 @@ import { FilterContainer } from '@/components/filter/filter-container';
 import { FilterContextProvider } from '@/components/filter/filter-context';
 import { FilterControls } from '@/components/filter/filter-controls';
 import { FilterSkeletons } from '@/components/filter/filter-skeletons';
+import { LiveTimeAgo } from '@/components/live-time-ago';
 import { UserAvatar } from '@/components/pages/user/user-avatar';
 import { UserSortPopover } from '@/components/pages/user/user-sort-popover';
 import { ProjectInitCard } from '@/components/project-init-card';
@@ -133,10 +134,10 @@ function Page() {
       {!isLoading && !isFilterableDataLoading && isInitialized ? (
         <Box mt={-3} pos="sticky" top={{ base: '44px', md: '122px', lg: '52px' }} zIndex="dropdown">
           <Flex pt={3} bg="bg.content" flexWrap="wrap" w="100%" columnGap={8} rowGap={4} align="center">
-            <FilterContainer filterConfig={filterConfig} from="/p/$projectId/users" />
+            <FilterContainer filterConfig={filterConfig} from="/p/$projectId/users/" />
             <Flex flexGrow={1} flexWrap="wrap" gap={2.5} justify="flex-end" align="center">
               <SearchButtonInput value={search} onChange={setSearch} />
-              <FilterControls from="/p/$projectId/users" filterConfig={filterConfig} />
+              <FilterControls from="/p/$projectId/users/" filterConfig={filterConfig} />
               <TimespanSelect from="/_layout/p/$projectId/users/" />
             </Flex>
           </Flex>
@@ -147,7 +148,7 @@ function Page() {
           />
         </Box>
       ) : (
-        <FilterSkeletons loading mb="3" />
+        <FilterSkeletons loading={isInitialized} mb="3" />
       )}
       <Card.Root overflow="hidden" textStyle="sm" pos="relative">
         <Grid
@@ -181,7 +182,7 @@ function Page() {
               title="No users found"
               description="Try to adjust the current filters or timeframe."
               filterConfig={filterConfig}
-              filterRoute={'/p/$projectId/users'}
+              filterRoute={'/p/$projectId/users/'}
               timespanRoute={'/_layout/p/$projectId/users/'}
             />
           ) : (
@@ -264,14 +265,7 @@ function Page() {
                             >
                               <Icon>{timestamp ? <TbClock /> : <TbClockOff />}</Icon>
                               <Text textStyle="sm" color="fg.muted">
-                                {timestamp ? (
-                                  <>
-                                    {dateTimeFormatter.formatDistanceNow(timestamp, true)}{' '}
-                                    <Span hideBelow="md">ago</Span>
-                                  </>
-                                ) : (
-                                  'Never'
-                                )}
+                                {timestamp ? <LiveTimeAgo value={timestamp} /> : 'Never'}
                               </Text>
                             </HStack>
                           </Tooltip>

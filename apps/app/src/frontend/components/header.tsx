@@ -55,7 +55,7 @@ export const Header = () => {
                   {typeof breadcrumb === 'string' ? (
                     <LinkOverlay href="#">{breadcrumb}</LinkOverlay>
                   ) : (
-                    (breadcrumb as any)
+                    breadcrumb()
                   )}
                 </Box>
               </Flex>

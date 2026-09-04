@@ -59,6 +59,7 @@ export function BrowserIcon({ browserName }: Props) {
     case 'chromeheadless':
     case 'chromium':
     case 'mobilechrome':
+    case 'chromemobile':
       icon = <TbBrandChrome />;
       break;
     case 'androidbrowser':

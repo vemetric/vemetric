@@ -41,6 +41,7 @@ export const usersRouter = router({
         clickhouseEvent.queryUsers({
           projectId,
           pagination: {
+            type: 'offset',
             offset,
             limit: USERS_PER_PAGE + 1, // Get one extra to determine if there are more
           },

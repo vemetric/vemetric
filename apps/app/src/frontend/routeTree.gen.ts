@@ -9,42 +9,46 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './pages/__root'
-import { Route as VerifyEmailRouteImport } from './pages/verify-email'
-import { Route as RedirectRouteImport } from './pages/redirect'
-import { Route as BillingRouteImport } from './pages/billing'
-import { Route as LayoutRouteImport } from './pages/_layout'
-import { Route as AuthRouteImport } from './pages/_auth'
 import { Route as IndexRouteImport } from './pages/index'
-import { Route as PublicDomainRouteImport } from './pages/public/$domain'
-import { Route as OnboardingWaitingRouteImport } from './pages/onboarding/waiting'
-import { Route as OnboardingProjectRouteImport } from './pages/onboarding/project'
-import { Route as OnboardingPricingRouteImport } from './pages/onboarding/pricing'
-import { Route as OnboardingOrganizationRouteImport } from './pages/onboarding/organization'
-import { Route as OOrganizationIdRouteImport } from './pages/o/$organizationId'
-import { Route as InviteTokenRouteImport } from './pages/invite/$token'
-import { Route as EmailUnsubscribeRouteImport } from './pages/email/unsubscribe'
-import { Route as EmailConfirmProjectDeletionRouteImport } from './pages/email/confirm-project-deletion'
-import { Route as AuthSignupRouteImport } from './pages/_auth/signup'
-import { Route as AuthResetPasswordRouteImport } from './pages/_auth/reset-password'
+import { Route as AuthRouteImport } from './pages/_auth'
+import { Route as LayoutRouteImport } from './pages/_layout'
+import { Route as BillingRouteImport } from './pages/billing'
+import { Route as RedirectRouteImport } from './pages/redirect'
+import { Route as VerifyEmailRouteImport } from './pages/verify-email'
 import { Route as AuthLoginRouteImport } from './pages/_auth/login'
+import { Route as AuthResetPasswordRouteImport } from './pages/_auth/reset-password'
+import { Route as AuthSignupRouteImport } from './pages/_auth/signup'
+import { Route as EmailConfirmProjectDeletionRouteImport } from './pages/email/confirm-project-deletion'
+import { Route as EmailUnsubscribeRouteImport } from './pages/email/unsubscribe'
+import { Route as InviteTokenRouteImport } from './pages/invite/$token'
+import { Route as OOrganizationIdRouteImport } from './pages/o/$organizationId'
+import { Route as OnboardingOrganizationRouteImport } from './pages/onboarding/organization'
+import { Route as OnboardingPricingRouteImport } from './pages/onboarding/pricing'
+import { Route as OnboardingProjectRouteImport } from './pages/onboarding/project'
+import { Route as OnboardingWaitingRouteImport } from './pages/onboarding/waiting'
+import { Route as PublicDomainRouteImport } from './pages/public/$domain'
 import { Route as LayoutPProjectIdRouteImport } from './pages/_layout/p/$projectId'
 import { Route as LayoutPProjectIdIndexRouteImport } from './pages/_layout/p/$projectId/index'
-import { Route as LayoutPProjectIdUsersIndexRouteImport } from './pages/_layout/p/$projectId/users/index'
-import { Route as LayoutPProjectIdSettingsIndexRouteImport } from './pages/_layout/p/$projectId/settings/index'
-import { Route as LayoutPProjectIdFunnelsIndexRouteImport } from './pages/_layout/p/$projectId/funnels/index'
+import { Route as LayoutPProjectIdGlobeRouteImport } from './pages/_layout/p/$projectId/globe'
 import { Route as LayoutPProjectIdEventsIndexRouteImport } from './pages/_layout/p/$projectId/events/index'
-import { Route as LayoutPProjectIdUsersUserIdRouteImport } from './pages/_layout/p/$projectId/users/$userId'
-import { Route as LayoutPProjectIdUserIdentifierRouteImport } from './pages/_layout/p/$projectId/user/$identifier'
+import { Route as LayoutPProjectIdFunnelsIndexRouteImport } from './pages/_layout/p/$projectId/funnels/index'
 import { Route as LayoutPProjectIdFunnelsFunnelIdRouteImport } from './pages/_layout/p/$projectId/funnels/$funnelId'
+import { Route as LayoutPProjectIdSettingsIndexRouteImport } from './pages/_layout/p/$projectId/settings/index'
+import { Route as LayoutPProjectIdUserIdentifierRouteImport } from './pages/_layout/p/$projectId/user/$identifier'
+import { Route as LayoutPProjectIdUsersIndexRouteImport } from './pages/_layout/p/$projectId/users/index'
+import { Route as LayoutPProjectIdUsersUserIdRouteImport } from './pages/_layout/p/$projectId/users/$userId'
 
-const VerifyEmailRoute = VerifyEmailRouteImport.update({
-  id: '/verify-email',
-  path: '/verify-email',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RedirectRoute = RedirectRouteImport.update({
-  id: '/redirect',
-  path: '/redirect',
+const AuthRoute = AuthRouteImport.update({
+  id: '/_auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LayoutRoute = LayoutRouteImport.update({
+  id: '/_layout',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BillingRoute = BillingRouteImport.update({
@@ -52,68 +56,19 @@ const BillingRoute = BillingRouteImport.update({
   path: '/billing',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LayoutRoute = LayoutRouteImport.update({
-  id: '/_layout',
+const RedirectRoute = RedirectRouteImport.update({
+  id: '/redirect',
+  path: '/redirect',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/_auth',
+const VerifyEmailRoute = VerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PublicDomainRoute = PublicDomainRouteImport.update({
-  id: '/public/$domain',
-  path: '/public/$domain',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OnboardingWaitingRoute = OnboardingWaitingRouteImport.update({
-  id: '/onboarding/waiting',
-  path: '/onboarding/waiting',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OnboardingProjectRoute = OnboardingProjectRouteImport.update({
-  id: '/onboarding/project',
-  path: '/onboarding/project',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OnboardingPricingRoute = OnboardingPricingRouteImport.update({
-  id: '/onboarding/pricing',
-  path: '/onboarding/pricing',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OnboardingOrganizationRoute = OnboardingOrganizationRouteImport.update({
-  id: '/onboarding/organization',
-  path: '/onboarding/organization',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OOrganizationIdRoute = OOrganizationIdRouteImport.update({
-  id: '/o/$organizationId',
-  path: '/o/$organizationId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InviteTokenRoute = InviteTokenRouteImport.update({
-  id: '/invite/$token',
-  path: '/invite/$token',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
-  id: '/email/unsubscribe',
-  path: '/email/unsubscribe',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EmailConfirmProjectDeletionRoute =
-  EmailConfirmProjectDeletionRouteImport.update({
-    id: '/email/confirm-project-deletion',
-    path: '/email/confirm-project-deletion',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const AuthSignupRoute = AuthSignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => AuthRoute,
 } as any)
 const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
@@ -121,10 +76,56 @@ const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => AuthRoute,
 } as any)
-const AuthLoginRoute = AuthLoginRouteImport.update({
-  id: '/login',
-  path: '/login',
+const AuthSignupRoute = AuthSignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => AuthRoute,
+} as any)
+const EmailConfirmProjectDeletionRoute =
+  EmailConfirmProjectDeletionRouteImport.update({
+    id: '/email/confirm-project-deletion',
+    path: '/email/confirm-project-deletion',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
+  id: '/email/unsubscribe',
+  path: '/email/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InviteTokenRoute = InviteTokenRouteImport.update({
+  id: '/invite/$token',
+  path: '/invite/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OOrganizationIdRoute = OOrganizationIdRouteImport.update({
+  id: '/o/$organizationId',
+  path: '/o/$organizationId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingOrganizationRoute = OnboardingOrganizationRouteImport.update({
+  id: '/onboarding/organization',
+  path: '/onboarding/organization',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingPricingRoute = OnboardingPricingRouteImport.update({
+  id: '/onboarding/pricing',
+  path: '/onboarding/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingProjectRoute = OnboardingProjectRouteImport.update({
+  id: '/onboarding/project',
+  path: '/onboarding/project',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingWaitingRoute = OnboardingWaitingRouteImport.update({
+  id: '/onboarding/waiting',
+  path: '/onboarding/waiting',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PublicDomainRoute = PublicDomainRouteImport.update({
+  id: '/public/$domain',
+  path: '/public/$domain',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutPProjectIdRoute = LayoutPProjectIdRouteImport.update({
   id: '/p/$projectId',
@@ -136,16 +137,15 @@ const LayoutPProjectIdIndexRoute = LayoutPProjectIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => LayoutPProjectIdRoute,
 } as any)
-const LayoutPProjectIdUsersIndexRoute =
-  LayoutPProjectIdUsersIndexRouteImport.update({
-    id: '/users/',
-    path: '/users/',
-    getParentRoute: () => LayoutPProjectIdRoute,
-  } as any)
-const LayoutPProjectIdSettingsIndexRoute =
-  LayoutPProjectIdSettingsIndexRouteImport.update({
-    id: '/settings/',
-    path: '/settings/',
+const LayoutPProjectIdGlobeRoute = LayoutPProjectIdGlobeRouteImport.update({
+  id: '/globe',
+  path: '/globe',
+  getParentRoute: () => LayoutPProjectIdRoute,
+} as any)
+const LayoutPProjectIdEventsIndexRoute =
+  LayoutPProjectIdEventsIndexRouteImport.update({
+    id: '/events/',
+    path: '/events/',
     getParentRoute: () => LayoutPProjectIdRoute,
   } as any)
 const LayoutPProjectIdFunnelsIndexRoute =
@@ -154,16 +154,16 @@ const LayoutPProjectIdFunnelsIndexRoute =
     path: '/funnels/',
     getParentRoute: () => LayoutPProjectIdRoute,
   } as any)
-const LayoutPProjectIdEventsIndexRoute =
-  LayoutPProjectIdEventsIndexRouteImport.update({
-    id: '/events/',
-    path: '/events/',
+const LayoutPProjectIdFunnelsFunnelIdRoute =
+  LayoutPProjectIdFunnelsFunnelIdRouteImport.update({
+    id: '/funnels/$funnelId',
+    path: '/funnels/$funnelId',
     getParentRoute: () => LayoutPProjectIdRoute,
   } as any)
-const LayoutPProjectIdUsersUserIdRoute =
-  LayoutPProjectIdUsersUserIdRouteImport.update({
-    id: '/users/$userId',
-    path: '/users/$userId',
+const LayoutPProjectIdSettingsIndexRoute =
+  LayoutPProjectIdSettingsIndexRouteImport.update({
+    id: '/settings/',
+    path: '/settings/',
     getParentRoute: () => LayoutPProjectIdRoute,
   } as any)
 const LayoutPProjectIdUserIdentifierRoute =
@@ -172,10 +172,16 @@ const LayoutPProjectIdUserIdentifierRoute =
     path: '/user/$identifier',
     getParentRoute: () => LayoutPProjectIdRoute,
   } as any)
-const LayoutPProjectIdFunnelsFunnelIdRoute =
-  LayoutPProjectIdFunnelsFunnelIdRouteImport.update({
-    id: '/funnels/$funnelId',
-    path: '/funnels/$funnelId',
+const LayoutPProjectIdUsersIndexRoute =
+  LayoutPProjectIdUsersIndexRouteImport.update({
+    id: '/users/',
+    path: '/users/',
+    getParentRoute: () => LayoutPProjectIdRoute,
+  } as any)
+const LayoutPProjectIdUsersUserIdRoute =
+  LayoutPProjectIdUsersUserIdRouteImport.update({
+    id: '/users/$userId',
+    path: '/users/$userId',
     getParentRoute: () => LayoutPProjectIdRoute,
   } as any)
 
@@ -197,14 +203,15 @@ export interface FileRoutesByFullPath {
   '/onboarding/waiting': typeof OnboardingWaitingRoute
   '/public/$domain': typeof PublicDomainRoute
   '/p/$projectId': typeof LayoutPProjectIdRouteWithChildren
+  '/p/$projectId/globe': typeof LayoutPProjectIdGlobeRoute
   '/p/$projectId/': typeof LayoutPProjectIdIndexRoute
   '/p/$projectId/funnels/$funnelId': typeof LayoutPProjectIdFunnelsFunnelIdRoute
   '/p/$projectId/user/$identifier': typeof LayoutPProjectIdUserIdentifierRoute
   '/p/$projectId/users/$userId': typeof LayoutPProjectIdUsersUserIdRoute
-  '/p/$projectId/events': typeof LayoutPProjectIdEventsIndexRoute
-  '/p/$projectId/funnels': typeof LayoutPProjectIdFunnelsIndexRoute
-  '/p/$projectId/settings': typeof LayoutPProjectIdSettingsIndexRoute
-  '/p/$projectId/users': typeof LayoutPProjectIdUsersIndexRoute
+  '/p/$projectId/events/': typeof LayoutPProjectIdEventsIndexRoute
+  '/p/$projectId/funnels/': typeof LayoutPProjectIdFunnelsIndexRoute
+  '/p/$projectId/settings/': typeof LayoutPProjectIdSettingsIndexRoute
+  '/p/$projectId/users/': typeof LayoutPProjectIdUsersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -223,6 +230,7 @@ export interface FileRoutesByTo {
   '/onboarding/project': typeof OnboardingProjectRoute
   '/onboarding/waiting': typeof OnboardingWaitingRoute
   '/public/$domain': typeof PublicDomainRoute
+  '/p/$projectId/globe': typeof LayoutPProjectIdGlobeRoute
   '/p/$projectId': typeof LayoutPProjectIdIndexRoute
   '/p/$projectId/funnels/$funnelId': typeof LayoutPProjectIdFunnelsFunnelIdRoute
   '/p/$projectId/user/$identifier': typeof LayoutPProjectIdUserIdentifierRoute
@@ -253,6 +261,7 @@ export interface FileRoutesById {
   '/onboarding/waiting': typeof OnboardingWaitingRoute
   '/public/$domain': typeof PublicDomainRoute
   '/_layout/p/$projectId': typeof LayoutPProjectIdRouteWithChildren
+  '/_layout/p/$projectId/globe': typeof LayoutPProjectIdGlobeRoute
   '/_layout/p/$projectId/': typeof LayoutPProjectIdIndexRoute
   '/_layout/p/$projectId/funnels/$funnelId': typeof LayoutPProjectIdFunnelsFunnelIdRoute
   '/_layout/p/$projectId/user/$identifier': typeof LayoutPProjectIdUserIdentifierRoute
@@ -282,14 +291,15 @@ export interface FileRouteTypes {
     | '/onboarding/waiting'
     | '/public/$domain'
     | '/p/$projectId'
+    | '/p/$projectId/globe'
     | '/p/$projectId/'
     | '/p/$projectId/funnels/$funnelId'
     | '/p/$projectId/user/$identifier'
     | '/p/$projectId/users/$userId'
-    | '/p/$projectId/events'
-    | '/p/$projectId/funnels'
-    | '/p/$projectId/settings'
-    | '/p/$projectId/users'
+    | '/p/$projectId/events/'
+    | '/p/$projectId/funnels/'
+    | '/p/$projectId/settings/'
+    | '/p/$projectId/users/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -308,6 +318,7 @@ export interface FileRouteTypes {
     | '/onboarding/project'
     | '/onboarding/waiting'
     | '/public/$domain'
+    | '/p/$projectId/globe'
     | '/p/$projectId'
     | '/p/$projectId/funnels/$funnelId'
     | '/p/$projectId/user/$identifier'
@@ -337,6 +348,7 @@ export interface FileRouteTypes {
     | '/onboarding/waiting'
     | '/public/$domain'
     | '/_layout/p/$projectId'
+    | '/_layout/p/$projectId/globe'
     | '/_layout/p/$projectId/'
     | '/_layout/p/$projectId/funnels/$funnelId'
     | '/_layout/p/$projectId/user/$identifier'
@@ -367,18 +379,25 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/verify-email': {
-      id: '/verify-email'
-      path: '/verify-email'
-      fullPath: '/verify-email'
-      preLoaderRoute: typeof VerifyEmailRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/redirect': {
-      id: '/redirect'
-      path: '/redirect'
-      fullPath: '/redirect'
-      preLoaderRoute: typeof RedirectRouteImport
+    '/_auth': {
+      id: '/_auth'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_layout': {
+      id: '/_layout'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof LayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/billing': {
@@ -388,95 +407,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BillingRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_layout': {
-      id: '/_layout'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof LayoutRouteImport
+    '/redirect': {
+      id: '/redirect'
+      path: '/redirect'
+      fullPath: '/redirect'
+      preLoaderRoute: typeof RedirectRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_auth': {
-      id: '/_auth'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof AuthRouteImport
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/public/$domain': {
-      id: '/public/$domain'
-      path: '/public/$domain'
-      fullPath: '/public/$domain'
-      preLoaderRoute: typeof PublicDomainRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onboarding/waiting': {
-      id: '/onboarding/waiting'
-      path: '/onboarding/waiting'
-      fullPath: '/onboarding/waiting'
-      preLoaderRoute: typeof OnboardingWaitingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onboarding/project': {
-      id: '/onboarding/project'
-      path: '/onboarding/project'
-      fullPath: '/onboarding/project'
-      preLoaderRoute: typeof OnboardingProjectRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onboarding/pricing': {
-      id: '/onboarding/pricing'
-      path: '/onboarding/pricing'
-      fullPath: '/onboarding/pricing'
-      preLoaderRoute: typeof OnboardingPricingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onboarding/organization': {
-      id: '/onboarding/organization'
-      path: '/onboarding/organization'
-      fullPath: '/onboarding/organization'
-      preLoaderRoute: typeof OnboardingOrganizationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/o/$organizationId': {
-      id: '/o/$organizationId'
-      path: '/o/$organizationId'
-      fullPath: '/o/$organizationId'
-      preLoaderRoute: typeof OOrganizationIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/invite/$token': {
-      id: '/invite/$token'
-      path: '/invite/$token'
-      fullPath: '/invite/$token'
-      preLoaderRoute: typeof InviteTokenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/email/unsubscribe': {
-      id: '/email/unsubscribe'
-      path: '/email/unsubscribe'
-      fullPath: '/email/unsubscribe'
-      preLoaderRoute: typeof EmailUnsubscribeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/email/confirm-project-deletion': {
-      id: '/email/confirm-project-deletion'
-      path: '/email/confirm-project-deletion'
-      fullPath: '/email/confirm-project-deletion'
-      preLoaderRoute: typeof EmailConfirmProjectDeletionRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_auth/signup': {
-      id: '/_auth/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof AuthSignupRouteImport
+    '/_auth/login': {
+      id: '/_auth/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof AuthRoute
     }
     '/_auth/reset-password': {
@@ -486,12 +435,75 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthResetPasswordRouteImport
       parentRoute: typeof AuthRoute
     }
-    '/_auth/login': {
-      id: '/_auth/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof AuthLoginRouteImport
+    '/_auth/signup': {
+      id: '/_auth/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof AuthSignupRouteImport
       parentRoute: typeof AuthRoute
+    }
+    '/email/confirm-project-deletion': {
+      id: '/email/confirm-project-deletion'
+      path: '/email/confirm-project-deletion'
+      fullPath: '/email/confirm-project-deletion'
+      preLoaderRoute: typeof EmailConfirmProjectDeletionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/email/unsubscribe': {
+      id: '/email/unsubscribe'
+      path: '/email/unsubscribe'
+      fullPath: '/email/unsubscribe'
+      preLoaderRoute: typeof EmailUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invite/$token': {
+      id: '/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/invite/$token'
+      preLoaderRoute: typeof InviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/o/$organizationId': {
+      id: '/o/$organizationId'
+      path: '/o/$organizationId'
+      fullPath: '/o/$organizationId'
+      preLoaderRoute: typeof OOrganizationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding/organization': {
+      id: '/onboarding/organization'
+      path: '/onboarding/organization'
+      fullPath: '/onboarding/organization'
+      preLoaderRoute: typeof OnboardingOrganizationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding/pricing': {
+      id: '/onboarding/pricing'
+      path: '/onboarding/pricing'
+      fullPath: '/onboarding/pricing'
+      preLoaderRoute: typeof OnboardingPricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding/project': {
+      id: '/onboarding/project'
+      path: '/onboarding/project'
+      fullPath: '/onboarding/project'
+      preLoaderRoute: typeof OnboardingProjectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding/waiting': {
+      id: '/onboarding/waiting'
+      path: '/onboarding/waiting'
+      fullPath: '/onboarding/waiting'
+      preLoaderRoute: typeof OnboardingWaitingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/public/$domain': {
+      id: '/public/$domain'
+      path: '/public/$domain'
+      fullPath: '/public/$domain'
+      preLoaderRoute: typeof PublicDomainRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_layout/p/$projectId': {
       id: '/_layout/p/$projectId'
@@ -507,39 +519,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutPProjectIdIndexRouteImport
       parentRoute: typeof LayoutPProjectIdRoute
     }
-    '/_layout/p/$projectId/users/': {
-      id: '/_layout/p/$projectId/users/'
-      path: '/users'
-      fullPath: '/p/$projectId/users'
-      preLoaderRoute: typeof LayoutPProjectIdUsersIndexRouteImport
-      parentRoute: typeof LayoutPProjectIdRoute
-    }
-    '/_layout/p/$projectId/settings/': {
-      id: '/_layout/p/$projectId/settings/'
-      path: '/settings'
-      fullPath: '/p/$projectId/settings'
-      preLoaderRoute: typeof LayoutPProjectIdSettingsIndexRouteImport
-      parentRoute: typeof LayoutPProjectIdRoute
-    }
-    '/_layout/p/$projectId/funnels/': {
-      id: '/_layout/p/$projectId/funnels/'
-      path: '/funnels'
-      fullPath: '/p/$projectId/funnels'
-      preLoaderRoute: typeof LayoutPProjectIdFunnelsIndexRouteImport
+    '/_layout/p/$projectId/globe': {
+      id: '/_layout/p/$projectId/globe'
+      path: '/globe'
+      fullPath: '/p/$projectId/globe'
+      preLoaderRoute: typeof LayoutPProjectIdGlobeRouteImport
       parentRoute: typeof LayoutPProjectIdRoute
     }
     '/_layout/p/$projectId/events/': {
       id: '/_layout/p/$projectId/events/'
       path: '/events'
-      fullPath: '/p/$projectId/events'
+      fullPath: '/p/$projectId/events/'
       preLoaderRoute: typeof LayoutPProjectIdEventsIndexRouteImport
       parentRoute: typeof LayoutPProjectIdRoute
     }
-    '/_layout/p/$projectId/users/$userId': {
-      id: '/_layout/p/$projectId/users/$userId'
-      path: '/users/$userId'
-      fullPath: '/p/$projectId/users/$userId'
-      preLoaderRoute: typeof LayoutPProjectIdUsersUserIdRouteImport
+    '/_layout/p/$projectId/funnels/': {
+      id: '/_layout/p/$projectId/funnels/'
+      path: '/funnels'
+      fullPath: '/p/$projectId/funnels/'
+      preLoaderRoute: typeof LayoutPProjectIdFunnelsIndexRouteImport
+      parentRoute: typeof LayoutPProjectIdRoute
+    }
+    '/_layout/p/$projectId/funnels/$funnelId': {
+      id: '/_layout/p/$projectId/funnels/$funnelId'
+      path: '/funnels/$funnelId'
+      fullPath: '/p/$projectId/funnels/$funnelId'
+      preLoaderRoute: typeof LayoutPProjectIdFunnelsFunnelIdRouteImport
+      parentRoute: typeof LayoutPProjectIdRoute
+    }
+    '/_layout/p/$projectId/settings/': {
+      id: '/_layout/p/$projectId/settings/'
+      path: '/settings'
+      fullPath: '/p/$projectId/settings/'
+      preLoaderRoute: typeof LayoutPProjectIdSettingsIndexRouteImport
       parentRoute: typeof LayoutPProjectIdRoute
     }
     '/_layout/p/$projectId/user/$identifier': {
@@ -549,11 +561,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutPProjectIdUserIdentifierRouteImport
       parentRoute: typeof LayoutPProjectIdRoute
     }
-    '/_layout/p/$projectId/funnels/$funnelId': {
-      id: '/_layout/p/$projectId/funnels/$funnelId'
-      path: '/funnels/$funnelId'
-      fullPath: '/p/$projectId/funnels/$funnelId'
-      preLoaderRoute: typeof LayoutPProjectIdFunnelsFunnelIdRouteImport
+    '/_layout/p/$projectId/users/': {
+      id: '/_layout/p/$projectId/users/'
+      path: '/users'
+      fullPath: '/p/$projectId/users/'
+      preLoaderRoute: typeof LayoutPProjectIdUsersIndexRouteImport
+      parentRoute: typeof LayoutPProjectIdRoute
+    }
+    '/_layout/p/$projectId/users/$userId': {
+      id: '/_layout/p/$projectId/users/$userId'
+      path: '/users/$userId'
+      fullPath: '/p/$projectId/users/$userId'
+      preLoaderRoute: typeof LayoutPProjectIdUsersUserIdRouteImport
       parentRoute: typeof LayoutPProjectIdRoute
     }
   }
@@ -574,6 +593,7 @@ const AuthRouteChildren: AuthRouteChildren = {
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 interface LayoutPProjectIdRouteChildren {
+  LayoutPProjectIdGlobeRoute: typeof LayoutPProjectIdGlobeRoute
   LayoutPProjectIdIndexRoute: typeof LayoutPProjectIdIndexRoute
   LayoutPProjectIdFunnelsFunnelIdRoute: typeof LayoutPProjectIdFunnelsFunnelIdRoute
   LayoutPProjectIdUserIdentifierRoute: typeof LayoutPProjectIdUserIdentifierRoute
@@ -585,6 +605,7 @@ interface LayoutPProjectIdRouteChildren {
 }
 
 const LayoutPProjectIdRouteChildren: LayoutPProjectIdRouteChildren = {
+  LayoutPProjectIdGlobeRoute: LayoutPProjectIdGlobeRoute,
   LayoutPProjectIdIndexRoute: LayoutPProjectIdIndexRoute,
   LayoutPProjectIdFunnelsFunnelIdRoute: LayoutPProjectIdFunnelsFunnelIdRoute,
   LayoutPProjectIdUserIdentifierRoute: LayoutPProjectIdUserIdentifierRoute,

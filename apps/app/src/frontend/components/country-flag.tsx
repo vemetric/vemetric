@@ -6,6 +6,8 @@ export const CountryFlag = ({ countryCode }: { countryCode: string }) => {
 
   return (
     <Box
+      as="span"
+      flexShrink={0}
       bg="bg"
       opacity={0.8}
       pos="relative"

@@ -3,6 +3,7 @@ import { z } from 'zod';
 const REDIRECT_PATH_KEY = 'redirectPath';
 const COUNTRIES_MAP_VIEW_STATE_KEY = 'countries-map:view-state';
 const COUNTRIES_MAP_LOCKED_KEY = 'countries-map:locked';
+const GLOBE_VIEW_STATE_KEY = 'globe:view-state';
 
 export const redirectPath = {
   set: (path: string) => {
@@ -75,5 +76,41 @@ export const countriesMapLocked = {
 
   clear: () => {
     localStorage.removeItem(COUNTRIES_MAP_LOCKED_KEY);
+  },
+};
+
+const globeViewStateSchema = z.object({
+  scale: z.number().finite(),
+  offset: z.tuple([z.number().finite(), z.number().finite()]),
+  phi: z.number().finite(),
+  theta: z.number().finite(),
+  autoRotate: z.boolean().optional(),
+  locked: z.boolean().optional(),
+});
+export type GlobeViewState = z.infer<typeof globeViewStateSchema>;
+
+export const globeViewState = {
+  set: (state: GlobeViewState) => {
+    try {
+      localStorage.setItem(GLOBE_VIEW_STATE_KEY, JSON.stringify(state));
+    } catch {
+      // Ignore localStorage write errors (private mode, quota exceeded, etc.)
+    }
+  },
+
+  get: (): GlobeViewState | null => {
+    try {
+      const raw = localStorage.getItem(GLOBE_VIEW_STATE_KEY);
+      if (!raw) return null;
+
+      const parsed = globeViewStateSchema.safeParse(JSON.parse(raw));
+      return parsed.success ? parsed.data : null;
+    } catch {
+      return null;
+    }
+  },
+
+  clear: () => {
+    localStorage.removeItem(GLOBE_VIEW_STATE_KEY);
   },
 };

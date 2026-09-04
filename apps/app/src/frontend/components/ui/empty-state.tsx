@@ -19,7 +19,7 @@ export const EmptyState = React.forwardRef<HTMLDivElement, EmptyStateProps>(func
         {description ? (
           <VStack textAlign="center">
             <ChakraEmptyState.Title>{title}</ChakraEmptyState.Title>
-            <ChakraEmptyState.Description>{description}</ChakraEmptyState.Description>
+            <ChakraEmptyState.Description as="div">{description}</ChakraEmptyState.Description>
           </VStack>
         ) : (
           <ChakraEmptyState.Title>{title}</ChakraEmptyState.Title>

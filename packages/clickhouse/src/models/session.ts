@@ -157,6 +157,21 @@ export const clickhouseSession = {
       return mapRowToSession(row);
     });
   },
+  findLatestByUserId: async (projectId: bigint, userId: bigint): Promise<ClickhouseSession | null> => {
+    const resultSet = await clickhouseClient.query({
+      query: `SELECT ${SESSION_KEY_SELECTOR}, max(endedAt) as latestEndedAt FROM ${TABLE_NAME} WHERE projectId=${escape(
+        projectId,
+      )} AND userId=${escape(userId)} GROUP BY id HAVING argMax(deleted, endedAt) = 0 ORDER BY latestEndedAt DESC LIMIT 1`,
+      format: 'JSONEachRow',
+    });
+    const result = (await resultSet.json()) as Array<any>;
+    if (result.length === 0) {
+      return null;
+    }
+
+    const row = result[0];
+    return mapRowToSession(row);
+  },
   findByUserIdInTimeRange: async (
     projectId: bigint,
     userId: bigint,

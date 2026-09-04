@@ -6,12 +6,12 @@ import { DEFAULT_CHART_TOGGLES } from './use-chart-toggles';
 
 export type RoutesWithFiltering =
   | '/p/$projectId'
-  | '/p/$projectId/users'
+  | '/p/$projectId/users/'
   | '/p/$projectId/users/$userId'
-  | '/p/$projectId/events'
+  | '/p/$projectId/events/'
   | '/public/$domain'
-  | '/p/$projectId/events'
-  | '/p/$projectId/funnels'
+  | '/p/$projectId/events/'
+  | '/p/$projectId/funnels/'
   | '/p/$projectId/funnels/$funnelId';
 
 interface Props {

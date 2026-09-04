@@ -32,12 +32,14 @@ export const ProjectMenu = () => {
   const getProjectRoute = () => {
     if (routeId === '/_layout/p/$projectId/settings/') {
       return '/p/$projectId/settings';
-    } else if (routeId.startsWith('/_layout/p/$projectId/users/')) {
+    } else if (routeId.startsWith('/_layout/p/$projectId/users')) {
       return '/p/$projectId/users';
-    } else if (routeId.startsWith('/_layout/p/$projectId/events/')) {
+    } else if (routeId.startsWith('/_layout/p/$projectId/events')) {
       return '/p/$projectId/events';
-    } else if (routeId.startsWith('/_layout/p/$projectId/funnels/')) {
+    } else if (routeId.startsWith('/_layout/p/$projectId/funnels')) {
       return '/p/$projectId/funnels';
+    } else if (routeId.startsWith('/_layout/p/$projectId/globe')) {
+      return '/p/$projectId/globe';
     }
     return '/p/$projectId';
   };

@@ -146,7 +146,8 @@ jobs:
         run: bun --filter hub test:integration
 
       - name: Install Playwright browser
-        run: npx playwright install chromium
+        working-directory: apps/e2e
+        run: bun run playwright install chromium
 
       - name: Start app
         run: |

@@ -23,7 +23,7 @@ export const UserAvatar = ({ displayName, avatarUrl, identifier, id, enableBlink
       flexShrink={0}
       overflow="hidden"
       userSelect="none"
-      filter={isAnonymous ? 'grayscale(100%)' : 'none'}
+      filter={isAnonymous ? 'grayscale(85%)' : 'none'}
       {...props}
     >
       {avatarUrl ? (

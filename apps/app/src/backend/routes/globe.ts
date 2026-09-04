@@ -13,6 +13,10 @@ const userCursorSchema = z.object({
   lastSeenAt: z.string().datetime(),
   userId: z.string().regex(/^\d+$/),
 });
+const joinedUserCursorSchema = z.object({
+  firstSeenAt: z.string().datetime(),
+  userId: z.string().regex(/^\d+$/).optional(),
+});
 
 export const globeRouter = router({
   getMarkers: projectTimespanProcedure.query(async (opts) => {
@@ -168,7 +172,7 @@ export const globeRouter = router({
   getJoinedUsersSince: projectTimespanProcedure
     .input(
       z.object({
-        since: z.string().datetime(),
+        cursor: joinedUserCursorSchema,
       }),
     )
     .query(async (opts) => {
@@ -180,7 +184,10 @@ export const globeRouter = router({
         projectId,
         startDate,
         endDate,
-        since: new Date(input.since),
+        cursor: {
+          firstSeenAt: new Date(input.cursor.firstSeenAt),
+          userId: input.cursor.userId ? BigInt(input.cursor.userId) : undefined,
+        },
         limit: JOINED_USERS_LIMIT,
       });
       const lastUser = users.at(-1);
@@ -193,7 +200,12 @@ export const globeRouter = router({
           avatarUrl: user.avatarUrl,
           h3BucketId: user.h3BucketId,
         })),
-        nextSince: lastUser ? new Date(clickhouseDateToISO(lastUser.joinedAt)).toISOString() : input.since,
+        nextCursor: lastUser
+          ? {
+              firstSeenAt: new Date(clickhouseDateToISO(lastUser.joinedAt)).toISOString(),
+              userId: String(lastUser.id),
+            }
+          : input.cursor,
       };
     }),
 });

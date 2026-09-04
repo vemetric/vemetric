@@ -196,8 +196,19 @@ export const clickhouseGlobe = {
   ),
   queryJoinedUsersSince: withSpan(
     'queryJoinedUsersSince',
-    async (input: { projectId: bigint; startDate?: Date; endDate?: Date; since: Date; limit: number }) => {
-      const { projectId, startDate, endDate, since, limit } = input;
+    async (input: {
+      projectId: bigint;
+      startDate?: Date;
+      endDate?: Date;
+      cursor: { firstSeenAt: Date; userId?: bigint };
+      limit: number;
+    }) => {
+      const { projectId, startDate, endDate, cursor, limit } = input;
+      const formattedFirstSeenAt = formatClickhouseDate(cursor.firstSeenAt);
+      const cursorQuery =
+        cursor.userId === undefined
+          ? `firstSeenAt > '${formattedFirstSeenAt}'`
+          : `(firstSeenAt > '${formattedFirstSeenAt}' OR (firstSeenAt = '${formattedFirstSeenAt}' AND userId > ${escape(cursor.userId)}))`;
 
       const resultSet = await clickhouseClient.query({
         query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.firstSeenAt as firstSeenAt, if(u.latitude IS NULL OR u.longitude IS NULL, NULL, geoToH3(toFloat64(coalesce(u.latitude, 0)), toFloat64(coalesce(u.longitude, 0)), ${GLOBE_H3_RESOLUTION})) as h3BucketId, usr.avatarUrl as avatarUrl
@@ -223,7 +234,7 @@ export const clickhouseGlobe = {
                 HAVING sum(sign) > 0
               )
               GROUP BY userId
-              HAVING firstSeenAt > '${formatClickhouseDate(since)}'
+              HAVING ${cursorQuery}
             ) u
             LEFT JOIN (
               SELECT id, argMax(avatarUrl, updatedAt) as avatarUrl

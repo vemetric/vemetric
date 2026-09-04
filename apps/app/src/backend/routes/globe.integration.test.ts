@@ -73,6 +73,8 @@ async function resetFixtures() {
 describe('globe data queries (integration)', () => {
   const recentUnlocatedAt = new Date(Date.now() - 10_000);
   const olderLocatedAt = new Date(recentUnlocatedAt.getTime() - 60_000);
+  const sharedFirstSeenAt = new Date(recentUnlocatedAt.getTime() + 1_000);
+  const sharedTimestampUserIds = Array.from({ length: 251 }, (_, index) => BigInt(1_000 + index));
 
   beforeAll(async () => {
     await resetFixtures();
@@ -100,6 +102,15 @@ describe('globe data queries (integration)', () => {
         latitude: null,
         longitude: null,
       }),
+      ...sharedTimestampUserIds.map((userId) =>
+        createEvent({
+          id: `shared-timestamp-event-${userId}`,
+          userId,
+          createdAt: toClickhouseDate(sharedFirstSeenAt),
+          latitude: null,
+          longitude: null,
+        }),
+      ),
     ]);
   });
 
@@ -123,11 +134,38 @@ describe('globe data queries (integration)', () => {
     const users = await clickhouseGlobe.queryJoinedUsersSince({
       projectId: PROJECT_ID,
       startDate: new Date(olderLocatedAt.getTime() - 1_000),
-      since: watchStartedAt,
+      endDate: sharedFirstSeenAt,
+      cursor: { firstSeenAt: watchStartedAt },
       limit: 10,
     });
 
     expect(users.map((user) => user.id)).toEqual([BigInt(2)]);
     expect(clickhouseDateToISO(users[0]?.joinedAt ?? '')).toBe(recentUnlocatedAt.toISOString());
+  });
+
+  it('continues after a full page when users share the same first-seen timestamp', async () => {
+    const firstPage = await clickhouseGlobe.queryJoinedUsersSince({
+      projectId: PROJECT_ID,
+      startDate: sharedFirstSeenAt,
+      cursor: { firstSeenAt: new Date(sharedFirstSeenAt.getTime() - 1) },
+      limit: 250,
+    });
+    const lastUser = firstPage.at(-1);
+    expect(lastUser).toBeDefined();
+
+    const secondPage = await clickhouseGlobe.queryJoinedUsersSince({
+      projectId: PROJECT_ID,
+      startDate: sharedFirstSeenAt,
+      cursor: {
+        firstSeenAt: new Date(clickhouseDateToISO(lastUser?.joinedAt ?? '')),
+        userId: lastUser?.id,
+      },
+      limit: 250,
+    });
+
+    const userIds = [...firstPage, ...secondPage].map((user) => user.id);
+    expect(firstPage).toHaveLength(250);
+    expect(secondPage).toHaveLength(1);
+    expect(userIds).toEqual(sharedTimestampUserIds);
   });
 });

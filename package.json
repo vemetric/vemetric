@@ -11,7 +11,7 @@
     "test": "turbo run test",
     "test:watch": "turbo run test:watch",
     "test:integration": "turbo run test:integration",
-    "seed:local-random-user": "bun --cwd apps/worker run seed:local-random-user",
+    "seed:local-random-user": "bun run --cwd apps/worker seed:local-random-user",
     "e2e": "turbo run e2e --filter=e2e",
     "e2e:ui": "turbo run e2e:ui --filter=e2e",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",

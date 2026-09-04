@@ -21,7 +21,7 @@ interface Props {
 export const GlobeJoinNotifications = (props: Props) => {
   const { projectId, timespan, startDate, endDate, isInitialized } = props;
   const { store, actions } = useGlobeStore();
-  const { joinedUsersSince, joinNotifications: notifications } = useSnapshot(store);
+  const { joinedUsersCursor, joinNotifications: notifications } = useSnapshot(store);
   const slicedNotifications = notifications.slice(-MAX_NOTIFICATIONS);
   const otherCount = notifications.length - MAX_NOTIFICATIONS;
   const rangeKey = `${projectId}:${timespan}:${startDate ?? ''}:${endDate ?? ''}`;
@@ -31,13 +31,22 @@ export const GlobeJoinNotifications = (props: Props) => {
   }, [rangeKey, actions]);
 
   trpc.globe.getJoinedUsersSince.useQuery(
-    { projectId, timespan, startDate, endDate, since: joinedUsersSince },
+    {
+      projectId,
+      timespan,
+      startDate,
+      endDate,
+      cursor: {
+        firstSeenAt: joinedUsersCursor.firstSeenAt,
+        userId: joinedUsersCursor.userId,
+      },
+    },
     {
       enabled: isInitialized,
       refetchInterval: JOINED_USERS_REFETCH_INTERVAL,
       onSuccess: (joinedUsers) => {
         actions.addNotifications(joinedUsers.users);
-        actions.setJoinedUsersSince(joinedUsers.nextSince);
+        actions.setJoinedUsersCursor(joinedUsers.nextCursor);
       },
     },
   );

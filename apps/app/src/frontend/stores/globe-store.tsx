@@ -46,6 +46,11 @@ interface GlobeJoinNotification {
   dismissTimerId: number;
 }
 
+interface JoinedUsersCursor {
+  firstSeenAt: string;
+  userId?: string;
+}
+
 interface GlobePointerState {
   x: number;
   y: number;
@@ -92,7 +97,7 @@ const createDefaultState = (globeConfig: GlobeConfig) => {
   const viewState = getInitialGlobeViewState(globeConfig);
 
   return {
-    joinedUsersSince: new Date().toISOString(),
+    joinedUsersCursor: { firstSeenAt: new Date().toISOString() } as JoinedUsersCursor,
     joinNotifications: [] as Array<GlobeJoinNotification>,
     buckets: [] as Array<GlobeUserBucket>,
     isUserPanelOpen: false,
@@ -492,10 +497,10 @@ const createGlobeActions = (state: GlobeState) => {
         window.clearTimeout(notification.dismissTimerId);
       });
       state.joinNotifications = [];
-      state.joinedUsersSince = new Date().toISOString();
+      state.joinedUsersCursor = { firstSeenAt: new Date().toISOString() };
     },
-    setJoinedUsersSince: (since: string) => {
-      state.joinedUsersSince = since;
+    setJoinedUsersCursor: (cursor: JoinedUsersCursor) => {
+      state.joinedUsersCursor = cursor;
     },
     dismissNotification: (id: string) => {
       const notification = state.joinNotifications.find((candidate) => candidate.id === id);

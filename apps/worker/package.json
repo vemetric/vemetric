@@ -16,6 +16,7 @@
     "migrate-failed-user-jobs": "bun ./src/migrations/migrate-failed-user-jobs.ts",
     "data-import-pirsch": "bun ./src/migrations/pirsch-data-import.ts",
     "queue-email-drips": "bun ./src/migrations/queue-email-drips.ts",
+    "seed:local-random-user": "bun --env-file=../../.env scripts/seed-local-random-user.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

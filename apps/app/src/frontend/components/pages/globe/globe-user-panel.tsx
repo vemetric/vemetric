@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { TbClock, TbUserOff, TbUserSquareRounded } from 'react-icons/tb';
 import { useSnapshot } from 'valtio';
 import { CountryFlag } from '@/components/country-flag';
+import { LiveTimeAgo } from '@/components/live-time-ago';
 import { NumberCounter } from '@/components/number-counter';
 import { CloseButton } from '@/components/ui/close-button';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -241,8 +242,7 @@ export const GlobeUserPanel = (props: Props) => {
                               <TbClock />
                             </Icon>
                             <Text textStyle="sm">
-                              {dateTimeFormatter.formatDistanceNow(user.lastSeenAt, true)}{' '}
-                              <Span hideBelow="md">ago</Span>
+                              <LiveTimeAgo value={user.lastSeenAt} active={isUserPanelOpen} />
                             </Text>
                           </HStack>
                         </Tooltip>

@@ -13,6 +13,7 @@ import { FilterContainer } from '@/components/filter/filter-container';
 import { FilterContextProvider } from '@/components/filter/filter-context';
 import { FilterControls } from '@/components/filter/filter-controls';
 import { FilterSkeletons } from '@/components/filter/filter-skeletons';
+import { LiveTimeAgo } from '@/components/live-time-ago';
 import { UserAvatar } from '@/components/pages/user/user-avatar';
 import { UserSortPopover } from '@/components/pages/user/user-sort-popover';
 import { ProjectInitCard } from '@/components/project-init-card';
@@ -264,14 +265,7 @@ function Page() {
                             >
                               <Icon>{timestamp ? <TbClock /> : <TbClockOff />}</Icon>
                               <Text textStyle="sm" color="fg.muted">
-                                {timestamp ? (
-                                  <>
-                                    {dateTimeFormatter.formatDistanceNow(timestamp, true)}{' '}
-                                    <Span hideBelow="md">ago</Span>
-                                  </>
-                                ) : (
-                                  'Never'
-                                )}
+                                {timestamp ? <LiveTimeAgo value={timestamp} /> : 'Never'}
                               </Text>
                             </HStack>
                           </Tooltip>

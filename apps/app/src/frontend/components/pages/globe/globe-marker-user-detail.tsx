@@ -1,11 +1,11 @@
 import { Box, Button, Card, Flex, Icon, SimpleGrid, Span, Spinner, Text } from '@chakra-ui/react';
 import { Link } from '@tanstack/react-router';
 import { isEntityUnknown } from '@vemetric/common/event';
-import { useEffect, useMemo, useState } from 'react';
 import { TbArrowLeft, TbClock, TbDirectionSign, TbUserSquareRounded } from 'react-icons/tb';
 import { mergeAll } from 'remeda';
 import { BrowserIcon } from '@/components/browser-icon';
 import { DeviceIcon } from '@/components/device-icon';
+import { LiveTimeAgo } from '@/components/live-time-ago';
 import { LoadingImage } from '@/components/loading-image';
 import { OsIcon } from '@/components/os-icon';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -43,32 +43,13 @@ export const GlobeMarkerUserDetail = (props: Props) => {
     !isEntityUnknown(deviceData?.osName) ||
     !isEntityUnknown(deviceData?.deviceType);
 
-  const [sessionDurationNow, setSessionDurationNow] = useState(() => Date.now());
-  const latestSessionDuration = useMemo(() => {
-    if (!latestSession?.startedAt) {
-      return null;
-    }
-
-    return dateTimeFormatter.formatDurationBetween(
-      latestSession.startedAt,
-      latestEvent?.isOnline ? new Date(sessionDurationNow) : latestSession.endedAt,
-    );
-  }, [latestEvent?.isOnline, latestSession?.startedAt, latestSession?.endedAt, sessionDurationNow]);
-
-  useEffect(() => {
-    if (!latestSession?.id || !latestEvent?.isOnline) {
-      return;
-    }
-
-    setSessionDurationNow(Date.now());
-    const intervalId = window.setInterval(() => {
-      setSessionDurationNow(Date.now());
-    }, 1000);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [latestEvent?.isOnline, latestSession?.id]);
+  const latestSessionDuration = latestSession?.startedAt ? (
+    isOnline ? (
+      <LiveTimeAgo value={latestSession.startedAt} format="duration" suffix={null} />
+    ) : (
+      dateTimeFormatter.formatDurationBetween(latestSession.startedAt, latestSession.endedAt)
+    )
+  ) : null;
 
   return (
     <>

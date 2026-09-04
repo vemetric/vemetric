@@ -36,10 +36,10 @@ function getGlobeLocatedUsersQuery(props: { projectId: bigint; startDate?: Date;
               SELECT userId,
                 argMax(userIdentifier, eventCreatedAt) as identifier,
                 argMax(userDisplayName, eventCreatedAt) as displayName,
-                argMax(countryCode, eventCreatedAt) as countryCode,
-                argMax(city, eventCreatedAt) as city,
-                argMax(latitude, eventCreatedAt) as latitude,
-                argMax(longitude, eventCreatedAt) as longitude,
+                argMaxIf(countryCode, eventCreatedAt, eventLatitude IS NOT NULL AND eventLongitude IS NOT NULL) as countryCode,
+                argMaxIf(city, eventCreatedAt, eventLatitude IS NOT NULL AND eventLongitude IS NOT NULL) as city,
+                assumeNotNull(argMaxIf(eventLatitude, eventCreatedAt, eventLatitude IS NOT NULL AND eventLongitude IS NOT NULL)) as latitude,
+                assumeNotNull(argMaxIf(eventLongitude, eventCreatedAt, eventLatitude IS NOT NULL AND eventLongitude IS NOT NULL)) as longitude,
                 max(eventCreatedAt) as maxCreatedAt,
                 max(eventCreatedAt) >= ${ONLINE_USERS_INTERVAL_QUERY} as isOnline
               FROM (
@@ -48,18 +48,18 @@ function getGlobeLocatedUsersQuery(props: { projectId: bigint; startDate?: Date;
                   argMax(userDisplayName, createdAt) as userDisplayName,
                   argMax(countryCode, createdAt) as countryCode,
                   argMax(city, createdAt) as city,
-                  assumeNotNull(argMax(latitude, createdAt)) as latitude,
-                  assumeNotNull(argMax(longitude, createdAt)) as longitude,
+                  argMax(latitude, createdAt) as eventLatitude,
+                  argMax(longitude, createdAt) as eventLongitude,
                   max(createdAt) as eventCreatedAt
                 FROM ${TABLE_NAME} e
                 WHERE e.projectId=${escape(projectId)}
                   ${startDate ? `AND e.createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
                   ${endDate ? `AND e.createdAt < '${formatClickhouseDate(endDate)}'` : ''}
-                  AND e.latitude IS NOT NULL AND e.longitude IS NOT NULL
                 GROUP BY id
                 HAVING sum(sign) > 0
               )
               GROUP BY userId
+              HAVING countIf(eventLatitude IS NOT NULL AND eventLongitude IS NOT NULL) > 0
             ) u
             LEFT JOIN (
               SELECT id, argMax(avatarUrl, updatedAt) as avatarUrl

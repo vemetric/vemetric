@@ -32,7 +32,7 @@ export const UserAvatar = ({ displayName, avatarUrl, identifier, id, enableBlink
         <Facehash
           enableBlink={enableBlink}
           name={(displayName || identifier || '?') + id}
-          size={32}
+          size="100%"
           colors={[
             'var(--chakra-colors-red-500)',
             'var(--chakra-colors-green-500)',

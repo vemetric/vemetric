@@ -263,6 +263,10 @@ const createGlobeActions = (state: GlobeState) => {
 
       actions.cancelResetAnimation();
 
+      if (state.autoRotate) {
+        state.autoRotate = false;
+      }
+
       const startRotation = {
         phi: refs.rotation.phi,
         theta: clampTheta(refs.rotation.theta, refs.scale, globeConfig),

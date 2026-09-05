@@ -119,7 +119,6 @@ export const GlobeMarkerUserList = (props: Props) => {
                               identifier={user.identifier}
                               displayName={user.displayName}
                               avatarUrl={user.avatarUrl}
-                              boxSize="28px"
                             />
                           </Box>
                           <GlobeMarkerCardIdentity user={user} isOnline={user.isOnline} />

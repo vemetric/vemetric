@@ -62,7 +62,14 @@ export const GlobeMarkerUserDetail = (props: Props) => {
           )}
           <Box pt={1} pr={2.5}>
             {user && (
-              <GlobeSingleUserAvatar user={user} border="1.5px solid" borderColor="bg" rounded="0.6em" boxShadow="sm" />
+              <GlobeSingleUserAvatar
+                user={user}
+                border="1.5px solid"
+                borderColor="bg"
+                rounded="0.6em"
+                boxShadow="sm"
+                boxSize="36px"
+              />
             )}
           </Box>
           {user && (

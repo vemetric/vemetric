@@ -263,10 +263,6 @@ const createGlobeActions = (state: GlobeState) => {
 
       actions.cancelResetAnimation();
 
-      if (state.autoRotate) {
-        state.autoRotate = false;
-      }
-
       const startRotation = {
         phi: refs.rotation.phi,
         theta: clampTheta(refs.rotation.theta, refs.scale, globeConfig),
@@ -426,6 +422,7 @@ const createGlobeActions = (state: GlobeState) => {
     startAnimation: () => {
       const refs = state.refs;
       let isRotationPaused = getThemeTransitioning();
+      let lastFrameTime = performance.now();
 
       if (refs.renderFrameId !== null) {
         cancelAnimationFrame(refs.renderFrameId);
@@ -445,9 +442,12 @@ const createGlobeActions = (state: GlobeState) => {
         isRotationPaused = isTransitioning;
       });
 
-      const animate = () => {
+      const animate = (now: number) => {
+        const elapsedSeconds = clampNumber(now - lastFrameTime, 0, 100) / 1000;
+        lastFrameTime = now;
+
         if (!isRotationPaused && state.autoRotate) {
-          refs.autoPhi += ROTATION_SPEED;
+          refs.autoPhi += ROTATION_SPEED * elapsedSeconds;
         }
 
         refs.rotation = {
@@ -458,7 +458,7 @@ const createGlobeActions = (state: GlobeState) => {
         refs.renderFrameId = requestAnimationFrame(animate);
       };
 
-      animate();
+      animate(lastFrameTime);
     },
     stopAnimation: () => {
       const refs = state.refs;

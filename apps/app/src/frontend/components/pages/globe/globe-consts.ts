@@ -36,7 +36,7 @@ export const ZOOM_IN_THETA_PULL = 0.035;
 export const ZOOM_OUT_THETA_PULL = 0.01;
 
 export const DEFAULT_GLOBE_AUTO_ROTATE = true;
-export const ROTATION_SPEED = 0.001;
+export const ROTATION_SPEED = 0.06; // Radians per second.
 
 export const DEFAULT_GLOBE_LOCKED = false;
 

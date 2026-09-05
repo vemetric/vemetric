@@ -17,6 +17,7 @@ export const GlobeSingleUserAvatar = ({ user, ...props }: Props) => {
           identifier={user.identifier}
           displayName={user.displayName}
           avatarUrl={user.avatarUrl}
+          boxSize="36px"
           {...props}
         />
       </motion.div>

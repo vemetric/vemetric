@@ -5,6 +5,8 @@ import { proxy, ref, snapshot } from 'valtio';
 import {
   DEFAULT_GLOBE_AUTO_ROTATE,
   DEFAULT_GLOBE_LOCKED,
+  GLOBE_INITIAL_ROTATION_DURATION,
+  GLOBE_INITIAL_ZOOM_FACTOR,
   GLOBE_RESET_DURATION,
   GLOBE_ZOOM_SPEED,
   ROTATION_SPEED,
@@ -106,6 +108,10 @@ const createDefaultState = (globeConfig: GlobeConfig) => {
     autoRotate: viewState.autoRotate ?? DEFAULT_GLOBE_AUTO_ROTATE,
     locked: viewState.locked ?? DEFAULT_GLOBE_LOCKED,
     isDragging: false,
+    initialRotation: { elapsed: 0 },
+    get isInitialAnimating() {
+      return this.initialRotation.elapsed < GLOBE_INITIAL_ROTATION_DURATION;
+    },
     refs: ref(createDefaultGlobeRefs(globeConfig, viewState)),
   };
 };
@@ -158,6 +164,8 @@ const createGlobeRefs = (state: GlobeState) => ({
 });
 
 const createGlobeActions = (state: GlobeState) => {
+  const initialScale = state.refs.scale;
+
   const actions = {
     updateGlobeTheme: (globeThemeOptions: GlobeThemeOptions) => {
       state.refs.globe?.update({
@@ -181,7 +189,7 @@ const createGlobeActions = (state: GlobeState) => {
     },
     saveGlobeViewState: () => {
       globeViewState.set({
-        scale: state.refs.scale,
+        scale: state.isInitialAnimating ? initialScale : state.refs.scale,
         offset: state.refs.offset,
         phi: state.refs.rotation.phi,
         theta: state.refs.rotation.theta,
@@ -427,6 +435,20 @@ const createGlobeActions = (state: GlobeState) => {
       const refs = state.refs;
       let isRotationPaused = getThemeTransitioning();
       let lastFrameTime = performance.now();
+      const targetScale = clampNumber(initialScale, refs.config.minScale, refs.config.maxScale);
+      const startScale = Math.max(refs.config.minScale, targetScale * GLOBE_INITIAL_ZOOM_FACTOR);
+      const updateInitialZoom = (progress: number) => {
+        refs.scale = startScale + (targetScale - startScale) * progress;
+        actions.syncMarkerScale();
+      };
+      const getRotationScale = () =>
+        state.initialRotation.elapsed < GLOBE_INITIAL_ROTATION_DURATION ? targetScale : refs.scale;
+
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        state.initialRotation.elapsed = GLOBE_INITIAL_ROTATION_DURATION;
+      } else if (state.initialRotation.elapsed < GLOBE_INITIAL_ROTATION_DURATION) {
+        updateInitialZoom(easeOutCubic(state.initialRotation.elapsed / GLOBE_INITIAL_ROTATION_DURATION));
+      }
 
       if (refs.renderFrameId !== null) {
         cancelAnimationFrame(refs.renderFrameId);
@@ -435,7 +457,7 @@ const createGlobeActions = (state: GlobeState) => {
       refs.unsubscribeThemeTransition?.();
       refs.unsubscribeThemeTransition = subscribeThemeTransition((isTransitioning) => {
         const frozenDragPhi = refs.rotation.phi - refs.autoPhi;
-        const frozenDragTheta = clampTheta(refs.rotation.theta, refs.scale, refs.config);
+        const frozenDragTheta = clampTheta(refs.rotation.theta, getRotationScale(), refs.config);
 
         refs.dragRotation = { phi: frozenDragPhi, theta: frozenDragTheta };
 
@@ -450,13 +472,29 @@ const createGlobeActions = (state: GlobeState) => {
         const elapsedSeconds = clampNumber(now - lastFrameTime, 0, 100) / 1000;
         lastFrameTime = now;
 
-        if (!isRotationPaused && state.autoRotate) {
-          refs.autoPhi += ROTATION_SPEED * elapsedSeconds;
+        if (!isRotationPaused && refs.globe) {
+          const previousElapsed = state.initialRotation.elapsed;
+          if (previousElapsed < GLOBE_INITIAL_ROTATION_DURATION) {
+            const nextElapsed = Math.min(previousElapsed + elapsedSeconds * 1000, GLOBE_INITIAL_ROTATION_DURATION);
+            const previousProgress = easeOutCubic(previousElapsed / GLOBE_INITIAL_ROTATION_DURATION);
+            const nextProgress = easeOutCubic(nextElapsed / GLOBE_INITIAL_ROTATION_DURATION);
+            const autoRotationDistance = state.autoRotate
+              ? (ROTATION_SPEED * GLOBE_INITIAL_ROTATION_DURATION) / 1000
+              : 0;
+
+            // Ease out only the extra rotation so we settle at the normal rotation speed.
+            refs.autoPhi += (nextProgress - previousProgress) * (Math.PI * 0.5 - autoRotationDistance);
+            updateInitialZoom(nextProgress);
+            state.initialRotation.elapsed = nextElapsed;
+          }
+          if (state.autoRotate) {
+            refs.autoPhi += ROTATION_SPEED * elapsedSeconds;
+          }
         }
 
         refs.rotation = {
           phi: refs.autoPhi + refs.dragRotation.phi,
-          theta: clampTheta(refs.dragRotation.theta, refs.scale, refs.config),
+          theta: clampTheta(refs.dragRotation.theta, getRotationScale(), refs.config),
         };
         state.refs.globe?.update({ ...refs.rotation, scale: refs.scale, offset: refs.offset });
         refs.renderFrameId = requestAnimationFrame(animate);

@@ -3,6 +3,7 @@ import type { TimeSpan } from '@vemetric/common/charts/timespans';
 import createGlobe from 'cobe';
 import { useEffect } from 'react';
 import { TbMapPinOff, TbUserOff, TbUserSquareRounded } from 'react-icons/tb';
+import { useSnapshot } from 'valtio';
 import { TimespanSelect } from '@/components/timespan-select';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useGlobeStore } from '@/stores/globe-store';
@@ -55,9 +56,11 @@ export const GlobeCanvas = (props: Props) => {
 
   const globeConfig = isMobile ? MOBILE_GLOBE_CONFIG : DESKTOP_GLOBE_CONFIG;
   const {
+    store,
     actions,
     refs: { globeRef, globeRootRef, scaleRef, offsetRef, rotationRef },
   } = useGlobeStore();
+  const { isInitialAnimating } = useSnapshot(store);
   const { startDrag } = useGlobeController({
     buckets,
   });
@@ -127,7 +130,7 @@ export const GlobeCanvas = (props: Props) => {
 
   return (
     <>
-      <Box pos="relative" w="100%" h="100%" inert={isInitialized ? false : true}>
+      <Box pos="relative" w="100%" h="100%" inert={!isInitialized || isInitialAnimating}>
         <GlobeSurface isLoading={isLoading} startDrag={startDrag}>
           <GlobeMarkers
             projectId={projectId}

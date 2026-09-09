@@ -5,6 +5,7 @@ import { proxy, ref, snapshot } from 'valtio';
 import {
   DEFAULT_GLOBE_AUTO_ROTATE,
   DEFAULT_GLOBE_LOCKED,
+  GLOBE_INITIAL_ROTATION_ANGLE,
   GLOBE_INITIAL_ROTATION_DURATION,
   GLOBE_INITIAL_ZOOM_FACTOR,
   GLOBE_RESET_DURATION,
@@ -165,6 +166,7 @@ const createGlobeRefs = (state: GlobeState) => ({
 
 const createGlobeActions = (state: GlobeState) => {
   const initialScale = state.refs.scale;
+  const initialPhi = state.refs.rotation.phi;
 
   const actions = {
     updateGlobeTheme: (globeThemeOptions: GlobeThemeOptions) => {
@@ -191,7 +193,7 @@ const createGlobeActions = (state: GlobeState) => {
       globeViewState.set({
         scale: state.isInitialAnimating ? initialScale : state.refs.scale,
         offset: state.refs.offset,
-        phi: state.refs.rotation.phi,
+        phi: state.isInitialAnimating ? initialPhi : state.refs.rotation.phi,
         theta: state.refs.rotation.theta,
         autoRotate: state.refs.persistedAutoRotate,
         locked: state.locked,
@@ -447,6 +449,9 @@ const createGlobeActions = (state: GlobeState) => {
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         state.initialRotation.elapsed = GLOBE_INITIAL_ROTATION_DURATION;
       } else if (state.initialRotation.elapsed < GLOBE_INITIAL_ROTATION_DURATION) {
+        if (state.initialRotation.elapsed === 0) {
+          refs.autoPhi = -GLOBE_INITIAL_ROTATION_ANGLE;
+        }
         updateInitialZoom(easeOutCubic(state.initialRotation.elapsed / GLOBE_INITIAL_ROTATION_DURATION));
       }
 
@@ -483,7 +488,7 @@ const createGlobeActions = (state: GlobeState) => {
               : 0;
 
             // Ease out only the extra rotation so we settle at the normal rotation speed.
-            refs.autoPhi += (nextProgress - previousProgress) * (Math.PI * 0.5 - autoRotationDistance);
+            refs.autoPhi += (nextProgress - previousProgress) * (GLOBE_INITIAL_ROTATION_ANGLE - autoRotationDistance);
             updateInitialZoom(nextProgress);
             state.initialRotation.elapsed = nextElapsed;
           }

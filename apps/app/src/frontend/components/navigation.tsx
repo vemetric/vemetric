@@ -95,15 +95,6 @@ export const Navigation = (props: CardRootProps) => {
         Dashboard
       </NavigationItem>
       <NavigationItem
-        isActive={routeId === '/_layout/p/$projectId/globe'}
-        icon={TbWorldBolt}
-        as={Link}
-        to="/p/$projectId/globe"
-        params={{ projectId }}
-      >
-        Globe
-      </NavigationItem>
-      <NavigationItem
         isActive={routeId.startsWith('/_layout/p/$projectId/users/')}
         icon={TbUserSquareRounded}
         as={Link}
@@ -129,6 +120,15 @@ export const Navigation = (props: CardRootProps) => {
         params={{ projectId }}
       >
         Events
+      </NavigationItem>
+      <NavigationItem
+        isActive={routeId === '/_layout/p/$projectId/globe'}
+        icon={TbWorldBolt}
+        as={Link}
+        to="/p/$projectId/globe"
+        params={{ projectId }}
+      >
+        Globe
       </NavigationItem>
       <NavigationItem
         isActive={routeId === '/_layout/p/$projectId/settings/'}

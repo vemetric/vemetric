@@ -40,6 +40,7 @@ import { authClient } from '@/utils/auth';
 import { getFaviconUrl } from '@/utils/favicon';
 import { trpc } from '@/utils/trpc';
 import { InstallationCard } from './installation-card';
+import { ResetProjectDataDialog } from './reset-project-data-dialog';
 
 interface Props {
   projectId: string;
@@ -49,6 +50,7 @@ export const ProjectGeneralTab = (props: Props) => {
   const { projectId } = props;
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const { organizationId, isAdmin } = useCurrentOrganization();
   const { refetch: refetchAuth } = authClient.useSession();
 
@@ -296,15 +298,39 @@ export const ProjectGeneralTab = (props: Props) => {
                 </Text>
               </Flex>
             </Card.Header>
-            <Card.Body pt={4}>
-              <Flex justify="space-between" align="flex-end" gap={5} flexDir={{ base: 'column', md: 'row' }}>
+            <Card.Body pt={4} flexDir="column" gap={3}>
+              <Flex justify="space-between" align="center" gap={5} flexDir={{ base: 'column', md: 'row' }}>
+                <Flex flexDirection="column" gap={1}>
+                  <Text fontWeight="medium">Reset Data</Text>
+                  <Text fontSize="sm" color="fg.muted">
+                    This will permanently delete all the data associated with this project. Useful to clear data
+                    collected during initial setup and testing. This action cannot be undone.
+                  </Text>
+                </Flex>
+                <Button
+                  colorPalette="red"
+                  variant="outline"
+                  minW="140px"
+                  width={{ smDown: 'full' }}
+                  onClick={() => setIsResetDialogOpen(true)}
+                >
+                  Reset Data
+                </Button>
+              </Flex>
+              <Flex justify="space-between" align="center" gap={5} flexDir={{ base: 'column', md: 'row' }}>
                 <Flex flexDirection="column" gap={1}>
                   <Text fontWeight="medium">Delete this project</Text>
                   <Text fontSize="sm" color="fg.muted">
                     This will permanently delete the project and all of its data. This action cannot be undone.
                   </Text>
                 </Flex>
-                <Button colorPalette="red" variant="outline" onClick={() => setIsDeleteDialogOpen(true)}>
+                <Button
+                  colorPalette="red"
+                  variant="outline"
+                  minW="140px"
+                  width={{ smDown: 'full' }}
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                >
                   Delete Project
                 </Button>
               </Flex>
@@ -317,6 +343,13 @@ export const ProjectGeneralTab = (props: Props) => {
             projectDomain={projectSettings.domain}
             isOpen={isDeleteDialogOpen}
             onClose={() => setIsDeleteDialogOpen(false)}
+          />
+          <ResetProjectDataDialog
+            organizationId={organizationId}
+            projectId={projectId}
+            projectName={projectSettings.name}
+            isOpen={isResetDialogOpen}
+            onClose={() => setIsResetDialogOpen(false)}
           />
         </>
       )}

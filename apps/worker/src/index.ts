@@ -4,7 +4,9 @@ import {
   emailDripQueueName,
   enrichUserQueueName,
   eventQueueName,
+  firstEventQueueName,
   mergeUserQueueName,
+  saltRotationQueueName,
   sessionQueueName,
   updateUserQueueName,
 } from '@vemetric/queues/queue-names';
@@ -51,7 +53,9 @@ async function main() {
       emailDripQueueName,
       enrichUserQueueName,
       eventQueueName,
+      firstEventQueueName,
       mergeUserQueueName,
+      saltRotationQueueName,
       sessionQueueName,
       updateUserQueueName,
     ]);

@@ -1,14 +1,16 @@
 import { getStepDelay } from '@vemetric/email/email-drip-sequences';
 import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
+import { firstEventQueueName } from '@vemetric/queues/queue-names';
 import { addToQueue } from '@vemetric/queues/queue-utils';
 import { Queue, Worker } from 'bullmq';
 import { clickhouseDateToISO, clickhouseEvent } from 'clickhouse';
 import { prismaClient } from 'database';
 import { logger } from '../utils/logger';
+import { queueTelemetry } from '../utils/telemetry';
 import { vemetric } from '../utils/vemetric-client';
 
 export async function initFirstEventWorker() {
-  const firstEventQueue = new Queue('firstEvent', {
+  const firstEventQueue = new Queue(firstEventQueueName, {
     connection: {
       url: process.env.REDIS_URL,
     },
@@ -111,6 +113,7 @@ export async function initFirstEventWorker() {
       connection: {
         url: process.env.REDIS_URL,
       },
+      telemetry: queueTelemetry,
       removeOnComplete: {
         count: 10,
       },

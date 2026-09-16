@@ -4,6 +4,7 @@ import { Worker } from 'bullmq';
 import { clickhouseUser } from 'clickhouse';
 import { isDeepEqual } from 'remeda';
 import { logJobStep } from '../utils/job-logger';
+import { queueTelemetry } from '../utils/telemetry';
 import { getUpdatedUserData } from '../utils/user';
 
 export async function initUpdateUserWorker() {
@@ -53,6 +54,7 @@ export async function initUpdateUserWorker() {
       connection: {
         url: process.env.REDIS_URL,
       },
+      telemetry: queueTelemetry,
       concurrency: 1,
       removeOnComplete: {
         count: 1000,

@@ -1,6 +1,19 @@
+import {
+  createDeviceQueueName,
+  createUserQueueName,
+  emailDripQueueName,
+  enrichUserQueueName,
+  eventQueueName,
+  firstEventQueueName,
+  mergeUserQueueName,
+  saltRotationQueueName,
+  sessionQueueName,
+  updateUserQueueName,
+} from '@vemetric/queues/queue-names';
 import type { Worker } from 'bullmq';
 import { logger } from './utils/logger';
 import { getSkippedEnrichmentProjectIds } from './utils/skipped-enrichment-projects';
+import { shutdownQueueTelemetry, startQueueMetricsRecorder } from './utils/telemetry';
 import { initCreateUserWorker } from './workers/create-user-worker';
 import { initDeviceWorker } from './workers/device-worker';
 import { initEmailWorker } from './workers/email-worker';
@@ -33,6 +46,19 @@ async function main() {
     workers.push(await initMergeUserWorker());
     workers.push(await initDeviceWorker());
     workers.push(await initEmailWorker());
+
+    startQueueMetricsRecorder([
+      createDeviceQueueName,
+      createUserQueueName,
+      emailDripQueueName,
+      enrichUserQueueName,
+      eventQueueName,
+      firstEventQueueName,
+      mergeUserQueueName,
+      saltRotationQueueName,
+      sessionQueueName,
+      updateUserQueueName,
+    ]);
 
     workers.forEach((worker) => {
       worker.on('failed', (job, err) => {
@@ -68,6 +94,7 @@ process.on('unhandledRejection', function (err) {
 const gracefulShutdown = async (signal: string) => {
   logger.info(`Received ${signal}, closing server...`);
   await Promise.all(workers.map((worker) => worker.close()));
+  await shutdownQueueTelemetry();
   process.exit(0);
 };
 

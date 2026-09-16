@@ -9,6 +9,7 @@ import { dbEmailDripSequence, prismaClient } from 'database';
 import { type SequenceContext, type SequenceResult } from '../email-sequences/common';
 import { processNoEventsSequence } from '../email-sequences/project-sequences';
 import { processNoProjectSequence, processFirstEventFeedbackSequence } from '../email-sequences/user-sequences';
+import { queueTelemetry } from '../utils/telemetry';
 
 export async function initEmailWorker() {
   return new Worker(
@@ -53,6 +54,7 @@ export async function initEmailWorker() {
     },
     {
       connection: emailDripQueue.opts.connection,
+      telemetry: queueTelemetry,
       removeOnComplete: {
         count: 10,
       },

@@ -5,6 +5,7 @@ import { getDeviceId } from 'clickhouse';
 import { getDeviceDataFromHeaders, insertDeviceIfNotExists } from '../utils/device';
 import { logJobStep } from '../utils/job-logger';
 import { shouldSkipEnrichmentProject } from '../utils/skipped-enrichment-projects';
+import { queueTelemetry } from '../utils/telemetry';
 
 export async function initDeviceWorker() {
   return new Worker<CreateDeviceQueueProps>(
@@ -41,6 +42,7 @@ export async function initDeviceWorker() {
       connection: {
         url: process.env.REDIS_URL,
       },
+      telemetry: queueTelemetry,
       concurrency: 1,
       removeOnComplete: {
         count: 1000,

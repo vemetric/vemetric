@@ -6,6 +6,7 @@ import { dbUserIdentificationMap } from 'database';
 import { insertDeviceIfNotExists } from '../utils/device';
 import { logger } from '../utils/logger';
 import { reassignExistingSessionsToEvents } from '../utils/merge-user';
+import { queueTelemetry } from '../utils/telemetry';
 
 export async function initMergeUserWorker() {
   return new Worker<MergeUserQueueProps>(
@@ -108,6 +109,7 @@ export async function initMergeUserWorker() {
       connection: {
         url: process.env.REDIS_URL,
       },
+      telemetry: queueTelemetry,
       concurrency: 10,
       removeOnComplete: {
         count: 1000,

@@ -1,6 +1,7 @@
 import { Queue, Worker } from 'bullmq';
 import { dbSalt } from 'database';
 import { logger } from '../utils/logger';
+import { queueTelemetry } from '../utils/telemetry';
 
 export async function initSaltRotation() {
   const saltRotationQueue = new Queue('saltRotation', {
@@ -37,6 +38,7 @@ export async function initSaltRotation() {
       connection: {
         url: process.env.REDIS_URL,
       },
+      telemetry: queueTelemetry,
       removeOnComplete: {
         count: 10,
       },

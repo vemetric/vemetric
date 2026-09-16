@@ -9,6 +9,7 @@ import { getDeviceDataFromHeaders } from '../utils/device';
 import { logger } from '../utils/logger';
 import { getReferrerFromRequest } from '../utils/referrer';
 import { getSessionData } from '../utils/session';
+import { queueTelemetry } from '../utils/telemetry';
 import { getUrlParams } from '../utils/url';
 
 export async function initEventWorker() {
@@ -81,6 +82,7 @@ export async function initEventWorker() {
       connection: {
         url: process.env.REDIS_URL,
       },
+      telemetry: queueTelemetry,
       concurrency: 10,
       removeOnComplete: {
         count: 1000,

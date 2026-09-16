@@ -10,6 +10,7 @@ import { logger } from '../utils/logger';
 import { getReferrerFromRequest } from '../utils/referrer';
 import { getSessionData, increaseClickhouseSessionDuration } from '../utils/session';
 import { shouldSkipEnrichmentProject } from '../utils/skipped-enrichment-projects';
+import { queueTelemetry } from '../utils/telemetry';
 import { getUrlParams } from '../utils/url';
 
 export async function initSessionWorker() {
@@ -95,6 +96,7 @@ export async function initSessionWorker() {
       connection: {
         url: process.env.REDIS_URL,
       },
+      telemetry: queueTelemetry,
       concurrency: 1,
       removeOnComplete: {
         count: 1000,

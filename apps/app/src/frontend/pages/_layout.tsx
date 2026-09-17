@@ -15,6 +15,7 @@ import { toaster } from '@/components/ui/toaster';
 import { useCurrentOrganization } from '@/hooks/use-current-organization';
 import { useOrgSettingsDialog } from '@/hooks/use-org-settings-dialog';
 import { getPricingPlan } from '@/utils/pricing';
+import { IS_SELF_HOSTED } from '@/utils/self-hosted';
 import { trpc } from '@/utils/trpc';
 
 const layoutMinHeight = { base: '90dvh', md: '80dvh', lg: '88dvh' };
@@ -126,11 +127,12 @@ function LayoutComponent() {
   const isGlobePage = routeId === '/_layout/p/$projectId/globe';
   const layoutProps = isGlobePage ? globeLayoutProps : defaultLayoutProps;
 
+  // Self hosted instances have no billing, so the status query and its side effects are skipped.
   const { data: billingStatus } = trpc.billing.billingStatus.useQuery(
     {
       organizationId,
     },
-    { enabled: !!organizationId },
+    { enabled: !!organizationId && !IS_SELF_HOSTED },
   );
 
   const { eventsIncluded, hasMultipleExceededCycles, showLimitWarning, cycles } = getPricingPlan(billingStatus);

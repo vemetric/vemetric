@@ -1,9 +1,13 @@
 import type { LinkProps } from '@chakra-ui/react';
 import { Link } from '@chakra-ui/react';
-import { useOpenCrispChat } from '@/stores/crisp-chat-store';
+import { isCrispChatEnabled, useOpenCrispChat } from '@/stores/crisp-chat-store';
 
 export const CrispLink = (props: LinkProps) => {
   const openCrispChat = useOpenCrispChat();
+
+  if (!isCrispChatEnabled) {
+    return <>{props.children}</>;
+  }
 
   return (
     <Link

@@ -1,5 +1,5 @@
 import { Box, Button, Text } from '@chakra-ui/react';
-import { INVITATION_EXPIRY_MS } from '@vemetric/common/organization';
+import { INVITATION_EXPIRY_MS } from '@vemetric/common/invitation';
 import { useState } from 'react';
 import {
   DialogRoot,

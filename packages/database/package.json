@@ -10,7 +10,9 @@
     "db:migrate": "dotenv -e ../../.env -- prisma migrate dev --create-only",
     "db:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
     "lint": "eslint . --max-warnings 0",
-    "tsc": "tsc --noEmit"
+    "tsc": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@prisma/client": "^5.4.2",
@@ -21,6 +23,7 @@
     "@vemetric/eslint-config": "workspace:*",
     "dotenv-cli": "^10.0.0",
     "prisma": "^5.4.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.3"
   }
 }

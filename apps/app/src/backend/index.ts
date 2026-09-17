@@ -1,4 +1,6 @@
 import * as Sentry from '@sentry/bun';
+import { assertBooleanEnvFlags } from '@vemetric/common/self-hosted';
+import { assertMailConfig } from '@vemetric/email/transactional';
 import { clickhouseClient } from 'clickhouse';
 import { Hono } from 'hono';
 import { API_DOCS_URL, createPublicApi } from './api';
@@ -14,6 +16,13 @@ if (process.env.SENTRY_URL) {
     tracesSampleRate: 0.5,
   });
 }
+
+// Fails the start instead of letting every mail silently bounce later.
+assertMailConfig();
+
+// A mistyped switch must not decide at runtime whether registration is open or whether
+// billing applies, so both are parsed once here and fail the start when malformed.
+assertBooleanEnvFlags(['SELF_HOSTED', 'ALLOW_REGISTRATION']);
 
 export const app = new Hono();
 

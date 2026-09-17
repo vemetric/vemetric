@@ -19,6 +19,7 @@ import {
 import { useAccountSettingsDialog } from '@/hooks/use-account-settings-dialog';
 import { useOpenCrispChat } from '@/stores/crisp-chat-store';
 import { authClient, useLogout } from '@/utils/auth';
+import { IS_SELF_HOSTED } from '@/utils/self-hosted';
 import { AccountAvatar } from './account-avatar';
 import { EventLimitBanner } from './event-limit-banner';
 import { SocialButtons } from './social-buttons';
@@ -142,23 +143,25 @@ export const Navigation = (props: CardRootProps) => {
       <NavDivider />
       <Box h={{ base: '30px', md: '30px', lg: '100px' }} />
       <Flex p={2} align="flex-end" justify="center" gap={2}>
-        <SocialButtons />
+        {!IS_SELF_HOSTED && <SocialButtons />}
       </Flex>
       <EventLimitBanner />
       <Flex justify="center" p={2}>
         <ThemeSwitch />
       </Flex>
       <NavDivider />
-      <NavigationItem
-        icon={TbMessageCircleQuestion}
-        as="button"
-        onClick={() => {
-          openCrispChat();
-        }}
-        hideFrom="lg"
-      >
-        Help
-      </NavigationItem>
+      {!IS_SELF_HOSTED && (
+        <NavigationItem
+          icon={TbMessageCircleQuestion}
+          as="button"
+          onClick={() => {
+            openCrispChat();
+          }}
+          hideFrom="lg"
+        >
+          Help
+        </NavigationItem>
+      )}
       <NavigationItem
         as="button"
         cursor="pointer"

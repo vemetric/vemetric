@@ -1,0 +1,7 @@
+# Files that are read inside Linux containers must keep LF endings, otherwise they break
+# when the repository is checked out on Windows with autocrlf enabled.
+*.sh text eol=lf
+*.sql text eol=lf
+*.xml text eol=lf
+*.yml text eol=lf
+Caddyfile text eol=lf

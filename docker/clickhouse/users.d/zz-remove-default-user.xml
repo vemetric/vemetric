@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<!--
+  Removes the built in `default` user, which ships without a password and with access from
+  any address. The stack never uses it: the application, the worker and the migration
+  container all authenticate as CLICKHOUSE_USER, which the image entrypoint creates from
+  CLICKHOUSE_USER / CLICKHOUSE_PASSWORD.
+
+  The file name starts with `zz-` on purpose. ClickHouse merges everything under users.d in
+  alphabetical order, and the entrypoint writes its own `default-user.xml` into the same
+  directory, so this override has to be read last.
+
+  Only the `default` user is removed. The `default` profile and the `default` quota, which
+  every other user references, are untouched.
+-->
+<clickhouse>
+  <users>
+    <default remove="1" />
+  </users>
+</clickhouse>

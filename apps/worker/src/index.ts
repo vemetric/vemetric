@@ -1,3 +1,5 @@
+import { assertBooleanEnvFlags } from '@vemetric/common/self-hosted';
+import { assertMailConfig } from '@vemetric/email/transactional';
 import {
   createDeviceQueueName,
   createUserQueueName,
@@ -24,6 +26,14 @@ import { initMergeUserWorker } from './workers/merge-user-worker';
 import { initSaltRotation } from './workers/salt-rotation-worker';
 import { initSessionWorker } from './workers/session-worker';
 import { initUpdateUserWorker } from './workers/update-user-worker';
+
+// Runs outside main() on purpose: main() only logs its errors, and a mail setup that bounces
+// every message has to stop the worker from starting.
+assertMailConfig();
+
+// The worker reads SELF_HOSTED when it sets up its analytics client. A malformed value has to
+// stop the start here instead of deciding the behaviour of a single module load later on.
+assertBooleanEnvFlags(['SELF_HOSTED']);
 
 const workers: Worker[] = [];
 async function main() {

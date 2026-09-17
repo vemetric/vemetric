@@ -1,0 +1,21 @@
+{
+	email {$ACME_EMAIL:admin@localhost}
+}
+
+# Dashboard and API. Caddy obtains a certificate automatically for https origins.
+{$APP_ORIGIN:http://app.vemetric.localhost} {
+	encode zstd gzip
+	reverse_proxy app:4000
+}
+
+# Event ingestion endpoint that the SDKs talk to.
+{$HUB_ORIGIN:http://hub.vemetric.localhost} {
+	encode zstd gzip
+	reverse_proxy hub:4004
+}
+
+# Optional redirect from the bare domain to the dashboard. The block is written by
+# docker/caddy-entrypoint.sh, and only when ROOT_ORIGIN is set to something other than
+# APP_ORIGIN. A glob that matches no file is not an error, so an unset ROOT_ORIGIN simply
+# leaves the redirect out instead of breaking the start.
+import /etc/caddy/conf.d/*.caddy

@@ -1,6 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { TIME_SPAN_DATA } from '@vemetric/common/charts/timespans';
 import { MAX_EXCLUDED_COUNTRIES } from '@vemetric/common/countries';
+import { isSelfHosted } from '@vemetric/common/self-hosted';
 import { getNormalizedDomain } from '@vemetric/common/url';
 import { getDripSequence, getStepDelay } from '@vemetric/email/email-drip-sequences';
 import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
@@ -53,8 +54,9 @@ export const projectsRouter = router({
       ctx: { user, organization, subscriptionStatus },
     } = opts;
 
-    // Ensure organization has completed pricing onboarding before creating projects
-    if (!organization.pricingOnboarded) {
+    // Ensure organization has completed pricing onboarding before creating projects.
+    // Self hosted instances have no pricing step at all, so this gate never applies to them.
+    if (!isSelfHosted() && !organization.pricingOnboarded) {
       throw new TRPCError({
         code: 'FORBIDDEN',
         message: 'Please complete pricing onboarding step before creating a project.',

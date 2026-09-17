@@ -12,6 +12,10 @@ COPY --from=pruner /usr/src/app/out/json/ .
 RUN bun install --ignore-scripts --frozen-lockfile
 
 FROM install AS build
+# Compiles out everything that would talk to Vemetric's own infrastructure (support chat,
+# favicon service, product analytics). Set to "true" for self hosted images.
+ARG VITE_SELF_HOSTED
+ENV VITE_SELF_HOSTED=$VITE_SELF_HOSTED
 COPY --from=pruner /usr/src/app/out/full/ .
 RUN bun turbo run build --filter=app
 

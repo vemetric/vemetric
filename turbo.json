@@ -4,6 +4,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^db:generate", "^build"],
+      "env": ["VITE_*"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "test": {},

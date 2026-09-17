@@ -1,0 +1,227 @@
+x-app-env: &app-env
+  NODE_ENV: production
+  DATABASE_URL: postgresql://${POSTGRES_USER:?set POSTGRES_USER}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB}?schema=public
+  CLICKHOUSE_HOST: http://clickhouse:8123
+  CLICKHOUSE_USER: ${CLICKHOUSE_USER:?set CLICKHOUSE_USER}
+  CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?set CLICKHOUSE_PASSWORD}
+  CLICKHOUSE_DB: ${CLICKHOUSE_DB:?set CLICKHOUSE_DB}
+  REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD}@redis:6379
+  DOMAIN: ${DOMAIN:?set DOMAIN}
+  # Read at runtime and injected into index.html by the backend, not compiled into the bundle.
+  # That is what keeps the published image usable on any domain.
+  APP_ORIGIN: ${APP_ORIGIN:?set APP_ORIGIN}
+  HUB_ORIGIN: ${HUB_ORIGIN:?set HUB_ORIGIN}
+  ROOT_ORIGIN: ${ROOT_ORIGIN:-}
+  BETTER_AUTH_URL: ${BETTER_AUTH_URL:?set BETTER_AUTH_URL}
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET}
+  EMAIL_TOKEN_SECRET: ${EMAIL_TOKEN_SECRET:?set EMAIL_TOKEN_SECRET}
+  # Disables billing, plans and every plan based limit. The instance always behaves like the
+  # highest plan. The frontend counterpart is the VITE_SELF_HOSTED build argument below.
+  SELF_HOSTED: 'true'
+  ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-false}
+  MAIL_PROVIDER: ${MAIL_PROVIDER:-smtp}
+  MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-}
+  MAIL_TIPS_FROM_ADDRESS: ${MAIL_TIPS_FROM_ADDRESS:-}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-}
+  SMTP_SECURE: ${SMTP_SECURE:-}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  SMTP_TLS_REJECT_UNAUTHORIZED: ${SMTP_TLS_REJECT_UNAUTHORIZED:-}
+  POSTMARK_SERVER_API_TOKEN: ${POSTMARK_SERVER_API_TOKEN:-}
+  POSTMARK_TRANSACTIONAL_MESSAGE_STREAM_ID: ${POSTMARK_TRANSACTIONAL_MESSAGE_STREAM_ID:-outbound}
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes', '--requirepass', '${REDIS_PASSWORD:?set REDIS_PASSWORD}']
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli -a "$$REDIS_PASSWORD" ping | grep -q PONG']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD}
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:26.3.8.4
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:?set CLICKHOUSE_DB}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:?set CLICKHOUSE_USER}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?set CLICKHOUSE_PASSWORD}
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - clickhouse_logs:/var/log/clickhouse-server
+      # Drops the passwordless `default` user. Mounted as a single file, because the image
+      # entrypoint writes its own generated user into the same directory and a read only
+      # directory mount would make the container fail to start.
+      - ./docker/clickhouse/users.d/zz-remove-default-user.xml:/etc/clickhouse-server/users.d/zz-remove-default-user.xml:ro
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://127.0.0.1:8123/ping || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  migrate:
+    image: ghcr.io/vemetric/migrate:${VEMETRIC_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: docker/migrate.Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      CH_MIGRATIONS_HOST: http://clickhouse:8123
+      CH_MIGRATIONS_USER: ${CLICKHOUSE_USER}
+      CH_MIGRATIONS_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      CH_MIGRATIONS_DB: ${CLICKHOUSE_DB}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    restart: 'no'
+
+  app:
+    # Self hosted variant of the dashboard, built with VITE_SELF_HOSTED=true. The `app` image
+    # is the hosted build used by vemetric.com and still contains the billing UI.
+    image: ghcr.io/vemetric/app-selfhost:${VEMETRIC_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: apps/app/Dockerfile
+      args:
+        VITE_SELF_HOSTED: 'true'
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      # Only the dashboard handles OAuth, so only this container receives the credentials.
+      # Optional social login. A provider is offered only when both of its values are set, setting
+      # just one of them makes the app refuse to start.
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://127.0.0.1:4000/ || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  hub:
+    image: ghcr.io/vemetric/hub:${VEMETRIC_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: apps/hub/Dockerfile
+    restart: unless-stopped
+    environment: *app-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://127.0.0.1:4004/up || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  worker:
+    image: ghcr.io/vemetric/worker:${VEMETRIC_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    restart: unless-stopped
+    environment: *app-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  bullboard:
+    image: ghcr.io/vemetric/bullboard:${VEMETRIC_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: apps/bullboard/Dockerfile
+    restart: unless-stopped
+    profiles: ['debug']
+    environment:
+      <<: *app-env
+      BULLBOARD_USERNAME: ${BULLBOARD_USERNAME:?set BULLBOARD_USERNAME}
+      BULLBOARD_PASSWORD: ${BULLBOARD_PASSWORD:?set BULLBOARD_PASSWORD}
+    ports:
+      - '127.0.0.1:4121:4121'
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      APP_ORIGIN: ${APP_ORIGIN:?set APP_ORIGIN}
+      HUB_ORIGIN: ${HUB_ORIGIN:?set HUB_ORIGIN}
+      # Optional, same contract as for the app container. The entrypoint turns an empty value
+      # into no redirect at all instead of an unstartable configuration.
+      ROOT_ORIGIN: ${ROOT_ORIGIN:-}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@localhost}
+    # Invoked through sh so the mounted script does not depend on its executable bit, which a
+    # checkout on a filesystem without permission bits would drop.
+    entrypoint: ['/bin/sh', '/usr/local/bin/caddy-entrypoint.sh']
+    command: ['caddy', 'run', '--config', '/etc/caddy/Caddyfile', '--adapter', 'caddyfile']
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./docker/caddy-entrypoint.sh:/usr/local/bin/caddy-entrypoint.sh:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    # Caddy owns the public ports. Waiting for both upstreams to report healthy keeps it from
+    # answering with 502 while the application containers are still booting.
+    depends_on:
+      app:
+        condition: service_healthy
+      hub:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  clickhouse_data:
+  clickhouse_logs:
+  caddy_data:
+  caddy_config:
+
+networks:
+  default:
+    name: vemetric-selfhost

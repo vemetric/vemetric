@@ -26,6 +26,7 @@ yarn-error.log*
 # local env files
 .env*
 !.env.example
+!.env.selfhost.example
 
 # turbo
 .turbo
@@ -35,3 +36,5 @@ yarn-error.log*
 
 # tsup
 dist/
+# local working notes
+/internal/

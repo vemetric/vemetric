@@ -7,9 +7,14 @@ import { ComposableMap, Geographies, Geography, ZoomableGroup } from 'react-simp
 import { CountryFlag } from '@/components/country-flag';
 import { Tooltip } from '@/components/ui/tooltip';
 import { countriesMapLocked, countriesMapViewState, type CountriesMapViewState } from '@/utils/local-storage';
+import { IS_SELF_HOSTED } from '@/utils/self-hosted';
 import { ChartTooltip } from './chart-tooltip';
 
-const geoUrl = 'https://assets.vemetric.com/topo.json';
+// Vemetric's asset host does not send CORS headers, so instances served from another domain
+// cannot load it. Self hosted instances therefore need their own copy of the TopoJSON world
+// atlas; without one the map renders empty instead of firing a request that is bound to fail.
+const geoUrl: string | undefined =
+  import.meta.env.VITE_MAP_TOPOJSON_URL || (IS_SELF_HOSTED ? undefined : 'https://assets.vemetric.com/topo.json');
 const DEFAULT_MAP_VIEW = {
   center: [0, 40] as [number, number],
   zoom: 0.85,
@@ -90,62 +95,64 @@ export const CountriesWorldMap = memo(({ data, onCountryClick }: Props) => {
               countriesMapViewState.set(nextState);
             }}
           >
-            <Geographies geography={geoUrl}>
-              {({ geographies }: { geographies: any[] }) =>
-                geographies.map((geo: any) => {
-                  const countryCode = geo.properties?.code as string | undefined;
-                  const users = countryCode ? (countryDataMap.get(countryCode) ?? 0) : 0;
+            {geoUrl && (
+              <Geographies geography={geoUrl}>
+                {({ geographies }: { geographies: any[] }) =>
+                  geographies.map((geo: any) => {
+                    const countryCode = geo.properties?.code as string | undefined;
+                    const users = countryCode ? (countryDataMap.get(countryCode) ?? 0) : 0;
 
-                  return (
-                    <Box
-                      key={geo.rsmKey}
-                      asChild
-                      css={{
-                        '--geo-fill-color': {
-                          base: 'var(--chakra-colors-gray-subtle)',
-                          _dark: 'var(--chakra-colors-gray-900)',
-                        },
-                        '--geo-hover-color': {
-                          base: 'var(--chakra-colors-gray-muted)',
-                          _dark: 'var(--chakra-colors-gray-700)',
-                        },
-                      }}
-                    >
-                      <Geography
-                        geography={geo}
-                        fill={countryCode ? getCountryColor(countryCode) : 'var(--geo-fill-color)'}
-                        stroke="var(--chakra-colors-border-muted)"
-                        strokeWidth={0.5}
-                        style={{
-                          default: { outline: 'none', transition: 'all 0.1s ease-in-out' },
-                          hover: {
-                            fill: users ? 'var(--chakra-colors-purple-500)' : 'var(--geo-hover-color)',
-                            outline: 'none',
-                            cursor: users ? 'pointer' : 'default',
+                    return (
+                      <Box
+                        key={geo.rsmKey}
+                        asChild
+                        css={{
+                          '--geo-fill-color': {
+                            base: 'var(--chakra-colors-gray-subtle)',
+                            _dark: 'var(--chakra-colors-gray-900)',
                           },
-                          pressed: { outline: 'none' },
+                          '--geo-hover-color': {
+                            base: 'var(--chakra-colors-gray-muted)',
+                            _dark: 'var(--chakra-colors-gray-700)',
+                          },
                         }}
-                        onClick={() => {
-                          if (isTouch) return;
+                      >
+                        <Geography
+                          geography={geo}
+                          fill={countryCode ? getCountryColor(countryCode) : 'var(--geo-fill-color)'}
+                          stroke="var(--chakra-colors-border-muted)"
+                          strokeWidth={0.5}
+                          style={{
+                            default: { outline: 'none', transition: 'all 0.1s ease-in-out' },
+                            hover: {
+                              fill: users ? 'var(--chakra-colors-purple-500)' : 'var(--geo-hover-color)',
+                              outline: 'none',
+                              cursor: users ? 'pointer' : 'default',
+                            },
+                            pressed: { outline: 'none' },
+                          }}
+                          onClick={() => {
+                            if (isTouch) return;
 
-                          if (countryCode && users && onCountryClick) {
-                            onCountryClick(countryCode);
-                          }
-                        }}
-                        onMouseEnter={() => {
-                          if (countryCode) {
-                            setHoveredCountryCode(countryCode);
-                          }
-                        }}
-                        onMouseLeave={() => {
-                          setHoveredCountryCode(null);
-                        }}
-                      />
-                    </Box>
-                  );
-                })
-              }
-            </Geographies>
+                            if (countryCode && users && onCountryClick) {
+                              onCountryClick(countryCode);
+                            }
+                          }}
+                          onMouseEnter={() => {
+                            if (countryCode) {
+                              setHoveredCountryCode(countryCode);
+                            }
+                          }}
+                          onMouseLeave={() => {
+                            setHoveredCountryCode(null);
+                          }}
+                        />
+                      </Box>
+                    );
+                  })
+                }
+              </Geographies>
+            )}
           </ZoomableGroup>
         </ComposableMap>
         <Tooltip content={isMapLocked ? 'Unlock map interactions' : 'Lock map interactions'}>

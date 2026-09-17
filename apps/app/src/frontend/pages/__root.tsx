@@ -9,24 +9,32 @@ import { CrispChat } from '@/components/crisp-chat';
 import { CrispScript } from '@/components/crisp-script';
 import { useColorMode } from '@/components/ui/color-mode';
 import { toaster } from '@/components/ui/toaster';
+import { isCrispChatEnabled } from '@/stores/crisp-chat-store';
 import { authClient } from '@/utils/auth';
 import { consumeReturnToBillingSettingsAfterCheckout } from '@/utils/paddle';
+import { IS_SELF_HOSTED } from '@/utils/self-hosted';
 
 let isCheckoutCompleted = false;
 let onCheckoutClosed: ((isCompleted: boolean) => void) | undefined;
 
-initializePaddle({
-  environment: (import.meta.env.VITE_PADDLE_ENV as 'sandbox' | 'production') || 'sandbox',
-  token: import.meta.env.VITE_PADDLE_TOKEN,
-  eventCallback: (data) => {
-    if (data.name === 'checkout.completed') {
-      isCheckoutCompleted = true;
-    } else if (data.name === 'checkout.closed') {
-      onCheckoutClosed?.(isCheckoutCompleted);
-      isCheckoutCompleted = false;
-    }
-  },
-});
+// Self hosted instances run without billing. Initializing Paddle without a token loads its
+// script from an external CDN and then fails, so on those it only runs when a token is
+// configured. On the hosted instance the token is always present, so this keeps the previous
+// unconditional behavior there.
+if (!IS_SELF_HOSTED || import.meta.env.VITE_PADDLE_TOKEN) {
+  initializePaddle({
+    environment: (import.meta.env.VITE_PADDLE_ENV as 'sandbox' | 'production') || 'sandbox',
+    token: import.meta.env.VITE_PADDLE_TOKEN,
+    eventCallback: (data) => {
+      if (data.name === 'checkout.completed') {
+        isCheckoutCompleted = true;
+      } else if (data.name === 'checkout.closed') {
+        onCheckoutClosed?.(isCheckoutCompleted);
+        isCheckoutCompleted = false;
+      }
+    },
+  });
+}
 
 // Global search params available on all routes
 const rootSearchSchema = z.object({
@@ -151,8 +159,12 @@ function RootLayout() {
   return (
     <>
       <Outlet />
-      <CrispScript />
-      {!location.pathname.startsWith('/public/') && <CrispChat />}
+      {isCrispChatEnabled && (
+        <>
+          <CrispScript />
+          {!location.pathname.startsWith('/public/') && <CrispChat />}
+        </>
+      )}
     </>
   );
 }

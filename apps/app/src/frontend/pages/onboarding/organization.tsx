@@ -8,6 +8,7 @@ import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
 import { authClient } from '@/utils/auth';
 import { requireAuthentication } from '@/utils/auth-guards';
+import { IS_SELF_HOSTED } from '@/utils/self-hosted';
 import { trpc } from '@/utils/trpc';
 
 export const Route = createFileRoute('/onboarding/organization')({
@@ -31,7 +32,12 @@ function Page() {
     },
     onSuccess: async ({ organizationId }) => {
       await refetchAuth();
-      navigate({ to: '/onboarding/pricing', search: { orgId: organizationId } });
+      // Self hosted instances have no pricing plans, skip straight to the next onboarding step.
+      if (IS_SELF_HOSTED) {
+        navigate({ to: '/onboarding/project', search: { orgId: organizationId } });
+      } else {
+        navigate({ to: '/onboarding/pricing', search: { orgId: organizationId } });
+      }
     },
     onError: (error) => {
       setIsLoading(false);

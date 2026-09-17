@@ -1,13 +1,19 @@
 import { Box, Button, Card, Container, Flex, Heading, Spinner, Stack, Text, Link } from '@chakra-ui/react';
 import { createFileRoute, Link as RouterLink, useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { TbBuilding, TbCheck } from 'react-icons/tb';
 import { Logo } from '@/components/logo';
 import { ErrorState } from '@/components/ui/empty-state';
 import { toaster } from '@/components/ui/toaster';
 import { UserIdentity } from '@/components/user-identity';
 import { authClient } from '@/utils/auth';
+import {
+  clearInvitationTokenCookie,
+  getInvitationTokenCookie,
+  setInvitationTokenCookie,
+} from '@/utils/invitation-token';
 import { redirectPath } from '@/utils/local-storage';
+import { IS_SELF_HOSTED } from '@/utils/self-hosted';
 import { trpc } from '@/utils/trpc';
 import { getLandingPageUrl } from '@/utils/url';
 
@@ -24,14 +30,62 @@ function InvitePage() {
   const [isAccepting, setIsAccepting] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
+  // Stored as soon as the visitor is known to be logged out, not only when one of the buttons
+  // below is used: an OAuth signup creates the account in the provider callback, a request that
+  // carries no query parameters, so the cookie is the only way the token reaches the backend.
+  // Only self hosted instances need it, they are the ones that can have registration turned off.
+  useEffect(() => {
+    if (IS_SELF_HOSTED && !isSessionLoading && !isLoggedIn) {
+      setInvitationTokenCookie(token);
+    }
+  }, [isSessionLoading, isLoggedIn, token]);
+
   const {
     data: invitation,
     error: invitationError,
     isLoading: isInvitationLoading,
   } = trpc.organization.getInvitationByToken.useQuery({ token });
 
+  // An invited signup consumes the invitation while the account is created, so the token is
+  // already gone by the time the provider callback sends the user back here. That is a completed
+  // invitation, not a broken link: the cookie this browser still carries is what tells the two
+  // apart, so the user is sent on to the dashboard instead of being shown an error.
+  // Only self hosted instances consume a token during signup, so the hosted instance keeps
+  // showing the invalid invitation state for a link that no longer resolves.
+  const isConsumedInvitation =
+    IS_SELF_HOSTED && isLoggedIn && invitation?.success === false && getInvitationTokenCookie() === token;
+
+  useEffect(() => {
+    if (!isConsumedInvitation) {
+      return;
+    }
+
+    clearInvitationTokenCookie();
+    setIsRedirecting(true);
+    const organizationId = session?.organizations?.[0]?.id;
+    if (organizationId) {
+      navigate({ to: '/o/$organizationId', params: { organizationId: String(organizationId) } });
+      return;
+    }
+
+    // The account exists and the invitation is used up, but the user belongs to no organization.
+    // The join failed after the account was created, for example because the inviting
+    // organization hit its member limit, so say so instead of dropping them on an empty
+    // dashboard without explanation.
+    toaster.create({
+      title: 'Your account was created, but you were not added to the team',
+      description: 'Please ask an admin of the organization for a new invitation.',
+      type: 'warning',
+    });
+    navigate({ to: '/' });
+  }, [isConsumedInvitation, navigate, session]);
+
   const { mutate: acceptInvitation } = trpc.organization.acceptInvitation.useMutation({
     onSuccess: async (data) => {
+      // The token has been redeemed, the cookie that carried it through the signup is obsolete.
+      if (IS_SELF_HOSTED) {
+        clearInvitationTokenCookie();
+      }
       toaster.create({
         title: `You've joined ${data.organizationName}`,
         type: 'success',
@@ -150,14 +204,30 @@ function InvitePage() {
                       asChild
                       colorPalette="purple"
                       size="lg"
-                      onClick={() => redirectPath.set(`/invite/${token}`)}
+                      onClick={() => {
+                        redirectPath.set(`/invite/${token}`);
+                        if (IS_SELF_HOSTED) {
+                          setInvitationTokenCookie(token);
+                        }
+                      }}
                     >
                       <RouterLink to="/login">Sign in to Accept</RouterLink>
                     </Button>
                     <Text fontSize="sm" color="fg.muted" mt={2}>
                       Don&apos;t have an account?{' '}
-                      <Link asChild variant="underline" onClick={() => redirectPath.set(`/invite/${token}`)}>
-                        <RouterLink to="/signup">Sign up</RouterLink>
+                      <Link
+                        asChild
+                        variant="underline"
+                        onClick={() => {
+                          redirectPath.set(`/invite/${token}`);
+                          if (IS_SELF_HOSTED) {
+                            setInvitationTokenCookie(token);
+                          }
+                        }}
+                      >
+                        <RouterLink to="/signup" search={IS_SELF_HOSTED ? { invitationToken: token } : {}}>
+                          Sign up
+                        </RouterLink>
                       </Link>
                     </Text>
                   </Stack>

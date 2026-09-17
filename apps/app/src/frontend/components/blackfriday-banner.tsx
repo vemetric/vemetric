@@ -2,6 +2,7 @@ import { Box, Flex, Icon, LinkOverlay, Tag, Text, useClipboard } from '@chakra-u
 import { Link } from '@tanstack/react-router';
 import { TbArrowRight, TbCheck } from 'react-icons/tb';
 import { useCurrentOrganization } from '@/hooks/use-current-organization';
+import { IS_SELF_HOSTED } from '@/utils/self-hosted';
 import { trpc } from '@/utils/trpc';
 
 export const BlackFridayBanner = () => {
@@ -12,10 +13,11 @@ export const BlackFridayBanner = () => {
     {
       organizationId,
     },
-    { enabled: !!organizationId },
+    { enabled: !!organizationId && !IS_SELF_HOSTED },
   );
 
-  if (!billingStatus || billingStatus?.isActive) {
+  // Self hosted instances have no billing, so this promo is not applicable.
+  if (IS_SELF_HOSTED || !billingStatus || billingStatus?.isActive) {
     return null;
   }
 

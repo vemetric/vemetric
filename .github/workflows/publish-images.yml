@@ -1,0 +1,100 @@
+name: Publish Docker Images
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Additional tag to publish. Left empty, a manual run publishes only a sha- tag, never latest.'
+        required: false
+        type: string
+
+concurrency:
+  group: publish-images-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Hosted build of the dashboard, used by vemetric.com. Must stay free of build
+          # arguments so its behaviour never changes.
+          - name: app
+            dockerfile: apps/app/Dockerfile
+            build-args: ''
+          # Self hosted variant of the dashboard. Same Dockerfile, but VITE_SELF_HOSTED
+          # compiles out everything that would talk to Vemetric's own infrastructure.
+          # Published as a separate image, it never replaces the hosted one.
+          - name: app-selfhost
+            dockerfile: apps/app/Dockerfile
+            build-args: |
+              VITE_SELF_HOSTED=true
+          - name: hub
+            dockerfile: apps/hub/Dockerfile
+            build-args: ''
+          - name: worker
+            dockerfile: apps/worker/Dockerfile
+            build-args: ''
+          - name: bullboard
+            dockerfile: apps/bullboard/Dockerfile
+            build-args: ''
+          - name: migrate
+            dockerfile: docker/migrate.Dockerfile
+            build-args: ''
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Required for the linux/arm64 leg: the amd64 runner emulates it through binfmt.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Collect image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.name }}
+          # This workflow only runs on tag pushes and manual dispatches, never on the default
+          # branch, so `is_default_branch` would never yield `latest`. The release tag is what
+          # defines the latest published version here.
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=${{ inputs.tag }},enable=${{ inputs.tag != '' }}
+            type=sha,format=short
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          platforms: linux/amd64,linux/arm64
+          build-args: ${{ matrix.build-args }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}

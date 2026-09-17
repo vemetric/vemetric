@@ -2,6 +2,7 @@ import { Flex, Tabs, Text, Span } from '@chakra-ui/react';
 import { useEffect } from 'react';
 import { TbCreditCard, TbSettings, TbUsers } from 'react-icons/tb';
 import { useOrgSettingsDialog } from '@/hooks/use-org-settings-dialog';
+import { IS_SELF_HOSTED } from '@/utils/self-hosted';
 import { BillingTab } from './billing/billing-tab';
 import { OrganizationGeneralTab } from './general-tab';
 import { OrganizationMembersTab } from './members/members-tab';
@@ -19,6 +20,8 @@ import { toaster } from '../../../ui/toaster';
 export const OrganizationSettingsDialog = () => {
   const { isPending, isOpen, tab, organizationId, currentOrganization, isAdmin, isOnboarded, close, setTab } =
     useOrgSettingsDialog();
+  // Self hosted instances have no billing, so the billing tab must never be selected.
+  const selectedTab = IS_SELF_HOSTED && tab === 'billing' ? 'general' : tab;
 
   useEffect(() => {
     if (!isOpen || isPending) return;
@@ -89,7 +92,7 @@ export const OrganizationSettingsDialog = () => {
         </DialogHeader>
         <DialogBody p={0} pt={2} m="1px" bg="gray.subtle" rounded="md" overflow="hidden">
           <Tabs.Root
-            value={tab}
+            value={selectedTab}
             onValueChange={({ value }) => setTab(value as 'general' | 'billing' | 'members')}
             variant="outline"
             css={{
@@ -108,10 +111,12 @@ export const OrganizationSettingsDialog = () => {
                 <TbSettings />
                 General
               </Tabs.Trigger>
-              <Tabs.Trigger value="billing">
-                <TbCreditCard />
-                Billing<Span hideBelow="md"> & Usage</Span>
-              </Tabs.Trigger>
+              {!IS_SELF_HOSTED && (
+                <Tabs.Trigger value="billing">
+                  <TbCreditCard />
+                  Billing<Span hideBelow="md"> & Usage</Span>
+                </Tabs.Trigger>
+              )}
               <Tabs.Trigger value="members">
                 <TbUsers />
                 Members
@@ -120,9 +125,11 @@ export const OrganizationSettingsDialog = () => {
             <Tabs.Content value="general">
               <OrganizationGeneralTab organizationId={organizationId} />
             </Tabs.Content>
-            <Tabs.Content value="billing">
-              <BillingTab organizationId={organizationId} />
-            </Tabs.Content>
+            {!IS_SELF_HOSTED && (
+              <Tabs.Content value="billing">
+                <BillingTab organizationId={organizationId} />
+              </Tabs.Content>
+            )}
             <Tabs.Content value="members">
               <OrganizationMembersTab organizationId={organizationId} />
             </Tabs.Content>

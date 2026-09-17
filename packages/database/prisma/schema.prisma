@@ -230,6 +230,15 @@ model Salt {
   @@map("salt")
 }
 
+// Single-row table used to atomically decide who wins the bootstrap signup race on
+// instances with ALLOW_REGISTRATION=false. See assertRegistrationAllowed for details.
+model BootstrapLock {
+  id        String   @id
+  createdAt DateTime @default(now())
+
+  @@map("bootstrap_lock")
+}
+
 model UserIdentificationMap {
   projectId  String
   userId     String

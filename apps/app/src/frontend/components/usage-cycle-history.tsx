@@ -3,6 +3,7 @@ import { Fragment } from 'react';
 import { Tooltip } from '@/components/ui/tooltip';
 import { getFaviconUrl } from '@/utils/favicon';
 import type { UsageCycle } from '@/utils/pricing';
+import { IS_SELF_HOSTED } from '@/utils/self-hosted';
 import { formatTimeSpanDateRange } from '@/utils/timespans';
 import { LoadingImage } from './loading-image';
 
@@ -86,6 +87,11 @@ interface Props {
 }
 
 export const UsageCycleHistory = ({ cycles, eventsIncluded }: Props) => {
+  // Usage cycles are a billing concept, self hosted instances have none.
+  if (IS_SELF_HOSTED) {
+    return null;
+  }
+
   return (
     <Flex direction="column" gap={4} w="full">
       {cycles.map((cycle) => (

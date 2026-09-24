@@ -6,6 +6,7 @@ import { isDeepEqual } from 'remeda';
 import { logJobStep } from '../utils/job-logger';
 import { queueTelemetry } from '../utils/telemetry';
 import { getUpdatedUserData } from '../utils/user';
+import { invalidateIngestionUser } from '../utils/user-cache';
 
 export async function initUpdateUserWorker() {
   return new Worker<UpdateUserQueueProps>(
@@ -48,6 +49,7 @@ export async function initUpdateUserWorker() {
       }
       await logJobStep(job, 'before clickhouseUser.insert');
       await clickhouseUser.insert([updatedUser]);
+      await invalidateIngestionUser(projectId, userId);
       await logJobStep(job, 'done');
     },
     {

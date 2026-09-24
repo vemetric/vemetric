@@ -1,5 +1,5 @@
 import { clickhouseSession, type ClickhouseSession } from 'clickhouse';
-import { bufferSessionUpdate, deleteBufferedSession } from './session-buffer';
+import { bufferSessionUpdate } from './session-buffer';
 import { sessionKey, sessionKeyPrefix, sessionStore } from './session-store';
 
 // One scheduled worker drains batches. Revisioned writes also tolerate a stalled job resuming late.
@@ -63,6 +63,4 @@ export async function persistSessionUpdates(
   );
 }
 
-export async function deleteBufferedSessions(sessions: Array<Pick<ClickhouseSession, 'projectId' | 'id'>>) {
-  for (const session of sessions) await deleteBufferedSession(session.projectId, session.id);
-}
+export const pendingSessionStats = () => sessionStore.pendingStats();

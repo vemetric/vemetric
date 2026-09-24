@@ -30,6 +30,7 @@ export const reassignExistingSessionsToEvents = async (context: UserMigrationCon
     return {
       sessionsWithTimeUpdates: [],
       sessionIdMapping: new Map<string, string>(),
+      unmatchedSessionIds: new Set<string>(),
     };
   const eventTimes = existingEvents.map((e) => new Date(clickhouseDateToISO(e.createdAt)).getTime());
   const minEventTime = Math.min(...eventTimes);
@@ -40,7 +41,14 @@ export const reassignExistingSessionsToEvents = async (context: UserMigrationCon
 
   // Query only relevant sessions from the new user within this time range
   const newUserSessions = (
-    await getBufferedSessions(projectId, newUserId, await clickhouseSession.findByUserId(projectId, newUserId))
+    await getBufferedSessions(
+      projectId,
+      newUserId,
+      await clickhouseSession.findByUserId(projectId, newUserId, {
+        start: searchStartTime,
+        end: searchEndTime,
+      }),
+    )
   ).filter(
     (session) =>
       new Date(clickhouseDateToISO(session.startedAt)) <= searchEndTime &&
@@ -49,16 +57,20 @@ export const reassignExistingSessionsToEvents = async (context: UserMigrationCon
 
   // Create a map of session ID mappings
   const sessionIdMapping = new Map<string, string>(); // old session id -> new session id
+  const unmatchedSessionIds = new Set<string>(); // old sessions with an event outside the new user's sessions
   const sessionTimeUpdates = new Map<string, { startedAt: Date; endedAt: Date; duration: number }>(); // track time updates for existing sessions
 
   // we iterate through all the events and see if we can find a new session to assign it to
   for (const event of existingEvents) {
+    let matchedExistingSession = false;
+
     for (const newSession of newUserSessions) {
       if (!eventBelongsToSession(event.createdAt, newSession)) {
         continue;
       }
 
       sessionIdMapping.set(event.sessionId, newSession.id);
+      matchedExistingSession = true;
 
       // Extend the session end only. startedAt is immutable once published, so an event
       // that predates the session never moves its start or its monthly partition.
@@ -89,6 +101,11 @@ export const reassignExistingSessionsToEvents = async (context: UserMigrationCon
       }
       break;
     }
+
+    // no new session found, we just keep the old session
+    if (!matchedExistingSession) {
+      unmatchedSessionIds.add(event.sessionId);
+    }
   }
 
   const sessionsWithTimeUpdates: Array<ClickhouseSession> = [];
@@ -107,5 +124,5 @@ export const reassignExistingSessionsToEvents = async (context: UserMigrationCon
     });
   }
 
-  return { sessionsWithTimeUpdates, sessionIdMapping };
+  return { sessionsWithTimeUpdates, sessionIdMapping, unmatchedSessionIds };
 };

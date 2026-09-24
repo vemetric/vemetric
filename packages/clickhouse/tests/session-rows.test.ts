@@ -5,10 +5,9 @@ import { currentSessionRows } from '../src/models/session';
 describe('currentSessionRows', () => {
   it('resolves revisions and hides tombstoned sessions by default', () => {
     const rows = currentSessionRows(BigInt(7));
-    expect(rows).toContain('FROM session_v3');
+    expect(rows).toContain('FROM session_v3 FINAL');
     expect(rows).toContain("session_v3.projectId = '7'");
-    expect(rows).toContain('GROUP BY projectId, id');
-    expect(rows).toContain('HAVING deleted = 0');
+    expect(rows).toContain('AND deleted = 0');
     expect(rows).not.toContain('startedAt >=');
   });
 
@@ -19,9 +18,6 @@ describe('currentSessionRows', () => {
 
     expect(rows).toContain(`session_v3.startedAt >= '${formatClickhouseDate(startDate)}'`);
     expect(rows).toContain(`session_v3.startedAt < '${formatClickhouseDate(endDate)}'`);
-    // An unqualified name resolves to the argMax alias and is rejected as an aggregate in WHERE.
-    expect(rows).not.toContain(' AND startedAt >=');
-    expect(rows).not.toContain(' AND startedAt <');
   });
 
   it('scopes explicit ids and renders an empty id list as a false predicate', () => {

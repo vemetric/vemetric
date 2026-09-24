@@ -1,6 +1,6 @@
 import { jsonStringify } from '@vemetric/common/json';
 import { escape } from 'sqlstring';
-import { clickhouseClient, clickhouseInsert } from '../client';
+import { clickhouseClient, clickhouseInsert, ingestionInsertSettings } from '../client';
 
 const TABLE_NAME = 'device_v2';
 
@@ -87,16 +87,7 @@ export const clickhouseDevice = {
   insert: async (devices: Array<Omit<ClickhouseDevice, 'createdAt'> & { createdAt?: string }>) => {
     await clickhouseInsert({
       table: TABLE_NAME,
-      // Coalesce cache misses across worker replicas; acknowledgement still waits for persistence.
-      settings:
-        process.env.DEVICE_ASYNC_INSERTS === 'false'
-          ? undefined
-          : {
-              async_insert: 1,
-              wait_for_async_insert: 1,
-              async_insert_use_adaptive_busy_timeout: 0,
-              async_insert_busy_timeout_ms: 100,
-            },
+      settings: ingestionInsertSettings(),
       values: devices.map((device) => {
         const createdAt = device.createdAt ?? new Date().toISOString().replace('T', ' ').replace('Z', '');
         const timestamp = Date.parse(createdAt.replace(' ', 'T') + 'Z');

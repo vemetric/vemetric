@@ -1,8 +1,12 @@
 import { sessionFlushQueueName } from '@vemetric/queues/queue-names';
 import { defaultQueueConnection } from '@vemetric/queues/queue-utils';
 import { Queue, Worker } from 'bullmq';
-import { assertIngestionStateStorage, flushSessionBuffer } from '../ingestion';
+import { assertIngestionStateStorage, flushSessionBuffer, positiveStateInteger } from '../ingestion';
 import { queueTelemetry } from '../utils/telemetry';
+
+// ClickHouse favors few large inserts, so a single flusher writes big batches instead of
+// adding parallel writers. Ten full batches per 1s tick bound a tick's work.
+const batchSize = positiveStateInteger('SESSION_FLUSH_BATCH_SIZE', 5000);
 
 export async function initSessionFlushWorker() {
   await assertIngestionStateStorage();
@@ -23,9 +27,9 @@ export async function initSessionFlushWorker() {
   return new Worker(
     sessionFlushQueueName,
     async () => {
-      // Bounded work per tick. Dirty keys are never removed before a successful write.
+      // Dirty keys are never removed before a successful write.
       for (let batch = 0; batch < 10; batch++) {
-        if ((await flushSessionBuffer(500)) < 500) break;
+        if ((await flushSessionBuffer(batchSize)) < batchSize) break;
       }
     },
     { connection: defaultQueueConnection, concurrency: 1, telemetry: queueTelemetry },

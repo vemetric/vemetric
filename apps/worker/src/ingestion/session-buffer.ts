@@ -4,7 +4,7 @@ import type { ClickhouseSession } from 'clickhouse';
 import { clickhouseDateToISO } from 'clickhouse';
 import { stateRedis } from './redis';
 import { combineSession, publicSession, storedSession, type SessionState } from './session-state';
-import { sessionKey, sessionUserKey, sessionStore } from './session-store';
+import { cleanTtl, sessionKey, sessionUserKey, sessionStore } from './session-store';
 
 export async function bufferSessionUpdate(
   projectId: bigint,
@@ -32,18 +32,30 @@ export async function bufferSessionUpdate(
 }
 
 // The common path needs no ClickHouse/user lookup or repeated UA/referrer parsing.
-// Earlier arrivals still take the full path to correct the entry metadata.
-export async function bufferExistingSessionActivity(projectId: bigint, id: string, at: string, geoData?: GeoData) {
+// Returns 'uninitialized' when no session exists yet and 'predates' for an event earlier than the
+// session start; both take the full path, which can correct the entry metadata.
+export async function bufferExistingSessionActivity(
+  projectId: bigint,
+  id: string,
+  at: string,
+  geoData?: GeoData,
+  { knownNew = false } = {},
+): Promise<'buffered' | 'uninitialized' | 'predates'> {
   at = formatClickhouseDate(new Date(clickhouseDateToISO(at)));
   const key = sessionKey(projectId, id);
+  // State for a session first seen at `at` is written later and then kept for at least the
+  // cache TTL, so a cache miss shortly after `at` proves nothing was stored. Old jobs (late
+  // retries, backlog replays) take the ClickHouse lookup instead. Half the TTL absorbs clock skew.
+  knownNew &&= Date.now() - Date.parse(clickhouseDateToISO(at)) < (cleanTtl * 1000) / 2;
   for (let attempt = 0; attempt < 100; attempt++) {
-    const { raw, state } = await sessionStore.load(key);
-    if (state.deleted) return true;
-    if (!state.session || at < state.session.startedAt) return false;
+    const { raw, state } = await sessionStore.load(key, { knownNew });
+    if (state.deleted) return 'buffered';
+    if (!state.session) return 'uninitialized';
+    if (at < state.session.startedAt) return 'predates';
     const incoming = geoData ? { ...state.session, ...geoData } : undefined;
     const next = combineSession(state, incoming, at);
-    if (JSON.stringify(next) === raw) return true;
-    if (await sessionStore.commitIfUnchanged([{ key, raw, state: next }])) return true;
+    if (JSON.stringify(next) === raw) return 'buffered';
+    if (await sessionStore.commitIfUnchanged([{ key, raw, state: next }])) return 'buffered';
   }
   throw new Error('Session activity contention; retry job');
 }
@@ -103,41 +115,25 @@ export async function findPendingSession(projectId: bigint, ids: Iterable<string
   return undefined;
 }
 
-export async function moveBufferedSession(
+// Assigns a session to another user (user merges). Deleting merged sessions uses deleteBufferedSession.
+export async function reassignBufferedSession(
   projectId: bigint,
-  sourceId: string,
-  targetId: string,
+  id: string,
   userId: bigint,
   identifier: string,
   displayName?: string,
 ) {
-  const sourceKey = sessionKey(projectId, sourceId);
-  const targetKey = sessionKey(projectId, targetId);
+  const key = sessionKey(projectId, id);
   for (let attempt = 0; attempt < 100; attempt++) {
-    const source = await sessionStore.load(sourceKey);
-    // A completed move leaves a tombstone. Retrying must not apply its stale source again.
-    if (source.state.deleted) return;
-    const target = sourceKey === targetKey ? source : await sessionStore.load(targetKey);
+    const { raw, state } = await sessionStore.load(key);
+    // A deleted session stays deleted, including when a merge job is retried.
+    if (state.deleted) return;
     // Recheck inside the CAS loop; never assign ownership to an unfinished session.
-    if (!source.state.session || !target.state.session) throw new Error('Session is not initialized for merge');
-    let next = combineSession(target.state, undefined, source.state.latestAt);
-    if (next.deleted) throw new Error('Cannot merge into a deleted session');
-    if (source.state.session && sourceKey !== targetKey) {
-      const incoming = {
-        ...source.state.session,
-        id: targetKey.slice(sessionKey(projectId, '').length),
-        userId: String(userId),
-      };
-      next = combineSession(next, incoming, source.state.latestAt);
-    }
-
-    next.session!.userId = String(userId);
-    next.session!.userIdentifier = identifier;
-    next.session!.userDisplayName = displayName ?? next.session!.userDisplayName;
-    const entries = [{ key: targetKey, raw: target.raw, state: next }];
-    if (sourceKey !== targetKey)
-      entries.push({ key: sourceKey, raw: source.raw, state: { ...source.state, deleted: true } });
-    if (await sessionStore.commitIfUnchanged(entries)) return;
+    if (!state.session) throw new Error('Session is not initialized for merge');
+    const next = structuredClone(state);
+    Object.assign(next.session!, { userId: String(userId), userIdentifier: identifier, userDisplayName: displayName });
+    if (JSON.stringify(next) === raw) return;
+    if (await sessionStore.commitIfUnchanged([{ key, raw, state: next }])) return;
   }
   throw new Error('Session merge contention; retry job');
 }

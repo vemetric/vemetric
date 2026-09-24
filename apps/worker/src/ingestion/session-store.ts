@@ -1,12 +1,15 @@
+import { createLogger } from '@vemetric/logger';
 import { clickhouseSession, type SessionRevisionRow } from 'clickhouse';
 import type { ChainableCommander } from 'ioredis';
 import { positiveStateInteger, stateRedis } from './redis';
 import type { IngestionCommands } from './session-redis-commands';
 import type { SessionState, StoredSession } from './session-state';
 
+const logger = createLogger('ingestion-state');
+
 export const sessionKeyPrefix = 'vm:{session-state}:';
 const dirtyKey = `${sessionKeyPrefix}dirty`;
-const cleanTtl = positiveStateInteger('SESSION_STATE_CACHE_TTL_SECONDS', 300);
+export const cleanTtl = positiveStateInteger('SESSION_STATE_CACHE_TTL_SECONDS', 120);
 export const sessionKey = (projectId: bigint | string, id: string) => `${sessionKeyPrefix}${projectId}:${id}`;
 export const sessionUserKey = (projectId: bigint | string, userId: bigint | string) =>
   `${sessionKeyPrefix}user:${projectId}:${userId}`;
@@ -21,12 +24,15 @@ function emptyState(): SessionState {
   return { revision: 0, latestAt: '' };
 }
 
-async function loadSession(key: string): Promise<{ raw: string; state: SessionState }> {
+// `knownNew` skips the ClickHouse lookup for a session id that cannot have been persisted yet.
+async function loadSession(key: string, { knownNew = false } = {}): Promise<{ raw: string; state: SessionState }> {
   const redis = stateRedis();
   const cached = await redis.get(key);
   if (cached) return { raw: cached, state: JSON.parse(cached) as SessionState };
   const [projectId, ...idParts] = key.slice(sessionKeyPrefix.length).split(':');
-  const row: SessionRevisionRow | null = await clickhouseSession.findLatestRevision(projectId!, idParts.join(':'));
+  const row: SessionRevisionRow | null = knownNew
+    ? null
+    : await clickhouseSession.findLatestRevision(projectId!, idParts.join(':'));
   let state = emptyState();
   if (row) {
     // deleted is the storage tombstone flag; cached state carries the boolean instead.
@@ -37,7 +43,7 @@ async function loadSession(key: string): Promise<{ raw: string; state: SessionSt
       userId: String(columns.userId),
       userIdentifier: columns.userIdentifier ?? undefined,
       userDisplayName: columns.userDisplayName ?? undefined,
-      queryParams: JSON.parse(columns.queryParams || '{}'),
+      queryParams: columns.queryParams ? JSON.parse(columns.queryParams) : undefined,
       // An unset FixedString(2) is returned as two zero bytes by ClickHouse.
       countryCode: columns.countryCode?.replace(/\0/g, '') ?? '',
     };
@@ -52,7 +58,7 @@ async function loadSession(key: string): Promise<{ raw: string; state: SessionSt
   const raw = JSON.stringify(state);
   // Hydration is only a cache fill. Never overwrite state produced by a concurrent writer.
   if (await redis.set(key, raw, 'EX', cleanTtl, 'NX')) return { raw, state };
-  return loadSession(key);
+  return loadSession(key, { knownNew });
 }
 
 async function commitIfUnchanged(entries: SessionSnapshot[]) {
@@ -87,8 +93,10 @@ async function readPending(limit: number, onlyKeys?: string[]): Promise<SessionS
       // Explicit key flushes must also leave early activity in Redis only.
       if (state.session || state.deleted) snapshots.push({ key, raw, state });
     }
-    // A concurrent successful flush may have cleaned and expired this key already.
-    else if (await redis.zscore(dirtyKey, key)) throw new Error('Missing dirty session state');
+    // A concurrent successful flush may have cleaned and expired this key already. Otherwise the
+    // state was lost outside this code (eviction, manual deletion): report it, but keep flushing
+    // every other session instead of blocking the whole buffer.
+    else if (await redis.zscore(dirtyKey, key)) logger.error({ key }, 'Missing dirty session state');
   }
   return snapshots;
 }
@@ -106,4 +114,12 @@ async function acknowledgeFlush(snapshots: SessionSnapshot[]) {
   }
 }
 
-export const sessionStore = { load: loadSession, commitIfUnchanged, readPending, acknowledgeFlush };
+// Monitoring: snapshots waiting for the flusher and how long the oldest one has been waiting.
+async function pendingStats() {
+  const redis = stateRedis();
+  const [count, oldest] = await Promise.all([redis.zcard(dirtyKey), redis.zrange(dirtyKey, 0, 0, 'WITHSCORES')]);
+  const oldestAgeSeconds = oldest[1] ? Math.max(0, (Date.now() - Number(oldest[1])) / 1000) : 0;
+  return { count, oldestAgeSeconds };
+}
+
+export const sessionStore = { load: loadSession, commitIfUnchanged, readPending, acknowledgeFlush, pendingStats };

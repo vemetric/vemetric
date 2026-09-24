@@ -17,6 +17,8 @@ interface CreateOrExtendProps extends BaseProps {
   headers: Record<string, string>;
   url?: string;
   projectDomain?: string;
+  // The hub generated this session id for this event, so no stored state can exist yet.
+  isNewSession?: boolean;
   reqIdentifier?: string;
   reqDisplayName?: string;
 }

@@ -6,7 +6,7 @@ import { jsonStringify } from '@vemetric/common/json';
 import type { IUserSortConfig } from '@vemetric/common/sort';
 import { escape } from 'sqlstring';
 import type { z } from 'zod';
-import { clickhouseClient, clickhouseInsert } from '../client';
+import { clickhouseClient, clickhouseInsert, ingestionInsertSettings } from '../client';
 import { GLOBE_H3_RESOLUTION, ONLINE_USERS_INTERVAL_QUERY } from '../consts';
 import type { DeviceData } from './device';
 import { EXAMPLE_DEVICE_DATA } from './device';
@@ -911,6 +911,7 @@ export const clickhouseEvent = {
   insert: async (events: Array<ClickhouseEvent>) => {
     await clickhouseInsert({
       table: TABLE_NAME,
+      settings: ingestionInsertSettings(),
       values: events.map((event) => ({ ...event, sign: 1 })),
     });
   },

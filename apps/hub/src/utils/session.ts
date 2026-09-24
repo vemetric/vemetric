@@ -19,11 +19,16 @@ export async function hasActiveSession(projectId: bigint, userId: bigint) {
   return (await getSessionId(projectId, userId)) !== null;
 }
 
+// Returns the session id and 1 when it was created by this call.
 export const GET_OR_CREATE_SESSION = `
 local id = redis.call('GET', KEYS[1])
-if not id then id = ARGV[1] end
+local created = 0
+if not id then
+  id = ARGV[1]
+  created = 1
+end
 redis.call('SET', KEYS[1], id, 'EX', ARGV[2])
-return id`;
+return {id, created}`;
 
 export const REFRESH_SESSION = `
 if redis.call('GET', KEYS[1]) == ARGV[1] then
@@ -34,12 +39,11 @@ return 0`;
 
 export async function getOrCreateSessionId(projectId: bigint, userId: bigint) {
   const redis = await getRedisClient();
-  return String(
-    await redis.eval(GET_OR_CREATE_SESSION, {
-      keys: [getRedisSessionKey(projectId, userId)],
-      arguments: [generateSessionId(), String(REDIS_SESSION_DURATION)],
-    }),
-  );
+  const [sessionId, created] = (await redis.eval(GET_OR_CREATE_SESSION, {
+    keys: [getRedisSessionKey(projectId, userId)],
+    arguments: [generateSessionId(), String(REDIS_SESSION_DURATION)],
+  })) as [string, number];
+  return { sessionId: String(sessionId), isNewSession: Number(created) === 1 };
 }
 
 export async function increaseRedisSessionDuration(projectId: bigint, userId: bigint, sessionId: string) {

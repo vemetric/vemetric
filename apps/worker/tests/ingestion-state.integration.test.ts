@@ -1,3 +1,4 @@
+import { formatClickhouseDate } from '@vemetric/common/date';
 import { sessionQueueName } from '@vemetric/queues/queue-names';
 import type { SessionQueueProps } from '@vemetric/queues/session-queue';
 import { Queue, QueueEvents } from 'bullmq';
@@ -19,11 +20,13 @@ import {
   bufferSessionUpdate,
   getBufferedSessions,
   findPendingSession,
-  moveBufferedSession,
+  reassignBufferedSession,
+  deleteBufferedSession,
 } from '../src/ingestion/session-buffer';
-import { flushSessionBuffer, persistSessionUpdates, deleteBufferedSessions } from '../src/ingestion/session-flush';
+import { flushSessionBuffer, pendingSessionStats, persistSessionUpdates } from '../src/ingestion/session-flush';
 import { sessionKey, sessionStore } from '../src/ingestion/session-store';
 import { insertDeviceIfNotExists } from '../src/utils/device';
+import { findIngestionUser, invalidateIngestionUser } from '../src/utils/user-cache';
 import { initSessionWorker } from '../src/workers/session-worker';
 
 const projectId = BigInt('18446744073709551000');
@@ -80,7 +83,7 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
     await stateRedis().del(`vm:{session-state}:${projectId}:${initial.id}`);
     // The same instant with fewer fractional digits must not replace entry metadata.
     await persistSessionUpdates([{ ...initial, endedAt: at(60).slice(0, 19), pathname: '/later' }]);
-    expect(await bufferExistingSessionActivity(projectId, initial.id, initial.startedAt)).toBe(true);
+    expect(await bufferExistingSessionActivity(projectId, initial.id, initial.startedAt)).toBe('buffered');
     await flushSessionBuffer();
     expect(await clickhouseSession.findById(projectId, userId, initial.id)).toMatchObject({
       startedAt: at(0),
@@ -275,12 +278,15 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
 
   it('assigns one session across concurrent hub requests and never revives an expired session', async () => {
     const redis = stateRedis();
-    const ids = await Promise.all(
+    const results = (await Promise.all(
       Array.from({ length: 100 }, (_, i) =>
         redis.eval(GET_OR_CREATE_SESSION, 1, 'test-session', `candidate-${i}`, 1800),
       ),
-    );
+    )) as Array<[string, number]>;
+    const ids = results.map(([id]) => id);
     expect(new Set(ids).size).toBe(1);
+    // Exactly one request reports the session as newly created.
+    expect(results.filter(([, created]) => created === 1)).toHaveLength(1);
     await redis.set('test-session', 'replacement');
     expect(await redis.eval(REFRESH_SESSION, 1, 'test-session', ids[0] as string, 1800)).toBe(0);
     expect(await redis.get('test-session')).toBe('replacement');
@@ -358,7 +364,7 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
   it('persists deletion tombstones for uninitialized sessions and rejects late creation after cache expiry', async () => {
     const key = `vm:{session-state}:${projectId}:deleted-before-creation`;
     await bufferSessionUpdate(projectId, 'deleted-before-creation', at(60));
-    await deleteBufferedSessions([{ projectId, id: 'deleted-before-creation' }]);
+    await deleteBufferedSession(projectId, 'deleted-before-creation');
     expect(await stateRedis().ttl(key)).toBe(-1);
     expect(await flushSessionBuffer()).toBe(1);
     await stateRedis().del(key);
@@ -420,7 +426,8 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
     await stateRedis().del(`vm:{session-state}:${projectId}:hydrate`);
     await bufferExistingSessionActivity(projectId, 'hydrate', at(10));
     const query = vi.spyOn(clickhouseClient, 'query');
-    for (let i = 11; i < 20; i++) expect(await bufferExistingSessionActivity(projectId, 'hydrate', at(i))).toBe(true);
+    for (let i = 11; i < 20; i++)
+      expect(await bufferExistingSessionActivity(projectId, 'hydrate', at(i))).toBe('buffered');
     expect(query).not.toHaveBeenCalled();
     await flushSessionBuffer();
     expect(await clickhouseSession.findById(projectId, userId, 'hydrate')).toMatchObject({ duration: 19 });
@@ -439,7 +446,7 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
     await flushSessionBuffer();
     expect(await clickhouseSession.findById(projectId, userId, 'entry-tie')).toMatchObject({ pathname: '/b' });
     await stateRedis().del(key);
-    expect(await bufferExistingSessionActivity(projectId, 'entry-tie', at(-1))).toBe(false);
+    expect(await bufferExistingSessionActivity(projectId, 'entry-tie', at(-1))).toBe('predates');
     await bufferSessionUpdate(projectId, 'entry-tie', at(-1), session('entry-tie', -1));
     await flushSessionBuffer();
     expect(await clickhouseSession.findById(projectId, userId, 'entry-tie')).toMatchObject({
@@ -508,7 +515,7 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
     });
   });
 
-  it('retains concurrent target updates during a merge and keeps the source tombstoned', async () => {
+  it('retains concurrent target updates while a merged source session is deleted', async () => {
     const targetUser = BigInt('18446744073709551002');
     await bufferSessionUpdate(projectId, 'source', at(0), session('source', 0));
     await bufferSessionUpdate(projectId, 'target', at(30), {
@@ -518,10 +525,7 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
       latitude: 47,
       longitude: 15,
     });
-    await Promise.all([
-      moveBufferedSession(projectId, 'source', 'target', targetUser, 'identified'),
-      bufferSessionUpdate(projectId, 'target', at(60)),
-    ]);
+    await Promise.all([deleteBufferedSession(projectId, 'source'), bufferSessionUpdate(projectId, 'target', at(60))]);
     await bufferSessionUpdate(projectId, 'source', at(90));
     await flushSessionBuffer();
     expect(await clickhouseSession.findById(projectId, userId, 'source')).toBeNull();
@@ -535,7 +539,7 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
     });
     await stateRedis().del(`vm:{session-state}:${projectId}:source`);
     await bufferSessionUpdate(projectId, 'source', at(120));
-    await moveBufferedSession(projectId, 'source', 'target', targetUser, 'identified');
+    await deleteBufferedSession(projectId, 'source');
     await flushSessionBuffer();
     expect(await clickhouseSession.findById(projectId, userId, 'source')).toBeNull();
     expect(await clickhouseSession.findById(projectId, targetUser, 'target')).toMatchObject({ duration: 30 });
@@ -549,7 +553,7 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
       userId: targetUser,
     });
     await flushSessionBuffer();
-    await moveBufferedSession(projectId, 'late-source', 'late-target', targetUser, 'identified');
+    await deleteBufferedSession(projectId, 'late-source');
     await flushSessionBuffer();
 
     const targetBeforeLateJobs = await clickhouseSession.findById(projectId, targetUser, 'late-target');
@@ -569,6 +573,8 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
         projectId: String(projectId),
         userId: String(userId),
         sessionId: 'late-source',
+        // Even a job claiming a new session hydrates when it is too old to trust the claim.
+        isNewSession: true,
         createdAt: at(90),
         geoData: undefined,
         headers: {},
@@ -596,6 +602,45 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
     expect(await clickhouseSession.findById(projectId, targetUser, 'late-target')).toEqual(targetBeforeLateJobs);
   });
 
+  it('lets the creating event set start and entry data when a later event of the session overtakes it', async () => {
+    const connection = { url: process.env.REDIS_URL };
+    const queue = new Queue<SessionQueueProps>(sessionQueueName, { connection });
+    const events = new QueueEvents(sessionQueueName, { connection });
+    const worker = await initSessionWorker();
+    const base = Date.now() - 10_000;
+    const time = (ms: number) => formatClickhouseDate(new Date(base + ms));
+    const job = (isNewSession: boolean, ms: number, url: string) => ({
+      type: 'createOrExtend' as const,
+      projectId: String(projectId),
+      userId: String(userId),
+      sessionId: 'overtaken',
+      isNewSession,
+      createdAt: time(ms),
+      geoData: undefined,
+      headers: {},
+      url,
+    });
+    try {
+      await events.waitUntilReady();
+      const later = await queue.add('later', job(false, 5_000, 'https://example.com/second'));
+      await vi.waitFor(async () => expect(await later.getState()).toBe('delayed'), { timeout: 5_000 });
+      const creating = await queue.add('creating', job(true, 0, 'https://example.com/entry'));
+      await creating.waitUntilFinished(events, 5_000);
+      await later.waitUntilFinished(events, 5_000);
+    } finally {
+      await worker.close();
+      await events.close();
+      await queue.close();
+    }
+    await flushSessionBuffer();
+    expect(await clickhouseSession.findById(projectId, userId, 'overtaken')).toMatchObject({
+      startedAt: time(0),
+      endedAt: time(5_000),
+      duration: 5,
+      pathname: '/entry',
+    });
+  });
+
   it('distinguishes an absent historical session from an initialization placeholder', async () => {
     expect(await findPendingSession(projectId, ['historical-missing'])).toBeUndefined();
     await sessionStore.load(sessionKey(projectId, 'initializing'));
@@ -609,22 +654,15 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
     async (targetUser) => {
       await bufferSessionUpdate(projectId, 'partial-source', at(60));
       expect(await findPendingSession(projectId, ['partial-source'])).toBe('partial-source');
-      await expect(
-        moveBufferedSession(projectId, 'partial-source', 'partial-source', targetUser, 'identified'),
-      ).rejects.toThrow('not initialized');
+      await expect(reassignBufferedSession(projectId, 'partial-source', targetUser, 'identified')).rejects.toThrow(
+        'not initialized',
+      );
       await flushSessionBuffer();
       expect(await findPendingSession(projectId, ['partial-source'])).toBe('partial-source');
       await bufferSessionUpdate(projectId, 'partial-source', at(0), session('partial-source', 0));
       // Readiness does not require a ClickHouse flush.
       expect(await findPendingSession(projectId, ['partial-source'])).toBeUndefined();
-      await moveBufferedSession(
-        projectId,
-        'partial-source',
-        'partial-source',
-        targetUser,
-        'identified',
-        'Canonical Name',
-      );
+      await reassignBufferedSession(projectId, 'partial-source', targetUser, 'identified', 'Canonical Name');
       await flushSessionBuffer();
       await stateRedis().del(`vm:{session-state}:${projectId}:partial-source`);
       await bufferSessionUpdate(projectId, 'partial-source', at(-10), {
@@ -642,16 +680,88 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
     },
   );
 
-  it('waits for missing destinations but treats tombstoned sources as settled', async () => {
+  it('treats deleted sources as settled', async () => {
     await bufferSessionUpdate(projectId, 'source', at(0), session('source', 0));
     expect(await findPendingSession(projectId, ['source', 'missing'])).toBeUndefined();
-    await expect(moveBufferedSession(projectId, 'source', 'missing', userId, 'identified')).rejects.toThrow(
-      'not initialized',
-    );
-    await deleteBufferedSessions([{ projectId, id: 'source' }]);
+    await deleteBufferedSession(projectId, 'source');
     await flushSessionBuffer();
     await stateRedis().del(`vm:{session-state}:${projectId}:source`);
     expect(await findPendingSession(projectId, ['source'])).toBeUndefined();
+  });
+
+  it('skips the ClickHouse lookup only for recent sessions the hub just created', async () => {
+    const spy = vi.spyOn(clickhouseSession, 'findLatestRevision');
+    const now = formatClickhouseDate(new Date());
+    expect(await bufferExistingSessionActivity(projectId, 'fresh', now, undefined, { knownNew: true })).toBe(
+      'uninitialized',
+    );
+    expect(spy).not.toHaveBeenCalled();
+    // The placeholder still marks the initialization for merges.
+    expect(await findPendingSession(projectId, ['fresh'])).toBe('fresh');
+
+    // An old job (late retry, backlog replay) whose state may have expired hydrates as before.
+    await bufferSessionUpdate(projectId, 'old', at(0), session('old', 0));
+    await flushSessionBuffer();
+    await stateRedis().del(sessionKey(projectId, 'old'));
+    spy.mockClear();
+    expect(await bufferExistingSessionActivity(projectId, 'old', at(10), undefined, { knownNew: true })).toBe(
+      'buffered',
+    );
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(await flushSessionBuffer()).toBe(1);
+    expect(await clickhouseSession.findById(projectId, userId, 'old')).toMatchObject({ duration: 10 });
+  });
+
+  it('keeps flushing other sessions when a dirty state was lost outside the pipeline', async () => {
+    await bufferSessionUpdate(projectId, 'lost', at(0), session('lost', 0));
+    await bufferSessionUpdate(projectId, 'kept', at(0), session('kept', 0));
+    await stateRedis().del(sessionKey(projectId, 'lost'));
+    expect(await flushSessionBuffer()).toBe(1);
+    expect(await clickhouseSession.findById(projectId, userId, 'kept')).not.toBeNull();
+  });
+
+  it('limits per-user session lookups to sessions active in a time range', async () => {
+    const time = (seconds: number) => new Date(Date.UTC(2026, 8, 4, 12, 0, seconds));
+    await bufferSessionUpdate(projectId, 'early', at(0), session('early', 0));
+    await flushSessionBuffer();
+    // A later revision extends the session; an older revision alone would not match the range.
+    await bufferSessionUpdate(projectId, 'early', at(30));
+    await bufferSessionUpdate(projectId, 'late', at(120), session('late', 120));
+    await flushSessionBuffer();
+    const ids = async (start: number, end: number) =>
+      (await clickhouseSession.findByUserId(projectId, userId, { start: time(start), end: time(end) }))
+        .map((s) => s.id)
+        .sort();
+    expect(await ids(20, 60)).toEqual(['early']);
+    expect(await ids(31, 119)).toEqual([]);
+    expect(await ids(0, 200)).toEqual(['early', 'late']);
+    expect(await ids(120, 120)).toEqual(['late']);
+  });
+
+  it('caches ingestion user lookups, including missing users, until a user write invalidates them', async () => {
+    const spy = vi.spyOn(clickhouseUser, 'findById');
+    expect(await findIngestionUser(projectId, userId)).toBeNull();
+    expect(await findIngestionUser(projectId, userId)).toBeNull();
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    await clickhouseInsert({
+      table: 'user',
+      values: [
+        { projectId, id: userId, identifier: 'identified', displayName: 'Ada', createdAt: at(0), updatedAt: at(0) },
+      ],
+    });
+    await invalidateIngestionUser(projectId, userId);
+    expect(await findIngestionUser(projectId, userId)).toMatchObject({ identifier: 'identified', displayName: 'Ada' });
+    expect(spy).toHaveBeenCalledTimes(2);
+
+    // A lookup that read ClickHouse before a concurrent write must not cache its stale result.
+    const otherUser = BigInt('18446744073709551002');
+    spy.mockImplementationOnce(async () => {
+      await invalidateIngestionUser(projectId, otherUser);
+      return null;
+    });
+    expect(await findIngestionUser(projectId, otherUser)).toBeNull();
+    expect(await stateRedis().get(`vm:user-lookup:${projectId}:${otherUser}`)).toBe('-');
   });
 
   it('does not let an older persisted snapshot hide a pending ownership change', async () => {
@@ -659,7 +769,7 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
     await flushSessionBuffer();
     const old = await clickhouseSession.findByUserId(projectId, userId);
     const targetUser = BigInt('18446744073709551002');
-    await moveBufferedSession(projectId, 'owner', 'owner', targetUser, 'identified');
+    await reassignBufferedSession(projectId, 'owner', targetUser, 'identified');
     expect(await getBufferedSessions(projectId, userId, old)).toEqual([]);
     await bufferSessionUpdate(projectId, 'owner', at(20), session('owner', 20));
     await flushSessionBuffer();
@@ -721,10 +831,12 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
   it('drains bounded batches without removing sessions that have not been written', async () => {
     await bufferSessionUpdate(projectId, 'batch-a', at(0), session('batch-a', 0));
     await bufferSessionUpdate(projectId, 'batch-b', at(0), session('batch-b', 0));
+    expect(await pendingSessionStats()).toMatchObject({ count: 2, oldestAgeSeconds: expect.any(Number) });
     expect(await flushSessionBuffer(1)).toBe(1);
     expect(await stateRedis().zcard('vm:{session-state}:dirty')).toBe(1);
     expect(await flushSessionBuffer(1)).toBe(1);
     expect(await stateRedis().zcard('vm:{session-state}:dirty')).toBe(0);
+    expect(await pendingSessionStats()).toEqual({ count: 0, oldestAgeSeconds: 0 });
     expect(await clickhouseSession.findByUserId(projectId, userId)).toHaveLength(2);
   });
 
@@ -806,14 +918,14 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
     expect((await clickhouseSession.findLatestByUserId(projectId, userId))?.id).toBe('owned');
 
     // Ownership moves to userId; the old-owner candidate must be filtered out by the owner check.
-    await moveBufferedSession(projectId, 'moved', 'moved', userId, 'identified', 'Name');
+    await reassignBufferedSession(projectId, 'moved', userId, 'identified', 'Name');
     await flushSessionBuffer();
     expect(await ids(otherUser)).toEqual([]);
     expect(await ids(userId)).toEqual(['moved', 'owned']);
     expect((await clickhouseSession.findLatestByUserId(projectId, userId))?.id).toBe('moved');
 
     // A tombstone drops it from the candidate set as well.
-    await deleteBufferedSessions([{ projectId, id: 'owned' }]);
+    await deleteBufferedSession(projectId, 'owned');
     await flushSessionBuffer();
     expect(await ids(userId)).toEqual(['moved']);
     expect((await clickhouseSession.findLatestByUserId(projectId, userId))?.id).toBe('moved');

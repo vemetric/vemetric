@@ -9,7 +9,8 @@ import {
   assertIngestionStateStorage,
   getBufferedSessions,
   findPendingSession,
-  moveBufferedSession,
+  reassignBufferedSession,
+  deleteBufferedSession,
 } from '../ingestion';
 import { insertDeviceIfNotExists } from '../utils/device';
 import { logger } from '../utils/logger';
@@ -45,11 +46,13 @@ export async function initMergeUserWorker() {
         oldUserId,
         await clickhouseSession.findByUserId(projectId, oldUserId),
       );
-      const { sessionsWithTimeUpdates, sessionIdMapping } = await reassignExistingSessionsToEvents({
-        projectId,
-        newUserId,
-        existingEvents,
-      });
+      const { sessionsWithTimeUpdates, sessionIdMapping, unmatchedSessionIds } = await reassignExistingSessionsToEvents(
+        {
+          projectId,
+          newUserId,
+          existingEvents,
+        },
+      );
 
       // The previous merge path moved only sessions that actually existed. Events can
       // legitimately have a session ID with no surviving session, so do not create a
@@ -90,17 +93,22 @@ export async function initMergeUserWorker() {
         logger.error({ err }, 'Error deleting devices');
       }
 
+      // Sessions that still have events of their own move to the new user; all other sessions of
+      // the old user are deleted (their events now belong to one of the new user's sessions).
       for (const sourceId of Array.from(sourceSessionIds)) {
-        await moveBufferedSession(
-          projectId,
-          sourceId,
-          sessionIdMapping.get(sourceId) ?? sourceId,
-          newUserId,
-          existingUser.identifier,
-          displayName ?? existingUserClickhouse?.displayName,
-        );
+        if (unmatchedSessionIds.has(sourceId)) {
+          await reassignBufferedSession(
+            projectId,
+            sourceId,
+            newUserId,
+            existingUser.identifier,
+            displayName ?? existingUserClickhouse?.displayName,
+          );
+        } else {
+          await deleteBufferedSession(projectId, sourceId);
+        }
       }
-      // Stable session keys allow earlier start times without deleting the previous row.
+      // Extend the new user's sessions that received merged events.
       if (sessionsWithTimeUpdates.length) await persistSessionUpdates(sessionsWithTimeUpdates);
 
       if (!existingEvents.length) return;

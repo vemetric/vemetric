@@ -12,9 +12,12 @@ import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 import type { HonoContext } from '../types';
 import { setUserIdCookie } from './cookie';
-import { sanitizeHeaders } from './headers';
+import { getDeviceHeadersFingerprint, sanitizeHeaders } from './headers';
 import { getUserIdFromRequest } from './request';
 import { getOrCreateSessionId } from './session';
+
+// Kept short: under floods of unique identities every key lives for the full window in Redis.
+const DEVICE_JOB_DEDUPLICATION_MS = 2 * 60 * 1000;
 
 export const eventSchema = z.object({
   name: z.string().min(1),
@@ -89,7 +92,7 @@ export const trackEvent = async (context: HonoContext, body: EventSchema) => {
   }
 
   // session handling
-  const sessionId = await getOrCreateSessionId(projectId, userId);
+  const { sessionId, isNewSession } = await getOrCreateSessionId(projectId, userId);
 
   const headers = sanitizeHeaders(req.header());
 
@@ -97,17 +100,28 @@ export const trackEvent = async (context: HonoContext, body: EventSchema) => {
 
   const now = formatClickhouseDate(new Date());
 
-  await addToQueue(createDeviceQueue, {
-    projectId: String(projectId),
-    userId: String(userId),
-    headers,
-  });
+  await addToQueue(
+    createDeviceQueue,
+    {
+      projectId: String(projectId),
+      userId: String(userId),
+      headers,
+    },
+    {
+      // Repeated events of a device only need one job; the first one sets the device's creation time.
+      deduplication: {
+        id: `${projectId}:${userId}:${getDeviceHeadersFingerprint(headers)}`,
+        ttl: DEVICE_JOB_DEDUPLICATION_MS,
+      },
+    },
+  );
 
   await addToQueue(sessionQueue, {
     type: 'createOrExtend',
     projectId: String(projectId),
     userId: String(userId),
     sessionId,
+    isNewSession,
     createdAt: now,
     projectDomain: context.var.project.domain,
     geoData,

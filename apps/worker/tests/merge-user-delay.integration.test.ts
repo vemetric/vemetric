@@ -31,14 +31,15 @@ vi.mock('../src/ingestion', () => ({
   assertIngestionStateStorage: vi.fn().mockResolvedValue(undefined),
   getBufferedSessions: vi.fn().mockResolvedValue([]),
   findPendingSession: vi.fn(),
-  moveBufferedSession: vi.fn(),
+  reassignBufferedSession: vi.fn(),
+  deleteBufferedSession: vi.fn(),
   persistSessionUpdates: vi.fn(),
 }));
 vi.mock('../src/utils/device', () => ({ insertDeviceIfNotExists: vi.fn() }));
 vi.mock('../src/utils/merge-user', () => ({
   reassignExistingSessionsToEvents: vi
     .fn()
-    .mockResolvedValue({ sessionsWithTimeUpdates: [], sessionIdMapping: new Map() }),
+    .mockResolvedValue({ sessionsWithTimeUpdates: [], sessionIdMapping: new Map(), unmatchedSessionIds: new Set() }),
 }));
 
 describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('merge postponement against Redis', () => {

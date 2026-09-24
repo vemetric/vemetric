@@ -44,7 +44,7 @@ export async function initDeviceWorker() {
         url: process.env.REDIS_URL,
       },
       telemetry: queueTelemetry,
-      concurrency: workerConcurrency('DEVICE_WORKER_CONCURRENCY', 20),
+      concurrency: workerConcurrency('DEVICE_WORKER_CONCURRENCY', 200),
       removeOnComplete: {
         count: 1000,
       },

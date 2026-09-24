@@ -82,5 +82,5 @@ export async function insertDeviceIfNotExists(
       deviceType: deviceData.deviceType,
     },
   ]);
-  await stateRedis().set(key, '1', 'EX', positiveStateInteger('DEVICE_CACHE_TTL_SECONDS', 900));
+  await stateRedis().set(key, '1', 'EX', positiveStateInteger('DEVICE_CACHE_TTL_SECONDS', 120));
 }

@@ -1,9 +1,10 @@
 import { EMPTY_GEO_DATA, type GeoData } from '@vemetric/common/geo';
-import type { ClickhouseUser, DeviceData } from 'clickhouse';
+import type { DeviceData } from 'clickhouse';
+import type { IngestionUser } from './user-cache';
 
 export async function getSessionData(
   geoData: GeoData | undefined,
-  user: ClickhouseUser | null,
+  user: Pick<IngestionUser, 'countryCode' | 'city' | 'latitude' | 'longitude'> | null,
   deviceData: DeviceData,
 ) {
   let { countryCode, city, latitude, longitude } = geoData || EMPTY_GEO_DATA;

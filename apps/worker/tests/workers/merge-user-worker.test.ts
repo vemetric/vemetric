@@ -5,7 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   findPendingSession,
   getBufferedSessions,
-  moveBufferedSession,
+  reassignBufferedSession,
+  deleteBufferedSession,
   persistSessionUpdates,
 } from '../../src/ingestion';
 import { initMergeUserWorker } from '../../src/workers/merge-user-worker';
@@ -48,14 +49,17 @@ vi.mock('../../src/ingestion', () => ({
   assertIngestionStateStorage: vi.fn().mockResolvedValue(undefined),
   getBufferedSessions: vi.fn().mockResolvedValue([]),
   findPendingSession: vi.fn(),
-  moveBufferedSession: vi.fn(),
+  reassignBufferedSession: vi.fn(),
+  deleteBufferedSession: vi.fn(),
   persistSessionUpdates: vi.fn(),
 }));
 vi.mock('../../src/utils/device', () => ({ insertDeviceIfNotExists: vi.fn() }));
 vi.mock('../../src/utils/merge-user', () => ({
-  reassignExistingSessionsToEvents: vi
-    .fn()
-    .mockResolvedValue({ sessionsWithTimeUpdates: [], sessionIdMapping: new Map() }),
+  reassignExistingSessionsToEvents: vi.fn().mockResolvedValue({
+    sessionsWithTimeUpdates: [],
+    sessionIdMapping: new Map(),
+    unmatchedSessionIds: new Set(['session']),
+  }),
 }));
 
 describe('merge write ordering', () => {
@@ -86,13 +90,14 @@ describe('merge write ordering', () => {
     expect(waiting.updateData).toHaveBeenCalledWith({ ...waiting.data, sessionWaitStartedAt: 100_000 });
     expect(waiting.moveToDelayed).toHaveBeenCalledWith(105_000, 'lock-token');
     expect(clickhouseDevice.findByUserId).not.toHaveBeenCalled();
-    expect(moveBufferedSession).not.toHaveBeenCalled();
+    expect(reassignBufferedSession).not.toHaveBeenCalled();
+    expect(deleteBufferedSession).not.toHaveBeenCalled();
     expect(persistSessionUpdates).not.toHaveBeenCalled();
     expect(clickhouseEvent.insert).not.toHaveBeenCalled();
     expect(clickhouseEvent.delete).not.toHaveBeenCalled();
 
     await captured.run!(waiting, 'new-lock-token');
-    expect(moveBufferedSession).toHaveBeenCalledOnce();
+    expect(reassignBufferedSession).toHaveBeenCalledOnce();
     expect(clickhouseEvent.insert).toHaveBeenCalledOnce();
   });
 
@@ -113,7 +118,7 @@ describe('merge write ordering', () => {
     const waiting = createJob(100_000);
     await captured.run!(waiting, 'token');
     expect(waiting.moveToDelayed).not.toHaveBeenCalled();
-    expect(moveBufferedSession).not.toHaveBeenCalled();
+    expect(reassignBufferedSession).not.toHaveBeenCalled();
     expect(clickhouseEvent.insert).toHaveBeenCalledOnce();
   });
 
@@ -122,7 +127,7 @@ describe('merge write ordering', () => {
     await captured.run!(job, 'token');
     expect(findPendingSession).toHaveBeenCalledWith(BigInt(1), ['session']);
     expect(job.moveToDelayed).not.toHaveBeenCalled();
-    expect(moveBufferedSession).not.toHaveBeenCalled();
+    expect(reassignBufferedSession).not.toHaveBeenCalled();
     expect(clickhouseEvent.insert).toHaveBeenCalledOnce();
     expect(clickhouseEvent.insert).toHaveBeenCalledWith([
       expect.objectContaining({ sessionId: 'session', userId: BigInt(3) }),

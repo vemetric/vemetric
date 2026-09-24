@@ -107,14 +107,8 @@ const EXAMPLE_SESSION: Required<ClickhouseSession> = {
   deleted: 0,
 };
 
-// Wrap values so argMax preserves NULL from the winning revision. Retries of a
-// revision must contain the same snapshot; separate aggregates allow column pruning.
-const transformKeySelector = (key: keyof ClickhouseSession) =>
-  key === 'projectId' || key === 'id' ? key : `argMax(tuple(${key}), revision).1 AS ${key}`;
 const SESSION_KEYS = Object.keys(EXAMPLE_SESSION) as Array<keyof ClickhouseSession>;
 const SESSION_KEY_SELECTOR = SESSION_KEYS.join(',');
-// Every mapped column resolves to the highest revision; `deleted` is the tombstone flag.
-const CURRENT_SESSION_KEY_SELECTOR = SESSION_KEYS.map(transformKeySelector).join(', ');
 const BIGINT_KEYS = SESSION_KEYS.filter((key) => typeof EXAMPLE_SESSION[key] === 'bigint');
 
 export interface CurrentSessionRowsOptions {
@@ -137,11 +131,12 @@ export function currentSessionRows(projectId: bigint, { ids, startDate, endDate 
 
   const startFilter = startDate ? ` AND ${TABLE_NAME}.startedAt >= '${formatClickhouseDate(startDate)}'` : '';
   const endFilter = endDate ? ` AND ${TABLE_NAME}.startedAt < '${formatClickhouseDate(endDate)}'` : '';
-  return `(SELECT ${CURRENT_SESSION_KEY_SELECTOR}
-    FROM ${TABLE_NAME}
+  // FINAL resolves the highest revision per session. Revisions of a session never change its
+  // startedAt (and so its partition), which lets the client skip merging across partitions.
+  return `(SELECT ${SESSION_KEY_SELECTOR}
+    FROM ${TABLE_NAME} FINAL
     WHERE ${TABLE_NAME}.projectId = ${escape(projectId)}${idFilter}${startFilter}${endFilter}
-    GROUP BY projectId, id
-    HAVING deleted = 0)`;
+      AND deleted = 0)`;
 }
 
 function mapRowToSession(row: any): ClickhouseSession {
@@ -150,7 +145,7 @@ function mapRowToSession(row: any): ClickhouseSession {
   SESSION_KEYS.forEach((key) => {
     const keyValue = row[key];
     if (key === 'queryParams') {
-      session.queryParams = JSON.parse(keyValue || '{}');
+      session.queryParams = keyValue ? JSON.parse(keyValue) : undefined;
     } else if (BIGINT_KEYS.includes(key)) {
       (session as any)[key] = BigInt(keyValue);
     } else {
@@ -166,9 +161,16 @@ function mapRowToSession(row: any): ClickhouseSession {
  * ever owned by the user) and relies on the user_id_idx bloom-filter skip index so the scan is
  * bounded by the user's rows instead of the project.
  */
-function candidateSessionIdsSubquery(projectId: bigint, userId: bigint) {
+function candidateSessionIdsSubquery(projectId: bigint, userId: bigint, overlapFilter = '') {
   return `SELECT DISTINCT id FROM ${TABLE_NAME}
-    WHERE projectId = ${escape(projectId)} AND userId = ${escape(userId)}`;
+    WHERE projectId = ${escape(projectId)} AND userId = ${escape(userId)}${overlapFilter}`;
+}
+
+// Sessions active within [start, end]. Valid on raw revisions too: startedAt is immutable and
+// endedAt never decreases, so the current revision matches whenever an older one did.
+function sessionOverlapFilter(range?: { start: Date; end: Date }) {
+  if (!range) return '';
+  return ` AND startedAt <= '${formatClickhouseDate(range.end)}' AND endedAt >= '${formatClickhouseDate(range.start)}'`;
 }
 
 export const clickhouseSession = {
@@ -208,9 +210,14 @@ export const clickhouseSession = {
     const result = (await resultSet.json()) as Array<any>;
     return result.map((row) => mapRowToSession(row));
   },
-  findByUserId: async (projectId: bigint, userId: bigint): Promise<Array<ClickhouseSession>> => {
+  findByUserId: async (
+    projectId: bigint,
+    userId: bigint,
+    activeWithin?: { start: Date; end: Date },
+  ): Promise<Array<ClickhouseSession>> => {
+    const overlap = sessionOverlapFilter(activeWithin);
     const resultSet = await clickhouseClient.query({
-      query: `SELECT ${SESSION_KEY_SELECTOR} FROM ${currentSessionRows(projectId, { ids: { subquery: candidateSessionIdsSubquery(projectId, userId) } })} WHERE userId=${escape(userId)}`,
+      query: `SELECT ${SESSION_KEY_SELECTOR} FROM ${currentSessionRows(projectId, { ids: { subquery: candidateSessionIdsSubquery(projectId, userId, overlap) } })} WHERE userId=${escape(userId)}${overlap}`,
       format: 'JSONEachRow',
     });
     const result = (await resultSet.json()) as Array<any>;

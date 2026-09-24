@@ -220,7 +220,7 @@ async function truncateAnalyticsFixtureData(projectId: string): Promise<void> {
   });
 
   await clickhouseClient.command({
-    query: 'ALTER TABLE session DELETE WHERE projectId = {projectId:UInt64} SETTINGS mutations_sync = 2',
+    query: 'ALTER TABLE session_v3 DELETE WHERE projectId = {projectId:UInt64} SETTINGS mutations_sync = 2',
     query_params: { projectId },
   });
 

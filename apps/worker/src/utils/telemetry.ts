@@ -1,3 +1,4 @@
+import { metrics } from '@opentelemetry/api';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto';
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { NodeSDK } from '@opentelemetry/sdk-node';
@@ -5,6 +6,7 @@ import { defaultQueueConnection } from '@vemetric/queues/queue-utils';
 import { Queue } from 'bullmq';
 import { BullMQOtel } from 'bullmq-otel';
 import { logger } from './logger';
+import { pendingSessionStats } from '../ingestion/session-flush';
 
 const axiomToken = process.env.AXIOM_TOKEN;
 const axiomUrl = process.env.AXIOM_URL ?? 'https://api.axiom.co';
@@ -35,9 +37,38 @@ if (axiomToken) {
   });
 
   sdk.start();
+  registerIngestionGauges();
   logger.info(
     { metricsDataset: METRICS_DATASET, metricsIntervalMs: METRICS_INTERVAL_MS },
     'BullMQ telemetry exporting to Axiom',
+  );
+}
+
+/**
+ * Pending session snapshots and the age of the oldest one. Every replica reports the same
+ * Redis-wide values, so aggregate them with max. A growing age means the flusher is not
+ * writing sessions to ClickHouse.
+ */
+function registerIngestionGauges() {
+  const meter = metrics.getMeter('vemetric-ingestion');
+  const pending = meter.createObservableGauge('vemetric.sessions.pending', {
+    description: 'Session snapshots waiting to be written to ClickHouse',
+  });
+  const oldestAge = meter.createObservableGauge('vemetric.sessions.pending_oldest_age', {
+    description: 'Seconds the oldest pending session snapshot has been waiting',
+    unit: 's',
+  });
+  meter.addBatchObservableCallback(
+    async (result) => {
+      try {
+        const stats = await pendingSessionStats();
+        result.observe(pending, stats.count);
+        result.observe(oldestAge, stats.oldestAgeSeconds);
+      } catch (err) {
+        logger.error({ err }, 'Failed to read pending session metrics');
+      }
+    },
+    [pending, oldestAge],
   );
 }
 

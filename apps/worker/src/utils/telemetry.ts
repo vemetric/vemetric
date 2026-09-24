@@ -9,11 +9,10 @@ import { logger } from './logger';
 const axiomToken = process.env.AXIOM_TOKEN;
 const axiomUrl = process.env.AXIOM_URL ?? 'https://api.axiom.co';
 const METRICS_DATASET = process.env.AXIOM_DATASET_BULLMQ ?? 'vemetric-bullmq';
-const METRICS_INTERVAL_MS = 60_000;
+export const METRICS_INTERVAL_MS = 60_000;
 
 let sdk: NodeSDK | undefined;
-let metricsTimer: ReturnType<typeof setInterval> | undefined;
-let metricsQueues: Queue[] = [];
+let recordedQueues: Queue[] = [];
 
 if (axiomToken) {
   sdk = new NodeSDK({
@@ -49,37 +48,29 @@ export const queueTelemetry = new BullMQOtel({
 });
 
 /**
- * Periodically records the `bullmq.queue.jobs` gauge (job counts per state) for the given queues.
- * BullMQ only emits this gauge when `recordJobCountsMetric` is called explicitly, and the gauge
- * lives on `Queue` (unlike the job counters, which the workers emit themselves).
+ * Records the `bullmq.queue.jobs` gauge (job counts per state) for the given queues.
+ * BullMQ only emits this gauge when `recordJobCountsMetric` is called explicitly, and the
+ * gauge lives on `Queue` (unlike the job counters, which the workers emit themselves).
+ * The counts cover the entire queue, so this must be invoked by a single recorder; that is
+ * coordinated by the scheduled job in `workers/metrics-worker.ts`.
  */
-export function startQueueMetricsRecorder(queueNames: string[]) {
+export async function recordQueueJobCounts(queueNames: string[]) {
   if (!sdk || queueNames.length === 0) {
     return;
   }
 
-  metricsQueues = queueNames.map(
-    (name) => new Queue(name, { connection: defaultQueueConnection, telemetry: queueTelemetry }),
-  );
+  if (recordedQueues.length === 0) {
+    recordedQueues = queueNames.map(
+      (name) => new Queue(name, { connection: defaultQueueConnection, telemetry: queueTelemetry }),
+    );
+  }
 
-  const record = () => {
-    Promise.all(metricsQueues.map((queue) => queue.recordJobCountsMetric())).catch((err) => {
-      logger.error({ err }, 'Failed to record queue job counts metrics');
-    });
-  };
-
-  record();
-  metricsTimer = setInterval(record, METRICS_INTERVAL_MS);
+  await Promise.all(recordedQueues.map((queue) => queue.recordJobCountsMetric()));
 }
 
 export async function shutdownQueueTelemetry() {
-  if (metricsTimer) {
-    clearInterval(metricsTimer);
-    metricsTimer = undefined;
-  }
-
-  await Promise.all(metricsQueues.map((queue) => queue.close()));
-  metricsQueues = [];
+  await Promise.all(recordedQueues.map((queue) => queue.close()));
+  recordedQueues = [];
 
   if (sdk) {
     await sdk.shutdown().catch((err) => logger.error({ err }, 'Failed to shutdown queue telemetry'));

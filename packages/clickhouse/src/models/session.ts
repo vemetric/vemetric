@@ -1,5 +1,5 @@
 import type { TimeSpan } from '@vemetric/common/charts/timespans';
-import { formatClickhouseDate, getClickhouseDateNow } from '@vemetric/common/date';
+import { formatClickhouseDate } from '@vemetric/common/date';
 import type { IFilterConfig } from '@vemetric/common/filters';
 import type { GeoData } from '@vemetric/common/geo';
 import { jsonStringify } from '@vemetric/common/json';
@@ -13,6 +13,8 @@ import type { MetricsQueryGrouping } from '../utils/query-group';
 import { getMetricsGroupExpression } from '../utils/query-group';
 import { withSpan } from '../utils/with-span';
 
+const TABLE_NAME = 'session_v3';
+
 export interface FilterOptions {
   timeSpan: TimeSpan;
   startDate: Date;
@@ -20,8 +22,6 @@ export interface FilterOptions {
   filterQueries: string;
   filterConfig: IFilterConfig;
 }
-
-const TABLE_NAME = 'session';
 
 export type UrlData = {
   origin?: string;
@@ -69,7 +69,21 @@ export type ClickhouseSession = UrlData &
     userAgent?: string;
 
     importSource?: string;
+    deleted?: number;
   };
+
+export interface SessionRevisionRow extends Omit<
+  ClickhouseSession,
+  'projectId' | 'userId' | 'queryParams' | 'userIdentifier' | 'userDisplayName'
+> {
+  projectId: string;
+  userId: string;
+  revision: string;
+  deleted: number;
+  queryParams: string;
+  userIdentifier: string | null;
+  userDisplayName: string | null;
+}
 
 const EXAMPLE_SESSION: Required<ClickhouseSession> = {
   ...EXAMPLE_URL_DATA,
@@ -90,21 +104,53 @@ const EXAMPLE_SESSION: Required<ClickhouseSession> = {
   referrerUrl: '',
   referrerType: '',
   importSource: '',
+  deleted: 0,
 };
 
-const transformKeySelector = (key: keyof ClickhouseSession) => (key === 'id' ? key : `argMax(${key}, endedAt)`);
+// Wrap values so argMax preserves NULL from the winning revision. Retries of a
+// revision must contain the same snapshot; separate aggregates allow column pruning.
+const transformKeySelector = (key: keyof ClickhouseSession) =>
+  key === 'projectId' || key === 'id' ? key : `argMax(tuple(${key}), revision).1 AS ${key}`;
 const SESSION_KEYS = Object.keys(EXAMPLE_SESSION) as Array<keyof ClickhouseSession>;
-const SESSION_KEY_SELECTOR = SESSION_KEYS.map(transformKeySelector).join(',');
-const JSON_KEYS = SESSION_KEYS.filter((key) => typeof EXAMPLE_SESSION[key] === 'object');
+const SESSION_KEY_SELECTOR = SESSION_KEYS.join(',');
+// Every mapped column resolves to the highest revision; `deleted` is the tombstone flag.
+const CURRENT_SESSION_KEY_SELECTOR = SESSION_KEYS.map(transformKeySelector).join(', ');
 const BIGINT_KEYS = SESSION_KEYS.filter((key) => typeof EXAMPLE_SESSION[key] === 'bigint');
+
+export interface CurrentSessionRowsOptions {
+  // Either explicit ids or a subquery that yields candidate ids (used for per-user lookups so the
+  // candidate scan happens inside the same statement).
+  ids?: readonly string[] | { subquery: string };
+  startDate?: Date;
+  endDate?: Date;
+}
+
+export function currentSessionRows(projectId: bigint, { ids, startDate, endDate }: CurrentSessionRowsOptions = {}) {
+  const idFilter =
+    ids === undefined
+      ? ''
+      : 'subquery' in ids
+        ? ` AND ${TABLE_NAME}.id IN (${ids.subquery})`
+        : ids.length
+          ? ` AND ${TABLE_NAME}.id IN (${ids.map((id) => escape(id)).join(',')})`
+          : ' AND 0';
+
+  const startFilter = startDate ? ` AND ${TABLE_NAME}.startedAt >= '${formatClickhouseDate(startDate)}'` : '';
+  const endFilter = endDate ? ` AND ${TABLE_NAME}.startedAt < '${formatClickhouseDate(endDate)}'` : '';
+  return `(SELECT ${CURRENT_SESSION_KEY_SELECTOR}
+    FROM ${TABLE_NAME}
+    WHERE ${TABLE_NAME}.projectId = ${escape(projectId)}${idFilter}${startFilter}${endFilter}
+    GROUP BY projectId, id
+    HAVING deleted = 0)`;
+}
 
 function mapRowToSession(row: any): ClickhouseSession {
   const session: ClickhouseSession = JSON.parse(jsonStringify(EXAMPLE_SESSION));
 
   SESSION_KEYS.forEach((key) => {
-    const keyValue = row[transformKeySelector(key)];
-    if (JSON_KEYS.includes(key)) {
-      (session as any)[key] = keyValue ? JSON.parse(keyValue) : undefined;
+    const keyValue = row[key];
+    if (key === 'queryParams') {
+      session.queryParams = JSON.parse(keyValue || '{}');
     } else if (BIGINT_KEYS.includes(key)) {
       (session as any)[key] = BigInt(keyValue);
     } else {
@@ -115,12 +161,33 @@ function mapRowToSession(row: any): ClickhouseSession {
   return session;
 }
 
+/**
+ * Candidate ids whose current or previous owner is this user. It is over-inclusive (any revision
+ * ever owned by the user) and relies on the user_id_idx bloom-filter skip index so the scan is
+ * bounded by the user's rows instead of the project.
+ */
+function candidateSessionIdsSubquery(projectId: bigint, userId: bigint) {
+  return `SELECT DISTINCT id FROM ${TABLE_NAME}
+    WHERE projectId = ${escape(projectId)} AND userId = ${escape(userId)}`;
+}
+
 export const clickhouseSession = {
+  // Raw latest revision, including tombstones, for the ingestion state cache.
+  findLatestRevision: async (projectId: bigint | string, id: string) => {
+    const resultSet = await clickhouseClient.query({
+      query: `SELECT * FROM ${TABLE_NAME} WHERE projectId = {projectId:UInt64} AND id = {id:String} ORDER BY revision DESC LIMIT 1`,
+      query_params: { projectId: String(projectId), id },
+      format: 'JSONEachRow',
+    });
+    const [row] = await resultSet.json<SessionRevisionRow>();
+    return row ?? null;
+  },
+  insertRevisions: async (rows: Record<string, unknown>[]) => {
+    if (rows.length) await clickhouseInsert({ table: TABLE_NAME, values: rows });
+  },
   findById: async (projectId: bigint, userId: bigint, id: string): Promise<ClickhouseSession | null> => {
     const resultSet = await clickhouseClient.query({
-      query: `SELECT ${SESSION_KEY_SELECTOR} FROM ${TABLE_NAME} WHERE projectId=${escape(
-        projectId,
-      )} AND userId=${escape(userId)} AND id=${escape(id)} GROUP BY id HAVING argMax(deleted, endedAt) = 0 LIMIT 1`,
+      query: `SELECT ${SESSION_KEY_SELECTOR} FROM ${currentSessionRows(projectId, { ids: [id] })} WHERE userId=${escape(userId)} LIMIT 1`,
       format: 'JSONEachRow',
     });
     const result = (await resultSet.json()) as Array<any>;
@@ -132,79 +199,33 @@ export const clickhouseSession = {
     return mapRowToSession(row);
   },
   findByIds: async (projectId: bigint, userId: bigint, ids: Set<string>): Promise<Array<ClickhouseSession>> => {
+    const idList = Array.from(ids);
+    if (idList.length === 0) return [];
     const resultSet = await clickhouseClient.query({
-      query: `SELECT ${SESSION_KEY_SELECTOR} FROM ${TABLE_NAME} WHERE projectId=${escape(
-        projectId,
-      )} AND userId=${escape(userId)} AND id IN (${Array.from(ids)
-        .map((id) => escape(id))
-        .join(',')}) GROUP BY id HAVING argMax(deleted, endedAt) = 0`,
+      query: `SELECT ${SESSION_KEY_SELECTOR} FROM ${currentSessionRows(projectId, { ids: idList })} WHERE userId=${escape(userId)}`,
       format: 'JSONEachRow',
     });
     const result = (await resultSet.json()) as Array<any>;
-    return result.map((row) => {
-      return mapRowToSession(row);
-    });
+    return result.map((row) => mapRowToSession(row));
   },
   findByUserId: async (projectId: bigint, userId: bigint): Promise<Array<ClickhouseSession>> => {
     const resultSet = await clickhouseClient.query({
-      query: `SELECT ${SESSION_KEY_SELECTOR} FROM ${TABLE_NAME} WHERE projectId=${escape(
-        projectId,
-      )} AND userId=${escape(userId)} GROUP BY id HAVING argMax(deleted, endedAt) = 0`,
+      query: `SELECT ${SESSION_KEY_SELECTOR} FROM ${currentSessionRows(projectId, { ids: { subquery: candidateSessionIdsSubquery(projectId, userId) } })} WHERE userId=${escape(userId)}`,
       format: 'JSONEachRow',
     });
     const result = (await resultSet.json()) as Array<any>;
-    return result.map((row) => {
-      return mapRowToSession(row);
-    });
+    return result.map((row) => mapRowToSession(row));
   },
   findLatestByUserId: async (projectId: bigint, userId: bigint): Promise<ClickhouseSession | null> => {
     const resultSet = await clickhouseClient.query({
-      query: `SELECT ${SESSION_KEY_SELECTOR}, max(endedAt) as latestEndedAt FROM ${TABLE_NAME} WHERE projectId=${escape(
-        projectId,
-      )} AND userId=${escape(userId)} GROUP BY id HAVING argMax(deleted, endedAt) = 0 ORDER BY latestEndedAt DESC LIMIT 1`,
+      query: `SELECT ${SESSION_KEY_SELECTOR} FROM ${currentSessionRows(projectId, { ids: { subquery: candidateSessionIdsSubquery(projectId, userId) } })} WHERE userId=${escape(userId)} ORDER BY endedAt DESC LIMIT 1`,
       format: 'JSONEachRow',
     });
     const result = (await resultSet.json()) as Array<any>;
     if (result.length === 0) {
       return null;
     }
-
-    const row = result[0];
-    return mapRowToSession(row);
-  },
-  findByUserIdInTimeRange: async (
-    projectId: bigint,
-    userId: bigint,
-    startTime: Date,
-    endTime: Date,
-  ): Promise<Array<ClickhouseSession>> => {
-    const resultSet = await clickhouseClient.query({
-      query: `SELECT ${SESSION_KEY_SELECTOR} FROM ${TABLE_NAME} 
-        WHERE projectId=${escape(projectId)} 
-          AND userId=${escape(userId)}
-          AND startedAt <= '${formatClickhouseDate(endTime)}'
-          AND endedAt >= '${formatClickhouseDate(startTime)}'
-        GROUP BY id 
-        HAVING argMax(deleted, endedAt) = 0`,
-      format: 'JSONEachRow',
-    });
-    const result = (await resultSet.json()) as Array<any>;
-    return result.map((row) => {
-      return mapRowToSession(row);
-    });
-  },
-  insert: async (sessions: Array<ClickhouseSession>) => {
-    await clickhouseInsert({
-      table: TABLE_NAME,
-      values: sessions,
-    });
-  },
-  delete: async (sessions: Array<Pick<ClickhouseSession, 'projectId' | 'userId' | 'startedAt'>>) => {
-    const now = getClickhouseDateNow();
-    await clickhouseInsert({
-      table: TABLE_NAME,
-      values: sessions.map((session) => ({ ...session, endedAt: now, deleted: 1 })),
-    });
+    return mapRowToSession(result[0]);
   },
   getVisitDurationTimeSeries: withSpan(
     'getVisitDurationTimeSeries',
@@ -214,22 +235,12 @@ export const clickhouseSession = {
       const resultSet = await clickhouseClient.query({
         query: `
         SELECT 
-          avg(maxDuration) as avgDuration,
+          avg(duration) as avgDuration,
           count(*) as sessionCount,
-          ${formatDateExpression({ timeSpan, startDate, endDate }, 'maxEndedAt')} as date 
-        FROM (
-          SELECT 
-            id,
-            argMax(duration, endedAt) as maxDuration,
-            max(endedAt) as maxEndedAt
-          FROM ${TABLE_NAME} 
-          WHERE projectId=${escape(projectId)} 
-            AND startedAt >= '${formatClickhouseDate(startDate)}'
-            ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
+          ${formatDateExpression({ timeSpan, startDate, endDate }, 'endedAt')} as date
+        FROM ${currentSessionRows(projectId, { startDate, endDate })}
+          WHERE duration > 0
             ${(filterQueries || '').replace('sessionId', 'id')}
-          GROUP BY id
-          HAVING argMax(deleted, endedAt) = 0 AND maxDuration > 0
-        )
         GROUP BY date
         ORDER BY date ASC
       `,
@@ -253,13 +264,10 @@ export const clickhouseSession = {
 
     const resultSet = await clickhouseClient.query({
       query: `SELECT countryCode, count(distinct userId) as users 
-              FROM ${TABLE_NAME} 
-              WHERE projectId=${escape(projectId)} 
-              AND startedAt >= '${formatClickhouseDate(startDate)}' 
-              ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
+              FROM ${currentSessionRows(projectId, { startDate, endDate })}
+              WHERE 1=1
               ${locationFilterQueries ? `AND (${locationFilterQueries})` : ''}
               ${(filterQueries || '').replace('sessionId', 'id')}
-              AND deleted = 0
               GROUP BY countryCode 
               ORDER BY users DESC;`,
       format: 'JSONEachRow',
@@ -280,13 +288,10 @@ export const clickhouseSession = {
                 if(normalizedCity = '' OR normalizedCity = 'unknown', '', city) as cityGroup,
                 if(normalizedCity = '' OR normalizedCity = 'unknown', '', countryCode) as countryCodeGroup,
                 count(distinct userId) as users
-              FROM ${TABLE_NAME}
-              WHERE projectId=${escape(projectId)}
-              AND startedAt >= '${formatClickhouseDate(startDate)}'
-              ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
+              FROM ${currentSessionRows(projectId, { startDate, endDate })}
+              WHERE 1=1
               ${locationFilterQueries ? `AND (${locationFilterQueries})` : ''}
               ${(filterQueries || '').replace('sessionId', 'id')}
-              AND deleted = 0
               GROUP BY cityGroup, countryCodeGroup
               ORDER BY users DESC;`,
       format: 'JSONEachRow',
@@ -322,13 +327,10 @@ export const clickhouseSession = {
     const notEmptyFilter = source === 'referrer' ? '' : `AND ${source} <> ''`;
 
     const resultSet = await clickhouseClient.query({
-      query: `SELECT ${selectColumns.join(', ')}, count(distinct userId) as users from session WHERE projectId=${escape(
-        projectId,
-      )} AND startedAt >= '${formatClickhouseDate(startDate)}'
-       ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
+      query: `SELECT ${selectColumns.join(', ')}, count(distinct userId) as users from ${currentSessionRows(projectId, { startDate, endDate })} WHERE 1=1
        ${notEmptyFilter} ${(filterQueries || '').replace('sessionId', 'id')} ${
          sourceFilterQueries ? `AND (${sourceFilterQueries})` : ''
-       } AND deleted = 0 GROUP BY ${source} ORDER BY users DESC;`,
+       } GROUP BY ${source} ORDER BY users DESC;`,
       format: 'JSONEachRow',
     });
     const result = (await resultSet.json()) as Array<any>;
@@ -361,20 +363,10 @@ export const clickhouseSession = {
 
       const resultSet = await clickhouseClient.query({
         query: `
-      SELECT groupKey, avg(maxDuration) as metricValue
-      FROM (
-        SELECT
-          id,
-          ${groupExpression} as groupKey,
-          argMax(duration, endedAt) as maxDuration
-        FROM session
-        WHERE projectId = ${escape(projectId)}
-          AND startedAt >= '${formatClickhouseDate(startDate)}'
-          ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
+      SELECT ${groupExpression} as groupKey, avg(duration) as metricValue
+        FROM ${currentSessionRows(projectId, { startDate, endDate })}
+        WHERE duration > 0
           ${(filterQueries || '').replace(/sessionId/g, 'id')}
-        GROUP BY id, groupKey
-        HAVING argMax(deleted, endedAt) = 0 AND maxDuration > 0
-      )
       GROUP BY groupKey
     `,
         format: 'JSONEachRow',

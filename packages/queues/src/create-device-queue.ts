@@ -11,4 +11,3 @@ export interface CreateDeviceQueueProps {
 export const createDeviceQueue = new Queue<CreateDeviceQueueProps>(createDeviceQueueName, {
   connection: defaultQueueConnection,
 });
-createDeviceQueue.setGlobalConcurrency(1);

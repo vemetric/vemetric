@@ -1,6 +1,7 @@
 import type { DeviceData } from 'clickhouse';
 import { clickhouseDevice } from 'clickhouse';
 import { UAParser } from 'ua-parser-js';
+import { stateRedis, positiveStateInteger } from '../ingestion';
 import { logJobStep } from './job-logger';
 
 export const UNKNOWN = 'Unknown';
@@ -61,32 +62,13 @@ export async function insertDeviceIfNotExists(
   deviceData: DeviceData,
   job?: { log: (row: string) => Promise<number> },
 ) {
-  await logJobStep(job, 'device before clickhouseDevice.exists', { projectId, userId, deviceId });
-  const deviceExists = await clickhouseDevice.exists(projectId, deviceId);
-  await logJobStep(
-    job,
-    deviceExists ? 'device after clickhouseDevice.exists existing' : 'device after clickhouseDevice.exists missing',
-    {
-      projectId,
-      userId,
-      deviceId,
-    },
-  );
-  if (deviceExists) {
-    return;
-  }
+  const key = `vm:device-written:${projectId}:${userId}:${deviceId}`;
+  // Cache success only. Duplicate misses across replicas are safe in device_v2, where the
+  // earliest creation timestamp wins by revision. The device timestamp is derived by the model.
+  if (await stateRedis().exists(key)) return;
 
-  await logJobStep(job, 'device before clickhouseDevice.insert', {
-    projectId,
-    userId,
-    deviceId,
-    osName: deviceData.osName,
-    osVersion: deviceData.osVersion,
-    clientName: deviceData.clientName,
-    clientVersion: deviceData.clientVersion,
-    clientType: deviceData.clientType,
-    deviceType: deviceData.deviceType,
-  });
+  await logJobStep(job, 'device before insert', { projectId, userId, deviceId });
+  // Merge callers pass a complete event; select only device fields to preserve the target identity.
   await clickhouseDevice.insert([
     {
       projectId,
@@ -95,10 +77,10 @@ export async function insertDeviceIfNotExists(
       osName: deviceData.osName,
       osVersion: deviceData.osVersion,
       clientName: deviceData.clientName,
-      clientType: deviceData.clientType,
       clientVersion: deviceData.clientVersion,
+      clientType: deviceData.clientType,
       deviceType: deviceData.deviceType,
     },
   ]);
-  await logJobStep(job, 'device after clickhouseDevice.insert', { projectId, userId, deviceId });
+  await stateRedis().set(key, '1', 'EX', positiveStateInteger('DEVICE_CACHE_TTL_SECONDS', 900));
 }

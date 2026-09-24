@@ -7,14 +7,14 @@ import { eventQueue } from '@vemetric/queues/event-queue';
 import { addToQueue } from '@vemetric/queues/queue-utils';
 import { sessionQueue } from '@vemetric/queues/session-queue';
 import { updateUserQueue } from '@vemetric/queues/update-user-queue';
-import { generateSessionId, generateUserId } from 'database';
+import { generateUserId } from 'database';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 import type { HonoContext } from '../types';
 import { setUserIdCookie } from './cookie';
 import { sanitizeHeaders } from './headers';
 import { getUserIdFromRequest } from './request';
-import { getSessionId, increaseRedisSessionDuration } from './session';
+import { getOrCreateSessionId } from './session';
 
 export const eventSchema = z.object({
   name: z.string().min(1),
@@ -89,11 +89,7 @@ export const trackEvent = async (context: HonoContext, body: EventSchema) => {
   }
 
   // session handling
-  let sessionId = await getSessionId(projectId, userId);
-  if (sessionId === null) {
-    sessionId = generateSessionId();
-  }
-  await increaseRedisSessionDuration(projectId, userId, sessionId);
+  const sessionId = await getOrCreateSessionId(projectId, userId);
 
   const headers = sanitizeHeaders(req.header());
 
@@ -112,7 +108,8 @@ export const trackEvent = async (context: HonoContext, body: EventSchema) => {
     projectId: String(projectId),
     userId: String(userId),
     sessionId,
-    createdAt: formatClickhouseDate(new Date()),
+    createdAt: now,
+    projectDomain: context.var.project.domain,
     geoData,
     headers,
     url,
@@ -124,6 +121,7 @@ export const trackEvent = async (context: HonoContext, body: EventSchema) => {
     projectId: String(projectId),
     userId: String(userId),
     eventId,
+    projectDomain: context.var.project.domain,
     sessionId,
     contextId,
     createdAt: now,

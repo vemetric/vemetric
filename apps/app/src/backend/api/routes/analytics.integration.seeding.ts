@@ -693,6 +693,6 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
   ];
 
   await clickhouseUser.insert(users);
-  await clickhouseSession.insert(sessions);
+  await clickhouseSession.insertRevisions(sessions.map((session) => ({ ...session, revision: '1', deleted: 0 })));
   await clickhouseEvent.insert(events);
 }

@@ -2,6 +2,7 @@ import { formatClickhouseDate } from '@vemetric/common/date';
 import { SESSION_DURATION_MINUTES } from '@vemetric/common/session';
 import type { ClickhouseEvent, ClickhouseSession } from 'clickhouse';
 import { clickhouseDateToISO, clickhouseSession } from 'clickhouse';
+import { getBufferedSessions } from '../ingestion';
 
 const SESSION_DURATION_MS = SESSION_DURATION_MINUTES * 60 * 1000;
 
@@ -20,12 +21,16 @@ interface UserMigrationContext {
   projectId: bigint;
   newUserId: bigint;
   existingEvents: Array<ClickhouseEvent>;
-  oldUserSessions: Array<ClickhouseSession>;
 }
 
 export const reassignExistingSessionsToEvents = async (context: UserMigrationContext) => {
-  const { projectId, newUserId, existingEvents, oldUserSessions } = context;
+  const { projectId, newUserId, existingEvents } = context;
 
+  if (!existingEvents.length)
+    return {
+      sessionsWithTimeUpdates: [],
+      sessionIdMapping: new Map<string, string>(),
+    };
   const eventTimes = existingEvents.map((e) => new Date(clickhouseDateToISO(e.createdAt)).getTime());
   const minEventTime = Math.min(...eventTimes);
   const maxEventTime = Math.max(...eventTimes);
@@ -34,91 +39,64 @@ export const reassignExistingSessionsToEvents = async (context: UserMigrationCon
   const searchEndTime = new Date(maxEventTime + SESSION_DURATION_MS);
 
   // Query only relevant sessions from the new user within this time range
-  const newUserSessions = await clickhouseSession.findByUserIdInTimeRange(
-    projectId,
-    newUserId,
-    searchStartTime,
-    searchEndTime,
+  const newUserSessions = (
+    await getBufferedSessions(projectId, newUserId, await clickhouseSession.findByUserId(projectId, newUserId))
+  ).filter(
+    (session) =>
+      new Date(clickhouseDateToISO(session.startedAt)) <= searchEndTime &&
+      new Date(clickhouseDateToISO(session.endedAt)) >= searchStartTime,
   );
 
-  // Create a map of sessions to migrate and session ID mappings
-  const oldSessionIdsToMigrate = new Set<string>();
+  // Create a map of session ID mappings
   const sessionIdMapping = new Map<string, string>(); // old session id -> new session id
-  const sessionTimeUpdates = new Map<
-    string,
-    { changedStart: boolean; startedAt: Date; endedAt: Date; duration: number }
-  >(); // track time updates for existing sessions
+  const sessionTimeUpdates = new Map<string, { startedAt: Date; endedAt: Date; duration: number }>(); // track time updates for existing sessions
 
   // we iterate through all the events and see if we can find a new session to assign it to
   for (const event of existingEvents) {
-    let matchedExistingSession = false;
-
     for (const newSession of newUserSessions) {
       if (!eventBelongsToSession(event.createdAt, newSession)) {
         continue;
       }
 
       sessionIdMapping.set(event.sessionId, newSession.id);
-      matchedExistingSession = true;
 
-      // Update the session time bounds if needed
+      // Extend the session end only. startedAt is immutable once published, so an event
+      // that predates the session never moves its start or its monthly partition.
       const eventTime = new Date(clickhouseDateToISO(event.createdAt)).getTime();
       const existing = sessionTimeUpdates.get(newSession.id);
 
       if (existing) {
         const currentStart = existing.startedAt.getTime();
-        const currentEnd = existing.endedAt.getTime();
-        const newStart = Math.min(currentStart, eventTime);
-        const newEnd = Math.max(currentEnd, eventTime);
+        const newEnd = Math.max(existing.endedAt.getTime(), eventTime);
 
         sessionTimeUpdates.set(newSession.id, {
-          changedStart: existing.changedStart || newStart !== currentStart,
-          startedAt: new Date(newStart),
+          startedAt: existing.startedAt,
           endedAt: new Date(newEnd),
-          duration: Math.round((newEnd - newStart) / 1000),
+          duration: Math.round((newEnd - currentStart) / 1000),
         });
       } else {
         const currentStart = new Date(clickhouseDateToISO(newSession.startedAt)).getTime();
         const currentEnd = new Date(clickhouseDateToISO(newSession.endedAt)).getTime();
-        const newStart = Math.min(currentStart, eventTime);
         const newEnd = Math.max(currentEnd, eventTime);
 
-        if (newStart < currentStart || newEnd > currentEnd) {
+        if (newEnd > currentEnd) {
           sessionTimeUpdates.set(newSession.id, {
-            changedStart: newStart !== currentStart,
-            startedAt: new Date(newStart),
+            startedAt: new Date(currentStart),
             endedAt: new Date(newEnd),
-            duration: Math.round((newEnd - newStart) / 1000),
+            duration: Math.round((newEnd - currentStart) / 1000),
           });
         }
       }
       break;
     }
-
-    // no new session found, we just keep the old session
-    if (!matchedExistingSession) {
-      oldSessionIdsToMigrate.add(event.sessionId);
-    }
   }
 
-  const oldSessionsToMigrate = Array.from(oldSessionIdsToMigrate)
-    .map((sessionId) => {
-      const session = oldUserSessions.find((s) => s.id === sessionId);
-      return session;
-    })
-    .filter((session) => session !== undefined);
-
   const sessionsWithTimeUpdates: Array<ClickhouseSession> = [];
-  const newUserSessionsToDelete: Array<ClickhouseSession> = [];
-  // Update the new users' sessions where the times have changed
+  // Update the new users' sessions where activity extended them. The start never changes.
   if (sessionTimeUpdates.size > 0) {
     sessionTimeUpdates.forEach((timeUpdate, sessionId) => {
       const session = newUserSessions.find((s) => s.id === sessionId);
       if (session) {
-        if (timeUpdate.changedStart) {
-          // the start time has changed, we delete the session because it counts as a new one
-          newUserSessionsToDelete.push(session);
-        }
         sessionsWithTimeUpdates.push({
           ...session,
           duration: timeUpdate.duration,
@@ -129,5 +107,5 @@ export const reassignExistingSessionsToEvents = async (context: UserMigrationCon
     });
   }
 
-  return { sessionsWithTimeUpdates, newUserSessionsToDelete, oldSessionsToMigrate, sessionIdMapping };
+  return { sessionsWithTimeUpdates, sessionIdMapping };
 };

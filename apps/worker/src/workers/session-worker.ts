@@ -1,51 +1,41 @@
 import { getGeoDataFromIp } from '@vemetric/common/geo';
 import { sessionQueueName } from '@vemetric/queues/queue-names';
 import type { SessionQueueProps } from '@vemetric/queues/session-queue';
+import { sessionQueue } from '@vemetric/queues/session-queue';
 import { Worker } from 'bullmq';
 import type { ClickhouseUser } from 'clickhouse';
-import { clickhouseSession, clickhouseUser } from 'clickhouse';
+import { clickhouseUser } from 'clickhouse';
+import {
+  assertIngestionStateStorage,
+  bufferSessionUpdate,
+  bufferExistingSessionActivity,
+} from '../ingestion';
+import { workerConcurrency } from '../utils/concurrency';
 import { getDeviceDataFromHeaders } from '../utils/device';
 import { logJobStep } from '../utils/job-logger';
 import { logger } from '../utils/logger';
 import { getReferrerFromRequest } from '../utils/referrer';
-import { getSessionData, increaseClickhouseSessionDuration } from '../utils/session';
-import { shouldSkipEnrichmentProject } from '../utils/skipped-enrichment-projects';
+import { getSessionData } from '../utils/session';
 import { queueTelemetry } from '../utils/telemetry';
 import { getUrlParams } from '../utils/url';
 
 export async function initSessionWorker() {
+  await assertIngestionStateStorage();
+  await sessionQueue.removeGlobalConcurrency();
   return new Worker<SessionQueueProps>(
     sessionQueueName,
     async (job) => {
       const { projectId: _projectId, userId: _userId, sessionId, createdAt, type } = job.data;
-      if (shouldSkipEnrichmentProject(_projectId)) {
-        return;
-      }
 
       const projectId = BigInt(_projectId);
       const userId = BigInt(_userId);
 
-      await logJobStep(job, `start type=${type} project=${projectId} user=${userId} session=${sessionId}`);
-      await logJobStep(job, 'before clickhouseSession.findById');
-      const existingSession = await clickhouseSession.findById(projectId, userId, sessionId);
-      await logJobStep(
-        job,
-        existingSession ? 'after clickhouseSession.findById existing' : 'after clickhouseSession.findById missing',
-      );
-      if (existingSession) {
-        await logJobStep(job, 'before increaseClickhouseSessionDuration');
-        await increaseClickhouseSessionDuration(
-          existingSession,
-          createdAt,
-          type === 'createOrExtend' ? job.data.geoData : undefined,
-        );
-        await logJobStep(job, 'done extended existing session');
-      } else {
-        if (type === 'extend') {
-          await logJobStep(job, 'done missing session for extend');
-          return;
-        }
-
+      if (type === 'extend') {
+        await bufferSessionUpdate(projectId, sessionId, createdAt);
+        return;
+      }
+      if (await bufferExistingSessionActivity(projectId, sessionId, createdAt, job.data.geoData)) return;
+      {
         const { ipAddress, geoData, headers, url, reqIdentifier, reqDisplayName } = job.data;
 
         await logJobStep(job, 'before clickhouseUser.findById');
@@ -56,7 +46,7 @@ export async function initSessionWorker() {
 
         const userAgent = headers['user-agent'];
         await logJobStep(job, 'before getReferrerFromRequest');
-        const referrer = await getReferrerFromRequest(projectId, headers, url);
+        const referrer = await getReferrerFromRequest(projectId, headers, url, job.data.projectDomain);
         await logJobStep(job, 'after getReferrerFromRequest');
         const urlParams = getUrlParams(url);
 
@@ -72,24 +62,22 @@ export async function initSessionWorker() {
         );
         await logJobStep(job, 'after getSessionData');
 
-        await logJobStep(job, 'before clickhouseSession.insert');
-        await clickhouseSession.insert([
-          {
-            projectId,
-            userId,
-            userIdentifier,
-            userDisplayName,
-            id: sessionId,
-            startedAt: createdAt,
-            endedAt: createdAt,
-            duration: 0,
-            ...sessionData,
-            ...urlParams,
-            userAgent,
-            ...referrer,
-          },
-        ]);
-        await logJobStep(job, 'done created session');
+        await logJobStep(job, 'before bufferSessionUpdate');
+        await bufferSessionUpdate(projectId, sessionId, createdAt, {
+          projectId,
+          userId,
+          userIdentifier,
+          userDisplayName,
+          id: sessionId,
+          startedAt: createdAt,
+          endedAt: createdAt,
+          duration: 0,
+          ...sessionData,
+          ...urlParams,
+          userAgent,
+          ...referrer,
+        });
+        await logJobStep(job, 'session update buffered');
       }
     },
     {
@@ -97,7 +85,7 @@ export async function initSessionWorker() {
         url: process.env.REDIS_URL,
       },
       telemetry: queueTelemetry,
-      concurrency: 1,
+      concurrency: workerConcurrency('SESSION_WORKER_CONCURRENCY', 20),
       removeOnComplete: {
         count: 1000,
       },

@@ -6,10 +6,10 @@ import { clickhouseDevice } from 'clickhouse/src/models/device';
 import type { ClickhouseEvent } from 'clickhouse/src/models/event';
 import { clickhouseEvent } from 'clickhouse/src/models/event';
 import type { ClickhouseSession } from 'clickhouse/src/models/session';
-import { clickhouseSession } from 'clickhouse/src/models/session';
 import { getDeviceId } from 'clickhouse/src/utils/id';
 import csv from 'csv-parser';
 import { nanoid } from 'nanoid';
+import { closeStateRedis, persistSessionUpdates } from '../ingestion';
 import { logger } from '../utils/logger';
 
 const BATCH_SIZE = 1000;
@@ -87,15 +87,7 @@ function getDeviceDataFromRaw(row: Record<string, string>) {
     clientVersion: row.browser_version || '',
     clientType: 'browser' as const,
     deviceType: (row.mobile === '1' ? 'mobile' : row.desktop === '1' ? 'desktop' : 'unknown') as
-      | 'desktop'
-      | 'mobile'
-      | 'tablet'
-      | 'console'
-      | 'smarttv'
-      | 'wearable'
-      | 'embedded'
-      | 'server'
-      | 'unknown',
+      'desktop' | 'mobile' | 'tablet' | 'console' | 'smarttv' | 'wearable' | 'embedded' | 'server' | 'unknown',
   };
 }
 
@@ -392,7 +384,7 @@ async function importRawData() {
         };
       });
 
-      await clickhouseSession.insert(sessionData);
+      await persistSessionUpdates(sessionData, { preserveDuration: true });
       logger.info(`Imported ${sessionData.length} sessions (batch ${Math.floor(i / BATCH_SIZE) + 1})`);
     }
 
@@ -414,6 +406,7 @@ async function importRawData() {
     logger.error({ err }, 'Error importing raw data:');
     throw err;
   } finally {
+    await closeStateRedis();
     await client.close();
   }
 }

@@ -1,20 +1,21 @@
 import type { CreateDeviceQueueProps } from '@vemetric/queues/create-device-queue';
+import { createDeviceQueue } from '@vemetric/queues/create-device-queue';
 import { createDeviceQueueName } from '@vemetric/queues/queue-names';
 import { Worker } from 'bullmq';
 import { getDeviceId } from 'clickhouse';
+import { assertIngestionStateStorage } from '../ingestion';
+import { workerConcurrency } from '../utils/concurrency';
 import { getDeviceDataFromHeaders, insertDeviceIfNotExists } from '../utils/device';
 import { logJobStep } from '../utils/job-logger';
-import { shouldSkipEnrichmentProject } from '../utils/skipped-enrichment-projects';
 import { queueTelemetry } from '../utils/telemetry';
 
 export async function initDeviceWorker() {
+  await assertIngestionStateStorage();
+  await createDeviceQueue.removeGlobalConcurrency();
   return new Worker<CreateDeviceQueueProps>(
     createDeviceQueueName,
     async (job) => {
       const { projectId: _projectId, userId: _userId, headers } = job.data;
-      if (shouldSkipEnrichmentProject(_projectId)) {
-        return;
-      }
 
       const projectId = BigInt(_projectId);
       const userId = BigInt(_userId);
@@ -43,7 +44,7 @@ export async function initDeviceWorker() {
         url: process.env.REDIS_URL,
       },
       telemetry: queueTelemetry,
-      concurrency: 1,
+      concurrency: workerConcurrency('DEVICE_WORKER_CONCURRENCY', 20),
       removeOnComplete: {
         count: 1000,
       },

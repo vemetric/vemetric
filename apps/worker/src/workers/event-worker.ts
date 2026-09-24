@@ -5,6 +5,7 @@ import { eventQueueName } from '@vemetric/queues/queue-names';
 import { Worker } from 'bullmq';
 import type { ClickhouseUser } from 'clickhouse';
 import { clickhouseEvent, clickhouseUser, getDeviceId } from 'clickhouse';
+import { workerConcurrency } from '../utils/concurrency';
 import { getDeviceDataFromHeaders } from '../utils/device';
 import { logger } from '../utils/logger';
 import { getReferrerFromRequest } from '../utils/referrer';
@@ -41,7 +42,7 @@ export async function initEventWorker() {
       const userDisplayName = reqDisplayName ?? user?.displayName;
 
       const userAgent = headers['user-agent'];
-      const referrer = await getReferrerFromRequest(projectId, headers, url);
+      const referrer = await getReferrerFromRequest(projectId, headers, url, job.data.projectDomain);
       const urlParams = getUrlParams(url);
 
       const deviceData = await getDeviceDataFromHeaders(headers);
@@ -83,7 +84,7 @@ export async function initEventWorker() {
         url: process.env.REDIS_URL,
       },
       telemetry: queueTelemetry,
-      concurrency: 10,
+      concurrency: workerConcurrency('EVENT_WORKER_CONCURRENCY', 10),
       removeOnComplete: {
         count: 1000,
       },

@@ -1,4 +1,4 @@
-import type { ErrorLogParams, Logger, LogParams, WarnLogParams } from '@clickhouse/client-web';
+import type { ClickHouseSettings, ErrorLogParams, Logger, LogParams, WarnLogParams } from '@clickhouse/client-web';
 import { ClickHouseLogLevel, createClient } from '@clickhouse/client-web';
 import { jsonStringify } from '@vemetric/common/json';
 import { createLogger } from '@vemetric/logger';
@@ -53,10 +53,19 @@ export const clickhouseClient = createClient({
   },
 });
 
-export const clickhouseInsert = async <T>({ table, values }: { table: string; values: ReadonlyArray<T> }) => {
+export const clickhouseInsert = async <T>({
+  table,
+  values,
+  settings,
+}: {
+  table: string;
+  values: ReadonlyArray<T>;
+  settings?: ClickHouseSettings;
+}) => {
   return await clickhouseClient.insert({
     table,
     values: JSON.parse(jsonStringify(values)),
     format: 'JSONEachRow',
+    clickhouse_settings: settings,
   });
 };

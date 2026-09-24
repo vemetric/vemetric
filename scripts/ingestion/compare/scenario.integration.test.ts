@@ -234,7 +234,16 @@ describe('ingestion comparison scenario', () => {
     await Promise.all(Array.from({ length: 10 }, (_, i) => send('/l', burstUa(i), {})));
     await idle();
     vi.useRealTimers();
-    await clickhouseClient.command({ query: 'OPTIMIZE TABLE event FINAL' });
+    // Compare the settled state: reads without FINAL depend on when ClickHouse merges parts in
+    // the background, which differs between runs, not between versions.
+    const existing = (await (
+      await clickhouseClient.query({
+        query: `SELECT name FROM system.tables WHERE database = currentDatabase()
+          AND name IN ('event', 'session', 'session_v3', 'device', 'device_v2')`,
+        format: 'JSONEachRow',
+      })
+    ).json()) as Array<{ name: string }>;
+    for (const { name } of existing) await clickhouseClient.command({ query: `OPTIMIZE TABLE ${name} FINAL` });
 
     // Snapshot
     const projectId = BigInt(PROJECT.projectId);

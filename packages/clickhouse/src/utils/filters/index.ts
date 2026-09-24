@@ -12,7 +12,7 @@ import { buildPageFilterQuery } from './page-filter';
 import { buildReferrerFilterQuery, buildReferrerTypeFilterQuery, buildReferrerUrlFilterQuery } from './referrer-filter';
 import { buildUserFilterQuery } from './user-filter';
 import { buildUtmTagsFilterQuery } from './utm-tags-filter';
-import { currentSessionRows } from '../../models/session';
+import { sessionRows } from '../../models/session';
 
 export const getUserFilterQueries = (props: {
   filterConfig: IFilterConfig;
@@ -94,7 +94,7 @@ export const getUserFilterQueries = (props: {
 
         userIdQueries.push(`
             (SELECT DISTINCT userId
-              FROM ${currentSessionRows(projectId, { startDate, endDate })}
+              FROM ${sessionRows(projectId, { startDate, endDate })}
               WHERE ${filterQuery}
               GROUP BY userId
               HAVING count() >= 1)`);
@@ -159,7 +159,7 @@ export const getUserFilterQueries = (props: {
 
         userIdQueries.push(`
             (SELECT DISTINCT userId
-              FROM ${currentSessionRows(projectId, { startDate, endDate })}
+              FROM ${sessionRows(projectId, { startDate, endDate })}
               WHERE ${filterQuery}
               GROUP BY userId
               HAVING count() >= 1)`);
@@ -173,7 +173,7 @@ export const getUserFilterQueries = (props: {
 
         userIdQueries.push(`
             (SELECT DISTINCT userId
-              FROM ${currentSessionRows(projectId, { startDate, endDate })}
+              FROM ${sessionRows(projectId, { startDate, endDate })}
               WHERE ${filterQuery}
               GROUP BY userId
               HAVING count() >= 1)`);
@@ -187,7 +187,7 @@ export const getUserFilterQueries = (props: {
 
         userIdQueries.push(`
             (SELECT DISTINCT userId
-              FROM ${currentSessionRows(projectId, { startDate, endDate })}
+              FROM ${sessionRows(projectId, { startDate, endDate })}
               WHERE ${filterQuery}
               GROUP BY userId
               HAVING count() >= 1)`);
@@ -201,7 +201,7 @@ export const getUserFilterQueries = (props: {
 
         userIdQueries.push(`
             (SELECT DISTINCT userId
-              FROM ${currentSessionRows(projectId, { startDate, endDate })}
+              FROM ${sessionRows(projectId, { startDate, endDate })}
               WHERE ${filterQuery}
               GROUP BY userId
               HAVING count() >= 1)`);

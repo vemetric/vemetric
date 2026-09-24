@@ -119,23 +119,47 @@ export interface CurrentSessionRowsOptions {
   endDate?: Date;
 }
 
-export function currentSessionRows(projectId: bigint, { ids, startDate, endDate }: CurrentSessionRowsOptions = {}) {
-  const idFilter =
-    ids === undefined
-      ? ''
-      : 'subquery' in ids
-        ? ` AND ${TABLE_NAME}.id IN (${ids.subquery})`
-        : ids.length
-          ? ` AND ${TABLE_NAME}.id IN (${ids.map((id) => escape(id)).join(',')})`
-          : ' AND 0';
+function startedAtFilter(startDate?: Date, endDate?: Date) {
+  const start = startDate ? ` AND ${TABLE_NAME}.startedAt >= '${formatClickhouseDate(startDate)}'` : '';
+  const end = endDate ? ` AND ${TABLE_NAME}.startedAt < '${formatClickhouseDate(endDate)}'` : '';
+  return start + end;
+}
 
-  const startFilter = startDate ? ` AND ${TABLE_NAME}.startedAt >= '${formatClickhouseDate(startDate)}'` : '';
-  const endFilter = endDate ? ` AND ${TABLE_NAME}.startedAt < '${formatClickhouseDate(endDate)}'` : '';
-  // FINAL resolves the highest revision per session. Revisions of a session never change its
-  // startedAt (and so its partition), which lets the client skip merging across partitions.
+/** Exactly one row per session: its latest revision, without deleted sessions. */
+export function currentSessionRows(projectId: bigint, { ids, startDate, endDate }: CurrentSessionRowsOptions = {}) {
+  const scope = `${TABLE_NAME}.projectId = ${escape(projectId)}${startedAtFilter(startDate, endDate)}`;
+  if (ids !== undefined) {
+    const idFilter =
+      'subquery' in ids
+        ? `${TABLE_NAME}.id IN (${ids.subquery})`
+        : ids.length
+          ? `${TABLE_NAME}.id IN (${ids.map((id) => escape(id)).join(',')})`
+          : '0';
+    // A few known sessions: picking the newest revision directly needs far less memory than FINAL.
+    return `(SELECT ${SESSION_KEY_SELECTOR} FROM (
+      SELECT ${SESSION_KEY_SELECTOR} FROM ${TABLE_NAME}
+      WHERE ${scope} AND ${idFilter}
+      ORDER BY revision DESC LIMIT 1 BY id
+    ) WHERE deleted = 0)`;
+  }
+  // Date ranges: FINAL resolves the highest revision per session. Revisions of a session never
+  // change its startedAt (and so its partition), which lets the client skip merging across partitions.
   return `(SELECT ${SESSION_KEY_SELECTOR}
     FROM ${TABLE_NAME} FINAL
-    WHERE ${TABLE_NAME}.projectId = ${escape(projectId)}${idFilter}${startFilter}${endFilter}
+    WHERE ${scope}
+      AND deleted = 0)`;
+}
+
+/**
+ * Session rows as stored, like reads of the previous session table: until ClickHouse merges
+ * them, a session can appear once per revision, and a deleted or reassigned session keeps its
+ * older rows. Only for aggregates over distinct values (users, sources, locations), where extra
+ * revisions do not change the result; it avoids the cost of FINAL on large date ranges.
+ */
+export function sessionRows(projectId: bigint, { startDate, endDate }: { startDate?: Date; endDate?: Date } = {}) {
+  return `(SELECT ${SESSION_KEY_SELECTOR}
+    FROM ${TABLE_NAME}
+    WHERE ${TABLE_NAME}.projectId = ${escape(projectId)}${startedAtFilter(startDate, endDate)}
       AND deleted = 0)`;
 }
 
@@ -271,7 +295,7 @@ export const clickhouseSession = {
 
     const resultSet = await clickhouseClient.query({
       query: `SELECT countryCode, count(distinct userId) as users 
-              FROM ${currentSessionRows(projectId, { startDate, endDate })}
+              FROM ${sessionRows(projectId, { startDate, endDate })}
               WHERE 1=1
               ${locationFilterQueries ? `AND (${locationFilterQueries})` : ''}
               ${(filterQueries || '').replace('sessionId', 'id')}
@@ -295,7 +319,7 @@ export const clickhouseSession = {
                 if(normalizedCity = '' OR normalizedCity = 'unknown', '', city) as cityGroup,
                 if(normalizedCity = '' OR normalizedCity = 'unknown', '', countryCode) as countryCodeGroup,
                 count(distinct userId) as users
-              FROM ${currentSessionRows(projectId, { startDate, endDate })}
+              FROM ${sessionRows(projectId, { startDate, endDate })}
               WHERE 1=1
               ${locationFilterQueries ? `AND (${locationFilterQueries})` : ''}
               ${(filterQueries || '').replace('sessionId', 'id')}
@@ -334,7 +358,7 @@ export const clickhouseSession = {
     const notEmptyFilter = source === 'referrer' ? '' : `AND ${source} <> ''`;
 
     const resultSet = await clickhouseClient.query({
-      query: `SELECT ${selectColumns.join(', ')}, count(distinct userId) as users from ${currentSessionRows(projectId, { startDate, endDate })} WHERE 1=1
+      query: `SELECT ${selectColumns.join(', ')}, count(distinct userId) as users from ${sessionRows(projectId, { startDate, endDate })} WHERE 1=1
        ${notEmptyFilter} ${(filterQueries || '').replace('sessionId', 'id')} ${
          sourceFilterQueries ? `AND (${sourceFilterQueries})` : ''
        } GROUP BY ${source} ORDER BY users DESC;`,

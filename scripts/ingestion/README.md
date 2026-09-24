@@ -29,7 +29,7 @@ bun run --cwd scripts/ingestion compare -- --base main --head .
 
 `.` is the current checkout including uncommitted changes. `--replicas 3` starts three instances of every worker in the scenario to include concurrent processing. The command exits with 1 and lists the differing paths if the snapshots differ; both snapshots are kept in the temp directory for inspection.
 
-The scenario (`compare/scenario.integration.test.ts`) is copied into the hub tests of each version and removed afterwards. It runs the in-process hub and workers on a controlled clock, so timestamps and durations are comparable. It covers anonymous visitors on several devices, referrers and UTM tags, custom and server-side events, page leaves, identification, a user merge, new sessions after inactivity and a burst of concurrent visitors. It may only use APIs that exist in every version you compare.
+The scenario (`compare/scenario.integration.test.ts`) is copied into the hub tests of each version and removed afterwards. It runs the in-process hub and workers on a controlled clock, so timestamps and durations are comparable. It covers anonymous visitors on several devices, referrers and UTM tags, custom and server-side events, page leaves, identification, a user merge, new sessions after inactivity and a burst of concurrent visitors. It may only use APIs that exist in every version you compare. Before the snapshot it merges the session, device and event tables (`OPTIMIZE ... FINAL`), so it compares the settled state: reads without `FINAL` can briefly differ depending on when ClickHouse merges parts in the background, which varies between runs.
 
 ## Load test
 

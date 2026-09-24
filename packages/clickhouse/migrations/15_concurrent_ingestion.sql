@@ -1,6 +1,7 @@
 -- Schema only. Run backfill-ingestion separately with all ClickHouse writers stopped.
 -- startedAt is immutable once a session snapshot exists, so all its revisions share one
--- monthly partition, keeping replacement within that partition.
+-- monthly partition and one sorting key. Sorting by startedAt lets date-range dashboard queries
+-- read only the requested days; lookups of a single session by id use the id bloom filter.
 -- Early activity stays in Redis until session creation; it is never stored here.
 --
 -- Tombstones (deleted = 1) are load-bearing: they reject late writes of a merged-away key and
@@ -36,10 +37,11 @@ CREATE TABLE IF NOT EXISTS session_v3 (
     importSource String DEFAULT '',
     revision UInt64 DEFAULT 1,
     deleted Int8 DEFAULT 0,
-    -- Lets per-user reads skip granules instead of scanning the whole project.
+    -- Let per-session and per-user reads skip granules instead of scanning the whole project.
+    INDEX id_idx id TYPE bloom_filter(0.01) GRANULARITY 1,
     INDEX user_id_idx userId TYPE bloom_filter(0.01) GRANULARITY 1
 ) ENGINE = ReplacingMergeTree(revision)
-ORDER BY (projectId, id)
+ORDER BY (projectId, startedAt, id)
 PARTITION BY toYYYYMM(startedAt);
 
 CREATE TABLE IF NOT EXISTS device_v2 (

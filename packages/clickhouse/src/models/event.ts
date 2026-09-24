@@ -11,7 +11,7 @@ import { GLOBE_H3_RESOLUTION, ONLINE_USERS_INTERVAL_QUERY } from '../consts';
 import type { DeviceData } from './device';
 import { EXAMPLE_DEVICE_DATA } from './device';
 import type { FilterOptions, ReferrerData, UrlData } from './session';
-import { currentSessionRows, EXAMPLE_URL_DATA } from './session';
+import { EXAMPLE_URL_DATA, sessionRows } from './session';
 import { formatDateExpression } from '../utils/date';
 import { getEventFilterQueries } from '../utils/filters';
 import { buildStringFilterQuery } from '../utils/filters/base-filters';
@@ -193,7 +193,7 @@ export const clickhouseEvent = {
               groupArrayDistinct(countryCode) as countryCodes,
               groupArrayDistinct(city) as cities,
               groupArrayDistinct(referrerType) as referrerTypes
-            FROM ${currentSessionRows(projectId, { startDate, endDate })}
+            FROM ${sessionRows(projectId, { startDate, endDate })}
           ) as sources
       `,
       format: 'JSONEachRow',

@@ -85,7 +85,8 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 main();
 
 Bun.serve({
-  port: 4101,
+  // Configurable so several worker processes can run on one machine (e.g. load tests).
+  port: Number(process.env.WORKER_HEALTH_PORT ?? 4101),
   fetch(request) {
     if (request.url.endsWith('/up')) {
       return new Response(ready ? 'UP' : 'STARTING', { status: ready ? 200 : 503 });

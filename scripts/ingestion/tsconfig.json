@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "strict": true,
+    "types": ["bun"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ESNext",
+    "skipLibCheck": true
+  },
+  "exclude": ["compare/scenario.integration.test.ts"]
+}

@@ -22,6 +22,16 @@ services:
       - redis_data:/data
     command: redis-server --appendonly yes --maxmemory-policy noeviction
 
+  # Disposable Redis for the ingestion integration tests and tools (scripts/ingestion).
+  # Started only with `docker compose --profile test up -d redis-test`; tests flush it.
+  redis-test:
+    image: redis:7-alpine
+    container_name: vemetric-redis-test
+    profiles: ['test']
+    ports:
+      - '16389:6379'
+    command: redis-server --maxmemory-policy noeviction
+
   clickhouse:
     image: clickhouse/clickhouse-server:26.3.8.4
     container_name: vemetric-clickhouse

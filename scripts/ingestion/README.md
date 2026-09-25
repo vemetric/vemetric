@@ -78,7 +78,17 @@ PROD_CHECK_CLICKHOUSE_DB=vemetric PROD_CHECK_REDIS_URL=redis://... bun run --cwd
 
 ## Migration rehearsal on a production copy
 
-Run this only against a copy of the production ClickHouse database (for example restored from a backup onto a separate server), never against production itself:
+Run this only against a copy of the production ClickHouse database on a separate server, never against production itself.
+
+To create the copy, start the same ClickHouse image on the rehearsal server and copy the tables the rehearsal needs (`_migrations`, `user`, `device`, `session`, `event`) from this machine. The script only reads production (the read-only user from the production check is enough), drops and recreates the tables on the target, streams the data through this machine without storing it, and compares row counts. `ssh -C` compresses the transfer:
+
+```sh
+SOURCE_CMD='ssh -C you@prod-server docker exec -i vemetric-clickhouse' \
+TARGET_CMD='ssh -C you@rehearsal-server docker exec -i clickhouse-rehearsal' \
+CONFIRM_TARGET_IS_COPY=yes scripts/ingestion/rehearsal/copy-tables.sh
+```
+
+It asks for both passwords (or reads `SOURCE_PASSWORD` and `TARGET_PASSWORD`); `SOURCE_USER` defaults to `vemetric_check`, `TARGET_USER` to `default`. Then run the rehearsal against the copy:
 
 ```sh
 REHEARSAL_CLICKHOUSE_URL=https://copy-host:8443 REHEARSAL_CLICKHOUSE_USER=default REHEARSAL_CLICKHOUSE_PASSWORD=... \

@@ -35,3 +35,8 @@ yarn-error.log*
 
 # tsup
 dist/
+
+# Claude Code local state
+.claude/worktrees/
+.claude/.cc-writes/
+.claude/settings.local.json

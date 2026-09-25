@@ -3,14 +3,15 @@ import { getGeoDataFromIp } from '@vemetric/common/geo';
 import type { EventQueueProps } from '@vemetric/queues/event-queue';
 import { eventQueueName } from '@vemetric/queues/queue-names';
 import { Worker } from 'bullmq';
-import type { ClickhouseUser } from 'clickhouse';
-import { clickhouseEvent, clickhouseUser, getDeviceId } from 'clickhouse';
+import { clickhouseEvent, getDeviceId } from 'clickhouse';
+import { workerConcurrency } from '../utils/concurrency';
 import { getDeviceDataFromHeaders } from '../utils/device';
 import { logger } from '../utils/logger';
 import { getReferrerFromRequest } from '../utils/referrer';
 import { getSessionData } from '../utils/session';
 import { queueTelemetry } from '../utils/telemetry';
 import { getUrlParams } from '../utils/url';
+import { findIngestionUser } from '../utils/user-cache';
 
 export async function initEventWorker() {
   return new Worker<EventQueueProps>(
@@ -36,12 +37,12 @@ export async function initEventWorker() {
       const userId = BigInt(_userId);
       const isPageView = name === EventNames.PageView;
 
-      const user: ClickhouseUser | null = await clickhouseUser.findById(projectId, userId);
+      const user = await findIngestionUser(projectId, userId);
       const userIdentifier = user?.identifier ?? reqIdentifier;
       const userDisplayName = reqDisplayName ?? user?.displayName;
 
       const userAgent = headers['user-agent'];
-      const referrer = await getReferrerFromRequest(projectId, headers, url);
+      const referrer = await getReferrerFromRequest(projectId, headers, url, job.data.projectDomain);
       const urlParams = getUrlParams(url);
 
       const deviceData = await getDeviceDataFromHeaders(headers);
@@ -83,7 +84,7 @@ export async function initEventWorker() {
         url: process.env.REDIS_URL,
       },
       telemetry: queueTelemetry,
-      concurrency: 10,
+      concurrency: workerConcurrency('EVENT_WORKER_CONCURRENCY', 200),
       removeOnComplete: {
         count: 1000,
       },

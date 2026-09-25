@@ -10,6 +10,7 @@ import { logJobStep } from '../utils/job-logger';
 import { logger } from '../utils/logger';
 import { queueTelemetry } from '../utils/telemetry';
 import { getUserFirstPageViewData } from '../utils/user';
+import { invalidateIngestionUser } from '../utils/user-cache';
 
 export async function initCreateUserWorker() {
   return new Worker<CreateUserQueueProps>(
@@ -69,6 +70,7 @@ export async function initCreateUserWorker() {
       };
       await logJobStep(job, 'before clickhouseUser.insert');
       await clickhouseUser.insert([user]);
+      await invalidateIngestionUser(projectId, userId);
       await logJobStep(job, 'done');
     },
     {

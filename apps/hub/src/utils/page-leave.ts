@@ -32,7 +32,7 @@ export async function handlePageLeave(context: HonoContext) {
       createdAt: formatClickhouseDate(new Date()),
     },
     {
-      delay: 2000, // we delay this a bit to make sure the session is created first
+      // Buffered extensions are safe even when they arrive before session creation.
     },
   );
 

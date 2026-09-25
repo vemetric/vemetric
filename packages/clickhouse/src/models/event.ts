@@ -6,12 +6,12 @@ import { jsonStringify } from '@vemetric/common/json';
 import type { IUserSortConfig } from '@vemetric/common/sort';
 import { escape } from 'sqlstring';
 import type { z } from 'zod';
-import { clickhouseClient, clickhouseInsert } from '../client';
+import { clickhouseClient, clickhouseInsert, ingestionInsertSettings } from '../client';
 import { GLOBE_H3_RESOLUTION, ONLINE_USERS_INTERVAL_QUERY } from '../consts';
 import type { DeviceData } from './device';
 import { EXAMPLE_DEVICE_DATA } from './device';
 import type { FilterOptions, ReferrerData, UrlData } from './session';
-import { EXAMPLE_URL_DATA } from './session';
+import { EXAMPLE_URL_DATA, sessionRows } from './session';
 import { formatDateExpression } from '../utils/date';
 import { getEventFilterQueries } from '../utils/filters';
 import { buildStringFilterQuery } from '../utils/filters/base-filters';
@@ -193,11 +193,7 @@ export const clickhouseEvent = {
               groupArrayDistinct(countryCode) as countryCodes,
               groupArrayDistinct(city) as cities,
               groupArrayDistinct(referrerType) as referrerTypes
-            FROM session 
-            WHERE projectId = ${escape(projectId)} 
-              AND startedAt >= '${formattedStartDate}'
-              ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
-              AND deleted = 0
+            FROM ${sessionRows(projectId, { startDate, endDate })}
           ) as sources
       `,
       format: 'JSONEachRow',
@@ -409,7 +405,7 @@ export const clickhouseEvent = {
                 WHERE projectId=${escape(projectId)}
                   ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
                   ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
-                GROUP BY id
+                GROUP BY ${TABLE_NAME}.userId, id
                 HAVING sum(sign) > 0
               )
               WHERE 1=1 ${filterQueries || ''}
@@ -915,6 +911,7 @@ export const clickhouseEvent = {
   insert: async (events: Array<ClickhouseEvent>) => {
     await clickhouseInsert({
       table: TABLE_NAME,
+      settings: ingestionInsertSettings(),
       values: events.map((event) => ({ ...event, sign: 1 })),
     });
   },

@@ -38,11 +38,12 @@ end
 return 0`;
 
 // Hands the session of KEYS[1] over to KEYS[2] unless KEYS[2] already has an active session.
+// Returns the handed-over session id, or nil.
 export const CONTINUE_SESSION = `
 local id = redis.call('GET', KEYS[1])
-if not id then return 0 end
-if redis.call('SET', KEYS[2], id, 'EX', ARGV[1], 'NX') then return 1 end
-return 0`;
+if not id then return false end
+if redis.call('SET', KEYS[2], id, 'EX', ARGV[1], 'NX') then return id end
+return false`;
 
 /**
  * When an anonymous visitor logs into an existing user, their next events belong to that user.
@@ -52,14 +53,11 @@ return 0`;
  */
 export async function continueSession(projectId: bigint, fromUserId: bigint, toUserId: bigint) {
   const redis = await getRedisClient();
-  return (
-    Number(
-      await redis.eval(CONTINUE_SESSION, {
-        keys: [getRedisSessionKey(projectId, fromUserId), getRedisSessionKey(projectId, toUserId)],
-        arguments: [String(REDIS_SESSION_DURATION)],
-      }),
-    ) === 1
-  );
+  const sessionId = await redis.eval(CONTINUE_SESSION, {
+    keys: [getRedisSessionKey(projectId, fromUserId), getRedisSessionKey(projectId, toUserId)],
+    arguments: [String(REDIS_SESSION_DURATION)],
+  });
+  return typeof sessionId === 'string' ? sessionId : null;
 }
 
 export async function getOrCreateSessionId(projectId: bigint, userId: bigint) {

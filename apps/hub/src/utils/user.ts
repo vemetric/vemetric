@@ -134,6 +134,8 @@ export async function identifyUser(
 
     if (userId !== null) {
       const oldUserId = String(userId);
+      // The merge must keep the handed-over session: the user's next events continue it.
+      const continuedSessionId = await continueSession(projectId, userId, newUserId);
 
       await addToQueue(
         mergeUserQueue,
@@ -142,13 +144,13 @@ export async function identifyUser(
           oldUserId,
           newUserId: String(newUserId),
           displayName,
+          ...(continuedSessionId ? { continuedSessionId } : {}),
         },
         {
           jobId: `${String(projectId)}-${oldUserId}-${String(newUserId)}-${fiveSecondRoundedDate.toISOString()}`,
           delay: 6000,
         },
       );
-      await continueSession(projectId, userId, newUserId);
     }
 
     // Queue enrichment for the existing user to backfill attribution data if needed

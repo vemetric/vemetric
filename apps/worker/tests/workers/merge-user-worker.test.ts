@@ -9,6 +9,7 @@ import {
   deleteBufferedSession,
   persistSessionUpdates,
 } from '../../src/ingestion';
+import { reassignExistingSessionsToEvents } from '../../src/utils/merge-user';
 import { initMergeUserWorker } from '../../src/workers/merge-user-worker';
 
 const captured = vi.hoisted(() => ({
@@ -140,5 +141,49 @@ describe('merge write ordering', () => {
     waiting.moveToDelayed.mockRejectedValueOnce(new Error('Redis unavailable'));
     await expect(captured.run!(waiting, 'token')).rejects.toThrow('Redis unavailable');
     expect(clickhouseEvent.insert).not.toHaveBeenCalled();
+  });
+
+  it('keeps the old sessions when none of their events are stored yet', async () => {
+    // With the event queue behind, the merge finds no events of the old user.
+    vi.mocked(clickhouseEvent.findByUserId).mockResolvedValueOnce([]);
+    vi.mocked(reassignExistingSessionsToEvents).mockResolvedValueOnce({
+      sessionsWithTimeUpdates: [],
+      sessionIdMapping: new Map(),
+      unmatchedSessionIds: new Set(),
+    });
+    vi.mocked(getBufferedSessions).mockResolvedValue([{ id: 'visit' } as ClickhouseSession]);
+    await captured.run!(createJob(), 'token');
+    expect(deleteBufferedSession).not.toHaveBeenCalled();
+    expect(reassignBufferedSession).toHaveBeenCalledWith(BigInt(1), 'visit', BigInt(3), 'identified', undefined);
+  });
+
+  it('deletes only sessions whose known events all moved into sessions of the new user', async () => {
+    vi.mocked(reassignExistingSessionsToEvents).mockResolvedValueOnce({
+      sessionsWithTimeUpdates: [],
+      sessionIdMapping: new Map([
+        ['merged', 'target'],
+        ['partly-merged', 'target'],
+      ]),
+      unmatchedSessionIds: new Set(['partly-merged', 'unmatched']),
+    });
+    vi.mocked(getBufferedSessions).mockResolvedValue(
+      ['merged', 'partly-merged', 'unmatched', 'without-events'].map((id) => ({ id }) as ClickhouseSession),
+    );
+    await captured.run!(createJob(), 'token');
+    expect(vi.mocked(deleteBufferedSession).mock.calls).toEqual([[BigInt(1), 'merged']]);
+    expect(vi.mocked(reassignBufferedSession).mock.calls.map((call) => call[1])).toEqual([
+      'partly-merged',
+      'unmatched',
+      'without-events',
+    ]);
+  });
+
+  it('passes the session the hub handed over to the matching', async () => {
+    const job = createJob();
+    job.data.continuedSessionId = 'visit';
+    await captured.run!(job, 'token');
+    expect(reassignExistingSessionsToEvents).toHaveBeenCalledWith(
+      expect.objectContaining({ continuedSessionId: 'visit' }),
+    );
   });
 });

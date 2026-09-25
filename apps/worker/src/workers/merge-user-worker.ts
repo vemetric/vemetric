@@ -51,6 +51,7 @@ export async function initMergeUserWorker() {
           projectId,
           newUserId,
           existingEvents,
+          continuedSessionId: job.data.continuedSessionId,
         },
       );
 
@@ -93,10 +94,14 @@ export async function initMergeUserWorker() {
         logger.error({ err }, 'Error deleting devices');
       }
 
-      // Sessions that still have events of their own move to the new user; all other sessions of
-      // the old user are deleted (their events now belong to one of the new user's sessions).
+      // A session is merged away (deleted) only if all its known events moved into one of the new
+      // user's sessions. Every other session moves to the new user: the one the hub handed over
+      // (the user continues it) and sessions without known events (they may still be queued).
+      const mergedSessionIds = new Set(
+        Array.from(sessionIdMapping.keys()).filter((sessionId) => !unmatchedSessionIds.has(sessionId)),
+      );
       for (const sourceId of Array.from(sourceSessionIds)) {
-        if (unmatchedSessionIds.has(sourceId)) {
+        if (!mergedSessionIds.has(sourceId)) {
           await reassignBufferedSession(
             projectId,
             sourceId,

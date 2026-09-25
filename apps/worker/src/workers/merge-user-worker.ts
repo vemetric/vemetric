@@ -96,7 +96,9 @@ export async function initMergeUserWorker() {
 
       // A session is merged away (deleted) only if all its known events moved into one of the new
       // user's sessions. Every other session moves to the new user: the one the hub handed over
-      // (the user continues it) and sessions without known events (they may still be queued).
+      // (the user continues it), sessions without known events (they may still be queued) and
+      // partly matched sessions. Events are remapped per session, so a partly matched session
+      // keeps none of its events, as before this refactor.
       const mergedSessionIds = new Set(
         Array.from(sessionIdMapping.keys()).filter((sessionId) => !unmatchedSessionIds.has(sessionId)),
       );

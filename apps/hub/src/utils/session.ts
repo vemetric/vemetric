@@ -37,12 +37,14 @@ if redis.call('GET', KEYS[1]) == ARGV[1] then
 end
 return 0`;
 
-// Hands the session of KEYS[1] over to KEYS[2] unless KEYS[2] already has an active session.
-// Returns the handed-over session id, or nil.
+// Hands the session of KEYS[1] over to KEYS[2] unless KEYS[2] already has another active session.
+// Returns the handed-over session id, also when a repeated identify finds it already handed over
+// (e.g. a retried request), so every merge job learns which session to keep; otherwise nil.
 export const CONTINUE_SESSION = `
 local id = redis.call('GET', KEYS[1])
 if not id then return false end
 if redis.call('SET', KEYS[2], id, 'EX', ARGV[1], 'NX') then return id end
+if redis.call('GET', KEYS[2]) == id then return id end
 return false`;
 
 /**

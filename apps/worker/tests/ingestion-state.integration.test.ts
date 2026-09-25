@@ -302,6 +302,8 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
     expect(await redis.eval(CONTINUE_SESSION, 2, 'anonymous', 'identified', 1800)).toBe('visit');
     expect(await redis.get('identified')).toBe('visit');
     expect(await redis.ttl('identified')).toBeGreaterThan(1700);
+    // A repeated identify (e.g. a retried request) still reports the handed-over session.
+    expect(await redis.eval(CONTINUE_SESSION, 2, 'anonymous', 'identified', 1800)).toBe('visit');
     // An active session of the user (e.g. on another device) is kept.
     await redis.set('anonymous', 'other-visit');
     expect(await redis.eval(CONTINUE_SESSION, 2, 'anonymous', 'identified', 1800)).toBeNull();

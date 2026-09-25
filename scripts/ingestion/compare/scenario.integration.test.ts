@@ -32,6 +32,7 @@ const UA = {
   android:
     'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36',
   server: 'node-fetch/1.0',
+  edge: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0',
 };
 const ANDROID_HINTS = { 'sec-ch-ua-platform': '"Android"', 'sec-ch-ua-mobile': '?1', 'sec-ch-ua-model': '"Pixel 8"' };
 const burstUa = (i: number) =>
@@ -214,6 +215,27 @@ describe('ingestion comparison scenario', () => {
     await pageView(UA.desktop, 'https://diff.example.com/features?utm_source=twitter');
     at(3700);
     await send('/l', UA.desktop, {});
+    await idle();
+
+    // Phase 3b: an anonymous visit that logs into an existing user without an active session
+    // (alice's last activity was more than 30 minutes ago).
+    await expireHubSessions();
+    at(6000);
+    await pageView(
+      UA.edge,
+      'https://diff.example.com/landing?utm_source=newsletter',
+      {},
+      {
+        'v-referrer': 'https://www.bing.com/',
+      },
+    );
+    at(6020);
+    await pageView(UA.edge, 'https://diff.example.com/pricing');
+    await idle();
+    at(6030);
+    await send('/i', UA.edge, { identifier: 'alice', displayName: 'Alice A.' });
+    at(6040);
+    await pageView(UA.edge, 'https://diff.example.com/account', { identifier: 'alice' });
     await idle();
 
     // Phase 4: a burst of concurrent visitors, each with several pageviews.

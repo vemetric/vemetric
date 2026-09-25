@@ -19,7 +19,7 @@ docker compose --profile test up -d redis-test
 
 Set `INGESTION_TOOLS_REDIS_URL` to use a different disposable Redis (default `redis://localhost:16389`). Telemetry export (`AXIOM_TOKEN`) is disabled for all processes the tools start.
 
-Other refs than `.` run in a git worktree under the system temp directory (`vemetric-ingestion-tools/worktrees`), created and installed on first use. Remove them with `git worktree remove <path>` or `git worktree prune` after deleting the directory.
+Other refs than `.` run in a git worktree in `~/.cache/vemetric-ingestion-tools/worktrees`, created and installed on first use. Reports and snapshots are written to `~/.cache/vemetric-ingestion-tools` as well. Remove the directory and run `git worktree prune` to clean up.
 
 ## Compare two versions
 
@@ -27,7 +27,7 @@ Other refs than `.` run in a git worktree under the system temp directory (`veme
 bun run --cwd scripts/ingestion compare -- --base main --head .
 ```
 
-`.` is the current checkout including uncommitted changes. `--replicas 3` starts three instances of every worker in the scenario to include concurrent processing. The command exits with 1 and lists the differing paths if the snapshots differ; both snapshots are kept in the temp directory for inspection.
+`.` is the current checkout including uncommitted changes. `--replicas 3` starts three instances of every worker in the scenario to include concurrent processing. The command exits with 1 and lists the differing paths if the snapshots differ; both snapshots are kept in `~/.cache/vemetric-ingestion-tools` for inspection.
 
 The scenario (`compare/scenario.integration.test.ts`) is copied into the hub tests of each version and removed afterwards. It runs the in-process hub and workers on a controlled clock, so timestamps and durations are comparable. It covers anonymous visitors on several devices, referrers and UTM tags, custom and server-side events, page leaves, identification, a user merge, new sessions after inactivity and a burst of concurrent visitors. It may only use APIs that exist in every version you compare. Before the snapshot it merges the session, device and event tables (`OPTIMIZE ... FINAL`), so it compares the settled state: reads without `FINAL` can briefly differ depending on when ClickHouse merges parts in the background, which varies between runs.
 
@@ -46,7 +46,7 @@ bun run --cwd scripts/ingestion loadtest -- --rate 1000 --duration 60 --workers 
 | `--unique`        | `0.5`   | Share of events from one-off identities (bot-like traffic without any reuse) |
 | `--drain-timeout` | `600`   | Seconds to wait for the backlog to drain after the traffic stops             |
 
-The remaining traffic comes from returning visitors with five pageviews each, at most one per second, plus a page leave. Every five seconds the tool prints the accepted rate, the backlog per queue, pending session snapshots and Redis memory. At the end it prints a report and writes it with all samples and the process logs to a directory under `vemetric-ingestion-tools`.
+The remaining traffic comes from returning visitors with five pageviews each, at most one per second, plus a page leave. Every five seconds the tool prints the accepted rate, the backlog per queue, pending session snapshots and Redis memory. At the end it prints a report and writes it with all samples and the process logs to a directory under `~/.cache/vemetric-ingestion-tools`.
 
 The report checks that the stored data matches what was sent: every accepted pageview is an event, and every identity is one user with one device and one session. The command exits with 1 if the backlog did not drain, requests failed or the data does not match.
 

@@ -13,7 +13,7 @@ import {
 } from '../../../packages/clickhouse/src/models/session';
 import { clickhouseUser } from '../../../packages/clickhouse/src/models/user';
 import { getUserFilterQueries } from '../../../packages/clickhouse/src/utils/filters';
-import { GET_OR_CREATE_SESSION, REFRESH_SESSION } from '../../hub/src/utils/session';
+import { CONTINUE_SESSION, GET_OR_CREATE_SESSION, REFRESH_SESSION } from '../../hub/src/utils/session';
 import { closeStateRedis, stateRedis } from '../src/ingestion/redis';
 import {
   bufferExistingSessionActivity,
@@ -293,6 +293,19 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
     await redis.del('test-session');
     expect(await redis.eval(REFRESH_SESSION, 1, 'test-session', ids[0] as string, 1800)).toBe(0);
     expect(await redis.exists('test-session')).toBe(0);
+  });
+
+  it('hands an anonymous session to the logged-in user only if that user has no active session', async () => {
+    const redis = stateRedis();
+    expect(await redis.eval(CONTINUE_SESSION, 2, 'anonymous', 'identified', 1800)).toBe(0);
+    await redis.set('anonymous', 'visit');
+    expect(await redis.eval(CONTINUE_SESSION, 2, 'anonymous', 'identified', 1800)).toBe(1);
+    expect(await redis.get('identified')).toBe('visit');
+    expect(await redis.ttl('identified')).toBeGreaterThan(1700);
+    // An active session of the user (e.g. on another device) is kept.
+    await redis.set('anonymous', 'other-visit');
+    expect(await redis.eval(CONTINUE_SESSION, 2, 'anonymous', 'identified', 1800)).toBe(0);
+    expect(await redis.get('identified')).toBe('visit');
   });
 
   it('freezes the first published start across reversed and duplicated updates, preserving large IDs', async () => {

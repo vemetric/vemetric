@@ -8,6 +8,7 @@ import { generateUserId, dbUserIdentificationMap } from 'database';
 import { z } from 'zod';
 import { setUserIdCookie } from './cookie';
 import { logger } from './logger';
+import { continueSession } from './session';
 import type { HonoContext } from '../types';
 
 const enableLogs = false;
@@ -147,6 +148,7 @@ export async function identifyUser(
           delay: 6000,
         },
       );
+      await continueSession(projectId, userId, newUserId);
     }
 
     // Queue enrichment for the existing user to backfill attribution data if needed

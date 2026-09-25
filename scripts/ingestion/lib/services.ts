@@ -1,11 +1,12 @@
 /* eslint-disable no-console */
-import { mkdirSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, rmSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { SQL } from 'bun';
 
 export const repoRoot = resolve(import.meta.dir, '../../..');
-export const workDir = join(tmpdir(), 'vemetric-ingestion-tools');
+// Not the system temp directory: macOS purges old files there, which breaks installed worktrees.
+export const workDir = join(homedir(), '.cache', 'vemetric-ingestion-tools');
 mkdirSync(workDir, { recursive: true });
 
 /**
@@ -135,11 +136,16 @@ export async function checkoutFor(ref: string) {
   if (ref === '.') return repoRoot;
   const sha = (await run(['git', 'rev-parse', '--verify', `${ref}^{commit}`], { cwd: repoRoot, quiet: true })).trim();
   const dir = join(workDir, 'worktrees', sha);
-  if (!(await Bun.file(join(dir, 'package.json')).exists())) {
+  // Written only after a complete install; anything else is recreated.
+  const ready = join(dir, '.ingestion-tools-ready');
+  if (!(await Bun.file(ready).exists())) {
     console.log(`Creating worktree for ${ref} (${sha.slice(0, 8)}) in ${dir}`);
+    rmSync(dir, { recursive: true, force: true });
+    await run(['git', 'worktree', 'prune'], { cwd: repoRoot, quiet: true });
     await run(['git', 'worktree', 'add', '--detach', dir, sha], { cwd: repoRoot, quiet: true });
     await run(['bun', 'install', '--frozen-lockfile'], { cwd: dir, quiet: true });
     await run(['bunx', 'prisma', 'generate'], { cwd: join(dir, 'packages/database'), quiet: true });
+    await Bun.write(ready, sha);
   }
   return dir;
 }

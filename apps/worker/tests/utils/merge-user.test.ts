@@ -28,15 +28,4 @@ describe('reassignExistingSessionsToEvents', () => {
     expect(result.sessionIdMapping).toEqual(new Map([['visit', 'older']]));
     expect(result.unmatchedSessionIds.size).toBe(0);
   });
-
-  it('leaves the events of the session the hub handed over in that session', async () => {
-    const result = await reassignExistingSessionsToEvents({
-      projectId: BigInt(1),
-      newUserId: BigInt(2),
-      existingEvents: visitEvents,
-      continuedSessionId: 'visit',
-    });
-    expect(result.sessionIdMapping.size).toBe(0);
-    expect(result.sessionsWithTimeUpdates).toEqual([]);
-  });
 });

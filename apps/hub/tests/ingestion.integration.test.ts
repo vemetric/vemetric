@@ -561,65 +561,6 @@ describe.sequential('hub ingestion integration', () => {
     }
   });
 
-  it('keeps an anonymous visit in one session when the visitor logs into an existing user', async () => {
-    const project = nextProjectContext();
-    await createProject(project);
-    const visitorAgent = 'VemetricIntegrationTests/Login';
-
-    try {
-      // An existing user without an active session: their last visit ended more than 30 minutes ago,
-      // so the merge also finds none of their sessions near this visit.
-      await identifyUser(project, 'login-user@example.com', 'Login User');
-      await waitFor('existing identified user', async () => {
-        return (await clickhouseUser.findByIdentifier(BigInt(project.projectId), 'login-user@example.com')) !== null;
-      });
-      const existingUser = (await clickhouseUser.findByIdentifier(
-        BigInt(project.projectId),
-        'login-user@example.com',
-      ))!;
-
-      const visitorHeaders = { 'user-agent': visitorAgent };
-      const landing = await requestHub(
-        '/e',
-        project,
-        { name: EventNames.PageView, url: `https://${project.domain}/landing` },
-        { ...visitorHeaders, 'v-referrer': 'https://www.google.com/' },
-      );
-      expect(landing.status).toBe(200);
-      await ingestPageView(project, { url: `https://${project.domain}/pricing`, userAgent: visitorAgent });
-      await waitForQueuesIdle();
-
-      await identifyUser(project, 'login-user@example.com', 'Login User', visitorHeaders);
-      const account = await requestHub(
-        '/e',
-        project,
-        { name: EventNames.PageView, url: `https://${project.domain}/account`, identifier: 'login-user@example.com' },
-        visitorHeaders,
-      );
-      expect(account.status).toBe(200);
-      await waitForQueuesIdle(30000);
-
-      await waitForStable('login visit merged into one session', async () => {
-        const events = await clickhouseEvent.findByUserId(BigInt(project.projectId), existingUser.id);
-        const visit = events.filter((event) => ['/landing', '/pricing', '/account'].includes(event.pathname ?? ''));
-        return visit.length === 3 && new Set(visit.map((event) => event.sessionId)).size === 1;
-      });
-
-      const events = await clickhouseEvent.findByUserId(BigInt(project.projectId), existingUser.id);
-      const visitSessionId = events.find((event) => event.pathname === '/landing')!.sessionId;
-      const sessions = await clickhouseSession.findByUserId(BigInt(project.projectId), existingUser.id);
-      const visit = sessions.find((session) => session.id === visitSessionId);
-      expect(visit).toMatchObject({
-        pathname: '/landing',
-        referrer: 'Google',
-        userIdentifier: 'login-user@example.com',
-      });
-      expect(sessions).toHaveLength(1);
-    } finally {
-      await cleanupProject(project);
-    }
-  });
-
   it('does not create duplicate users when an already identified user sends more events', async () => {
     const project = nextProjectContext();
     await createProject(project);

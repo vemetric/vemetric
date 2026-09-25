@@ -21,12 +21,10 @@ interface UserMigrationContext {
   projectId: bigint;
   newUserId: bigint;
   existingEvents: Array<ClickhouseEvent>;
-  // The session the hub handed over to the new user; its events stay in it.
-  continuedSessionId?: string;
 }
 
 export const reassignExistingSessionsToEvents = async (context: UserMigrationContext) => {
-  const { projectId, newUserId, existingEvents, continuedSessionId } = context;
+  const { projectId, newUserId, existingEvents } = context;
 
   if (!existingEvents.length)
     return {
@@ -64,7 +62,6 @@ export const reassignExistingSessionsToEvents = async (context: UserMigrationCon
 
   // we iterate through all the events and see if we can find a new session to assign it to
   for (const event of existingEvents) {
-    if (continuedSessionId && event.sessionId === continuedSessionId) continue;
     let matchedExistingSession = false;
 
     for (const newSession of newUserSessions) {

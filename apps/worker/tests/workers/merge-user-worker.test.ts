@@ -177,13 +177,4 @@ describe('merge write ordering', () => {
       'without-events',
     ]);
   });
-
-  it('passes the session the hub handed over to the matching', async () => {
-    const job = createJob();
-    job.data.continuedSessionId = 'visit';
-    await captured.run!(job, 'token');
-    expect(reassignExistingSessionsToEvents).toHaveBeenCalledWith(
-      expect.objectContaining({ continuedSessionId: 'visit' }),
-    );
-  });
 });

@@ -8,7 +8,6 @@ import { generateUserId, dbUserIdentificationMap } from 'database';
 import { z } from 'zod';
 import { setUserIdCookie } from './cookie';
 import { logger } from './logger';
-import { continueSession } from './session';
 import type { HonoContext } from '../types';
 
 const enableLogs = false;
@@ -134,8 +133,6 @@ export async function identifyUser(
 
     if (userId !== null) {
       const oldUserId = String(userId);
-      // The merge must keep the handed-over session: the user's next events continue it.
-      const continuedSessionId = await continueSession(projectId, userId, newUserId);
 
       await addToQueue(
         mergeUserQueue,
@@ -144,7 +141,6 @@ export async function identifyUser(
           oldUserId,
           newUserId: String(newUserId),
           displayName,
-          ...(continuedSessionId ? { continuedSessionId } : {}),
         },
         {
           jobId: `${String(projectId)}-${oldUserId}-${String(newUserId)}-${fiveSecondRoundedDate.toISOString()}`,

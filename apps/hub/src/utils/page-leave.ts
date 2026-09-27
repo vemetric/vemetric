@@ -22,19 +22,13 @@ export async function handlePageLeave(context: HonoContext) {
 
   await increaseRedisSessionDuration(projectId, userId, sessionId);
 
-  await addToQueue(
-    sessionQueue,
-    {
-      type: 'extend',
-      projectId: String(projectId),
-      userId: String(userId),
-      sessionId,
-      createdAt: formatClickhouseDate(new Date()),
-    },
-    {
-      // Buffered extensions are safe even when they arrive before session creation.
-    },
-  );
+  await addToQueue(sessionQueue, {
+    type: 'extend',
+    projectId: String(projectId),
+    userId: String(userId),
+    sessionId,
+    createdAt: formatClickhouseDate(new Date()),
+  });
 
   return text('', 200);
 }

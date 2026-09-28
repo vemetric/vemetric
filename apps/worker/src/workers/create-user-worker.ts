@@ -1,5 +1,5 @@
 import { EMPTY_GEO_DATA, getGeoDataFromIp } from '@vemetric/common/geo';
-import type { CreateUserQueueProps } from '@vemetric/queues/create-user-queue';
+import { createUserQueue, type CreateUserQueueProps } from '@vemetric/queues/create-user-queue';
 import { createUserQueueName } from '@vemetric/queues/queue-names';
 import { addToQueue } from '@vemetric/queues/queue-utils';
 import { updateUserQueue } from '@vemetric/queues/update-user-queue';
@@ -13,6 +13,9 @@ import { getUserFirstPageViewData } from '../utils/user';
 import { invalidateIngestionUser } from '../utils/user-cache';
 
 export async function initCreateUserWorker() {
+  // User writes read, modify and rewrite the whole row. Serialize them across replicas so parallel
+  // writes for the same user cannot overwrite each other.
+  await createUserQueue.setGlobalConcurrency(1);
   return new Worker<CreateUserQueueProps>(
     createUserQueueName,
     async (job) => {

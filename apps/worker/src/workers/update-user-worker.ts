@@ -1,5 +1,5 @@
 import { updateUserQueueName } from '@vemetric/queues/queue-names';
-import type { UpdateUserQueueProps } from '@vemetric/queues/update-user-queue';
+import { updateUserQueue, type UpdateUserQueueProps } from '@vemetric/queues/update-user-queue';
 import { Worker } from 'bullmq';
 import { clickhouseUser } from 'clickhouse';
 import { isDeepEqual } from 'remeda';
@@ -9,6 +9,8 @@ import { getUpdatedUserData } from '../utils/user';
 import { invalidateIngestionUser } from '../utils/user-cache';
 
 export async function initUpdateUserWorker() {
+  // See initCreateUserWorker: user writes are serialized across replicas.
+  await updateUserQueue.setGlobalConcurrency(1);
   return new Worker<UpdateUserQueueProps>(
     updateUserQueueName,
     async (job) => {

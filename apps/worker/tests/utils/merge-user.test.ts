@@ -28,4 +28,17 @@ describe('reassignExistingSessionsToEvents', () => {
     expect(result.sessionIdMapping).toEqual(new Map([['visit', 'older']]));
     expect(result.unmatchedSessionIds.size).toBe(0);
   });
+
+  it.each([
+    ['2026-09-04 12:35:00.000', true],
+    ['2026-09-04 12:35:01.000', false],
+  ])('treats an event at %s as within 30 minutes of the session end: %s', async (createdAt, matches) => {
+    const result = await reassignExistingSessionsToEvents({
+      projectId: BigInt(1),
+      newUserId: BigInt(2),
+      existingEvents: [{ id: 'event', sessionId: 'visit', createdAt } as ClickhouseEvent],
+    });
+    expect(result.sessionIdMapping).toEqual(matches ? new Map([['visit', 'older']]) : new Map());
+    expect(result.unmatchedSessionIds).toEqual(matches ? new Set() : new Set(['visit']));
+  });
 });

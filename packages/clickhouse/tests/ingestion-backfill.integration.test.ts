@@ -35,6 +35,7 @@ async function seed() {
     values: [
       legacySession,
       { ...legacySession, endedAt: '2026-09-01 00:02:00.000', userIdentifier: null, latitude: null },
+      // Deleted sessions and sessions without an id are not copied.
       { ...legacySession, projectId: '2', id: 'deleted', deleted: 1 },
       { ...legacySession, projectId: '3', id: '' },
     ],
@@ -45,6 +46,7 @@ async function seed() {
     values: [
       legacyDevice,
       { ...legacyDevice, createdAt: '2026-09-01 00:01:00.000', osName: 'Later' },
+      // A cancelled device is not copied.
       { ...legacyDevice, projectId: '2', id: '42' },
       { ...legacyDevice, projectId: '2', id: '42', sign: -1 },
     ],

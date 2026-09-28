@@ -8,5 +8,5 @@
     "target": "ESNext",
     "skipLibCheck": true
   },
-  "exclude": ["compare/scenario.integration.test.ts"]
+  "exclude": ["compare/scenario.ts"]
 }

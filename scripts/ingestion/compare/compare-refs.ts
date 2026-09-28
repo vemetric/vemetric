@@ -29,7 +29,7 @@ async function snapshot(side: 'base' | 'head', ref: string, redisDb: number) {
   const { clickhouseDb, databaseUrl } = await recreateDatabases(`vm_compare_${side}`, checkout);
   const out = join(workDir, `compare-${side}.json`);
   const target = join(checkout, 'apps/hub/tests', scenarioFile);
-  copyFileSync(join(import.meta.dir, 'scenario.integration.test.ts'), target);
+  copyFileSync(join(import.meta.dir, 'scenario.ts'), target);
   try {
     console.log(`[${side}] ${ref}: running scenario`);
     await run(['bunx', 'vitest', 'run', '--config', 'vitest.integration.config.ts', `tests/${scenarioFile}`], {

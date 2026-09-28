@@ -4,7 +4,8 @@
  * and workers with a fixed traffic script on a controlled clock and writes a normalized snapshot
  * of the resulting analytics state to INGESTION_COMPARE_OUT. Random ids (sessions, events,
  * devices) are replaced by stable labels, so snapshots of different versions can be diffed.
- * It only uses APIs that exist in every compared version.
+ * It only uses APIs that exist in every compared version. It clears its databases and Redis, so it
+ * refuses to run outside the disposable `vm_compare_*` databases that `compare-refs.ts` creates.
  */
 import { writeFileSync } from 'node:fs';
 import { EventNames } from '@vemetric/common/event';
@@ -102,6 +103,14 @@ describe('ingestion comparison scenario', () => {
   });
 
   it('produces a snapshot', async () => {
+    const postgresDb = process.env.DATABASE_URL && new URL(process.env.DATABASE_URL).pathname.slice(1);
+    if (
+      !process.env.CLICKHOUSE_DB?.startsWith('vm_compare_') ||
+      !postgresDb?.startsWith('vm_compare_') ||
+      !process.env.INGESTION_COMPARE_OUT
+    ) {
+      throw new Error('Run the scenario through compare-refs.ts, which provides disposable vm_compare_* databases');
+    }
     const redisUrl = process.env.REDIS_URL!;
     vi.stubGlobal('Bun', {
       readableStreamToText: async (stream: ReadableStream) => await new Response(stream).text(),

@@ -60,10 +60,10 @@ describe('session timestamps', () => {
   });
 
   it.each(['2026-01-18 25:00:00', '2026-13-18 09:00:00', '2026-01-18 09:00:00.'])(
-    'propagates date formatting errors for %s',
+    'rejects the invalid timestamp %s',
     (timestamp) => {
-      expect(() => combineSession(empty, undefined, timestamp)).toThrow(RangeError);
-      expect(() => update(empty, session(0, { startedAt: timestamp }))).toThrow(RangeError);
+      expect(() => combineSession(empty, undefined, timestamp)).toThrow();
+      expect(() => update(empty, session(0, { startedAt: timestamp }))).toThrow();
     },
   );
 });

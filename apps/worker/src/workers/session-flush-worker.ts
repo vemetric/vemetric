@@ -1,6 +1,7 @@
 import { sessionFlushQueueName } from '@vemetric/queues/queue-names';
 import { defaultQueueConnection } from '@vemetric/queues/queue-utils';
-import { Queue, Worker } from 'bullmq';
+import { sessionFlushQueue } from '@vemetric/queues/session-flush-queue';
+import { Worker } from 'bullmq';
 import { assertIngestionStateStorage, flushSessionBuffer, positiveStateInteger } from '../ingestion';
 import { queueTelemetry } from '../utils/telemetry';
 
@@ -10,20 +11,15 @@ const batchSize = positiveStateInteger('SESSION_FLUSH_BATCH_SIZE', 5000);
 
 export async function initSessionFlushWorker() {
   await assertIngestionStateStorage();
-  const queue = new Queue(sessionFlushQueueName, { connection: defaultQueueConnection, telemetry: queueTelemetry });
-  try {
-    await queue.setGlobalConcurrency(1);
-    await queue.upsertJobScheduler(
-      sessionFlushQueueName,
-      { every: 1000 },
-      {
-        name: sessionFlushQueueName,
-        opts: { attempts: 5, backoff: { type: 'exponential', delay: 1000 }, removeOnComplete: 10, removeOnFail: 100 },
-      },
-    );
-  } finally {
-    await queue.close();
-  }
+  await sessionFlushQueue.setGlobalConcurrency(1);
+  await sessionFlushQueue.upsertJobScheduler(
+    sessionFlushQueueName,
+    { every: 1000 },
+    {
+      name: sessionFlushQueueName,
+      opts: { attempts: 5, backoff: { type: 'exponential', delay: 1000 }, removeOnComplete: 10, removeOnFail: 100 },
+    },
+  );
   return new Worker(
     sessionFlushQueueName,
     async () => {

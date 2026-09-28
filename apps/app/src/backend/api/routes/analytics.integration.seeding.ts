@@ -220,7 +220,7 @@ async function truncateAnalyticsFixtureData(projectId: string): Promise<void> {
   });
 
   await clickhouseClient.command({
-    query: 'ALTER TABLE session DELETE WHERE projectId = {projectId:UInt64} SETTINGS mutations_sync = 2',
+    query: 'ALTER TABLE session_v3 DELETE WHERE projectId = {projectId:UInt64} SETTINGS mutations_sync = 2',
     query_params: { projectId },
   });
 
@@ -693,6 +693,6 @@ export async function seedAnalyticsFixtureData(context: IsolatedAnalyticsSeedCon
   ];
 
   await clickhouseUser.insert(users);
-  await clickhouseSession.insert(sessions);
+  await clickhouseSession.insertRevisions(sessions.map((session) => ({ ...session, revision: '1', deleted: 0 })));
   await clickhouseEvent.insert(events);
 }

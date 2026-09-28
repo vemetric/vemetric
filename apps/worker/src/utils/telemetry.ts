@@ -6,6 +6,8 @@ import { defaultQueueConnection } from '@vemetric/queues/queue-utils';
 import { Queue } from 'bullmq';
 import { BullMQOtel } from 'bullmq-otel';
 import { logger } from './logger';
+import { parseRedisMemoryInfo } from './redis-info';
+import { stateRedis } from '../ingestion/redis';
 import { pendingSessionStats } from '../ingestion/session-flush';
 
 const axiomToken = process.env.AXIOM_TOKEN;
@@ -47,7 +49,8 @@ if (axiomToken) {
 /**
  * Pending session snapshots and the age of the oldest one. Every replica reports the same
  * Redis-wide values, so aggregate them with max. A growing age means the flusher is not
- * writing sessions to ClickHouse.
+ * writing sessions to ClickHouse. Redis memory is reported the same way: Redis runs with
+ * `noeviction`, so writes (queue jobs, session state) fail once it reaches `maxmemory`.
  */
 function registerIngestionGauges() {
   const meter = metrics.getMeter('vemetric-ingestion');
@@ -69,6 +72,28 @@ function registerIngestionGauges() {
       }
     },
     [pending, oldestAge],
+  );
+
+  const usedMemory = meter.createObservableGauge('vemetric.redis.used_memory', {
+    description: 'Bytes of memory used by Redis',
+    unit: 'By',
+  });
+  const memoryRatio = meter.createObservableGauge('vemetric.redis.memory_ratio', {
+    description: 'Used Redis memory as a share of maxmemory (not reported without a limit)',
+  });
+  meter.addBatchObservableCallback(
+    async (result) => {
+      try {
+        const memory = parseRedisMemoryInfo(await stateRedis().info('memory'));
+        result.observe(usedMemory, memory.usedMemory);
+        if (memory.memoryRatio !== undefined) {
+          result.observe(memoryRatio, memory.memoryRatio);
+        }
+      } catch (err) {
+        logger.error({ err }, 'Failed to read Redis memory metrics');
+      }
+    },
+    [usedMemory, memoryRatio],
   );
 }
 

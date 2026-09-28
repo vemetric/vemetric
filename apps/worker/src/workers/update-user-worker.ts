@@ -9,7 +9,7 @@ import { getUpdatedUserData } from '../utils/user';
 import { invalidateIngestionUser } from '../utils/user-cache';
 
 export async function initUpdateUserWorker() {
-  // See initCreateUserWorker: user writes are serialized across replicas.
+  // One job at a time across replicas, as with the single worker today (see initCreateUserWorker).
   await updateUserQueue.setGlobalConcurrency(1);
   return new Worker<UpdateUserQueueProps>(
     updateUserQueueName,

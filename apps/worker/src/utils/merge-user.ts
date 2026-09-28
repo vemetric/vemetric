@@ -26,12 +26,14 @@ interface UserMigrationContext {
 export const reassignExistingSessionsToEvents = async (context: UserMigrationContext) => {
   const { projectId, newUserId, existingEvents } = context;
 
-  if (!existingEvents.length)
+  if (!existingEvents.length) {
     return {
       sessionsWithTimeUpdates: [],
       sessionIdMapping: new Map<string, string>(),
       unmatchedSessionIds: new Set<string>(),
     };
+  }
+
   const eventTimes = existingEvents.map((e) => new Date(clickhouseDateToISO(e.createdAt)).getTime());
   const minEventTime = Math.min(...eventTimes);
   const maxEventTime = Math.max(...eventTimes);

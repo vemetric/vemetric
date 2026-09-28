@@ -1,8 +1,6 @@
-import { createLogger } from '@vemetric/logger';
 import Redis from 'ioredis';
 import { registerIngestionCommands, type IngestionCommands } from './session-redis-commands';
-
-const logger = createLogger('ingestion-state');
+import { logger } from '../utils/logger';
 
 let client: (Redis & IngestionCommands) | undefined;
 export function stateRedis() {

@@ -1,12 +1,10 @@
-import { createLogger } from '@vemetric/logger';
 import { clickhouseSession, type SessionRevisionRow } from 'clickhouse';
 import type { ChainableCommander } from 'ioredis';
 import { stateRedis } from './redis';
 import { sessionKeyPrefix, userIndexPrefix, type IngestionCommands } from './session-redis-commands';
 import type { SessionState, StoredSession } from './session-state';
 import { envPositiveInteger } from '../utils/env';
-
-const logger = createLogger('ingestion-state');
+import { logger } from '../utils/logger';
 
 const dirtyKey = `${sessionKeyPrefix}dirty`;
 export const cleanTtl = envPositiveInteger('SESSION_STATE_CACHE_TTL_SECONDS', 120);

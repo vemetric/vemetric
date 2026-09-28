@@ -1,8 +1,6 @@
+/* eslint-disable no-console -- a manual command-line tool; its output belongs in the terminal, also where AXIOM_TOKEN is set */
 import { createClient } from '@clickhouse/client-web';
-import { createLogger } from '@vemetric/logger';
 import { backfillIngestion } from '../ingestion-backfill';
-
-const logger = createLogger('ingestion-backfill');
 
 async function main() {
   if (process.argv.slice(2).join(' ') !== '--writers-stopped') {
@@ -19,13 +17,13 @@ async function main() {
     clickhouse_settings: { output_format_json_quote_64bit_integers: 1 },
   });
   try {
-    await backfillIngestion(client, { writersStopped: true, progress: (message) => logger.info(message) });
+    await backfillIngestion(client, { writersStopped: true, progress: (message) => console.log(message) });
   } finally {
     await client.close();
   }
 }
 
 main().catch((error: unknown) => {
-  logger.error({ err: error }, 'Ingestion backfill failed');
+  console.error('Ingestion backfill failed:', error);
   process.exitCode = 1;
 });

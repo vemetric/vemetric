@@ -1,6 +1,7 @@
 import type { ClickhouseUser } from 'clickhouse';
 import { clickhouseUser } from 'clickhouse';
-import { positiveStateInteger, stateRedis } from '../ingestion';
+import { stateRedis } from '../ingestion';
+import { envPositiveInteger } from './env';
 
 // Only the user fields event and session enrichment read.
 export type IngestionUser = Pick<
@@ -8,7 +9,7 @@ export type IngestionUser = Pick<
   'identifier' | 'displayName' | 'countryCode' | 'city' | 'latitude' | 'longitude'
 >;
 
-const cacheTtl = positiveStateInteger('USER_CACHE_TTL_SECONDS', 60);
+const cacheTtl = envPositiveInteger('USER_CACHE_TTL_SECONDS', 60);
 // Blocks caching briefly after a user write, so a lookup that read ClickHouse before
 // the write cannot store its stale result afterwards.
 const INVALIDATED = '-';

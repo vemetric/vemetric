@@ -3,8 +3,8 @@ import { createDeviceQueue } from '@vemetric/queues/create-device-queue';
 import { createDeviceQueueName } from '@vemetric/queues/queue-names';
 import { Worker } from 'bullmq';
 import { getDeviceId } from 'clickhouse';
-import { workerConcurrency } from '../utils/concurrency';
 import { getDeviceDataFromHeaders, insertDeviceIfNotExists } from '../utils/device';
+import { envPositiveInteger } from '../utils/env';
 import { logJobStep } from '../utils/job-logger';
 import { queueTelemetry } from '../utils/telemetry';
 
@@ -42,7 +42,7 @@ export async function initDeviceWorker() {
         url: process.env.REDIS_URL,
       },
       telemetry: queueTelemetry,
-      concurrency: workerConcurrency('DEVICE_WORKER_CONCURRENCY', 200),
+      concurrency: envPositiveInteger('DEVICE_WORKER_CONCURRENCY', 200),
       removeOnComplete: {
         count: 1000,
       },

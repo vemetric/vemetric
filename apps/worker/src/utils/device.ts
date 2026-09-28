@@ -1,7 +1,8 @@
 import type { DeviceData } from 'clickhouse';
 import { clickhouseDevice } from 'clickhouse';
 import { UAParser } from 'ua-parser-js';
-import { stateRedis, positiveStateInteger } from '../ingestion';
+import { stateRedis } from '../ingestion';
+import { envPositiveInteger } from './env';
 import { logJobStep } from './job-logger';
 
 export const UNKNOWN = 'Unknown';
@@ -82,5 +83,5 @@ export async function insertDeviceIfNotExists(
       deviceType: deviceData.deviceType,
     },
   ]);
-  await stateRedis().set(key, '1', 'EX', positiveStateInteger('DEVICE_CACHE_TTL_SECONDS', 120));
+  await stateRedis().set(key, '1', 'EX', envPositiveInteger('DEVICE_CACHE_TTL_SECONDS', 120));
 }

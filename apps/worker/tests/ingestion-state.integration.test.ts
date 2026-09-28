@@ -322,7 +322,7 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
     await bufferSessionUpdate(projectId, 'leave-first', at(60));
     const ttl = await stateRedis().ttl(key);
     expect(ttl).toBeGreaterThan(0);
-    expect(ttl).toBeLessThanOrEqual(Number(process.env.SESSION_STATE_CACHE_TTL_SECONDS ?? 300));
+    expect(ttl).toBeLessThanOrEqual(Number(process.env.SESSION_STATE_CACHE_TTL_SECONDS ?? 120));
     expect(await stateRedis().zcard('vm:{session-state}:dirty')).toBe(0);
     const insert = vi.spyOn(clickhouseClient, 'insert');
     expect(await flushSessionBuffer()).toBe(0);

@@ -4,15 +4,6 @@ import { registerIngestionCommands, type IngestionCommands } from './session-red
 
 const logger = createLogger('ingestion-state');
 
-export function positiveStateInteger(name: string, fallback: number) {
-  const value = Number(process.env[name] ?? fallback);
-  if (!Number.isSafeInteger(value) || value < 1) {
-    logger.error(`Environment variable ${name} must be a positive integer, but got: ${process.env[name]}`);
-    return fallback;
-  }
-  return value;
-}
-
 let client: (Redis & IngestionCommands) | undefined;
 export function stateRedis() {
   if (!client) {

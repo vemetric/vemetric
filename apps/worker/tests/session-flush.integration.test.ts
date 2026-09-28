@@ -5,7 +5,6 @@ import { initSessionFlushWorker } from '../src/workers/session-flush-worker';
 
 vi.mock('../src/ingestion', () => ({
   flushSessionBuffer: vi.fn().mockResolvedValue(0),
-  positiveStateInteger: (_name: string, fallback: number) => fallback,
 }));
 
 describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('session flush scheduling against Redis', () => {

@@ -130,8 +130,10 @@ export async function reassignBufferedSession(
     if (state.deleted) return;
     // Recheck inside the CAS loop; never assign ownership to an unfinished session.
     if (!state.session) throw new Error('Session is not initialized for merge');
-    const next = structuredClone(state);
-    Object.assign(next.session!, { userId: String(userId), userIdentifier: identifier, userDisplayName: displayName });
+    const next: SessionState = {
+      ...state,
+      session: { ...state.session, userId: String(userId), userIdentifier: identifier, userDisplayName: displayName },
+    };
     if (JSON.stringify(next) === raw) return;
     if (await sessionStore.commitIfUnchanged([{ key, raw, state: next }])) return;
   }

@@ -31,10 +31,13 @@ export async function initSessionWorker() {
         await bufferSessionUpdate(projectId, sessionId, createdAt);
         return;
       }
+
       const activity = await bufferExistingSessionActivity(projectId, sessionId, createdAt, job.data.geoData, {
         knownNew: job.data.isNewSession,
       });
+
       if (activity === 'buffered') return;
+
       // A later event of a new session overtook the event that created it. Wait for that event, so it
       // sets the session start and entry data as sequential processing did. After the wait (e.g. the
       // creating job failed permanently) this event creates the session itself.
@@ -46,50 +49,49 @@ export async function initSessionWorker() {
         await job.moveToDelayed(Date.now() + CREATING_EVENT_RECHECK_MS, token);
         throw new DelayedError();
       }
-      {
-        const { ipAddress, geoData, headers, url, reqIdentifier, reqDisplayName } = job.data;
 
-        await logJobStep(job, 'before findIngestionUser');
-        const user = await findIngestionUser(projectId, userId);
-        await logJobStep(job, user ? 'after findIngestionUser found' : 'after findIngestionUser missing');
-        const userIdentifier = user?.identifier ?? reqIdentifier;
-        const userDisplayName = user?.displayName ?? reqDisplayName;
+      const { ipAddress, geoData, headers, url, reqIdentifier, reqDisplayName } = job.data;
 
-        const userAgent = headers['user-agent'];
-        await logJobStep(job, 'before getReferrerFromRequest');
-        const referrer = await getReferrerFromRequest(projectId, headers, url, job.data.projectDomain);
-        await logJobStep(job, 'after getReferrerFromRequest');
-        const urlParams = getUrlParams(url);
+      await logJobStep(job, 'before findIngestionUser');
+      const user = await findIngestionUser(projectId, userId);
+      await logJobStep(job, user ? 'after findIngestionUser found' : 'after findIngestionUser missing');
+      const userIdentifier = user?.identifier ?? reqIdentifier;
+      const userDisplayName = user?.displayName ?? reqDisplayName;
 
-        await logJobStep(job, 'before getDeviceDataFromHeaders');
-        const deviceData = await getDeviceDataFromHeaders(headers);
-        await logJobStep(job, 'after getDeviceDataFromHeaders');
+      const userAgent = headers['user-agent'];
+      await logJobStep(job, 'before getReferrerFromRequest');
+      const referrer = await getReferrerFromRequest(projectId, headers, url, job.data.projectDomain);
+      await logJobStep(job, 'after getReferrerFromRequest');
+      const urlParams = getUrlParams(url);
 
-        await logJobStep(job, geoData || !ipAddress ? 'before getSessionData' : 'before getGeoDataFromIp');
-        const sessionData = await getSessionData(
-          geoData || (ipAddress ? await getGeoDataFromIp(ipAddress, logger, 5000) : undefined),
-          user,
-          deviceData,
-        );
-        await logJobStep(job, 'after getSessionData');
+      await logJobStep(job, 'before getDeviceDataFromHeaders');
+      const deviceData = await getDeviceDataFromHeaders(headers);
+      await logJobStep(job, 'after getDeviceDataFromHeaders');
 
-        await logJobStep(job, 'before bufferSessionUpdate');
-        await bufferSessionUpdate(projectId, sessionId, createdAt, {
-          projectId,
-          userId,
-          userIdentifier,
-          userDisplayName,
-          id: sessionId,
-          startedAt: createdAt,
-          endedAt: createdAt,
-          duration: 0,
-          ...sessionData,
-          ...urlParams,
-          userAgent,
-          ...referrer,
-        });
-        await logJobStep(job, 'session update buffered');
-      }
+      await logJobStep(job, geoData || !ipAddress ? 'before getSessionData' : 'before getGeoDataFromIp');
+      const sessionData = await getSessionData(
+        geoData || (ipAddress ? await getGeoDataFromIp(ipAddress, logger, 5000) : undefined),
+        user,
+        deviceData,
+      );
+      await logJobStep(job, 'after getSessionData');
+
+      await logJobStep(job, 'before bufferSessionUpdate');
+      await bufferSessionUpdate(projectId, sessionId, createdAt, {
+        projectId,
+        userId,
+        userIdentifier,
+        userDisplayName,
+        id: sessionId,
+        startedAt: createdAt,
+        endedAt: createdAt,
+        duration: 0,
+        ...sessionData,
+        ...urlParams,
+        userAgent,
+        ...referrer,
+      });
+      await logJobStep(job, 'session update buffered');
     },
     {
       connection: {

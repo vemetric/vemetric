@@ -42,7 +42,8 @@ CREATE TABLE IF NOT EXISTS session_v3 (
     INDEX user_id_idx userId TYPE bloom_filter(0.01) GRANULARITY 1
 ) ENGINE = ReplacingMergeTree(revision)
 ORDER BY (projectId, startedAt, id)
-PARTITION BY toYYYYMM(startedAt);
+PARTITION BY toYYYYMM(startedAt)
+SETTINGS index_granularity = 8192;
 
 CREATE TABLE IF NOT EXISTS device_v2 (
     projectId UInt64,
@@ -59,4 +60,5 @@ CREATE TABLE IF NOT EXISTS device_v2 (
     revision UInt64,
     deleted Int8 DEFAULT 0
 ) ENGINE = ReplacingMergeTree(revision)
-ORDER BY (projectId, userId, id);
+ORDER BY (projectId, userId, id)
+SETTINGS index_granularity = 8192;

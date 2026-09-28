@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 /**
- * Read-only production check before the concurrent-ingestion rollout. Prints settings, versions,
+ * Read-only production check. Prints settings, versions,
  * table sizes and anonymized volume numbers as JSON; it reads no customer data (no ids, URLs or
  * identifiers) and never writes. See scripts/ingestion/README.md.
  *
@@ -56,18 +56,24 @@ const clickhouseChecks = {
   migrations: `SELECT version, migration_name FROM _migrations ORDER BY version`,
   disks: `SELECT name, formatReadableSize(free_space) AS free, formatReadableSize(total_space) AS total FROM system.disks`,
   sessionPartitions: `SELECT partition, sum(rows) AS rows, formatReadableSize(sum(bytes_on_disk)) AS size
-    FROM system.parts WHERE active AND database = currentDatabase() AND table = 'session' GROUP BY partition ORDER BY partition`,
-  // Rows per logical session show how many unmerged revisions the reads aggregate.
-  sessionsLast90Days: `SELECT toYYYYMM(startedAt) AS month, count() AS rows, uniq(id) AS sessions
-    FROM session WHERE startedAt >= now() - INTERVAL 90 DAY GROUP BY month ORDER BY month`,
+    FROM system.parts WHERE active AND database = currentDatabase() AND table = 'session_v3' GROUP BY partition ORDER BY partition`,
+  // Rows per logical session show how many unmerged revisions (and tombstones) the reads aggregate.
+  // FINAL with deleted = 0 counts each live session once, like the dashboard reads.
+  sessionsLast90Days: `SELECT month, rows, sessions
+    FROM (SELECT toYYYYMM(startedAt) AS month, count() AS rows FROM session_v3
+      WHERE startedAt >= now() - INTERVAL 90 DAY GROUP BY month)
+    JOIN (SELECT toYYYYMM(startedAt) AS month, count() AS sessions FROM session_v3 FINAL
+      WHERE startedAt >= now() - INTERVAL 90 DAY AND deleted = 0 GROUP BY month) USING month
+    ORDER BY month`,
   // Anonymized: counts of the ten largest projects, no project ids.
-  largestProjectsSessions30Days: `SELECT uniq(id) AS sessions, uniq(userId) AS users FROM session
-    WHERE startedAt >= now() - INTERVAL 30 DAY GROUP BY projectId ORDER BY sessions DESC LIMIT 10`,
+  largestProjectsSessions30Days: `SELECT count() AS sessions, uniq(userId) AS users FROM session_v3 FINAL
+    WHERE startedAt >= now() - INTERVAL 30 DAY AND deleted = 0 GROUP BY projectId ORDER BY sessions DESC LIMIT 10`,
   largestProjectsEvents30Days: `SELECT count() AS events FROM event
     WHERE createdAt >= now() - INTERVAL 30 DAY GROUP BY projectId ORDER BY events DESC LIMIT 10`,
   busiestDays30Days: `SELECT toDate(createdAt) AS day, count() AS events FROM event
     WHERE createdAt >= now() - INTERVAL 30 DAY GROUP BY day ORDER BY events DESC LIMIT 3`,
-  devices: `SELECT count() AS rows, uniq(projectId, userId, id) AS devices FROM device`,
+  devices: `SELECT (SELECT count() FROM device_v2) AS rows,
+    (SELECT count() FROM device_v2 FINAL WHERE deleted = 0) AS devices`,
 };
 
 const results: Record<string, unknown> = {};

@@ -5,7 +5,6 @@ Tools to check ingestion changes before they reach production:
 - **`compare`** runs one fixed traffic scenario through two code versions and diffs the resulting analytics data (sessions, devices, users, events, dashboard queries). Use it to confirm that a change produces the same results.
 - **`loadtest`** starts a hub and N worker processes locally, sends traffic over HTTP at a fixed rate and reports throughput, backlog, Redis memory and whether all sent data was stored. Use it to find where a version saturates.
 - **`benchmark`** generates session, device, event and user data at a chosen scale and runs the dashboard queries of two versions against it. Use it to catch slower or more memory-hungry queries.
-- **`prod-check`** reads settings, versions and anonymized sizes from production, read-only. Its output sizes the benchmark.
 
 ## Setup
 
@@ -51,7 +50,7 @@ The remaining traffic comes from returning visitors with five pageviews each, at
 
 The report checks that the stored data matches what was sent: every accepted pageview is an event, and every identity is one user with one device and one session. The command exits with 1 if the backlog did not drain, requests failed or the data does not match.
 
-Everything runs on one machine, so the hub, the workers, Redis and ClickHouse compete for the same CPU. Use the numbers to compare versions and worker counts with each other, not as production capacity. For older versions whose worker has a fixed health-check port, use `--workers 1`.
+Everything runs on one machine, so the hub, the workers, Redis and ClickHouse compete for the same CPU. Use the numbers to compare versions and worker counts with each other, not as production capacity.
 
 ## Query benchmark
 
@@ -60,19 +59,3 @@ bun run --cwd scripts/ingestion benchmark -- --sessions 3000000 --months 3 --bas
 ```
 
 It creates `vm_loadtest_benchmark`, generates `--sessions` sessions over `--months` months with events, devices and identified users (`--largest-share` of them in one project, which every query targets), and adds two unmerged revisions to last week's sessions, like live traffic. It then runs each dashboard query `--runs` times with the model code of `--base` and of the current checkout, and prints median duration, peak memory (from `system.query_log`) and result sizes. `--reuse-data` skips the generation for repeated runs.
-
-## Production check
-
-`prod-check` only reads: ClickHouse queries go over HTTP GET, which ClickHouse always runs read-only, and Redis only receives `INFO`, `CONFIG GET` and key-count commands. The output contains settings, versions, table sizes and counts for the ten largest projects without their ids, no customer data. For extra safety, create a dedicated read-only user:
-
-```sql
-CREATE USER vemetric_check IDENTIFIED BY '<password>' SETTINGS readonly = 1;
-GRANT SELECT ON vemetric.* TO vemetric_check;
-```
-
-Then run it from a machine that can reach production:
-
-```sh
-PROD_CHECK_CLICKHOUSE_URL=https://... PROD_CHECK_CLICKHOUSE_USER=vemetric_check PROD_CHECK_CLICKHOUSE_PASSWORD=... \
-PROD_CHECK_CLICKHOUSE_DB=vemetric PROD_CHECK_REDIS_URL=redis://... bun run --cwd scripts/ingestion prod-check > prod-check.json
-```

@@ -87,7 +87,7 @@ Database packages:
 - **Frontend Testing**: React Testing Library + jsdom
 - **Run tests**: `bun run test` (all) or `cd apps/[app] && bun run test` (specific)
 - **Ingestion state integration tests** (worker, clickhouse): need `INGESTION_STATE_TESTS=1`, disposable ClickHouse and PostgreSQL databases named `vm_concurrency_test_*` (with migrations applied) and the test Redis on port 16389 (`docker compose --profile test up -d redis-test`); pass `CLICKHOUSE_DB`, `DATABASE_URL` and `REDIS_URL` accordingly. They clear their data.
-- **Ingestion tools** (`scripts/ingestion`): compare two versions' analytics results, load test, benchmark queries, check production read-only; see its README.
+- **Ingestion tools** (`scripts/ingestion`): compare two versions' analytics results, load test, benchmark queries; see its README.
 
 ## Build & Deployment
 

@@ -8,6 +8,7 @@ import { logJobStep } from './job-logger';
 export const UNKNOWN = 'Unknown';
 
 const TABLET_REGEX = /ipad|android(?!.*mobile)|tablet/i;
+const deviceCacheTtl = envPositiveInteger('DEVICE_CACHE_TTL_SECONDS', 120);
 
 export async function getDeviceDataFromHeaders(headers: Record<string, string>): Promise<DeviceData> {
   const plainResult = UAParser(headers);
@@ -83,5 +84,5 @@ export async function insertDeviceIfNotExists(
       deviceType: deviceData.deviceType,
     },
   ]);
-  await stateRedis().set(key, '1', 'EX', envPositiveInteger('DEVICE_CACHE_TTL_SECONDS', 120));
+  await stateRedis().set(key, '1', 'EX', deviceCacheTtl);
 }

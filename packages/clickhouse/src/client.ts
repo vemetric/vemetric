@@ -46,9 +46,6 @@ export const clickhouseClient = createClient({
     // ClickHouse 26 can return UInt64 values as JSON numbers. IDs exceed JS' safe
     // integer range, so force quoted integers before parsing them into BigInt.
     output_format_json_quote_64bit_integers: 1,
-    // Rows that replace each other always share a partition (a session's startedAt never
-    // changes), so FINAL can resolve each partition independently: much faster, same result.
-    do_not_merge_across_partitions_select_final: 1,
   },
   log: {
     LoggerClass: CustomLogger,

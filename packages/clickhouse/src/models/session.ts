@@ -143,7 +143,8 @@ export function currentSessionRows(projectId: bigint, { ids, startDate, endDate 
     ) WHERE deleted = 0)`;
   }
   // Date ranges: FINAL resolves the highest revision per session. Revisions of a session never
-  // change its startedAt (and so its partition), which lets the client skip merging across partitions.
+  // change its startedAt (and so its partition), so ClickHouse resolves FINAL per partition
+  // (enable_automatic_decision_for_merging_across_partitions_for_final, on by default).
   // `deleted = 0` must apply after FINAL, which is ClickHouse's default
   // (optimize_move_to_prewhere_if_final = 0); enabling that setting would show deleted sessions.
   return `(SELECT ${SESSION_KEY_SELECTOR}

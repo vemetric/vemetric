@@ -48,7 +48,7 @@ const clickhouseChecks = {
   version: `SELECT version() AS version`,
   settings: `SELECT name, value, changed FROM system.settings
     WHERE name LIKE 'async_insert%' OR name IN ('wait_for_async_insert', 'insert_deduplicate', 'max_memory_usage',
-      'max_execution_time', 'optimize_move_to_prewhere_if_final', 'do_not_merge_across_partitions_select_final')`,
+      'max_execution_time', 'optimize_move_to_prewhere_if_final', 'enable_automatic_decision_for_merging_across_partitions_for_final')`,
   serverSettings: `SELECT name, value FROM system.server_settings
     WHERE name IN ('max_concurrent_queries', 'max_concurrent_insert_queries', 'max_server_memory_usage')`,
   tables: `SELECT name, engine_full, total_rows, formatReadableSize(total_bytes) AS size

@@ -7,6 +7,7 @@ import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
 import { enrichUserQueue } from '@vemetric/queues/enrich-user-queue';
 import { eventQueue } from '@vemetric/queues/event-queue';
 import { mergeUserQueue } from '@vemetric/queues/merge-user-queue';
+import { sessionFlushQueue } from '@vemetric/queues/session-flush-queue';
 import { sessionQueue } from '@vemetric/queues/session-queue';
 import { updateUserQueue } from '@vemetric/queues/update-user-queue';
 import { Hono } from 'hono';
@@ -49,6 +50,7 @@ createBullBoard({
     new BullMQAdapter(createDeviceQueue),
     new BullMQAdapter(eventQueue),
     new BullMQAdapter(sessionQueue),
+    new BullMQAdapter(sessionFlushQueue),
     new BullMQAdapter(emailDripQueue),
   ],
   serverAdapter,

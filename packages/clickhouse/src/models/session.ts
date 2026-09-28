@@ -110,6 +110,8 @@ const EXAMPLE_SESSION: Required<ClickhouseSession> = {
 const SESSION_KEYS = Object.keys(EXAMPLE_SESSION) as Array<keyof ClickhouseSession>;
 const SESSION_KEY_SELECTOR = SESSION_KEYS.join(',');
 const BIGINT_KEYS = SESSION_KEYS.filter((key) => typeof EXAMPLE_SESSION[key] === 'bigint');
+// Stored as JSON strings. Listed explicitly: nullable columns like latitude also have an object-typed example value.
+const JSON_KEYS: Array<keyof ClickhouseSession> = ['queryParams'];
 
 export interface CurrentSessionRowsOptions {
   // Either explicit ids or a subquery that yields candidate ids (used for per-user lookups so the
@@ -171,8 +173,8 @@ function mapRowToSession(row: any): ClickhouseSession {
 
   SESSION_KEYS.forEach((key) => {
     const keyValue = row[key];
-    if (key === 'queryParams') {
-      session.queryParams = keyValue ? JSON.parse(keyValue) : undefined;
+    if (JSON_KEYS.includes(key)) {
+      (session as any)[key] = keyValue ? JSON.parse(keyValue) : undefined;
     } else if (BIGINT_KEYS.includes(key)) {
       (session as any)[key] = BigInt(keyValue);
     } else {

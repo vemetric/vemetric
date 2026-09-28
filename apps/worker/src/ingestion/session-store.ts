@@ -2,18 +2,17 @@ import { createLogger } from '@vemetric/logger';
 import { clickhouseSession, type SessionRevisionRow } from 'clickhouse';
 import type { ChainableCommander } from 'ioredis';
 import { stateRedis } from './redis';
-import type { IngestionCommands } from './session-redis-commands';
+import { sessionKeyPrefix, userIndexPrefix, type IngestionCommands } from './session-redis-commands';
 import type { SessionState, StoredSession } from './session-state';
 import { envPositiveInteger } from '../utils/env';
 
 const logger = createLogger('ingestion-state');
 
-export const sessionKeyPrefix = 'vm:{session-state}:';
 const dirtyKey = `${sessionKeyPrefix}dirty`;
 export const cleanTtl = envPositiveInteger('SESSION_STATE_CACHE_TTL_SECONDS', 120);
 export const sessionKey = (projectId: bigint | string, id: string) => `${sessionKeyPrefix}${projectId}:${id}`;
 export const sessionUserKey = (projectId: bigint | string, userId: bigint | string) =>
-  `${sessionKeyPrefix}user:${projectId}:${userId}`;
+  `${userIndexPrefix}${projectId}:${userId}`;
 
 export interface SessionSnapshot {
   key: string;

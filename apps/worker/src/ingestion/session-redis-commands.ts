@@ -1,5 +1,9 @@
 import type Redis from 'ioredis';
 
+export const sessionKeyPrefix = 'vm:{session-state}:';
+// The scripts build user index keys themselves; sessionUserKey must produce the same ones.
+export const userIndexPrefix = `${sessionKeyPrefix}user:`;
+
 // These commands only enforce atomic storage changes. Session calculations stay in TypeScript.
 // Dynamic key count: the dirty set followed by every session participating in the update.
 const commitSessions = `
@@ -10,13 +14,13 @@ for i=2,#KEYS do
   local old = redis.call('GET', KEYS[i])
   if old then
     local s = cjson.decode(old).session
-    if s then redis.call('SREM', 'vm:{session-state}:user:'..s.projectId..':'..s.userId, KEYS[i]) end
+    if s then redis.call('SREM', '${userIndexPrefix}'..s.projectId..':'..s.userId, KEYS[i]) end
   end
   local value = ARGV[(i-2)*2+2]
   redis.call('SET', KEYS[i], value)
   local state = cjson.decode(value)
   local s = state.session
-  if s then redis.call('SADD', 'vm:{session-state}:user:'..s.projectId..':'..s.userId, KEYS[i]) end
+  if s then redis.call('SADD', '${userIndexPrefix}'..s.projectId..':'..s.userId, KEYS[i]) end
   if s or state.deleted then
     redis.call('ZADD', KEYS[1], 'NX', ARGV[#ARGV-1], KEYS[i])
   else
@@ -37,7 +41,7 @@ end
 redis.call('ZREM', KEYS[2], KEYS[1])
 redis.call('EXPIRE', KEYS[1], ARGV[2])
 local s = cjson.decode(ARGV[1]).session
-if s then redis.call('SREM', 'vm:{session-state}:user:'..s.projectId..':'..s.userId, KEYS[1]) end
+if s then redis.call('SREM', '${userIndexPrefix}'..s.projectId..':'..s.userId, KEYS[1]) end
 return 1`;
 
 export interface IngestionCommands {

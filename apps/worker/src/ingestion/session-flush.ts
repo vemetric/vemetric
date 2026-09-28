@@ -1,6 +1,7 @@
 import { clickhouseSession, type ClickhouseSession } from 'clickhouse';
 import { bufferSessionUpdate } from './session-buffer';
-import { sessionKey, sessionKeyPrefix, sessionStore } from './session-store';
+import { sessionKeyPrefix } from './session-redis-commands';
+import { sessionKey, sessionStore } from './session-store';
 
 // One scheduled worker drains batches. Revisioned writes also tolerate a stalled job resuming late.
 export async function flushSessionBuffer(limit = 500, onlyKeys?: string[]) {

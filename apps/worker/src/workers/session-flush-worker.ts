@@ -2,7 +2,7 @@ import { sessionFlushQueueName } from '@vemetric/queues/queue-names';
 import { defaultQueueConnection } from '@vemetric/queues/queue-utils';
 import { sessionFlushQueue } from '@vemetric/queues/session-flush-queue';
 import { Worker } from 'bullmq';
-import { assertIngestionStateStorage, flushSessionBuffer, positiveStateInteger } from '../ingestion';
+import { flushSessionBuffer, positiveStateInteger } from '../ingestion';
 import { queueTelemetry } from '../utils/telemetry';
 
 // ClickHouse favors few large inserts, so a single flusher writes big batches instead of
@@ -10,7 +10,6 @@ import { queueTelemetry } from '../utils/telemetry';
 const batchSize = positiveStateInteger('SESSION_FLUSH_BATCH_SIZE', 5000);
 
 export async function initSessionFlushWorker() {
-  await assertIngestionStateStorage();
   await sessionFlushQueue.setGlobalConcurrency(1);
   await sessionFlushQueue.upsertJobScheduler(
     sessionFlushQueueName,

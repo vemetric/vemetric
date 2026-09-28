@@ -47,7 +47,6 @@ vi.mock('clickhouse', () => ({
   getDeviceId: () => BigInt(3),
 }));
 vi.mock('../../src/ingestion', () => ({
-  assertIngestionStateStorage: vi.fn().mockResolvedValue(undefined),
   getBufferedSessions: vi.fn().mockResolvedValue([]),
   findPendingSession: vi.fn(),
   reassignBufferedSession: vi.fn(),

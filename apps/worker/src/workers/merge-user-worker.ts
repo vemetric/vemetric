@@ -6,7 +6,6 @@ import { clickhouseDevice, clickhouseEvent, clickhouseSession, clickhouseUser, g
 import { dbUserIdentificationMap } from 'database';
 import {
   persistSessionUpdates,
-  assertIngestionStateStorage,
   getBufferedSessions,
   findPendingSession,
   reassignBufferedSession,
@@ -21,7 +20,6 @@ const SESSION_RECHECK_DELAY_MS = 5_000;
 const MAX_SESSION_WAIT_MS = 5 * 60 * 1_000;
 
 export async function initMergeUserWorker() {
-  await assertIngestionStateStorage();
   // Serialize rare identity changes; device/session ingestion remains concurrent.
   await mergeUserQueue.setGlobalConcurrency(1);
   return new Worker<MergeUserQueueProps>(

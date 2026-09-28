@@ -3,14 +3,12 @@ import { createDeviceQueue } from '@vemetric/queues/create-device-queue';
 import { createDeviceQueueName } from '@vemetric/queues/queue-names';
 import { Worker } from 'bullmq';
 import { getDeviceId } from 'clickhouse';
-import { assertIngestionStateStorage } from '../ingestion';
 import { workerConcurrency } from '../utils/concurrency';
 import { getDeviceDataFromHeaders, insertDeviceIfNotExists } from '../utils/device';
 import { logJobStep } from '../utils/job-logger';
 import { queueTelemetry } from '../utils/telemetry';
 
 export async function initDeviceWorker() {
-  await assertIngestionStateStorage();
   await createDeviceQueue.removeGlobalConcurrency();
   return new Worker<CreateDeviceQueueProps>(
     createDeviceQueueName,

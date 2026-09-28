@@ -4,7 +4,6 @@ import { flushSessionBuffer } from '../src/ingestion';
 import { initSessionFlushWorker } from '../src/workers/session-flush-worker';
 
 vi.mock('../src/ingestion', () => ({
-  assertIngestionStateStorage: vi.fn().mockResolvedValue(undefined),
   flushSessionBuffer: vi.fn().mockResolvedValue(0),
   positiveStateInteger: (_name: string, fallback: number) => fallback,
 }));

@@ -1,5 +1,4 @@
 import { createLogger } from '@vemetric/logger';
-import { assertIngestionSchema, clickhouseClient } from 'clickhouse';
 import Redis from 'ioredis';
 import { registerIngestionCommands, type IngestionCommands } from './session-redis-commands';
 
@@ -23,11 +22,6 @@ export function stateRedis() {
     client.on('error', (err) => logger.error({ err }, 'Ingestion Redis error'));
   }
   return client;
-}
-
-export async function assertIngestionStateStorage() {
-  await stateRedis().ping();
-  await assertIngestionSchema(clickhouseClient);
 }
 
 export async function closeStateRedis() {

@@ -3,7 +3,7 @@ import { sessionQueueName } from '@vemetric/queues/queue-names';
 import type { SessionQueueProps } from '@vemetric/queues/session-queue';
 import { sessionQueue } from '@vemetric/queues/session-queue';
 import { DelayedError, Worker } from 'bullmq';
-import { assertIngestionStateStorage, bufferSessionUpdate, bufferExistingSessionActivity } from '../ingestion';
+import { bufferSessionUpdate, bufferExistingSessionActivity } from '../ingestion';
 import { workerConcurrency } from '../utils/concurrency';
 import { getDeviceDataFromHeaders } from '../utils/device';
 import { logJobStep } from '../utils/job-logger';
@@ -18,7 +18,6 @@ const CREATING_EVENT_WAIT_MS = 60_000;
 const CREATING_EVENT_RECHECK_MS = 1_000;
 
 export async function initSessionWorker() {
-  await assertIngestionStateStorage();
   await sessionQueue.removeGlobalConcurrency();
   return new Worker<SessionQueueProps>(
     sessionQueueName,

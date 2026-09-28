@@ -1,5 +1,4 @@
 import type { ClickHouseClient } from '@clickhouse/client-web';
-import { assertIngestionSchema } from './ingestion-schema';
 
 const sessionFields = [
   'userId',
@@ -74,7 +73,6 @@ export async function backfillIngestion(
   { writersStopped, progress = () => {} }: { writersStopped: boolean; progress?: (message: string) => void },
 ) {
   if (!writersStopped) throw new Error('Stop all ClickHouse writers and pass --writers-stopped');
-  await assertIngestionSchema(client);
   const schema = await client.query({
     query: `SELECT name, engine_full AS engine FROM system.tables
       WHERE database = currentDatabase() AND name IN ('session', 'device')`,

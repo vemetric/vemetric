@@ -1,5 +1,4 @@
 export * from './client';
-export * from './ingestion-schema';
 export * from './models/device';
 export * from './models/event';
 export * from './models/globe';

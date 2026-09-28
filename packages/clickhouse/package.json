@@ -11,7 +11,9 @@
     "lint": "eslint . --max-warnings 0",
     "tsc": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "backfill-ingestion": "bun src/scripts/backfill-ingestion.ts",
+    "backfill-ingestion-local": "dotenv -e ../../.env -- bun src/scripts/backfill-ingestion.ts"
   },
   "dependencies": {
     "@clickhouse/client-web": "^1.18.2",

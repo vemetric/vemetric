@@ -1,7 +1,8 @@
 import { generateEventId } from '@vemetric/common/id';
-import { clickhouseClient, clickhouseEvent, clickhouseSession, clickhouseUser } from 'clickhouse';
+import { clickhouseClient, clickhouseEvent, clickhouseUser } from 'clickhouse';
 import type { ClickhouseEvent, ClickhouseSession, ClickhouseUser } from 'clickhouse';
 import { generateSessionId, generateUserId, prismaClient } from 'database';
+import { closeStateRedis, persistSessionUpdates } from '../src/ingestion';
 
 const IMPORT_SOURCE = 'local-random-user-seed';
 const PROJECT_NAME = process.env.SEED_PROJECT_NAME ?? 'Vemetric';
@@ -318,7 +319,7 @@ async function main() {
   };
 
   await clickhouseUser.insert([user]);
-  await clickhouseSession.insert([session]);
+  await persistSessionUpdates([session], { preserveDuration: true });
   await clickhouseEvent.insert([event]);
 
   if (identifier) {
@@ -352,5 +353,6 @@ main()
   })
   .finally(async () => {
     await prismaClient.$disconnect();
+    await closeStateRedis();
     await clickhouseClient.close();
   });

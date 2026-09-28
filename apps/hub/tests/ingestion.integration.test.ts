@@ -5,6 +5,7 @@ import { clickhouseClient, clickhouseDevice, clickhouseEvent, clickhouseSession,
 import { dbFunnel, prismaClient } from 'database';
 import Redis from 'ioredis';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { flushSessionBuffer, closeStateRedis } from '../../worker/src/ingestion';
 
 vi.mock('@vemetric/common/request-ip', () => ({
   getClientIp: () => '127.0.0.1',
@@ -55,6 +56,7 @@ async function waitFor(description: string, predicate: () => Promise<boolean>, t
 
   while (Date.now() - startedAt < timeoutMs) {
     try {
+      await flushSessionBuffer();
       if (await predicate()) {
         return;
       }
@@ -130,7 +132,7 @@ async function cleanupProject(context: ProjectContext) {
 }
 
 async function cleanupClickHouse(projectId: string) {
-  for (const table of ['event', 'session', 'user', 'device']) {
+  for (const table of ['event', 'session', 'user', 'device', 'session_v3', 'device_v2']) {
     await clickhouseClient.command({
       query: `ALTER TABLE ${table} DELETE WHERE projectId = {projectId:UInt64} SETTINGS mutations_sync = 2`,
       query_params: { projectId },
@@ -162,7 +164,9 @@ async function waitForQueuesIdle(timeoutMs = 10000) {
         runtime!.queues.map((queue) => queue.getJobCounts('waiting', 'active', 'delayed', 'prioritized', 'paused')),
       );
 
-      return counts.every((count) => Object.values(count).every((value) => value === 0));
+      if (!counts.every((count) => Object.values(count).every((value) => value === 0))) return false;
+      await flushSessionBuffer();
+      return (await runtime!.redis.zcard('vm:{session-state}:dirty')) === 0;
     },
     timeoutMs,
   );
@@ -371,6 +375,7 @@ describe.sequential('hub ingestion integration', () => {
     await flushRedis();
     await Promise.all(runtime.workers.map((worker) => worker.close()));
     await runtime.redis.quit();
+    await closeStateRedis();
     await prismaClient.$disconnect();
     vi.unstubAllGlobals();
   });
@@ -403,6 +408,7 @@ describe.sequential('hub ingestion integration', () => {
       expect(users).toHaveLength(1);
       const anonymousUserId = users[0].id;
 
+      await waitForQueuesIdle();
       const [events, sessions, devices] = await Promise.all([
         clickhouseEvent.getLatestEventsByUserId({
           projectId: BigInt(project.projectId),

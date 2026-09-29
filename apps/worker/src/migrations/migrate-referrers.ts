@@ -140,7 +140,7 @@ async function updateTable(
         SELECT id, projectId, referrer, referrerUrl
         FROM ${tableName}
         WHERE referrer <> '' ${tableName !== 'event' ? 'AND deleted = 0' : ''}
-        ORDER BY ${tableName === 'session' ? 'startedAt' : 'createdAt'} ASC
+        ORDER BY ${tableName === 'session_v3' ? 'startedAt' : 'createdAt'} ASC
         LIMIT ${BATCH_SIZE}
         OFFSET ${offset}
       `,
@@ -187,7 +187,9 @@ async function updateReferrers() {
 
     // Process tables sequentially to avoid overwhelming the server
     await updateTable(client, 'event', projectMap);
-    await updateTable(client, 'session', projectMap);
+    // Updates every stored revision. Sessions active during the run are also held in Redis, and their
+    // next flush writes their previous referrer again; run it when little traffic is ongoing.
+    await updateTable(client, 'session_v3', projectMap);
     await updateTable(client, 'user', projectMap);
 
     logger.info('Referrer update completed successfully');

@@ -1,21 +1,9 @@
 import { assertBooleanEnvFlags } from '@vemetric/common/self-hosted';
 import { assertMailConfig } from '@vemetric/email/transactional';
-import {
-  createDeviceQueueName,
-  createUserQueueName,
-  emailDripQueueName,
-  enrichUserQueueName,
-  eventQueueName,
-  firstEventQueueName,
-  mergeUserQueueName,
-  saltRotationQueueName,
-  sessionQueueName,
-  updateUserQueueName,
-} from '@vemetric/queues/queue-names';
 import type { Worker } from 'bullmq';
+import { closeStateRedis } from './ingestion';
 import { logger } from './utils/logger';
-import { getSkippedEnrichmentProjectIds } from './utils/skipped-enrichment-projects';
-import { shutdownQueueTelemetry, startQueueMetricsRecorder } from './utils/telemetry';
+import { shutdownQueueTelemetry } from './utils/telemetry';
 import { initCreateUserWorker } from './workers/create-user-worker';
 import { initDeviceWorker } from './workers/device-worker';
 import { initEmailWorker } from './workers/email-worker';
@@ -23,7 +11,9 @@ import { initEnrichUserWorker } from './workers/enrich-user-worker';
 import { initEventWorker } from './workers/event-worker';
 import { initFirstEventWorker } from './workers/first-event-worker';
 import { initMergeUserWorker } from './workers/merge-user-worker';
+import { initMetricsWorker } from './workers/metrics-worker';
 import { initSaltRotation } from './workers/salt-rotation-worker';
+import { initSessionFlushWorker } from './workers/session-flush-worker';
 import { initSessionWorker } from './workers/session-worker';
 import { initUpdateUserWorker } from './workers/update-user-worker';
 
@@ -36,39 +26,26 @@ assertMailConfig();
 assertBooleanEnvFlags(['SELF_HOSTED']);
 
 const workers: Worker[] = [];
+const initializers = {
+  salt: initSaltRotation,
+  'first-event': initFirstEventWorker,
+  event: initEventWorker,
+  session: initSessionWorker,
+  'session-flush': initSessionFlushWorker,
+  device: initDeviceWorker,
+  'create-user': initCreateUserWorker,
+  'update-user': initUpdateUserWorker,
+  'enrich-user': initEnrichUserWorker,
+  'merge-user': initMergeUserWorker,
+  email: initEmailWorker,
+  metrics: initMetricsWorker,
+};
+let ready = false;
 async function main() {
   try {
-    const skippedEnrichmentProjectIds = getSkippedEnrichmentProjectIds();
-    if (skippedEnrichmentProjectIds.length > 0) {
-      logger.warn(
-        { projectIds: skippedEnrichmentProjectIds },
-        'Skipping device and session enrichment for configured projects',
-      );
+    for (const initialize of Object.values(initializers)) {
+      workers.push(await initialize());
     }
-
-    workers.push(await initSaltRotation());
-    workers.push(await initFirstEventWorker());
-    workers.push(await initEventWorker());
-    workers.push(await initSessionWorker());
-    workers.push(await initCreateUserWorker());
-    workers.push(await initUpdateUserWorker());
-    workers.push(await initEnrichUserWorker());
-    workers.push(await initMergeUserWorker());
-    workers.push(await initDeviceWorker());
-    workers.push(await initEmailWorker());
-
-    startQueueMetricsRecorder([
-      createDeviceQueueName,
-      createUserQueueName,
-      emailDripQueueName,
-      enrichUserQueueName,
-      eventQueueName,
-      firstEventQueueName,
-      mergeUserQueueName,
-      saltRotationQueueName,
-      sessionQueueName,
-      updateUserQueueName,
-    ]);
 
     workers.forEach((worker) => {
       worker.on('failed', (job, err) => {
@@ -88,9 +65,11 @@ async function main() {
       });
     });
 
-    logger.info('workers started');
+    ready = true;
+    logger.info({ workers: Object.keys(initializers) }, 'workers started');
   } catch (err) {
     logger.error({ err }, 'Error initializing worker');
+    process.exit(1);
   }
 }
 
@@ -102,9 +81,11 @@ process.on('unhandledRejection', function (err) {
 });
 
 const gracefulShutdown = async (signal: string) => {
+  ready = false;
   logger.info(`Received ${signal}, closing server...`);
   await Promise.all(workers.map((worker) => worker.close()));
   await shutdownQueueTelemetry();
+  await closeStateRedis();
   process.exit(0);
 };
 
@@ -114,10 +95,11 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 main();
 
 Bun.serve({
-  port: 4101,
+  // Configurable so several worker processes can run on one machine (e.g. load tests).
+  port: Number(process.env.WORKER_HEALTH_PORT ?? 4101),
   fetch(request) {
     if (request.url.endsWith('/up')) {
-      return new Response('UP', { status: 200 });
+      return new Response(ready ? 'UP' : 'STARTING', { status: ready ? 200 : 503 });
     }
     return new Response('NOT FOUND', { status: 404 });
   },

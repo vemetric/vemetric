@@ -6,6 +6,7 @@ import { clickhouseEvent, clickhouseUser } from 'clickhouse';
 import { logger } from '../utils/logger';
 import { queueTelemetry } from '../utils/telemetry';
 import { getUserFirstPageViewData } from '../utils/user';
+import { invalidateIngestionUser } from '../utils/user-cache';
 
 export async function initEnrichUserWorker() {
   return new Worker<EnrichUserQueueProps>(
@@ -40,6 +41,7 @@ export async function initEnrichUserWorker() {
           ...getUserFirstPageViewData(firstPageView),
         },
       ]);
+      await invalidateIngestionUser(projectId, userId);
 
       logger.info({ projectId: _projectId, userId: _userId }, 'User enrichment completed');
     },

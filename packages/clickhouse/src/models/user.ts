@@ -3,6 +3,7 @@ import { jsonStringify } from '@vemetric/common/json';
 import { escape } from 'sqlstring';
 import { clickhouseClient, clickhouseInsert } from '../client';
 import type { ClickhouseDevice } from './device';
+import { currentDeviceRows } from './device';
 import type { ReferrerData, UrlData } from './session';
 import { EXAMPLE_URL_DATA } from './session';
 
@@ -106,7 +107,7 @@ export const clickhouseUser = {
       : '';
 
     const deviceJoin = includeDevice
-      ? ' LEFT JOIN device d ON u.initialDeviceId = d.id AND u.projectId = d.projectId'
+      ? ` LEFT JOIN ${currentDeviceRows(projectId, id)} d ON u.initialDeviceId = d.id`
       : '';
 
     const resultSet = await clickhouseClient.query({

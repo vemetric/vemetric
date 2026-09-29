@@ -12,6 +12,7 @@ import { buildPageFilterQuery } from './page-filter';
 import { buildReferrerFilterQuery, buildReferrerTypeFilterQuery, buildReferrerUrlFilterQuery } from './referrer-filter';
 import { buildUserFilterQuery } from './user-filter';
 import { buildUtmTagsFilterQuery } from './utm-tags-filter';
+import { sessionRows } from '../../models/session';
 
 export const getUserFilterQueries = (props: {
   filterConfig: IFilterConfig;
@@ -93,12 +94,8 @@ export const getUserFilterQueries = (props: {
 
         userIdQueries.push(`
             (SELECT DISTINCT userId
-              FROM session
-              WHERE projectId=${escape(projectId)}
-                AND ${filterQuery}
-                ${startDate ? `AND startedAt >= '${formatClickhouseDate(startDate)}'` : ''}
-                ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
-                AND deleted = 0
+              FROM ${sessionRows(projectId, { startDate, endDate })}
+              WHERE ${filterQuery}
               GROUP BY userId
               HAVING count() >= 1)`);
         break;
@@ -162,12 +159,8 @@ export const getUserFilterQueries = (props: {
 
         userIdQueries.push(`
             (SELECT DISTINCT userId
-              FROM session
-              WHERE projectId=${escape(projectId)}
-                AND ${filterQuery}
-                ${startDate ? `AND startedAt >= '${formatClickhouseDate(startDate)}'` : ''}
-                ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
-                AND deleted = 0
+              FROM ${sessionRows(projectId, { startDate, endDate })}
+              WHERE ${filterQuery}
               GROUP BY userId
               HAVING count() >= 1)`);
         break;
@@ -180,12 +173,8 @@ export const getUserFilterQueries = (props: {
 
         userIdQueries.push(`
             (SELECT DISTINCT userId
-              FROM session
-              WHERE projectId=${escape(projectId)}
-                AND ${filterQuery}
-                ${startDate ? `AND startedAt >= '${formatClickhouseDate(startDate)}'` : ''}
-                ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
-                AND deleted = 0
+              FROM ${sessionRows(projectId, { startDate, endDate })}
+              WHERE ${filterQuery}
               GROUP BY userId
               HAVING count() >= 1)`);
         break;
@@ -198,12 +187,8 @@ export const getUserFilterQueries = (props: {
 
         userIdQueries.push(`
             (SELECT DISTINCT userId
-              FROM session
-              WHERE projectId=${escape(projectId)}
-                AND ${filterQuery}
-                ${startDate ? `AND startedAt >= '${formatClickhouseDate(startDate)}'` : ''}
-                ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
-                AND deleted = 0
+              FROM ${sessionRows(projectId, { startDate, endDate })}
+              WHERE ${filterQuery}
               GROUP BY userId
               HAVING count() >= 1)`);
         break;
@@ -216,12 +201,8 @@ export const getUserFilterQueries = (props: {
 
         userIdQueries.push(`
             (SELECT DISTINCT userId
-              FROM session
-              WHERE projectId=${escape(projectId)}
-                AND ${filterQuery}
-                ${startDate ? `AND startedAt >= '${formatClickhouseDate(startDate)}'` : ''}
-                ${endDate ? `AND startedAt < '${formatClickhouseDate(endDate)}'` : ''}
-                AND deleted = 0
+              FROM ${sessionRows(projectId, { startDate, endDate })}
+              WHERE ${filterQuery}
               GROUP BY userId
               HAVING count() >= 1)`);
         break;

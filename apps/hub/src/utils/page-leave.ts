@@ -22,19 +22,13 @@ export async function handlePageLeave(context: HonoContext) {
 
   await increaseRedisSessionDuration(projectId, userId, sessionId);
 
-  await addToQueue(
-    sessionQueue,
-    {
-      type: 'extend',
-      projectId: String(projectId),
-      userId: String(userId),
-      sessionId,
-      createdAt: formatClickhouseDate(new Date()),
-    },
-    {
-      delay: 2000, // we delay this a bit to make sure the session is created first
-    },
-  );
+  await addToQueue(sessionQueue, {
+    type: 'extend',
+    projectId: String(projectId),
+    userId: String(userId),
+    sessionId,
+    createdAt: formatClickhouseDate(new Date()),
+  });
 
   return text('', 200);
 }

@@ -30,6 +30,16 @@ x-app-env: &app-env
   SMTP_TLS_REJECT_UNAUTHORIZED: ${SMTP_TLS_REJECT_UNAUTHORIZED:-}
   POSTMARK_SERVER_API_TOKEN: ${POSTMARK_SERVER_API_TOKEN:-}
   POSTMARK_TRANSACTIONAL_MESSAGE_STREAM_ID: ${POSTMARK_TRANSACTIONAL_MESSAGE_STREAM_ID:-outbound}
+  # Ingestion tuning. The fallbacks mirror the defaults in the code: the worker rejects an empty
+  # value for the numeric ones, so they cannot be passed through as `${...:-}`.
+  EVENT_WORKER_CONCURRENCY: ${EVENT_WORKER_CONCURRENCY:-200}
+  DEVICE_WORKER_CONCURRENCY: ${DEVICE_WORKER_CONCURRENCY:-200}
+  SESSION_WORKER_CONCURRENCY: ${SESSION_WORKER_CONCURRENCY:-50}
+  DEVICE_CACHE_TTL_SECONDS: ${DEVICE_CACHE_TTL_SECONDS:-120}
+  USER_CACHE_TTL_SECONDS: ${USER_CACHE_TTL_SECONDS:-60}
+  SESSION_STATE_CACHE_TTL_SECONDS: ${SESSION_STATE_CACHE_TTL_SECONDS:-120}
+  SESSION_FLUSH_BATCH_SIZE: ${SESSION_FLUSH_BATCH_SIZE:-5000}
+  CLICKHOUSE_ASYNC_INSERTS: ${CLICKHOUSE_ASYNC_INSERTS:-true}
 
 services:
   postgres:
@@ -50,7 +60,18 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: ['redis-server', '--appendonly', 'yes', '--requirepass', '${REDIS_PASSWORD:?set REDIS_PASSWORD}']
+    # noeviction: Redis holds ingestion state (sessions, users) besides the queues, evicting keys
+    # would silently lose data instead of failing loudly.
+    command:
+      [
+        'redis-server',
+        '--appendonly',
+        'yes',
+        '--maxmemory-policy',
+        'noeviction',
+        '--requirepass',
+        '${REDIS_PASSWORD:?set REDIS_PASSWORD}',
+      ]
     volumes:
       - redis_data:/data
     healthcheck:

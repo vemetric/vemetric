@@ -11,8 +11,7 @@ function getRedisSessionKey(projectId: bigint, userId: bigint) {
 export async function getSessionId(projectId: bigint, userId: bigint) {
   const redisClient = await getRedisClient();
   const sessionKey = getRedisSessionKey(projectId, userId);
-  const sessionId = (await redisClient?.get(sessionKey)) ?? null;
-  return sessionId;
+  return redisClient.get(sessionKey);
 }
 
 export async function hasActiveSession(projectId: bigint, userId: bigint) {

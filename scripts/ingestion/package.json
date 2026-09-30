@@ -11,7 +11,7 @@
     "benchmark": "bun --env-file=../../.env benchmark/queries.ts"
   },
   "dependencies": {
-    "bullmq": "^5.73.1",
+    "bullmq": "^5.81.5",
     "ioredis": "^5.10.1"
   },
   "devDependencies": {

@@ -3,6 +3,7 @@ import type { EnrichUserQueueProps } from '@vemetric/queues/enrich-user-queue';
 import { enrichUserQueueName } from '@vemetric/queues/queue-names';
 import { Worker } from 'bullmq';
 import { clickhouseEvent, clickhouseUser } from 'clickhouse';
+import { workerName } from '../utils/env';
 import { logger } from '../utils/logger';
 import { queueTelemetry } from '../utils/telemetry';
 import { getUserFirstPageViewData } from '../utils/user';
@@ -49,6 +50,7 @@ export async function initEnrichUserWorker() {
       connection: {
         url: process.env.REDIS_URL,
       },
+      name: workerName,
       telemetry: queueTelemetry,
       concurrency: 10,
       removeOnComplete: {

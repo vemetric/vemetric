@@ -4,7 +4,7 @@ import { createDeviceQueueName } from '@vemetric/queues/queue-names';
 import { Worker } from 'bullmq';
 import { getDeviceId } from 'clickhouse';
 import { getDeviceDataFromHeaders, insertDeviceIfNotExists } from '../utils/device';
-import { envPositiveInteger } from '../utils/env';
+import { envPositiveInteger, workerName } from '../utils/env';
 import { logJobStep } from '../utils/job-logger';
 import { queueTelemetry } from '../utils/telemetry';
 
@@ -41,6 +41,7 @@ export async function initDeviceWorker() {
       connection: {
         url: process.env.REDIS_URL,
       },
+      name: workerName,
       telemetry: queueTelemetry,
       concurrency: envPositiveInteger('DEVICE_WORKER_CONCURRENCY', 200),
       removeOnComplete: {

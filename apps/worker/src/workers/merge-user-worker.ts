@@ -12,6 +12,7 @@ import {
   deleteBufferedSession,
 } from '../ingestion';
 import { insertDeviceIfNotExists } from '../utils/device';
+import { workerName } from '../utils/env';
 import { logger } from '../utils/logger';
 import { reassignExistingSessionsToEvents } from '../utils/merge-user';
 import { queueTelemetry } from '../utils/telemetry';
@@ -149,6 +150,7 @@ export async function initMergeUserWorker() {
       connection: {
         url: process.env.REDIS_URL,
       },
+      name: workerName,
       telemetry: queueTelemetry,
       concurrency: 10,
       removeOnComplete: {

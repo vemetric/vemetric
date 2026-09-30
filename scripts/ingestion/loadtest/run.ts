@@ -96,7 +96,10 @@ async function waitUntilUp(url: string) {
 
 start('hub', join(checkout, 'apps/hub'));
 for (let i = 0; i < workerCount; i++) {
-  start(`worker-${i}`, join(checkout, 'apps/worker'), { WORKER_HEALTH_PORT: String(4101 + i) });
+  start(`worker-${i}`, join(checkout, 'apps/worker'), {
+    WORKER_HEALTH_PORT: String(4101 + i),
+    WORKER_NAME: `worker-${i}`,
+  });
 }
 await waitUntilUp(`http://localhost:${HUB_PORT}/up`);
 for (let i = 0; i < workerCount; i++) await waitUntilUp(`http://localhost:${4101 + i}/up`);

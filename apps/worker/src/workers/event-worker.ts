@@ -5,7 +5,7 @@ import { eventQueueName } from '@vemetric/queues/queue-names';
 import { Worker } from 'bullmq';
 import { clickhouseEvent, getDeviceId } from 'clickhouse';
 import { getDeviceDataFromHeaders } from '../utils/device';
-import { envPositiveInteger } from '../utils/env';
+import { envPositiveInteger, workerName } from '../utils/env';
 import { logger } from '../utils/logger';
 import { getReferrerFromRequest } from '../utils/referrer';
 import { getSessionData } from '../utils/session';
@@ -83,6 +83,7 @@ export async function initEventWorker() {
       connection: {
         url: process.env.REDIS_URL,
       },
+      name: workerName,
       telemetry: queueTelemetry,
       concurrency: envPositiveInteger('EVENT_WORKER_CONCURRENCY', 200),
       removeOnComplete: {

@@ -35,16 +35,15 @@ export async function getUserIdentificationLock(projectId: bigint, identifier: s
   const redisClient = await getRedisClient();
   const redisKey = getRedisUserIdentifyKey(projectId, identifier);
 
-  const lockAcquired =
-    (await redisClient?.set(redisKey, '1', {
-      NX: true,
-      EX: REDIS_USER_IDENTIFY_EXPIRATION,
-    })) ?? null;
+  const lockAcquired = await redisClient.set(redisKey, '1', {
+    NX: true,
+    EX: REDIS_USER_IDENTIFY_EXPIRATION,
+  });
 
   return { lockAcquired: Boolean(lockAcquired) };
 }
 export async function releaseUserIdentificationLock(projectId: bigint, identifier: string) {
   const redisClient = await getRedisClient();
   const redisKey = getRedisUserIdentifyKey(projectId, identifier);
-  await redisClient?.del(redisKey);
+  await redisClient.del(redisKey);
 }

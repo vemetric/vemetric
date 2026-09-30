@@ -18,9 +18,9 @@
     "turbo": "turbo"
   },
   "devDependencies": {
-    "eslint": "^9.18.0",
-    "prettier": "^3.0.3",
-    "turbo": "2.6.1"
+    "eslint": "^9.39.5",
+    "prettier": "^3.9.9",
+    "turbo": "2.11.5"
   },
   "workspaces": [
     "apps/*",

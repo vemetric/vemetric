@@ -14,6 +14,7 @@ import {
 } from '@vemetric/queues/queue-names';
 import { defaultQueueConnection } from '@vemetric/queues/queue-utils';
 import { Queue, Worker } from 'bullmq';
+import { workerName } from '../utils/env';
 import { METRICS_INTERVAL_MS, recordQueueJobCounts } from '../utils/telemetry';
 
 const recordedQueueNames = [
@@ -51,6 +52,7 @@ export async function initMetricsWorker() {
   // Deliberately no telemetry: the metrics queue must not report its own jobs.
   return new Worker(metricsQueueName, () => recordQueueJobCounts(recordedQueueNames), {
     connection: defaultQueueConnection,
+    name: workerName,
     concurrency: 1,
   });
 }

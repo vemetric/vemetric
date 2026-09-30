@@ -1,14 +1,13 @@
 /* eslint-disable no-console */
 /**
- * Dashboard query benchmark on synthetic data: generates legacy session/device/event/user data at
- * a configurable scale, migrates it with the real backfill, then runs the same dashboard queries
- * with the model code of `--base` (legacy tables) and of the current checkout (new tables)
- * against the same database. Reports duration, rows read and peak memory per query.
+ * Dashboard query benchmark on synthetic data: generates session/device/event/user data at a
+ * configurable scale, then runs the same dashboard queries with the model code of `--base` and of
+ * the current checkout against the same database. Reports duration, rows read and peak memory per
+ * query.
  * See scripts/ingestion/README.md.
  *
  *   bun run benchmark -- [--sessions 3000000] [--months 3] [--base main] [--runs 3]
  */
-import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { compareDashboardQueries, formatComparison, loadModels } from '../lib/dashboard-queries';
 import { checkoutFor, clickhouseCommand, clickhouseQuery, recreateDatabases, repoRoot } from '../lib/services';
@@ -56,11 +55,11 @@ async function generate() {
   console.log(`Generating ${sessions.toLocaleString()} sessions over ${months} months ...`);
   await recreateDatabases(DB, checkout);
   const started = performance.now();
-  // Legacy session rows: 1-4 rows per session, like repeated duration updates before merges.
+  // One merged revision per session, like older sessions after background merges.
   await clickhouseCommand(
-    `INSERT INTO session (projectId, userId, id, startedAt, endedAt, duration, countryCode, city, referrer, referrerType, origin, pathname, utmSource)
-     SELECT projectId, userId, id, startedAt, startedAt + toIntervalSecond(r * 30), r * 30, countryCode, city, referrer, referrerType, origin, pathname, utmSource
-     FROM (SELECT ${sessionColumns('number')}, number FROM numbers(${sessions})) ARRAY JOIN range(1 + number % 4) AS r`,
+    `INSERT INTO session_v3 (projectId, userId, id, startedAt, endedAt, duration, countryCode, city, referrer, referrerType, origin, pathname, utmSource, revision)
+     SELECT projectId, userId, id, startedAt, startedAt + toIntervalSecond(number % 4 * 30), number % 4 * 30, countryCode, city, referrer, referrerType, origin, pathname, utmSource, 1
+     FROM (SELECT ${sessionColumns('number')}, number FROM numbers(${sessions}))`,
     DB,
   );
   await clickhouseCommand(
@@ -70,10 +69,12 @@ async function generate() {
      FROM (SELECT ${sessionColumns('number')}, number FROM numbers(${sessions})) ARRAY JOIN range(1 + number % 5) AS k`,
     DB,
   );
+  // The earliest creation wins, as in the device model: revision = 2^64 - 2 - createdAt in ms.
   await clickhouseCommand(
-    `INSERT INTO device (sign, projectId, userId, id, createdAt, osName, osVersion, clientName, clientVersion, clientType, deviceType)
-     SELECT 1, ${project('number')}, cityHash64(number), cityHash64('d', number), now64(3) - toIntervalSecond(${rangeSeconds}),
-       'macOS', '15', 'Chrome', '128', 'browser', 'desktop'
+    `INSERT INTO device_v2 (projectId, userId, id, createdAt, osName, osVersion, clientName, clientVersion, clientType, deviceType, revision)
+     SELECT ${project('number')}, cityHash64(number), cityHash64('d', number), now64(3) - toIntervalSecond(${rangeSeconds}) AS createdAt,
+       'macOS', '15', 'Chrome', '128', 'browser', 'desktop',
+       toUInt64(toUInt64('18446744073709551614') - toUInt64(toUnixTimestamp64Milli(createdAt)))
      FROM numbers(${users})`,
     DB,
   );
@@ -84,16 +85,9 @@ async function generate() {
      FROM numbers(${users}) WHERE number % 10 = 0`,
     DB,
   );
-  console.log(`  legacy data: ${Math.round((performance.now() - started) / 1000)}s`);
+  console.log(`  data: ${Math.round((performance.now() - started) / 1000)}s`);
 
-  process.env.CLICKHOUSE_DB = DB;
-  const { clickhouseClient } = await import(join(repoRoot, 'packages/clickhouse/src/client.ts'));
-  const { backfillIngestion } = await import(join(repoRoot, 'packages/clickhouse/src/ingestion-backfill.ts'));
-  const backfillStarted = performance.now();
-  await backfillIngestion(clickhouseClient, { writersStopped: true });
-  console.log(`  backfill incl. verification: ${Math.round((performance.now() - backfillStarted) / 1000)}s`);
-
-  // Live sessions of the last week carry unmerged revisions after the cutover.
+  // Live sessions of the last week carry unmerged revisions.
   await clickhouseCommand(
     `INSERT INTO session_v3 SELECT * REPLACE (revision + k AS revision, endedAt + toIntervalSecond(k * 10) AS endedAt, duration + k * 10 AS duration)
      FROM session_v3 ARRAY JOIN [1, 2] AS k WHERE startedAt >= now() - INTERVAL 7 DAY`,

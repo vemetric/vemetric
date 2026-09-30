@@ -5,7 +5,7 @@ import { sessionQueue } from '@vemetric/queues/session-queue';
 import { DelayedError, Worker } from 'bullmq';
 import { bufferSessionUpdate, bufferExistingSessionActivity } from '../ingestion';
 import { getDeviceDataFromHeaders } from '../utils/device';
-import { envPositiveInteger } from '../utils/env';
+import { envPositiveInteger, workerName } from '../utils/env';
 import { logJobStep } from '../utils/job-logger';
 import { logger } from '../utils/logger';
 import { getReferrerFromRequest } from '../utils/referrer';
@@ -97,6 +97,7 @@ export async function initSessionWorker() {
       connection: {
         url: process.env.REDIS_URL,
       },
+      name: workerName,
       telemetry: queueTelemetry,
       concurrency: envPositiveInteger('SESSION_WORKER_CONCURRENCY', 50),
       removeOnComplete: {

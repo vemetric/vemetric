@@ -6,6 +6,7 @@ import { updateUserQueue } from '@vemetric/queues/update-user-queue';
 import { Worker } from 'bullmq';
 import type { ClickhouseUser } from 'clickhouse';
 import { clickhouseEvent, clickhouseUser } from 'clickhouse';
+import { workerName } from '../utils/env';
 import { logJobStep } from '../utils/job-logger';
 import { logger } from '../utils/logger';
 import { queueTelemetry } from '../utils/telemetry';
@@ -81,6 +82,7 @@ export async function initCreateUserWorker() {
       connection: {
         url: process.env.REDIS_URL,
       },
+      name: workerName,
       telemetry: queueTelemetry,
       concurrency: 1,
       removeOnComplete: {

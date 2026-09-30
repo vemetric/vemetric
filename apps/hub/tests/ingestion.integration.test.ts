@@ -132,7 +132,7 @@ async function cleanupProject(context: ProjectContext) {
 }
 
 async function cleanupClickHouse(projectId: string) {
-  for (const table of ['event', 'session', 'user', 'device', 'session_v3', 'device_v2']) {
+  for (const table of ['event', 'user', 'session_v3', 'device_v2']) {
     await clickhouseClient.command({
       query: `ALTER TABLE ${table} DELETE WHERE projectId = {projectId:UInt64} SETTINGS mutations_sync = 2`,
       query_params: { projectId },

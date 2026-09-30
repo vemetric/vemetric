@@ -8,9 +8,7 @@
     "loadtest": "bun --env-file=../../.env loadtest/run.ts",
     "lint": "eslint . --max-warnings 0",
     "tsc": "tsc --noEmit",
-    "prod-check": "bun prod-check/check.ts",
-    "benchmark": "bun --env-file=../../.env benchmark/queries.ts",
-    "rehearsal": "bun rehearsal/run.ts"
+    "benchmark": "bun --env-file=../../.env benchmark/queries.ts"
   },
   "dependencies": {
     "bullmq": "^5.73.1",

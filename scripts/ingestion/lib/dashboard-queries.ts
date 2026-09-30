@@ -113,7 +113,7 @@ export async function compareDashboardQueries(options: {
 }
 
 export function formatComparison(results: QueryComparison[], baseLabel: string) {
-  const header = ['range', 'query', baseLabel, 'new', 'new/old', 'peak memory', 'result rows'];
+  const header = ['range', 'query', baseLabel, 'head', 'head/base', 'peak memory', 'result rows'];
   const rows = results.map((r) => [
     r.range,
     r.query,

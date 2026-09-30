@@ -118,8 +118,8 @@ describe('ingestion comparison scenario', () => {
     redis = new Redis(redisUrl);
     await redis.flushdb();
 
-    for (const table of ['event', 'session', 'user', 'device', 'session_v3', 'device_v2']) {
-      await clickhouseClient.command({ query: `TRUNCATE TABLE IF EXISTS ${table}` });
+    for (const table of ['event', 'user', 'session_v3', 'device_v2']) {
+      await clickhouseClient.command({ query: `TRUNCATE TABLE ${table}` });
     }
     await prismaClient.userIdentificationMap.deleteMany({ where: { projectId: PROJECT.projectId } });
     await prismaClient.project.deleteMany({ where: { id: PROJECT.projectId } });
@@ -245,14 +245,9 @@ describe('ingestion comparison scenario', () => {
     vi.useRealTimers();
     // Compare the settled state: reads without FINAL depend on when ClickHouse merges parts in
     // the background, which differs between runs, not between versions.
-    const existing = (await (
-      await clickhouseClient.query({
-        query: `SELECT name FROM system.tables WHERE database = currentDatabase()
-          AND name IN ('event', 'session', 'session_v3', 'device', 'device_v2')`,
-        format: 'JSONEachRow',
-      })
-    ).json()) as Array<{ name: string }>;
-    for (const { name } of existing) await clickhouseClient.command({ query: `OPTIMIZE TABLE ${name} FINAL` });
+    for (const table of ['event', 'session_v3', 'device_v2']) {
+      await clickhouseClient.command({ query: `OPTIMIZE TABLE ${table} FINAL` });
+    }
 
     // Snapshot
     const projectId = BigInt(PROJECT.projectId);

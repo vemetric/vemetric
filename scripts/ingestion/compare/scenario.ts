@@ -139,8 +139,9 @@ describe('ingestion comparison scenario', () => {
     at(-60);
 
     ingestion = await import('../../worker/src/ingestion').catch(() => null);
-    const hub = await import('../src/index');
-    hubFetch = async (request) => await hub.default.fetch(request);
+    // Refs before the hub's app/entrypoint split only have the app as index.ts' default export.
+    const hub: any = await import('../src/app').catch(() => import('../src/index'));
+    hubFetch = async (request) => await (hub.app ?? hub.default).fetch(request);
     const w = {
       event: (await import('../../worker/src/workers/event-worker')).initEventWorker,
       session: (await import('../../worker/src/workers/session-worker')).initSessionWorker,

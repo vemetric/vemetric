@@ -1,17 +1,23 @@
 import { EMPTY_GEO_DATA, getGeoDataFromIp } from '@vemetric/common/geo';
-import type { CreateUserQueueProps } from '@vemetric/queues/create-user-queue';
+import { createUserQueue, type CreateUserQueueProps } from '@vemetric/queues/create-user-queue';
 import { createUserQueueName } from '@vemetric/queues/queue-names';
 import { addToQueue } from '@vemetric/queues/queue-utils';
 import { updateUserQueue } from '@vemetric/queues/update-user-queue';
 import { Worker } from 'bullmq';
 import type { ClickhouseUser } from 'clickhouse';
 import { clickhouseEvent, clickhouseUser } from 'clickhouse';
+import { workerName } from '../utils/env';
 import { logJobStep } from '../utils/job-logger';
 import { logger } from '../utils/logger';
 import { queueTelemetry } from '../utils/telemetry';
 import { getUserFirstPageViewData } from '../utils/user';
+import { invalidateIngestionUser } from '../utils/user-cache';
 
 export async function initCreateUserWorker() {
+  // User writes read, modify and rewrite the whole row. One job at a time across replicas, as with the
+  // single worker today. This does not serialize create, update and enrich writes against each other;
+  // a per-user lock is a follow-up.
+  await createUserQueue.setGlobalConcurrency(1);
   return new Worker<CreateUserQueueProps>(
     createUserQueueName,
     async (job) => {
@@ -69,12 +75,14 @@ export async function initCreateUserWorker() {
       };
       await logJobStep(job, 'before clickhouseUser.insert');
       await clickhouseUser.insert([user]);
+      await invalidateIngestionUser(projectId, userId);
       await logJobStep(job, 'done');
     },
     {
       connection: {
         url: process.env.REDIS_URL,
       },
+      name: workerName,
       telemetry: queueTelemetry,
       concurrency: 1,
       removeOnComplete: {

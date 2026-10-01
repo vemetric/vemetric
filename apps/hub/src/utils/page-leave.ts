@@ -20,21 +20,19 @@ export async function handlePageLeave(context: HonoContext) {
     return text('Session has not started', 401);
   }
 
-  await increaseRedisSessionDuration(projectId, userId, sessionId);
+  // The session can expire or be replaced between reading and refreshing it
+  const refreshed = await increaseRedisSessionDuration(projectId, userId, sessionId);
+  if (!refreshed) {
+    return text('Session has not started', 401);
+  }
 
-  await addToQueue(
-    sessionQueue,
-    {
-      type: 'extend',
-      projectId: String(projectId),
-      userId: String(userId),
-      sessionId,
-      createdAt: formatClickhouseDate(new Date()),
-    },
-    {
-      delay: 2000, // we delay this a bit to make sure the session is created first
-    },
-  );
+  await addToQueue(sessionQueue, {
+    type: 'extend',
+    projectId: String(projectId),
+    userId: String(userId),
+    sessionId,
+    createdAt: formatClickhouseDate(new Date()),
+  });
 
   return text('', 200);
 }

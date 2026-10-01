@@ -14,6 +14,7 @@ export interface EventQueueProps {
   headers: Record<string, string>;
   customData?: Record<string, unknown>;
   url?: string;
+  projectDomain?: string;
   reqIdentifier?: string;
   reqDisplayName?: string;
   ipAddress?: string; // TODO: only here for backwards compatibility, remove later

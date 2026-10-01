@@ -18,20 +18,20 @@ permissions:
   issues: read
   pull-requests: read
 
-concurrency:
-  group: e2e
-  cancel-in-progress: false
-
 jobs:
   tests:
     name: E2ETests
-    runs-on: [vemetric-e2e]
+    runs-on: ubuntu-latest
     if: |
       github.event_name != 'issue_comment' ||
       (
         github.event.issue.pull_request &&
         startsWith(github.event.comment.body, '/run-e2e')
       )
+    # Job level, so PR comments that skip the job can't cancel a pending run.
+    concurrency:
+      group: e2e-${{ github.event.issue.number || inputs.ref || github.ref }}
+      cancel-in-progress: false
     timeout-minutes: 30
     env:
       CI: 'true'
@@ -69,7 +69,7 @@ jobs:
             const { data: pull } = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
 
             if (pull.head.repo.full_name !== `${owner}/${repo}`) {
-              core.setFailed('Refusing to run E2E tests for forked PRs on the self-hosted runner.');
+              core.setFailed('Refusing to run E2E tests for forked PRs.');
               return;
             }
 
@@ -90,6 +90,13 @@ jobs:
         with:
           bun-version: 1.3.11
 
+      - name: Cache bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
@@ -100,7 +107,7 @@ jobs:
           printf '\nVEMETRIC_DEV_PROXY_DISABLED=%s\n' "$VEMETRIC_DEV_PROXY_DISABLED" >> .env
 
       - name: Start test services
-        run: docker compose -p vemetric-e2e-${{ github.run_id }} up -d --wait
+        run: docker compose -p vemetric-e2e-${{ github.run_id }} --profile test up -d --wait
 
       - name: Wait for test services
         run: |
@@ -113,6 +120,13 @@ jobs:
 
           for i in {1..60}; do
             if docker compose -p vemetric-e2e-${{ github.run_id }} exec -T redis redis-cli ping; then
+              break
+            fi
+            sleep 2
+          done
+
+          for i in {1..60}; do
+            if docker compose -p vemetric-e2e-${{ github.run_id }} --profile test exec -T redis-test redis-cli ping; then
               break
             fi
             sleep 2
@@ -137,6 +151,13 @@ jobs:
       - name: Deploy ClickHouse migrations
         run: bun --filter clickhouse migrate-local
 
+      # The ingestion state tests clear their tables, so they get their own ClickHouse database.
+      - name: Prepare ingestion state test database
+        run: |
+          set -a; . ./.env; set +a
+          curl -fsS -u "$CLICKHOUSE_USER:$CLICKHOUSE_PASSWORD" "$CLICKHOUSE_HOST" --data-binary 'CREATE DATABASE IF NOT EXISTS vm_concurrency_test_ci'
+          CH_MIGRATIONS_DB=vm_concurrency_test_ci bun --filter clickhouse migrate-local
+
       - name: Run app integration tests
         timeout-minutes: 10
         run: bun --filter app test:integration
@@ -145,9 +166,17 @@ jobs:
         timeout-minutes: 10
         run: bun --filter hub test:integration
 
+      - name: Run ingestion state integration tests
+        timeout-minutes: 10
+        run: |
+          set -a; . ./.env; set +a
+          export INGESTION_STATE_TESTS=1 CLICKHOUSE_DB=vm_concurrency_test_ci REDIS_URL=redis://localhost:16389
+          bun run --cwd apps/worker test
+          bun run --cwd packages/clickhouse test
+
       - name: Install Playwright browser
         working-directory: apps/e2e
-        run: bun run playwright install chromium
+        run: bun run playwright install --with-deps chromium
 
       - name: Start app
         run: |
@@ -203,4 +232,4 @@ jobs:
 
       - name: Stop test services
         if: always()
-        run: docker compose -p vemetric-e2e-${{ github.run_id }} down -v --remove-orphans
+        run: docker compose -p vemetric-e2e-${{ github.run_id }} --profile test down -v --remove-orphans

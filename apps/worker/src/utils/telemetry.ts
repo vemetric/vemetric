@@ -1,3 +1,4 @@
+import { metrics } from '@opentelemetry/api';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto';
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { NodeSDK } from '@opentelemetry/sdk-node';
@@ -5,15 +6,17 @@ import { defaultQueueConnection } from '@vemetric/queues/queue-utils';
 import { Queue } from 'bullmq';
 import { BullMQOtel } from 'bullmq-otel';
 import { logger } from './logger';
+import { parseRedisMemoryInfo } from './redis-info';
+import { stateRedis } from '../ingestion/redis';
+import { pendingSessionStats } from '../ingestion/session-flush';
 
 const axiomToken = process.env.AXIOM_TOKEN;
 const axiomUrl = process.env.AXIOM_URL ?? 'https://api.axiom.co';
 const METRICS_DATASET = process.env.AXIOM_DATASET_BULLMQ ?? 'vemetric-bullmq';
-const METRICS_INTERVAL_MS = 60_000;
+export const METRICS_INTERVAL_MS = 60_000;
 
 let sdk: NodeSDK | undefined;
-let metricsTimer: ReturnType<typeof setInterval> | undefined;
-let metricsQueues: Queue[] = [];
+let recordedQueues: Queue[] = [];
 
 if (axiomToken) {
   sdk = new NodeSDK({
@@ -36,9 +39,61 @@ if (axiomToken) {
   });
 
   sdk.start();
+  registerIngestionGauges();
   logger.info(
     { metricsDataset: METRICS_DATASET, metricsIntervalMs: METRICS_INTERVAL_MS },
     'BullMQ telemetry exporting to Axiom',
+  );
+}
+
+/**
+ * Pending session snapshots and the age of the oldest one. Every replica reports the same
+ * Redis-wide values, so aggregate them with max. A growing age means the flusher is not
+ * writing sessions to ClickHouse. Redis memory is reported the same way: Redis runs with
+ * `noeviction`, so writes (queue jobs, session state) fail once it reaches `maxmemory`.
+ */
+function registerIngestionGauges() {
+  const meter = metrics.getMeter('vemetric-ingestion');
+  const pending = meter.createObservableGauge('vemetric.sessions.pending', {
+    description: 'Session snapshots waiting to be written to ClickHouse',
+  });
+  const oldestAge = meter.createObservableGauge('vemetric.sessions.pending_oldest_age', {
+    description: 'Seconds the oldest pending session snapshot has been waiting',
+    unit: 's',
+  });
+  meter.addBatchObservableCallback(
+    async (result) => {
+      try {
+        const stats = await pendingSessionStats();
+        result.observe(pending, stats.count);
+        result.observe(oldestAge, stats.oldestAgeSeconds);
+      } catch (err) {
+        logger.error({ err }, 'Failed to read pending session metrics');
+      }
+    },
+    [pending, oldestAge],
+  );
+
+  const usedMemory = meter.createObservableGauge('vemetric.redis.used_memory', {
+    description: 'Bytes of memory used by Redis',
+    unit: 'By',
+  });
+  const memoryRatio = meter.createObservableGauge('vemetric.redis.memory_ratio', {
+    description: 'Used Redis memory as a share of maxmemory (not reported without a limit)',
+  });
+  meter.addBatchObservableCallback(
+    async (result) => {
+      try {
+        const memory = parseRedisMemoryInfo(await stateRedis().info('memory'));
+        result.observe(usedMemory, memory.usedMemory);
+        if (memory.memoryRatio !== undefined) {
+          result.observe(memoryRatio, memory.memoryRatio);
+        }
+      } catch (err) {
+        logger.error({ err }, 'Failed to read Redis memory metrics');
+      }
+    },
+    [usedMemory, memoryRatio],
   );
 }
 
@@ -49,37 +104,29 @@ export const queueTelemetry = new BullMQOtel({
 });
 
 /**
- * Periodically records the `bullmq.queue.jobs` gauge (job counts per state) for the given queues.
- * BullMQ only emits this gauge when `recordJobCountsMetric` is called explicitly, and the gauge
- * lives on `Queue` (unlike the job counters, which the workers emit themselves).
+ * Records the `bullmq.queue.jobs` gauge (job counts per state) for the given queues.
+ * BullMQ only emits this gauge when `recordJobCountsMetric` is called explicitly, and the
+ * gauge lives on `Queue` (unlike the job counters, which the workers emit themselves).
+ * The counts cover the entire queue, so this must be invoked by a single recorder; that is
+ * coordinated by the scheduled job in `workers/metrics-worker.ts`.
  */
-export function startQueueMetricsRecorder(queueNames: string[]) {
+export async function recordQueueJobCounts(queueNames: string[]) {
   if (!sdk || queueNames.length === 0) {
     return;
   }
 
-  metricsQueues = queueNames.map(
-    (name) => new Queue(name, { connection: defaultQueueConnection, telemetry: queueTelemetry }),
-  );
+  if (recordedQueues.length === 0) {
+    recordedQueues = queueNames.map(
+      (name) => new Queue(name, { connection: defaultQueueConnection, telemetry: queueTelemetry }),
+    );
+  }
 
-  const record = () => {
-    Promise.all(metricsQueues.map((queue) => queue.recordJobCountsMetric())).catch((err) => {
-      logger.error({ err }, 'Failed to record queue job counts metrics');
-    });
-  };
-
-  record();
-  metricsTimer = setInterval(record, METRICS_INTERVAL_MS);
+  await Promise.all(recordedQueues.map((queue) => queue.recordJobCountsMetric()));
 }
 
 export async function shutdownQueueTelemetry() {
-  if (metricsTimer) {
-    clearInterval(metricsTimer);
-    metricsTimer = undefined;
-  }
-
-  await Promise.all(metricsQueues.map((queue) => queue.close()));
-  metricsQueues = [];
+  await Promise.all(recordedQueues.map((queue) => queue.close()));
+  recordedQueues = [];
 
   if (sdk) {
     await sdk.shutdown().catch((err) => logger.error({ err }, 'Failed to shutdown queue telemetry'));

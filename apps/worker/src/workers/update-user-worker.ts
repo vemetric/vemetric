@@ -1,13 +1,17 @@
 import { updateUserQueueName } from '@vemetric/queues/queue-names';
-import type { UpdateUserQueueProps } from '@vemetric/queues/update-user-queue';
+import { updateUserQueue, type UpdateUserQueueProps } from '@vemetric/queues/update-user-queue';
 import { Worker } from 'bullmq';
 import { clickhouseUser } from 'clickhouse';
 import { isDeepEqual } from 'remeda';
+import { workerName } from '../utils/env';
 import { logJobStep } from '../utils/job-logger';
 import { queueTelemetry } from '../utils/telemetry';
 import { getUpdatedUserData } from '../utils/user';
+import { invalidateIngestionUser } from '../utils/user-cache';
 
 export async function initUpdateUserWorker() {
+  // One job at a time across replicas, as with the single worker today (see initCreateUserWorker).
+  await updateUserQueue.setGlobalConcurrency(1);
   return new Worker<UpdateUserQueueProps>(
     updateUserQueueName,
     async (job) => {
@@ -48,12 +52,14 @@ export async function initUpdateUserWorker() {
       }
       await logJobStep(job, 'before clickhouseUser.insert');
       await clickhouseUser.insert([updatedUser]);
+      await invalidateIngestionUser(projectId, userId);
       await logJobStep(job, 'done');
     },
     {
       connection: {
         url: process.env.REDIS_URL,
       },
+      name: workerName,
       telemetry: queueTelemetry,
       concurrency: 1,
       removeOnComplete: {

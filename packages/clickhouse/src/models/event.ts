@@ -1,5 +1,5 @@
 import { formatClickhouseDate } from '@vemetric/common/date';
-import type { IFilterConfig, stringOperatorsSchema } from '@vemetric/common/filters';
+import type { IEventFilter, IFilterConfig, stringOperatorsSchema } from '@vemetric/common/filters';
 import type { FunnelStep } from '@vemetric/common/funnel';
 import type { GeoData } from '@vemetric/common/geo';
 import { jsonStringify } from '@vemetric/common/json';
@@ -947,6 +947,49 @@ export const clickhouseEvent = {
 
     const result = (await resultSet.json()) as Array<{ date: string; count: number }>;
     return result.map((row) => ({
+      createdAt: row.date,
+      count: Number(row.count),
+    }));
+  },
+  getEventCountsByDayForUsers: async (props: {
+    projectId: bigint;
+    userIds: Array<bigint>;
+    startDate: Date;
+    eventFilter?: IEventFilter;
+  }): Promise<Array<{ userId: string; createdAt: string; count: number }>> => {
+    const { projectId, userIds, startDate, eventFilter } = props;
+    if (userIds.length === 0) {
+      return [];
+    }
+
+    // Matches the event filtering used when sorting users by last fired event
+    const eventFilterQueries = eventFilter
+      ? buildEventFilterQueries({ operator: 'and', filters: [eventFilter] })
+      : undefined;
+    const eventFilterClause = eventFilter
+      ? `${eventFilterQueries ? `AND (${eventFilterQueries})` : ''} AND isPageView <> 1`
+      : '';
+
+    const resultSet = await clickhouseClient.query({
+      query: `
+        SELECT userId, date, count(*) as count FROM (
+          SELECT userId, toDate(any(createdAt)) as date
+          FROM ${TABLE_NAME}
+          WHERE projectId = ${escape(projectId)}
+          AND userId IN (${userIds.map((id) => escape(id)).join(',')})
+          AND createdAt >= '${formatClickhouseDate(startDate)}'
+          ${eventFilterClause}
+          GROUP BY id, userId
+          HAVING sum(sign) > 0
+        )
+        GROUP BY userId, date
+      `,
+      format: 'JSONEachRow',
+    });
+
+    const result = (await resultSet.json()) as Array<{ userId: string; date: string; count: number }>;
+    return result.map((row) => ({
+      userId: String(row.userId),
       createdAt: row.date,
       count: Number(row.count),
     }));

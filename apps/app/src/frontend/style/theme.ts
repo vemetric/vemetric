@@ -19,7 +19,6 @@ export const vemetricTheme = createSystem(defaultConfig, {
     html: {
       colorPalette: 'gray',
       bg: 'bg.muted',
-      scrollbarGutter: 'stable',
     },
     '*': {
       '&::-webkit-scrollbar': {

@@ -1,4 +1,5 @@
-import type { ConnectionOptions, JobsOptions, Queue } from 'bullmq';
+import type { ConnectionOptions, JobsOptions } from 'bullmq';
+import { Queue } from 'bullmq';
 import { prismaClient } from 'database';
 import Redis from 'ioredis';
 import { logger } from './logger';
@@ -18,6 +19,13 @@ const defaultQueueOptions: JobsOptions = {
     delay: 1000,
   },
 };
+
+const queues: Queue[] = [];
+export function createQueue<DataType = any>(name: string) {
+  const queue = new Queue<DataType>(name, { connection: defaultQueueConnection });
+  queues.push(queue);
+  return queue;
+}
 
 const redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', { enableOfflineQueue: false });
 let hasBeenOnline = false;
@@ -41,5 +49,19 @@ export async function addToQueue<DataType>(queue: Queue<DataType>, data: DataTyp
         error: JSON.stringify(err),
       },
     });
+  }
+}
+
+/**
+ * Closes the connections of every queue created in this process. Pending `add` calls finish
+ * first, so call it once no new jobs can be enqueued (e.g. after the HTTP server stopped).
+ */
+export async function closeQueues() {
+  await Promise.all(queues.map((queue) => queue.close()));
+  try {
+    await redis.quit();
+  } catch {
+    // The connection may never have been established or is already closed.
+    redis.disconnect();
   }
 }

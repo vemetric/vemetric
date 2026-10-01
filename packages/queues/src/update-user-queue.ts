@@ -1,7 +1,6 @@
-import { Queue } from 'bullmq';
 import { z } from 'zod';
 import { updateUserQueueName } from './queue-names';
-import { defaultQueueConnection } from './queue-utils';
+import { createQueue } from './queue-utils';
 
 export const updateUserDataModel = z.object({
   set: z.record(z.string(), z.any()).optional(),
@@ -19,7 +18,5 @@ export interface UpdateUserQueueProps {
   data?: UpdateUserDataModel;
 }
 
-export const updateUserQueue = new Queue<UpdateUserQueueProps>(updateUserQueueName, {
-  connection: defaultQueueConnection,
-});
+export const updateUserQueue = createQueue<UpdateUserQueueProps>(updateUserQueueName);
 updateUserQueue.setGlobalConcurrency(1);

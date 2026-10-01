@@ -1,6 +1,5 @@
-import { Queue } from 'bullmq';
 import { mergeUserQueueName } from './queue-names';
-import { defaultQueueConnection } from './queue-utils';
+import { createQueue } from './queue-utils';
 
 export interface MergeUserQueueProps {
   projectId: string;
@@ -11,6 +10,4 @@ export interface MergeUserQueueProps {
   sessionWaitStartedAt?: number;
 }
 
-export const mergeUserQueue = new Queue<MergeUserQueueProps>(mergeUserQueueName, {
-  connection: defaultQueueConnection,
-});
+export const mergeUserQueue = createQueue<MergeUserQueueProps>(mergeUserQueueName);

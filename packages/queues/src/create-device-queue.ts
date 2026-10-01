@@ -1,6 +1,5 @@
-import { Queue } from 'bullmq';
 import { createDeviceQueueName } from './queue-names';
-import { defaultQueueConnection } from './queue-utils';
+import { createQueue } from './queue-utils';
 
 export interface CreateDeviceQueueProps {
   projectId: string;
@@ -8,6 +7,4 @@ export interface CreateDeviceQueueProps {
   headers: Record<string, string>;
 }
 
-export const createDeviceQueue = new Queue<CreateDeviceQueueProps>(createDeviceQueueName, {
-  connection: defaultQueueConnection,
-});
+export const createDeviceQueue = createQueue<CreateDeviceQueueProps>(createDeviceQueueName);

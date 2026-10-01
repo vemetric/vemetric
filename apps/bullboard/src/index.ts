@@ -7,6 +7,7 @@ import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
 import { enrichUserQueue } from '@vemetric/queues/enrich-user-queue';
 import { eventQueue } from '@vemetric/queues/event-queue';
 import { mergeUserQueue } from '@vemetric/queues/merge-user-queue';
+import { closeQueues } from '@vemetric/queues/queue-utils';
 import { sessionFlushQueue } from '@vemetric/queues/session-flush-queue';
 import { sessionQueue } from '@vemetric/queues/session-queue';
 import { updateUserQueue } from '@vemetric/queues/update-user-queue';
@@ -81,9 +82,24 @@ process.on('unhandledRejection', function (err) {
   logger.error({ err }, 'Unhandled rejection');
 });
 
-export default {
+const server = Bun.serve({
   port: 4121,
   fetch: app.fetch,
+});
+
+const gracefulShutdown = async (signal: string) => {
+  logger.info(`Received ${signal}, closing server...`);
+  try {
+    await server.stop();
+    await closeQueues();
+  } catch (err) {
+    logger.error({ err }, 'Error during graceful shutdown');
+    process.exit(1);
+  }
+  process.exit(0);
 };
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 logger.info('Starting bullboard');

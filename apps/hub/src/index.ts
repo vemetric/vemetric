@@ -1,9 +1,9 @@
 import { formatClickhouseDate } from '@vemetric/common/date';
 import { EMPTY_GEO_DATA, getGeoDataFromIp } from '@vemetric/common/geo';
 import { getClientIp } from '@vemetric/common/request-ip';
-import { addToQueue } from '@vemetric/queues/queue-utils';
+import { addToQueue, closeQueues } from '@vemetric/queues/queue-utils';
 import { updateUserDataModel, updateUserQueue } from '@vemetric/queues/update-user-queue';
-import { generateUserId } from 'database';
+import { generateUserId, prismaClient } from 'database';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { HTTPException } from 'hono/http-exception';
@@ -17,7 +17,7 @@ import { eventSchema, trackEvent, validateSpecialEvents } from './utils/event';
 import { logger } from './utils/logger';
 import { handlePageLeave } from './utils/page-leave';
 import { getProjectByToken } from './utils/project';
-import { getUserIdentificationLock, releaseUserIdentificationLock } from './utils/redis';
+import { closeRedisClient, getUserIdentificationLock, releaseUserIdentificationLock } from './utils/redis';
 import { getUserIdFromRequest, isPrefetchRequest } from './utils/request';
 import { identifySchema, identifyUser } from './utils/user';
 
@@ -286,9 +286,27 @@ process.on('unhandledRejection', function (err) {
   logger.error({ err }, 'Unhandled rejection');
 });
 
-export default {
+const server = Bun.serve({
   port: 4004,
   fetch: app.fetch,
+});
+
+const gracefulShutdown = async (signal: string) => {
+  logger.info(`Received ${signal}, closing server...`);
+  try {
+    // Resolves once in-flight requests are done, so their jobs are enqueued before the queues close.
+    await server.stop();
+    await closeQueues();
+    await closeRedisClient();
+    await prismaClient.$disconnect();
+  } catch (err) {
+    logger.error({ err }, 'Error during graceful shutdown');
+    process.exit(1);
+  }
+  process.exit(0);
 };
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 logger.info('Starting hub');

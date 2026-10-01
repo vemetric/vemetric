@@ -1,3 +1,4 @@
+import { closeQueues } from '@vemetric/queues/queue-utils';
 import type { Worker } from 'bullmq';
 import { closeStateRedis } from './ingestion';
 import { workerName } from './utils/env';
@@ -76,6 +77,7 @@ const gracefulShutdown = async (signal: string) => {
   logger.info(`Received ${signal}, closing server...`);
   await Promise.all(workers.map((worker) => worker.close()));
   await shutdownQueueTelemetry();
+  await closeQueues();
   await closeStateRedis();
   process.exit(0);
 };

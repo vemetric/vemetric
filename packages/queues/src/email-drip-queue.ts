@@ -1,7 +1,6 @@
-import { Queue } from 'bullmq';
 import type { DripSequenceType } from 'database';
 import { emailDripQueueName } from './queue-names';
-import { defaultQueueConnection } from './queue-utils';
+import { createQueue } from './queue-utils';
 
 type BaseProps = {
   sequenceType: DripSequenceType;
@@ -18,6 +17,4 @@ export type EmailDripQueueProps = BaseProps &
       }
   );
 
-export const emailDripQueue = new Queue<EmailDripQueueProps>(emailDripQueueName, {
-  connection: defaultQueueConnection,
-});
+export const emailDripQueue = createQueue<EmailDripQueueProps>(emailDripQueueName);

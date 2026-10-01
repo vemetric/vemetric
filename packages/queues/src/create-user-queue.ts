@@ -1,6 +1,7 @@
 import type { GeoData } from '@vemetric/common/geo';
+import { Queue } from 'bullmq';
 import { createUserQueueName } from './queue-names';
-import { createQueue } from './queue-utils';
+import { defaultQueueConnection } from './queue-utils';
 
 export interface CreateUserQueueProps {
   projectId: string;
@@ -14,5 +15,7 @@ export interface CreateUserQueueProps {
   data: Record<string, any>;
 }
 
-export const createUserQueue = createQueue<CreateUserQueueProps>(createUserQueueName);
+export const createUserQueue = new Queue<CreateUserQueueProps>(createUserQueueName, {
+  connection: defaultQueueConnection,
+});
 createUserQueue.setGlobalConcurrency(1);

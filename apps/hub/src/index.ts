@@ -1,4 +1,3 @@
-import { closeQueues } from '@vemetric/queues/queue-utils';
 import { prismaClient } from 'database';
 import { app } from './app';
 import { logger } from './utils/logger';
@@ -13,9 +12,8 @@ const server = Bun.serve({
 const gracefulShutdown = async (signal: string) => {
   logger.info(`Received ${signal}, closing server...`);
   try {
-    // Resolves once in-flight requests are done, so their jobs are enqueued before the queues close.
+    // Resolves once in-flight requests are done, so they can still use the connections closed below.
     await server.stop();
-    await closeQueues();
     await closeRedisClient();
     await prismaClient.$disconnect();
   } catch (err) {

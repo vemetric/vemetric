@@ -1,6 +1,7 @@
 import type { GeoData } from '@vemetric/common/geo';
+import { Queue } from 'bullmq';
 import { eventQueueName } from './queue-names';
-import { createQueue } from './queue-utils';
+import { defaultQueueConnection } from './queue-utils';
 
 export interface EventQueueProps {
   projectId: string;
@@ -20,4 +21,6 @@ export interface EventQueueProps {
   geoData: GeoData | undefined;
 }
 
-export const eventQueue = createQueue<EventQueueProps>(eventQueueName);
+export const eventQueue = new Queue<EventQueueProps>(eventQueueName, {
+  connection: defaultQueueConnection,
+});

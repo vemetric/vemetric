@@ -1,6 +1,7 @@
 import type { GeoData } from '@vemetric/common/geo';
+import { Queue } from 'bullmq';
 import { sessionQueueName } from './queue-names';
-import { createQueue } from './queue-utils';
+import { defaultQueueConnection } from './queue-utils';
 
 interface BaseProps {
   projectId: string;
@@ -28,4 +29,6 @@ interface ExtendOnlyProps extends BaseProps {
 
 export type SessionQueueProps = CreateOrExtendProps | ExtendOnlyProps;
 
-export const sessionQueue = createQueue<SessionQueueProps>(sessionQueueName);
+export const sessionQueue = new Queue<SessionQueueProps>(sessionQueueName, {
+  connection: defaultQueueConnection,
+});

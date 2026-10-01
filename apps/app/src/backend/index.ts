@@ -1,5 +1,4 @@
 import * as Sentry from '@sentry/bun';
-import { closeQueues } from '@vemetric/queues/queue-utils';
 import { clickhouseClient } from 'clickhouse';
 import { prismaClient } from 'database';
 import { app } from './app';
@@ -17,7 +16,6 @@ const gracefulShutdown = async (signal: string) => {
   try {
     // Resolves once in-flight requests are done, so they can still use the connections closed below.
     await server.stop();
-    await closeQueues();
     await closeRedisClient();
     await Promise.all([prismaClient.$disconnect(), clickhouseClient.close(), Sentry.close(2000)]);
   } catch (err) {

@@ -20,6 +20,10 @@ export const vemetricTheme = createSystem(defaultConfig, {
       colorPalette: 'gray',
       bg: 'bg.muted',
     },
+    // Reserve space for the scrollbar on project pages so switching between pages with and without scrollable content doesn't shift the layout
+    'html:has([data-project-layout])': {
+      scrollbarGutter: 'stable',
+    },
     '*': {
       '&::-webkit-scrollbar': {
         width: '8px',

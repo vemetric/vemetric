@@ -297,21 +297,21 @@ export const DashboardChart = (props: Props) => {
             <DeleteIconButton onClick={() => handleToggleCategory('events')} />
           </Flex>
         )}
-        <AspectRatio
-          pos="relative"
-          w="100%"
-          ratio={{ base: 9 / 3.5, md: 9 / 3 }}
-          css={{
-            '& .recharts-xAxis-tick-labels .recharts-text, & .recharts-yAxis-tick-labels .recharts-text': {
-              fontSize: 'xs',
-              fill: 'gray.500',
-            },
-            '& .recharts-area-area': {
-              stroke: 'transparent!important',
-            },
-          }}
-        >
-          {data.chartTimeSeries.length > 0 ? (
+        {data.chartTimeSeries.length > 0 ? (
+          <AspectRatio
+            pos="relative"
+            w="100%"
+            ratio={{ base: 9 / 3.5, md: 9 / 3 }}
+            css={{
+              '& .recharts-xAxis-tick-labels .recharts-text, & .recharts-yAxis-tick-labels .recharts-text': {
+                fontSize: 'xs',
+                fill: 'gray.500',
+              },
+              '& .recharts-area-area': {
+                stroke: 'transparent!important',
+              },
+            }}
+          >
             <Box pos="absolute" inset={0}>
               <ResponsiveContainer>
                 <RechartsComposedChart
@@ -555,20 +555,21 @@ export const DashboardChart = (props: Props) => {
                 </RechartsComposedChart>
               </ResponsiveContainer>
             </Box>
-          ) : (
-            <Flex pos="absolute" inset={0} justify="center" align="center">
-              <DataEmptyState
-                size={{ base: 'sm', md: 'md' }}
-                icon={<TbActivity />}
-                title="No data available"
-                description="Adjust the current filters or timeframe to explore a different slice of data."
-                filterConfig={filterConfig}
-                filterRoute={publicDashboard ? '/public/$domain' : '/p/$projectId'}
-                timespanRoute={publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/'}
-              />
-            </Flex>
-          )}
-        </AspectRatio>
+          </AspectRatio>
+        ) : (
+          // CSS aspect-ratio (unlike AspectRatio) lets the box grow when the content doesn't fit on small screens
+          <Flex w="100%" aspectRatio={{ base: 9 / 3.5, md: 9 / 3 }} justify="center" align="center">
+            <DataEmptyState
+              size={{ base: 'sm', md: 'md' }}
+              icon={<TbActivity />}
+              title="No data available"
+              description="Adjust the current filters or timeframe to explore a different slice of data."
+              filterConfig={filterConfig}
+              filterRoute={publicDashboard ? '/public/$domain' : '/p/$projectId'}
+              timespanRoute={publicDashboard ? '/public/$domain' : '/_layout/p/$projectId/'}
+            />
+          </Flex>
+        )}
       </Card.Body>
     </Card.Root>
   );

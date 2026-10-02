@@ -96,7 +96,10 @@ async function waitUntilUp(url: string) {
 
 start('hub', join(checkout, 'apps/hub'));
 for (let i = 0; i < workerCount; i++) {
-  start(`worker-${i}`, join(checkout, 'apps/worker'), { WORKER_HEALTH_PORT: String(4101 + i) });
+  start(`worker-${i}`, join(checkout, 'apps/worker'), {
+    WORKER_HEALTH_PORT: String(4101 + i),
+    WORKER_NAME: `worker-${i}`,
+  });
 }
 await waitUntilUp(`http://localhost:${HUB_PORT}/up`);
 for (let i = 0; i < workerCount; i++) await waitUntilUp(`http://localhost:${4101 + i}/up`);
@@ -246,31 +249,17 @@ await Promise.all(queues.map((queue) => queue.close()));
 await redis.quit();
 
 // --- Verification ----------------------------------------------------------------------------
-const tables = new Set(
-  (
-    await clickhouseQuery<{ name: string }>(
-      clickhouseDb,
-      'SELECT name FROM system.tables WHERE database = currentDatabase()',
-    )
-  ).map((t) => t.name),
-);
 const one = async (query: string) =>
   Number(Object.values((await clickhouseQuery<Record<string, number>>(clickhouseDb, query))[0] ?? {})[0] ?? 0);
 const projectFilter = `projectId = ${PROJECT.id}`;
 const stored = {
   events: await one(`SELECT sum(sign) FROM event WHERE ${projectFilter}`),
-  sessions: tables.has('session_v3')
-    ? await one(
-        `SELECT count() FROM (SELECT id, argMax(deleted, revision) AS d FROM session_v3 WHERE ${projectFilter} GROUP BY id) WHERE d = 0`,
-      )
-    : await one(`SELECT count(DISTINCT id) FROM session FINAL WHERE ${projectFilter} AND deleted = 0`),
-  devices: tables.has('device_v2')
-    ? await one(
-        `SELECT count() FROM (SELECT userId, id, argMax(deleted, revision) AS d FROM device_v2 WHERE ${projectFilter} GROUP BY userId, id) WHERE d = 0`,
-      )
-    : await one(
-        `SELECT count() FROM (SELECT userId, id FROM device WHERE ${projectFilter} GROUP BY userId, id HAVING sum(sign) > 0)`,
-      ),
+  sessions: await one(
+    `SELECT count() FROM (SELECT id, argMax(deleted, revision) AS d FROM session_v3 WHERE ${projectFilter} GROUP BY id) WHERE d = 0`,
+  ),
+  devices: await one(
+    `SELECT count() FROM (SELECT userId, id, argMax(deleted, revision) AS d FROM device_v2 WHERE ${projectFilter} GROUP BY userId, id) WHERE d = 0`,
+  ),
 };
 // Every identity is one user with one device and, within the test, one session.
 const expected = { events: stats.accepted, sessions: stats.identities, devices: stats.identities };

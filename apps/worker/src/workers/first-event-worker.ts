@@ -5,6 +5,7 @@ import { addToQueue } from '@vemetric/queues/queue-utils';
 import { Queue, Worker } from 'bullmq';
 import { clickhouseDateToISO, clickhouseEvent } from 'clickhouse';
 import { prismaClient } from 'database';
+import { workerName } from '../utils/env';
 import { logger } from '../utils/logger';
 import { queueTelemetry } from '../utils/telemetry';
 import { vemetric } from '../utils/vemetric-client';
@@ -113,6 +114,7 @@ export async function initFirstEventWorker() {
       connection: {
         url: process.env.REDIS_URL,
       },
+      name: workerName,
       telemetry: queueTelemetry,
       removeOnComplete: {
         count: 10,

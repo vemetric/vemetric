@@ -3,13 +3,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl wget &&
 WORKDIR /usr/src/app
 
 FROM base AS pruner
-RUN bun add -g turbo@2.6.1
+RUN bun add -g turbo@2.11.5
 COPY . .
 RUN bun turbo prune app --docker --out-dir out
 
 FROM base AS install
 COPY --from=pruner /usr/src/app/out/json/ .
-RUN bun install --ignore-scripts --frozen-lockfile
+RUN bun install --ignore-scripts --frozen-lockfile --linker hoisted
 
 FROM install AS build
 # Compiles out everything that would talk to Vemetric's own infrastructure (support chat,
@@ -21,7 +21,7 @@ RUN bun turbo run build --filter=app
 
 FROM base AS prod-install
 COPY --from=pruner /usr/src/app/out/json/ .
-RUN bun install --production --ignore-scripts --frozen-lockfile
+RUN bun install --production --ignore-scripts --frozen-lockfile --linker hoisted
 
 FROM base AS release
 ENV NODE_ENV=production

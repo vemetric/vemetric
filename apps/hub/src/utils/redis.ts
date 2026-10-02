@@ -26,6 +26,14 @@ export const getRedisClient = async (): Promise<RedisClientType> => {
   return connecting;
 };
 
+export async function closeRedisClient() {
+  const client = redisClient ?? (await connecting?.catch(() => null));
+  redisClient = null;
+  if (client?.isOpen) {
+    await client.quit();
+  }
+}
+
 const REDIS_USER_IDENTIFY_EXPIRATION = 60; // seconds
 // used to make sure identification of a user is not done multiple at the same time
 function getRedisUserIdentifyKey(projectId: bigint, identifier: string) {
@@ -35,16 +43,15 @@ export async function getUserIdentificationLock(projectId: bigint, identifier: s
   const redisClient = await getRedisClient();
   const redisKey = getRedisUserIdentifyKey(projectId, identifier);
 
-  const lockAcquired =
-    (await redisClient?.set(redisKey, '1', {
-      NX: true,
-      EX: REDIS_USER_IDENTIFY_EXPIRATION,
-    })) ?? null;
+  const lockAcquired = await redisClient.set(redisKey, '1', {
+    NX: true,
+    EX: REDIS_USER_IDENTIFY_EXPIRATION,
+  });
 
   return { lockAcquired: Boolean(lockAcquired) };
 }
 export async function releaseUserIdentificationLock(projectId: bigint, identifier: string) {
   const redisClient = await getRedisClient();
   const redisKey = getRedisUserIdentifyKey(projectId, identifier);
-  await redisClient?.del(redisKey);
+  await redisClient.del(redisKey);
 }

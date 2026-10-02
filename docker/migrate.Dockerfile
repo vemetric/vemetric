@@ -3,14 +3,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-cert
 WORKDIR /usr/src/app
 
 FROM base AS pruner
-RUN bun add -g turbo@2.6.1
+RUN bun add -g turbo@2.11.5
 COPY . .
 RUN bun turbo prune database clickhouse --docker --out-dir out
 
 FROM base AS install
 COPY --from=pruner /usr/src/app/out/json/ .
 # Scripts are required here: the Prisma CLI downloads its engines during postinstall.
-RUN bun install --frozen-lockfile
+RUN bun install --frozen-lockfile --linker hoisted
 
 FROM base AS release
 COPY --from=pruner /usr/src/app/out/full/ ./

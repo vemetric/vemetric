@@ -132,7 +132,7 @@ async function cleanupProject(context: ProjectContext) {
 }
 
 async function cleanupClickHouse(projectId: string) {
-  for (const table of ['event', 'session', 'user', 'device', 'session_v3', 'device_v2']) {
+  for (const table of ['event', 'user', 'session_v3', 'device_v2']) {
     await clickhouseClient.command({
       query: `ALTER TABLE ${table} DELETE WHERE projectId = {projectId:UInt64} SETTINGS mutations_sync = 2`,
       query_params: { projectId },
@@ -315,7 +315,7 @@ describe.sequential('hub ingestion integration', () => {
       enrichUserQueueModule,
       mergeUserQueueModule,
     ] = await Promise.all([
-      import('../src/index'),
+      import('../src/app'),
       import('../../worker/src/workers/event-worker').then(async (eventWorkerModule) => ({
         initEventWorker: eventWorkerModule.initEventWorker,
         initSessionWorker: (await import('../../worker/src/workers/session-worker')).initSessionWorker,
@@ -345,7 +345,7 @@ describe.sequential('hub ingestion integration', () => {
     ]);
 
     runtime = {
-      fetch: async (request: Request) => await hubModule.default.fetch(request),
+      fetch: async (request: Request) => await hubModule.app.fetch(request),
       workers,
       redis,
       queues: [

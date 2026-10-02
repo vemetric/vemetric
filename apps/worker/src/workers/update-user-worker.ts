@@ -3,6 +3,7 @@ import { updateUserQueue, type UpdateUserQueueProps } from '@vemetric/queues/upd
 import { Worker } from 'bullmq';
 import { clickhouseUser } from 'clickhouse';
 import { isDeepEqual } from 'remeda';
+import { workerName } from '../utils/env';
 import { logJobStep } from '../utils/job-logger';
 import { queueTelemetry } from '../utils/telemetry';
 import { getUpdatedUserData } from '../utils/user';
@@ -58,6 +59,7 @@ export async function initUpdateUserWorker() {
       connection: {
         url: process.env.REDIS_URL,
       },
+      name: workerName,
       telemetry: queueTelemetry,
       concurrency: 1,
       removeOnComplete: {

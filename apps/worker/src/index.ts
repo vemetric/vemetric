@@ -2,6 +2,7 @@ import { assertBooleanEnvFlags } from '@vemetric/common/self-hosted';
 import { assertMailConfig } from '@vemetric/email/transactional';
 import type { Worker } from 'bullmq';
 import { closeStateRedis } from './ingestion';
+import { workerName } from './utils/env';
 import { logger } from './utils/logger';
 import { shutdownQueueTelemetry } from './utils/telemetry';
 import { initCreateUserWorker } from './workers/create-user-worker';
@@ -66,7 +67,7 @@ async function main() {
     });
 
     ready = true;
-    logger.info({ workers: Object.keys(initializers) }, 'workers started');
+    logger.info({ workers: Object.keys(initializers), workerName }, 'workers started');
   } catch (err) {
     logger.error({ err }, 'Error initializing worker');
     process.exit(1);

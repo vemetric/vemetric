@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@hono/zod-openapi": "^0.19.5",
-    "hono": "^4.6.13",
+    "hono": "^4.13.11",
     "nanoid": "^5.0.4",
     "pino": "^9.6.0",
     "siphash": "^1.1.0",
@@ -23,6 +23,6 @@
   "devDependencies": {
     "@vemetric/eslint-config": "workspace:*",
     "typescript": "^5.7.3",
-    "vitest": "^3.2.3"
+    "vitest": "^4.1.11"
   }
 }

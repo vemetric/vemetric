@@ -1,57 +1,31 @@
 import * as Sentry from '@sentry/bun';
 import { clickhouseClient } from 'clickhouse';
-import { Hono } from 'hono';
-import { API_DOCS_URL, createPublicApi } from './api';
-import { createBackendApp } from './backend-app';
-import { createStaticApp } from './static-app';
+import { prismaClient } from 'database';
+import { app } from './app';
 import { logger } from './utils/backend-logger';
-import { isMemoryReportEnabled, memoryTelemetryMiddleware, startMemoryReportSchedule } from './utils/memory-report';
+import { closeRedisClient } from './utils/redis';
 
-if (process.env.SENTRY_URL) {
-  Sentry.init({
-    dsn: process.env.SENTRY_URL,
-    integrations: [],
-    tracesSampleRate: 0.5,
-  });
-}
-
-export const app = new Hono();
-
-if (isMemoryReportEnabled()) {
-  app.use('*', memoryTelemetryMiddleware);
-}
-
-const backendApp = createBackendApp();
-app.route('/_api', backendApp);
-
-const publicApi = createPublicApi();
-app.get('/api', (c) => c.redirect(API_DOCS_URL, 302));
-app.get('/api/', (c) => c.redirect(API_DOCS_URL, 302));
-app.route('/api', publicApi);
-
-if (process.env.NODE_ENV === 'production') {
-  const staticApp = createStaticApp();
-  app.route('/', staticApp);
-}
-
-export default {
+// The Vite dev server imports ./app directly, so only this entrypoint starts a server.
+const server = Bun.serve({
   port: 4000,
   fetch: app.fetch,
+});
+
+const gracefulShutdown = async (signal: string) => {
+  logger.info(`Received ${signal}, closing server...`);
+  try {
+    // Resolves once in-flight requests are done, so they can still use the connections closed below.
+    await server.stop();
+    await closeRedisClient();
+    await Promise.all([prismaClient.$disconnect(), clickhouseClient.close(), Sentry.close(2000)]);
+  } catch (err) {
+    logger.error({ err }, 'Error during graceful shutdown');
+    process.exit(1);
+  }
+  process.exit(0);
 };
 
-process.on('uncaughtException', function (err) {
-  logger.error({ err }, 'Uncaught exception');
-});
-process.on('unhandledRejection', function (err) {
-  logger.error({ err }, 'Unhandled rejection');
-});
-
-process.on('beforeExit', () => {
-  clickhouseClient.close();
-});
-
-if (isMemoryReportEnabled()) {
-  startMemoryReportSchedule();
-}
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 logger.info('Starting app');

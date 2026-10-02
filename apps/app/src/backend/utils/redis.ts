@@ -43,3 +43,12 @@ export function getRedisClient() {
 
   return redisClientPromise;
 }
+
+export async function closeRedisClient() {
+  const client = redisClient ?? (await redisClientPromise?.catch(() => null));
+  redisClient = null;
+  redisClientPromise = null;
+  if (client?.isOpen) {
+    await client.quit();
+  }
+}

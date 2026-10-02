@@ -8,6 +8,8 @@ import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
 import { authClient, loginWithProvider } from '@/utils/auth';
 import { redirectPath } from '@/utils/local-storage';
+import { IS_SELF_HOSTED } from '@/utils/self-hosted';
+import { ENABLED_SOCIAL_PROVIDERS, isSocialProviderEnabled } from '@/utils/social-providers';
 import { getAppUrl } from '@/utils/url';
 
 export const Route = createFileRoute('/_auth/login')({
@@ -22,6 +24,7 @@ function Page() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [sentResetPasswordLink, setSentResetPasswordLink] = useState(false);
+  const hasSocialProviders = ENABLED_SOCIAL_PROVIDERS.length > 0;
 
   const handleLoginSuccess = async () => {
     // Check for pending redirect
@@ -187,57 +190,69 @@ function Page() {
             <Button type="submit" colorPalette="purple" loading={isLoading}>
               Sign in
             </Button>
-            <HStack>
-              <Separator flex="1" />
-              <Text flexShrink="0" fontSize="xs">
-                Or continue with
-              </Text>
-              <Separator flex="1" />
-            </HStack>
-            <HStack gap="4">
-              <Flex flex="1" pos="relative">
-                <Button
-                  type="button"
-                  flex="1"
-                  variant="surface"
-                  loading={isLoading}
-                  onClick={() => loginWithProvider('google', setIsLoading)}
-                >
-                  <TbBrandGoogleFilled />
-                  Google
-                </Button>
-                {lastMethod === 'google' && (
-                  <Badge pos="absolute" top="-2.5" right="-2.5" colorPalette="blue" variant="solid">
-                    Last used
-                  </Badge>
+            {/* The whole social section, divider included, is omitted when no provider is configured. */}
+            {hasSocialProviders && (
+              <HStack>
+                <Separator flex="1" />
+                <Text flexShrink="0" fontSize="xs">
+                  Or continue with
+                </Text>
+                <Separator flex="1" />
+              </HStack>
+            )}
+            {hasSocialProviders && (
+              <HStack gap="4">
+                {isSocialProviderEnabled('google') && (
+                  <Flex flex="1" pos="relative">
+                    <Button
+                      type="button"
+                      flex="1"
+                      variant="surface"
+                      loading={isLoading}
+                      onClick={() => loginWithProvider('google', setIsLoading)}
+                    >
+                      <TbBrandGoogleFilled />
+                      Google
+                    </Button>
+                    {lastMethod === 'google' && (
+                      <Badge pos="absolute" top="-2.5" right="-2.5" colorPalette="blue" variant="solid">
+                        Last used
+                      </Badge>
+                    )}
+                  </Flex>
                 )}
-              </Flex>
-              <Flex flex="1" pos="relative">
-                <Button
-                  type="button"
-                  flex="1"
-                  variant="solid"
-                  loading={isLoading}
-                  onClick={() => loginWithProvider('github', setIsLoading)}
-                >
-                  <TbBrandGithub />
-                  GitHub
-                </Button>
-                {lastMethod === 'github' && (
-                  <Badge pos="absolute" top="-2.5" right="-2.5" colorPalette="blue" variant="solid">
-                    Last used
-                  </Badge>
+                {isSocialProviderEnabled('github') && (
+                  <Flex flex="1" pos="relative">
+                    <Button
+                      type="button"
+                      flex="1"
+                      variant="solid"
+                      loading={isLoading}
+                      onClick={() => loginWithProvider('github', setIsLoading)}
+                    >
+                      <TbBrandGithub />
+                      GitHub
+                    </Button>
+                    {lastMethod === 'github' && (
+                      <Badge pos="absolute" top="-2.5" right="-2.5" colorPalette="blue" variant="solid">
+                        Last used
+                      </Badge>
+                    )}
+                  </Flex>
                 )}
-              </Flex>
-            </HStack>
+              </HStack>
+            )}
           </Stack>
 
-          <Text textStyle="sm" color="fg.muted" textAlign="center">
-            By logging in you accept our{' '}
-            <Link href="https://vemetric.com/legal" target="_blank" variant="underline">
-              Legal Terms
-            </Link>
-          </Text>
+          {/* Self hosted instances have no relationship with Vemetric's own legal terms. */}
+          {!IS_SELF_HOSTED && (
+            <Text textStyle="sm" color="fg.muted" textAlign="center">
+              By logging in you accept our{' '}
+              <Link href="https://vemetric.com/legal" target="_blank" variant="underline">
+                Legal Terms
+              </Link>
+            </Text>
+          )}
         </Stack>
       </motion.div>
     </Stack>

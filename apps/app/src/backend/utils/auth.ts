@@ -1,4 +1,5 @@
 import { getBaseDomain, getVemetricUrl } from '@vemetric/common/env';
+import { isSelfHosted } from '@vemetric/common/self-hosted';
 import { getDripSequence, getStepDelay } from '@vemetric/email/email-drip-sequences';
 import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
 import { addToQueue } from '@vemetric/queues/queue-utils';
@@ -10,10 +11,31 @@ import { dbOrganization, prismaClient } from 'database';
 import { logger } from './backend-logger';
 import { sendEmailVerificationLink, sendPasswordResetLink } from './email';
 import { emailVerificationRateLimiter } from './rate-limit';
+import {
+  INVITATION_TOKEN_COOKIE,
+  applyClaimedInvitation,
+  assertRegistrationAllowed,
+  extractInvitationToken,
+} from './registration-guard';
+import { getEnabledSocialProviders, getSocialProviderCredentials } from './social-providers';
 import { vemetric } from './vemetric-client';
 
 export const TRUSTED_ORIGINS = [getVemetricUrl('app'), getVemetricUrl()];
 const isLocalhost = getBaseDomain().includes('localhost');
+
+/**
+ * Credentials of the social login providers that are fully configured.
+ *
+ * Resolved while the module is loaded, so a provider with only one of its two values set fails
+ * the process start. Unconfigured providers are not registered at all.
+ */
+const SOCIAL_PROVIDER_CREDENTIALS = getSocialProviderCredentials();
+
+/**
+ * Providers whose accounts may be linked automatically. Only enabled providers are listed, next to
+ * the email and password login, which is always available.
+ */
+const ENABLED_SOCIAL_PROVIDERS = getEnabledSocialProviders();
 
 const options = {
   basePath: '/_api/auth',
@@ -35,20 +57,11 @@ const options = {
   account: {
     accountLinking: {
       enabled: true,
-      trustedProviders: ['google', 'github', 'email-password'],
+      trustedProviders: [...ENABLED_SOCIAL_PROVIDERS, 'email-password'],
       allowDifferentEmails: true,
     },
   },
-  socialProviders: {
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID as string, //!expecting client id from env file
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string, //!expecting client secret from env file
-    },
-    github: {
-      clientId: process.env.GITHUB_CLIENT_ID as string, //!expecting client id from env file
-      clientSecret: process.env.GITHUB_CLIENT_SECRET as string, //!expecting client secret from env file
-    },
-  },
+  socialProviders: SOCIAL_PROVIDER_CREDENTIALS,
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
@@ -80,7 +93,21 @@ const options = {
   databaseHooks: {
     user: {
       create: {
-        after: async (user) => {
+        before: async (user, context) => {
+          const invitationToken = extractInvitationToken(
+            context?.request?.url,
+            context?.getCookie?.(INVITATION_TOKEN_COOKIE) ?? null,
+          );
+          await assertRegistrationAllowed(invitationToken);
+          return { data: user };
+        },
+        after: async (user, context) => {
+          const invitationToken = extractInvitationToken(
+            context?.request?.url,
+            context?.getCookie?.(INVITATION_TOKEN_COOKIE) ?? null,
+          );
+          await applyClaimedInvitation(user.id, invitationToken);
+
           if (!user.emailVerified) {
             return;
           }
@@ -147,6 +174,10 @@ export const auth = betterAuth({
         organizations: userOrganizations.map((userOrg) => ({
           ...userOrg.organization,
           role: userOrg.role,
+          // Self hosted instances skip pricing entirely, so the frontend's pricing
+          // onboarding guard must never see an organization stuck in that step.
+          // This does not change the stored value, only what the session reports.
+          ...(isSelfHosted() ? { pricingOnboarded: true } : {}),
         })),
         projects: allProjects,
       };

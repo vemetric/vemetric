@@ -1,5 +1,5 @@
 import { Card, Box, Button, Flex, Text, Table, Badge, IconButton, AbsoluteCenter, Spinner } from '@chakra-ui/react';
-import { isInvitationExpired } from '@vemetric/common/organization';
+import { isInvitationExpired } from '@vemetric/common/invitation';
 import { useState } from 'react';
 import { TbTrash, TbCopy, TbUserPlus, TbLink } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';

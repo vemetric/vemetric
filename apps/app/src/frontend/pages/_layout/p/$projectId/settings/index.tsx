@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { useCurrentOrganization } from '@/hooks/use-current-organization';
 import { useOrgSettingsDialog } from '@/hooks/use-org-settings-dialog';
 import { useSetBreadcrumbs } from '@/stores/header-store';
+import { IS_SELF_HOSTED } from '@/utils/self-hosted';
 
 const settingsSearchSchema = z.object({
   tab: fallback(z.enum(['general', 'billing', 'api']), 'general').default('general'),
@@ -23,7 +24,7 @@ function Page() {
   const { projectId } = Route.useParams();
   const { tab } = Route.useSearch();
   const { isAdmin } = useCurrentOrganization();
-  const selectedTab = !isAdmin && tab === 'api' ? 'general' : tab;
+  const selectedTab = (!isAdmin && tab === 'api') || (IS_SELF_HOSTED && tab === 'billing') ? 'general' : tab;
   const navigate = useNavigate({ from: '/p/$projectId/settings/' });
   useSetBreadcrumbs(['Settings']);
 
@@ -49,30 +50,34 @@ function Page() {
             API
           </Tabs.Trigger>
         )}
-        <Tabs.Trigger value="billing">
-          <TbCreditCard />
-          Billing & Usage
-        </Tabs.Trigger>
+        {!IS_SELF_HOSTED && (
+          <Tabs.Trigger value="billing">
+            <TbCreditCard />
+            Billing & Usage
+          </Tabs.Trigger>
+        )}
       </Tabs.List>
       <Tabs.Content value="general">
         <ProjectGeneralTab projectId={projectId} />
       </Tabs.Content>
-      <Tabs.Content value="billing">
-        <EmptyState
-          icon={<TbCreditCard size={64} />}
-          title="Billing & Usage is managed at the organization level"
-          description={
-            <>
-              <Text mb="1">Usage is shared across all projects within the organization.</Text>
-              <Text>Head to Organization Settings to manage billing details.</Text>
-            </>
-          }
-        >
-          <Button onClick={() => open('billing')}>
-            <TbSettings /> Open Organization Settings
-          </Button>
-        </EmptyState>
-      </Tabs.Content>
+      {!IS_SELF_HOSTED && (
+        <Tabs.Content value="billing">
+          <EmptyState
+            icon={<TbCreditCard size={64} />}
+            title="Billing & Usage is managed at the organization level"
+            description={
+              <>
+                <Text mb="1">Usage is shared across all projects within the organization.</Text>
+                <Text>Head to Organization Settings to manage billing details.</Text>
+              </>
+            }
+          >
+            <Button onClick={() => open('billing')}>
+              <TbSettings /> Open Organization Settings
+            </Button>
+          </EmptyState>
+        </Tabs.Content>
+      )}
       {isAdmin && (
         <Tabs.Content value="api">
           <ProjectApiTab projectId={projectId} />

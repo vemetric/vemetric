@@ -3,21 +3,23 @@ import { Link, useLocation } from '@tanstack/react-router';
 import { TbArrowRight, TbBolt } from 'react-icons/tb';
 import { useCurrentOrganization } from '@/hooks/use-current-organization';
 import { getPricingPlan } from '@/utils/pricing';
+import { IS_SELF_HOSTED } from '@/utils/self-hosted';
 import { trpc } from '@/utils/trpc';
 
 export const EventLimitBanner = () => {
   const location = useLocation();
   const { organizationId } = useCurrentOrganization();
 
+  // Self hosted instances have no billing, so the status query is skipped entirely.
   const { data: billingStatus } = trpc.billing.billingStatus.useQuery(
     {
       organizationId,
     },
-    { enabled: !!organizationId },
+    { enabled: !!organizationId && !IS_SELF_HOSTED },
   );
   const { showLimitWarning } = getPricingPlan(billingStatus);
 
-  if (!showLimitWarning) {
+  if (IS_SELF_HOSTED || !showLimitWarning) {
     return null;
   }
 

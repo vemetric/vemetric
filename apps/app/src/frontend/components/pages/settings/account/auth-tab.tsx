@@ -1,6 +1,7 @@
 import { AbsoluteCenter, Box, Flex, Spinner, Stack, Text } from '@chakra-ui/react';
 import { ErrorState } from '@/components/ui/empty-state';
 import { authClient } from '@/utils/auth';
+import { isSocialProviderEnabled } from '@/utils/social-providers';
 import { trpc } from '@/utils/trpc';
 import { EmailAuthCard } from './email-auth-card';
 import { GitHubAuthCard } from './github-auth-card';
@@ -32,8 +33,14 @@ export const AccountAuthenticationTab = () => {
     await Promise.all([refetch(), refetchAuth()]);
   };
 
+  const isGoogleEnabled = isSocialProviderEnabled('google');
+  const isGitHubEnabled = isSocialProviderEnabled('github');
   const hasGoogle = Boolean(settings.accounts.find((a) => a.provider === 'google'));
   const hasGitHub = Boolean(settings.accounts.find((a) => a.provider === 'github'));
+  // A linked account of a provider the instance does not offer cannot be used to sign in, so it
+  // must not count as a fallback when deciding whether the other provider may be unlinked.
+  const canSignInWithGoogle = isGoogleEnabled && hasGoogle;
+  const canSignInWithGitHub = isGitHubEnabled && hasGitHub;
 
   return (
     <Flex flexDir="column" gap={4} p={4}>
@@ -48,18 +55,22 @@ export const AccountAuthenticationTab = () => {
         </Box>
         <Stack gap="3">
           <EmailAuthCard email={settings.user.email} hasPassword={settings.hasPassword} onUpdate={refreshData} />
-          <GoogleAuthCard
-            isConnected={hasGoogle}
-            hasPassword={settings.hasPassword}
-            hasOtherProvider={hasGitHub}
-            onUpdate={refreshData}
-          />
-          <GitHubAuthCard
-            isConnected={hasGitHub}
-            hasPassword={settings.hasPassword}
-            hasOtherProvider={hasGoogle}
-            onUpdate={refreshData}
-          />
+          {isGoogleEnabled && (
+            <GoogleAuthCard
+              isConnected={hasGoogle}
+              hasPassword={settings.hasPassword}
+              hasOtherProvider={canSignInWithGitHub}
+              onUpdate={refreshData}
+            />
+          )}
+          {isGitHubEnabled && (
+            <GitHubAuthCard
+              isConnected={hasGitHub}
+              hasPassword={settings.hasPassword}
+              hasOtherProvider={canSignInWithGoogle}
+              onUpdate={refreshData}
+            />
+          )}
         </Stack>
       </Box>
     </Flex>

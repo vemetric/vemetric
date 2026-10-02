@@ -1,7 +1,7 @@
 import { render } from '@react-email/render';
-import type { MessageSendingResponse } from 'postmark/dist/client/models';
 import type { ComponentProps } from 'react';
-import { getPostmarkClient } from './postmark-client';
+import { sendMail, type MessageStreamId } from './mail-client';
+import { getTipsFromAddress, getTransactionalFromAddress } from './mail-config';
 import EmailChangeMail from '../emails/email-change';
 import EmailVerificationMail from '../emails/email-verification';
 import PasswordResetMail from '../emails/password-reset';
@@ -14,10 +14,7 @@ import NoProjectSecond from '../emails/sequences/no-project/second';
 import SubscriptionCancelledMail from '../emails/subscription-cancelled';
 import SubscriptionCreatedMail from '../emails/subscription-created';
 
-export const TRANSACTIONAL_FROM_EMAIL = 'Vemetric <info@vemetric.com>';
-export const TIPS_FROM_EMAIL = 'Vemetric <info@notifications.vemetric.com>';
-
-type MessageStreamId = 'outbound' | 'tips';
+export { assertMailConfig, TIPS_FROM_EMAIL, TRANSACTIONAL_FROM_EMAIL } from './mail-config';
 
 export const TRANSACTIONAL_TEMPLATE_MAP = {
   emailVerification: {
@@ -84,30 +81,14 @@ export const sendTransactionalMail = async <T extends TemplateName>(
   const emailHtml = await render(<Email {...(templateProps as any)} />);
   const emailPlainText = await render(<Email {...(templateProps as any)} />, { plainText: true });
 
-  let fromAddress = TRANSACTIONAL_FROM_EMAIL;
-  if (messageStreamId === 'tips') {
-    fromAddress = TIPS_FROM_EMAIL;
-  }
+  const fromAddress = messageStreamId === 'tips' ? getTipsFromAddress() : getTransactionalFromAddress();
 
-  const { Message } = await import('postmark');
-  const postmarkClient = await getPostmarkClient();
-
-  const message = new Message(fromAddress, template.subject, emailHtml, emailPlainText, toAddress);
-  message.MessageStream = messageStreamId;
-
-  let response: MessageSendingResponse;
-  try {
-    response = await postmarkClient.sendEmail(message);
-  } catch (error: any) {
-    response = {
-      MessageID: '',
-      SubmittedAt: new Date().toISOString(),
-      ErrorCode: -1,
-      Message: error.message,
-    };
-  }
-
-  const success = response.ErrorCode === 0;
-
-  return { success, response };
+  return sendMail({
+    from: fromAddress,
+    to: toAddress,
+    subject: template.subject,
+    html: emailHtml,
+    text: emailPlainText,
+    messageStreamId,
+  });
 };

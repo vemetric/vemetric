@@ -10,6 +10,7 @@ import { Provider } from './components/ui/provider';
 import { Toaster } from './components/ui/toaster';
 import { routeTree } from './routeTree.gen';
 import 'simplebar-react/dist/simplebar.min.css';
+import { IS_SELF_HOSTED } from './utils/self-hosted';
 import { getHubUrl } from './utils/url';
 
 const router = createRouter({
@@ -58,25 +59,33 @@ if (isMobile) {
     });
 }
 
+// Self hosted instances usually run without a token. Without one the script would still be
+// fetched from Vemetric's CDN and then fail, so on those it is only rendered when a token is
+// configured. On the hosted instance the token is always present, so this keeps the previous
+// unconditional behavior there.
+const vemetricToken = import.meta.env.VITE_VEMETRIC_TOKEN || import.meta.env.VEMETRIC_TOKEN;
+
 createRoot(document.getElementById('root')!).render(
   <Provider>
     <ClientProviders>
-      <VemetricScript
-        host={getHubUrl()}
-        token={import.meta.env.VITE_VEMETRIC_TOKEN || import.meta.env.VEMETRIC_TOKEN}
-        maskPaths={[
-          '/p/*',
-          '/p/*/users',
-          '/p/*/users/*',
-          '/p/*/user/*',
-          '/p/*/settings',
-          '/p/*/funnels',
-          '/p/*/funnels/*',
-          '/p/*/events',
-          '/o/*',
-          '/invite/*',
-        ]}
-      />
+      {(!IS_SELF_HOSTED || vemetricToken) && (
+        <VemetricScript
+          host={getHubUrl()}
+          token={vemetricToken}
+          maskPaths={[
+            '/p/*',
+            '/p/*/users',
+            '/p/*/users/*',
+            '/p/*/user/*',
+            '/p/*/settings',
+            '/p/*/funnels',
+            '/p/*/funnels/*',
+            '/p/*/events',
+            '/o/*',
+            '/invite/*',
+          ]}
+        />
+      )}
       <RouterProvider router={router} />
       <Toaster />
     </ClientProviders>

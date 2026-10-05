@@ -18,28 +18,17 @@ export const filterValuesRequestSchema = z
         description: 'Field tokens to retrieve values for.',
         example: ['referrer', 'country', 'event:name'],
       }),
-    limit: z
-      .number()
-      .int()
-      .min(1)
-      .max(1000)
-      .default(100)
-      .openapi({
-        description: 'Limits the number of returned values per field.',
-      }),
-    offset: z
-      .number()
-      .int()
-      .min(0)
-      .default(0)
-      .openapi({
-        description: 'Number of values to skip per field from the start of the result set.',
-      }),
+    limit: z.number().int().min(1).max(1000).default(100).openapi({
+      description: 'Limits the number of returned values per field.',
+    }),
+    offset: z.number().int().min(0).default(0).openapi({
+      description: 'Number of values to skip per field from the start of the result set.',
+    }),
   })
   .superRefine((data, ctx) => {
     if (new Set(data.fields).size !== data.fields.length) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         path: ['fields'],
         message: 'fields must not contain duplicates',
       });
@@ -52,7 +41,7 @@ export const filterValuesRequestSchema = z
 
       if (start.getTime() > end.getTime()) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           path: ['dateRange'],
           message: 'Start date must be before or equal to end date',
         });

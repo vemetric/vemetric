@@ -151,9 +151,6 @@ export const FunnelStepsView = ({
                                 filters: [newFilter],
                                 operator: 'and',
                               },
-                              s: {
-                                by: newFilter,
-                              },
                             }}
                           >
                             <Icon as={TbUsers} />

@@ -39,11 +39,11 @@ const funnelSchema = z.object({
   steps: z.array(apiFunnelStepSchema).openapi({
     description: 'Ordered funnel steps.',
   }),
-  createdAt: z.string().datetime().openapi({
+  createdAt: z.iso.datetime().openapi({
     description: 'Funnel creation timestamp (ISO 8601).',
     example: '2026-03-01T10:00:00.000Z',
   }),
-  updatedAt: z.string().datetime().openapi({
+  updatedAt: z.iso.datetime().openapi({
     description: 'Funnel last update timestamp (ISO 8601).',
     example: '2026-03-02T11:30:00.000Z',
   }),
@@ -77,7 +77,7 @@ export const funnelResultsRequestSchema = z
 
       if (start.getTime() > end.getTime()) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           path: ['dateRange'],
           message: 'Start date must be before or equal to end date',
         });

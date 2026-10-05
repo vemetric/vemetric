@@ -243,7 +243,6 @@ export const CountriesCard = ({ filterConfig, publicDashboard }: Props) => {
                                       params={{ projectId: params.projectId }}
                                       search={{
                                         f: { filters: [newFilter], operator: 'and' },
-                                        s: { by: newFilter },
                                       }}
                                     >
                                       <Icon as={TbUsers} />
@@ -328,7 +327,6 @@ export const CountriesCard = ({ filterConfig, publicDashboard }: Props) => {
                                       params={{ projectId: params.projectId }}
                                       search={{
                                         f: { filters: [newFilter], operator: 'and' },
-                                        s: { by: newFilter },
                                       }}
                                     >
                                       <Icon as={TbUsers} />

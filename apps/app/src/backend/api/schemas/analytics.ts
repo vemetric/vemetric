@@ -142,7 +142,7 @@ export const analyticsQueryRequestSchema = z
   .superRefine((data, ctx) => {
     if (data.groupBy.length > 1) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         path: ['groupBy'],
         message: 'groupBy can include max one item',
       });
@@ -155,7 +155,7 @@ export const analyticsQueryRequestSchema = z
 
       if (start.getTime() > end.getTime()) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           path: ['dateRange'],
           message: 'Start date must be before or equal to end date',
         });
@@ -169,7 +169,7 @@ export const analyticsQueryRequestSchema = z
       const isMetric = METRICS_SET.has(field as Metric);
       if (isMetric && !selectedMetrics.includes(field as Metric)) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           path: ['orderBy', index, 0],
           message: 'Sort metric must be included in metrics',
         });
@@ -177,7 +177,7 @@ export const analyticsQueryRequestSchema = z
 
       if (!isMetric && !isSortingGroupField(field, grouping)) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           path: ['orderBy', index, 0],
           message: 'Invalid sort field',
         });

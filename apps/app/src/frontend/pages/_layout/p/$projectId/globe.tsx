@@ -1,6 +1,5 @@
 import { Box, useBreakpointValue } from '@chakra-ui/react';
 import { createFileRoute } from '@tanstack/react-router';
-import { zodValidator } from '@tanstack/zod-adapter';
 import { PageDotBackground } from '@/components/page-dot-background';
 import { GlobeCanvas } from '@/components/pages/globe/globe-canvas';
 import { DESKTOP_GLOBE_CONFIG, MOBILE_GLOBE_CONFIG } from '@/components/pages/globe/globe-consts';
@@ -14,7 +13,7 @@ import { trpc } from '@/utils/trpc';
 const GLOBE_REFETCH_INTERVAL = 5_000; // 5 seconds
 
 export const Route = createFileRoute('/_layout/p/$projectId/globe')({
-  validateSearch: zodValidator(timespanSearchSchema),
+  validateSearch: timespanSearchSchema,
   component: RouteComponent,
   search: {
     middlewares: [timeSpanSearchMiddleware],

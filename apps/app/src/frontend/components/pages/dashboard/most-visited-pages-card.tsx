@@ -171,7 +171,6 @@ export const MostVisitedPagesCard = ({ filterConfig, projectDomain, publicDashbo
                                 params={{ projectId: params.projectId }}
                                 search={{
                                   f: { filters: [newFilter], operator: 'and' },
-                                  s: { by: newFilter },
                                 }}
                               >
                                 <Icon as={TbUsers} />

@@ -87,7 +87,7 @@ describe('POST /api/v1/filters/values (contract)', () => {
     expect(response.status).toBe(400);
     const body = await response.json();
     expect(body.error.code).toBe('VALIDATION_ERROR');
-    expectValidationDetail(body, 'fields', 'Required');
+    expectValidationDetail(body, 'fields', 'Invalid input: expected array, received undefined');
   });
 
   it('rejects invalid field token', async () => {
@@ -108,7 +108,7 @@ describe('POST /api/v1/filters/values (contract)', () => {
     expectValidationDetail(
       body,
       'fields.0',
-      "Invalid enum value. Expected 'country' | 'city' | 'page:origin' | 'page:path' | 'browser' | 'deviceType' | 'os' | 'referrer' | 'referrerType' | 'utmCampaign' | 'utmContent' | 'utmMedium' | 'utmSource' | 'utmTerm' | 'event:name', received 'interval:auto'",
+      'Invalid option: expected one of "country"|"city"|"page:origin"|"page:path"|"browser"|"deviceType"|"os"|"referrer"|"referrerType"|"utmCampaign"|"utmContent"|"utmMedium"|"utmSource"|"utmTerm"|"event:name"',
     );
   });
 

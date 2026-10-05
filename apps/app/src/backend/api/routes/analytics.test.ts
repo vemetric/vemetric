@@ -256,7 +256,7 @@ describe('POST /api/v1/analytics/query (contract)', () => {
         },
       });
       expect(Array.isArray(body.error.details)).toBe(true);
-      expectValidationDetail(body, 'orderBy.0.1', "Invalid enum value. Expected 'asc' | 'desc', received 'down'");
+      expectValidationDetail(body, 'orderBy.0.1', 'Invalid option: expected one of "asc"|"desc"');
     });
 
     it('rejects legacy string filter operator "is" (use "eq")', async () => {
@@ -291,7 +291,7 @@ describe('POST /api/v1/analytics/query (contract)', () => {
       expectValidationDetail(
         body,
         'filters.0.operator',
-        "Invalid enum value. Expected 'any' | 'eq' | 'notEq' | 'contains' | 'notContains' | 'startsWith' | 'endsWith', received 'is'",
+        'Invalid option: expected one of "any"|"eq"|"notEq"|"contains"|"notContains"|"startsWith"|"endsWith"',
       );
     });
 

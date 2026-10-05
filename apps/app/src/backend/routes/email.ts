@@ -7,6 +7,9 @@ import { logger } from '../utils/backend-logger';
 import { buildUrl } from '../utils/url';
 import { vemetric } from '../utils/vemetric-client';
 
+// The frontend parses search params with jsurl2, which decodes `_` to a space and `true` to a boolean,
+// so redirect param values must not contain underscores. Param names must also not collide with the
+// global `error` param handled by the root route.
 const redirectUrls = {
   unsubscribe: `${getVemetricUrl('app')}/email/unsubscribe`,
   projectDeletion: `${getVemetricUrl('app')}/email/confirm-project-deletion`,
@@ -17,13 +20,13 @@ export async function useEmailRoutes(app: Hono<{ Variables: HonoContextVars }>) 
     const token = c.req.query('token');
 
     if (!token) {
-      return c.redirect(buildUrl(redirectUrls.unsubscribe, { error: 'true' }));
+      return c.redirect(buildUrl(redirectUrls.unsubscribe, { unsubscribeError: 'true' }));
     }
 
     const userId = verifyUnsubscribeToken(token);
     if (!userId) {
       logger.warn('Invalid unsubscribe token');
-      return c.redirect(buildUrl(redirectUrls.unsubscribe, { error: 'true' }));
+      return c.redirect(buildUrl(redirectUrls.unsubscribe, { unsubscribeError: 'true' }));
     }
 
     try {
@@ -32,7 +35,7 @@ export async function useEmailRoutes(app: Hono<{ Variables: HonoContextVars }>) 
       return c.redirect(redirectUrls.unsubscribe);
     } catch (error) {
       logger.error({ err: error, userId }, 'Failed to unsubscribe user');
-      return c.redirect(buildUrl(redirectUrls.unsubscribe, { error: 'true' }));
+      return c.redirect(buildUrl(redirectUrls.unsubscribe, { unsubscribeError: 'true' }));
     }
   });
 
@@ -40,13 +43,13 @@ export async function useEmailRoutes(app: Hono<{ Variables: HonoContextVars }>) 
     const token = c.req.query('token');
 
     if (!token) {
-      return c.redirect(buildUrl(redirectUrls.projectDeletion, { error: 'missing_token' }));
+      return c.redirect(buildUrl(redirectUrls.projectDeletion, { deletionError: 'missingToken' }));
     }
 
     const payload = verifyProjectDeletionToken(token);
     if (!payload) {
       logger.warn('Invalid or expired project deletion token');
-      return c.redirect(buildUrl(redirectUrls.projectDeletion, { error: 'invalid_token' }));
+      return c.redirect(buildUrl(redirectUrls.projectDeletion, { deletionError: 'invalidToken' }));
     }
 
     const { projectId, userId } = payload;
@@ -57,7 +60,7 @@ export async function useEmailRoutes(app: Hono<{ Variables: HonoContextVars }>) 
         // Verify project still exists
         const project = await dbProject.findById(projectId, tx);
         if (!project) {
-          return { error: 'not_found' as const };
+          return { error: 'notFound' as const };
         }
 
         // Verify the user is still an admin of the organization that owns the project
@@ -77,7 +80,7 @@ export async function useEmailRoutes(app: Hono<{ Variables: HonoContextVars }>) 
       });
 
       if ('error' in result) {
-        return c.redirect(buildUrl(redirectUrls.projectDeletion, { error: result.error }));
+        return c.redirect(buildUrl(redirectUrls.projectDeletion, { deletionError: result.error }));
       }
 
       logger.info({ projectId, userId, domain: result.domain }, 'Project deleted via email confirmation');
@@ -94,7 +97,7 @@ export async function useEmailRoutes(app: Hono<{ Variables: HonoContextVars }>) 
       return c.redirect(buildUrl(redirectUrls.projectDeletion, { success: 'true', domain: result.domain }));
     } catch (error) {
       logger.error({ err: error, projectId, userId }, 'Failed to delete project via email confirmation');
-      return c.redirect(buildUrl(redirectUrls.projectDeletion, { error: 'deletion_failed' }));
+      return c.redirect(buildUrl(redirectUrls.projectDeletion, { deletionError: 'deletionFailed' }));
     }
   });
 }

@@ -248,7 +248,6 @@ export const FunnelsCard = ({ filterConfig, publicDashboard, activeUsers }: Prop
                                     params={{ projectId: params.projectId }}
                                     search={{
                                       f: { filters: [newFilter], operator: 'and' },
-                                      s: { by: newFilter },
                                     }}
                                   >
                                     <Icon as={TbUsers} />

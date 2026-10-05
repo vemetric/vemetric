@@ -1,6 +1,5 @@
 import { Box, Button, Card, Container, Flex, Heading, Link, PinInput, Stack, Text } from '@chakra-ui/react';
 import { createFileRoute, Link as RouterLink, redirect, useNavigate } from '@tanstack/react-router';
-import { zodValidator } from '@tanstack/zod-adapter';
 import { useState } from 'react';
 import { TbMailCheck } from 'react-icons/tb';
 import { z } from 'zod';
@@ -12,11 +11,11 @@ import { redirectPath } from '@/utils/local-storage';
 import { getAppUrl, getLandingPageUrl } from '@/utils/url';
 
 const searchSchema = z.object({
-  email: z.string().email().catch(''),
+  email: z.email().catch(''),
 });
 
 export const Route = createFileRoute('/verify-email')({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
   beforeLoad: async ({ search }) => {
     await requireAnonymous();
     if (!search.email) {

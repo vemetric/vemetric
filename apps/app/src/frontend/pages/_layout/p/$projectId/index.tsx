@@ -1,6 +1,5 @@
 import { AspectRatio, Box, Flex, SimpleGrid } from '@chakra-ui/react';
 import { createFileRoute, Navigate } from '@tanstack/react-router';
-import { zodValidator } from '@tanstack/zod-adapter';
 import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { sourcesSchema } from '@vemetric/common/sources';
@@ -47,7 +46,7 @@ const dashboardSearchSchema = z.object({
 });
 
 export const Route = createFileRoute('/_layout/p/$projectId/')({
-  validateSearch: zodValidator(dashboardSearchSchema),
+  validateSearch: dashboardSearchSchema,
   search: {
     middlewares: [timeSpanSearchMiddleware],
   },

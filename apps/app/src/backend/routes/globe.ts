@@ -10,11 +10,11 @@ const BUCKET_USERS_LIMIT = 100;
 const MAX_BUCKET_IDS_PER_REQUEST = 100;
 const JOINED_USERS_LIMIT = 250;
 const userCursorSchema = z.object({
-  lastSeenAt: z.string().datetime(),
+  lastSeenAt: z.iso.datetime(),
   userId: z.string().regex(/^\d+$/),
 });
 const joinedUserCursorSchema = z.object({
-  firstSeenAt: z.string().datetime(),
+  firstSeenAt: z.iso.datetime(),
   userId: z.string().regex(/^\d+$/).optional(),
 });
 

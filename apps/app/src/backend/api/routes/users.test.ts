@@ -189,7 +189,7 @@ describe('POST /api/v1/users (contract)', () => {
       expect(response.status).toBe(400);
       const body = await response.json();
       expect(body.error.code).toBe('VALIDATION_ERROR');
-      expectValidationDetail(body, 'orderBy.0', 'Array must contain at most 2 element(s)');
+      expectValidationDetail(body, 'orderBy.0', 'Invalid input');
     });
 
     it('rejects lastEventFired orderBy without event filter', async () => {

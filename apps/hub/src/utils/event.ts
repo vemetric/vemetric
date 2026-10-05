@@ -21,11 +21,11 @@ const DEVICE_JOB_DEDUPLICATION_MS = 2 * 60 * 1000;
 
 export const eventSchema = z.object({
   name: z.string().min(1),
-  url: z.string().url().optional(),
+  url: z.url().optional(),
   contextId: z.string().optional(),
   identifier: z.string().optional(),
   displayName: z.string().optional(),
-  customData: z.record(z.any()).optional(),
+  customData: z.record(z.string(), z.any()).optional(),
   userData: z
     .object({
       set: z.record(z.string(), z.any()).optional(),

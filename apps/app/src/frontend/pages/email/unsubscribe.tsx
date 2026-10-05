@@ -1,5 +1,4 @@
 import { createFileRoute, Navigate } from '@tanstack/react-router';
-import { zodValidator } from '@tanstack/zod-adapter';
 import { useEffect, useState } from 'react';
 import { z } from 'zod';
 import { toaster } from '@/components/ui/toaster';
@@ -10,7 +9,7 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute('/email/unsubscribe')({
   component: UnsubscribePage,
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
 });
 
 function UnsubscribePage() {

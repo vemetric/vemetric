@@ -108,12 +108,12 @@ export const userSingleQuerySchema = z
 
     if (hasId === hasIdentifier) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         path: ['id'],
         message: 'Provide exactly one of id or identifier',
       });
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         path: ['identifier'],
         message: 'Provide exactly one of id or identifier',
       });
@@ -159,7 +159,7 @@ export const usersListRequestSchema = z
 
       if (start.getTime() > end.getTime()) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           path: ['dateRange'],
           message: 'Start date must be before or equal to end date',
         });
@@ -258,7 +258,7 @@ export const userEventsRequestSchema = z
 
       if (start.getTime() > end.getTime()) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           path: ['dateRange'],
           message: 'Start date must be before or equal to end date',
         });

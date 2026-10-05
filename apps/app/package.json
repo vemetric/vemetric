@@ -29,14 +29,13 @@
     "@chakra-ui/react": "^3.37.0",
     "@emotion/react": "^11.14.0",
     "@hono/trpc-server": "^0.3.4",
-    "@hono/zod-openapi": "^0.19.5",
+    "@hono/zod-openapi": "^1.6.3",
     "@paddle/paddle-js": "^1.6.5",
     "@paddle/paddle-node-sdk": "^2.5.1",
     "@sentry/bun": "^9.47.2",
     "@tanstack/react-query": "^4",
     "@tanstack/react-router": "^1.170.40",
     "@tanstack/react-virtual": "^3.14.13",
-    "@tanstack/zod-adapter": "^1.167.0",
     "@trpc/client": "^10.45.2",
     "@trpc/react-query": "^10.45.2",
     "@trpc/server": "^10.45.2",
@@ -81,7 +80,7 @@
     "uuid": "^11.1.0",
     "valtio": "^2.3.2",
     "vaul": "^1.1.2",
-    "zod": "3.24.2"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@chakra-ui/cli": "^3.37.0",

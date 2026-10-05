@@ -1,5 +1,4 @@
 import { createFileRoute, Navigate } from '@tanstack/react-router';
-import { zodValidator } from '@tanstack/zod-adapter';
 import { useEffect, useState } from 'react';
 import { z } from 'zod';
 import { toaster } from '@/components/ui/toaster';
@@ -12,7 +11,7 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute('/email/confirm-project-deletion')({
   component: ConfirmProjectDeletionPage,
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
 });
 
 const ERROR_MESSAGES: Record<string, { title: string; description: string }> = {

@@ -290,7 +290,7 @@ const funnelApiFilterSchema = z
     type: z.literal('funnel').openapi({
       description: 'Filter type identifier for funnel completion filters.',
     }),
-    id: z.string().uuid().openapi({
+    id: z.uuid().openapi({
       description: 'Funnel ID to evaluate for completion status.',
       example: '550e8400-e29b-41d4-a716-446655440000',
     }),

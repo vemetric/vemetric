@@ -1,6 +1,5 @@
 import { Box, Grid, Card, Skeleton, HStack, LinkOverlay, Flex, Icon, Text, IconButton, Span } from '@chakra-ui/react';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { zodValidator } from '@tanstack/zod-adapter';
 import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import { COUNTRIES } from '@vemetric/common/countries';
 import { filterConfigSchema } from '@vemetric/common/filters';
@@ -39,7 +38,7 @@ const usersSearchSchema = z.object({
 });
 
 export const Route = createFileRoute('/_layout/p/$projectId/users/')({
-  validateSearch: zodValidator(usersSearchSchema),
+  validateSearch: usersSearchSchema,
   component: Page,
   search: {
     middlewares: [timeSpanSearchMiddleware],

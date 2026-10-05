@@ -1,18 +1,8 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import { createRoute, z } from '@hono/zod-openapi';
 import { authorizationHeaderSchema, commonOpenApiErrorResponses } from '../schemas/common';
+import { getProject } from '../services/project';
 import type { PublicApiHonoEnv } from '../types';
-
-function splitCsv(value: string | null): string[] {
-  if (!value) {
-    return [];
-  }
-
-  return value
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean);
-}
 
 const projectRoute = createRoute({
   method: 'get',
@@ -79,22 +69,7 @@ const projectRoute = createRoute({
 });
 
 export function registerProjectRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
-  api.openapi(projectRoute, ({ json, var: { project } }) => {
-    return json(
-      {
-        project: {
-          id: project.id,
-          name: project.name,
-          domain: project.domain,
-          token: project.token,
-          createdAt: project.createdAt.toISOString(),
-          firstEventAt: project.firstEventAt ? project.firstEventAt.toISOString() : null,
-          hasPublicDashboard: project.publicDashboard,
-          excludedIps: splitCsv(project.excludedIps),
-          excludedCountries: splitCsv(project.excludedCountries),
-        },
-      },
-      200,
-    );
+  api.openapi(projectRoute, ({ json, var: vars }) => {
+    return json(getProject(vars), 200);
   });
 }

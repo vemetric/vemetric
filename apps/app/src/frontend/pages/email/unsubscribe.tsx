@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { toaster } from '@/components/ui/toaster';
 
 const searchSchema = z.object({
-  error: z.boolean().optional(),
+  unsubscribeError: z.boolean().optional(),
 });
 
 export const Route = createFileRoute('/email/unsubscribe')({
@@ -13,14 +13,14 @@ export const Route = createFileRoute('/email/unsubscribe')({
 });
 
 function UnsubscribePage() {
-  const { error } = Route.useSearch();
+  const { unsubscribeError } = Route.useSearch();
   const [hasShownToast, setHasShownToast] = useState(false);
 
   useEffect(() => {
     if (!hasShownToast) {
       setHasShownToast(true);
 
-      if (error) {
+      if (unsubscribeError) {
         toaster.create({
           id: 'email-unsubscribe-error',
           title: 'Unsubscribe failed',
@@ -40,7 +40,7 @@ function UnsubscribePage() {
         });
       }
     }
-  }, [error, hasShownToast]);
+  }, [unsubscribeError, hasShownToast]);
 
   return <Navigate to="/" />;
 }

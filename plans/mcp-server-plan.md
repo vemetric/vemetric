@@ -24,7 +24,7 @@ The services never look at auth, so the same calls work for both.
 
 ## Tools
 
-The inputs mirror the REST request bodies so that we can re-validate with the existing zod schemas (same defaults and the same `superRefine` checks). Descriptions are rewritten for LLMs.
+The inputs are derived from the REST request schemas (same defaults and the same `superRefine` checks). Descriptions are rewritten for LLMs.
 
 | Tool | Service | Notes |
 | --- | --- | --- |
@@ -70,11 +70,7 @@ Possible later additions: `compare` flag on `query_analytics` (current vs previo
 
 ### Zod version
 
-SDK v2 depends on zod `^4.2`. `registerTool` expects a `StandardSchemaWithJSON` (zod ≥ 4.2, or `fromJsonSchema(...)`). The app is on zod `3.24.2`, and `@hono/zod-openapi` 0.19 needs zod 3. Options for Phase 2:
-
-1. **Recommended:** write the MCP input schemas in zod 4 (LLM-focused descriptions, smaller surface). In the handler, parse the arguments again with the REST zod 3 schema to get the exact service input, defaults and cross-field checks.
-2. Turn the zod 3 REST schemas into JSON Schema and wrap them with `fromJsonSchema`. Less duplication, but the descriptions stay REST-oriented and the JSON Schema conversion of the unions/refinements is lossy.
-3. Move the whole app to zod 4 + `@hono/zod-openapi` 1.x first. Cleanest long term, but a separate, larger change.
+The app is on zod 4 (#140), and SDK v2 needs zod `^4.2` for `registerTool`'s `StandardSchemaWithJSON`. So the tools can be built from the REST request schemas directly: `.extend()` them with `projectId`, override the descriptions and default limits where the LLM needs something different, and pass the validated input straight to the services. One set of schemas, one validation pass.
 
 ## Eval set
 

@@ -1080,7 +1080,7 @@ describe.sequential('hub ingestion integration', () => {
     }
   });
 
-  it('identifies a cookieless visitor under the hashed id even when a _vuid cookie is present', async () => {
+  it('merges the hashed id of a cookieless visitor at identify even when a _vuid cookie is present', async () => {
     const project = nextProjectContext();
     await createProject(project);
     const cookieUserId = generateUserId();
@@ -1112,11 +1112,19 @@ describe.sequential('hub ingestion integration', () => {
         return user !== null;
       });
 
-      const identifiedUser = await clickhouseUser.findByIdentifier(BigInt(project.projectId), 'cookieless-identify-user');
-      expect(identifiedUser!.id).toBe(anonymousUser.id);
-      const users = await queryProjectUsers(project);
-      expect(users).toHaveLength(1);
-      expect(users[0].id).toBe(anonymousUser.id);
+      // The identified user gets a fresh id; the hashed id (not the cookie id) is merged into it.
+      const identifiedUser = await clickhouseUser.findByIdentifier(
+        BigInt(project.projectId),
+        'cookieless-identify-user',
+      );
+      expect(identifiedUser!.id).not.toBe(anonymousUser.id);
+      expect(identifiedUser!.id).not.toBe(cookieUserId);
+      await waitForStable('hashed id merged', async () => {
+        const users = await queryProjectUsers(project);
+        return users.length === 1 && users[0].id === identifiedUser!.id;
+      });
+      const events = await clickhouseEvent.findByUserId(BigInt(project.projectId), identifiedUser!.id);
+      expect(events.map((event) => event.pathname)).toEqual(['/pricing']);
     } finally {
       await cleanupProject(project);
     }

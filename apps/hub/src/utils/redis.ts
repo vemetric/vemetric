@@ -26,6 +26,14 @@ export const getRedisClient = async (): Promise<RedisClientType> => {
   return connecting;
 };
 
+export async function closeRedisClient() {
+  const client = redisClient ?? (await connecting?.catch(() => null));
+  redisClient = null;
+  if (client?.isOpen) {
+    await client.quit();
+  }
+}
+
 const REDIS_USER_IDENTIFY_EXPIRATION = 60; // seconds
 // used to make sure identification of a user is not done multiple at the same time
 function getRedisUserIdentifyKey(projectId: bigint, identifier: string) {

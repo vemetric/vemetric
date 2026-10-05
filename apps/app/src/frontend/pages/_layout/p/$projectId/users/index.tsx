@@ -1,6 +1,5 @@
 import { Box, Grid, Card, Skeleton, HStack, LinkOverlay, Flex, Icon, Text, IconButton, Span } from '@chakra-ui/react';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { zodValidator } from '@tanstack/zod-adapter';
 import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import { COUNTRIES } from '@vemetric/common/countries';
 import { filterConfigSchema } from '@vemetric/common/filters';
@@ -15,6 +14,7 @@ import { FilterControls } from '@/components/filter/filter-controls';
 import { FilterSkeletons } from '@/components/filter/filter-skeletons';
 import { LiveTimeAgo } from '@/components/live-time-ago';
 import { UserAvatar } from '@/components/pages/user/user-avatar';
+import { UserRecentActivity } from '@/components/pages/user/user-recent-activity';
 import { UserSortPopover } from '@/components/pages/user/user-sort-popover';
 import { ProjectInitCard } from '@/components/project-init-card';
 import { SearchButtonInput } from '@/components/search-button-input';
@@ -38,7 +38,7 @@ const usersSearchSchema = z.object({
 });
 
 export const Route = createFileRoute('/_layout/p/$projectId/users/')({
-  validateSearch: zodValidator(usersSearchSchema),
+  validateSearch: usersSearchSchema,
   component: Page,
   search: {
     middlewares: [timeSpanSearchMiddleware],
@@ -50,7 +50,8 @@ function Page() {
   const { p: page = 1, f: filterConfig, s: sortConfig, q } = Route.useSearch();
   const { timespan, startDate, endDate } = useTimespanParam({ from: '/_layout/p/$projectId/users/' });
 
-  const isEventSort = sortConfig?.by?.type === 'event';
+  const eventSort = sortConfig?.by?.type === 'event' ? sortConfig.by : undefined;
+  const isEventSort = Boolean(eventSort);
   const navigate = useNavigate({ from: Route.fullPath });
   const [search, setSearch, debouncedSearch] = useDebouncedState({
     defaultValue: q ?? '',
@@ -168,7 +169,7 @@ function Page() {
           <Box>
             <Span hideBelow="md">Country</Span>
           </Box>
-          <Box textAlign={{ base: 'right', md: 'left' }}>
+          <Box textAlign="right">
             <UserSortPopover />
           </Box>
           <Box w="40px" hideBelow="md"></Box>
@@ -188,8 +189,17 @@ function Page() {
           ) : (
             <>
               {users.map((user) => {
-                const { id, identifier, avatarUrl, displayName, countryCode, lastSeenAt, lastEventFiredAt, isOnline } =
-                  user;
+                const {
+                  id,
+                  identifier,
+                  avatarUrl,
+                  displayName,
+                  countryCode,
+                  lastSeenAt,
+                  lastEventFiredAt,
+                  isOnline,
+                  recentActivity,
+                } = user;
                 const timestamp = isEventSort ? lastEventFiredAt : lastSeenAt;
                 return (
                   <Box
@@ -247,7 +257,7 @@ function Page() {
                         </HStack>
                       </Box>
                       <Box>
-                        <Flex justify={{ base: 'flex-end', md: 'flex-start' }}>
+                        <Flex direction="column" gap={1.5} align="flex-end">
                           <Tooltip
                             content={
                               timestamp
@@ -264,11 +274,15 @@ function Page() {
                               flexDir={{ base: 'row-reverse', md: 'row' }}
                             >
                               <Icon>{timestamp ? <TbClock /> : <TbClockOff />}</Icon>
-                              <Text textStyle="sm" color="fg.muted">
+                              <Text textStyle="sm" lineHeight="18px" color="fg.muted">
                                 {timestamp ? <LiveTimeAgo value={timestamp} /> : 'Never'}
                               </Text>
                             </HStack>
                           </Tooltip>
+                          <UserRecentActivity
+                            eventMap={recentActivity}
+                            isMatchingEvents={Boolean(eventSort?.nameFilter)}
+                          />
                         </Flex>
                       </Box>
                       <Box hideBelow="md">
@@ -324,9 +338,9 @@ function Page() {
                   <Flex justify={{ base: 'flex-end', sm: 'flex-start' }}>
                     <Skeleton h="15px" w="50%" loading={isLoading} />
                   </Flex>
-                  <Box hideBelow="md">
+                  <Flex hideBelow="md" justify="flex-end">
                     <Skeleton h="15px" w="60%" loading={isLoading} />
-                  </Box>
+                  </Flex>
                   <Box hideBelow="md" />
                 </Grid>
               </Box>

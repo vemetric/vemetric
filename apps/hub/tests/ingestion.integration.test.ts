@@ -315,7 +315,7 @@ describe.sequential('hub ingestion integration', () => {
       enrichUserQueueModule,
       mergeUserQueueModule,
     ] = await Promise.all([
-      import('../src/index'),
+      import('../src/app'),
       import('../../worker/src/workers/event-worker').then(async (eventWorkerModule) => ({
         initEventWorker: eventWorkerModule.initEventWorker,
         initSessionWorker: (await import('../../worker/src/workers/session-worker')).initSessionWorker,
@@ -345,7 +345,7 @@ describe.sequential('hub ingestion integration', () => {
     ]);
 
     runtime = {
-      fetch: async (request: Request) => await hubModule.default.fetch(request),
+      fetch: async (request: Request) => await hubModule.app.fetch(request),
       workers,
       redis,
       queues: [

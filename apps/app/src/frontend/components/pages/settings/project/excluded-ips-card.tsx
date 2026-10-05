@@ -42,7 +42,7 @@ export const ExcludedIpsCard = (props: Props) => {
         parsedZodError = null;
       }
 
-      if (Array.isArray(parsedZodError) && parsedZodError[0]?.validation === 'ip') {
+      if (Array.isArray(parsedZodError) && parsedZodError[0]?.path?.[0] === 'ip') {
         toaster.create({
           title: `Error`,
           description: `Please enter a valid IP address.`,

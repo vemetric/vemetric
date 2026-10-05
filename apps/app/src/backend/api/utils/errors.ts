@@ -1,7 +1,7 @@
 import type { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
-import type { ZodIssue } from 'zod';
+import type { z } from 'zod';
 import { logger } from './api-logger';
 import type { PublicApiHonoEnv } from '../types';
 
@@ -14,7 +14,7 @@ export class ApiError extends HTTPException {
   }
 }
 
-export function createValidationErrorResponse(issues: ZodIssue[]) {
+export function createValidationErrorResponse(issues: z.core.$ZodIssue[]) {
   return {
     error: {
       code: 'VALIDATION_ERROR' as const,

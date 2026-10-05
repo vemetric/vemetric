@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { EventNames } from '@vemetric/common/event';
 import type { FunnelStep } from '@vemetric/common/funnel';
 import type { Queue, Worker } from 'bullmq';
@@ -229,6 +230,42 @@ async function ingestPageView(
   expect(response.status).toBe(200);
 }
 
+// a browser's cookies for the hub, shared by all projects that send to it
+type CookieJar = Map<string, string>;
+
+async function ingestCookiePageView(project: ProjectContext, jar: CookieJar, path: string) {
+  const cookie = [...jar].map(([name, value]) => `${name}=${value}`).join('; ');
+  const response = await requestHub(
+    '/e',
+    project,
+    { name: EventNames.PageView, url: `https://${project.domain}${path}` },
+    { 'allow-cookies': 'true', ...(cookie ? { cookie } : {}) },
+  );
+
+  expect(response.status).toBe(200);
+
+  for (const setCookie of response.headers.getSetCookie()) {
+    const [pair] = setCookie.split(';');
+    const separatorIndex = pair.indexOf('=');
+    jar.set(pair.slice(0, separatorIndex), pair.slice(separatorIndex + 1));
+  }
+}
+
+async function getEventCountsByUser(project: ProjectContext) {
+  const users = await clickhouseEvent.queryUsers({
+    projectId: BigInt(project.projectId),
+    filterQueries: '',
+    ...getQueryRange(),
+  });
+
+  const counts = new Map<string, number>();
+  for (const user of users) {
+    const events = await clickhouseEvent.findByUserId(BigInt(project.projectId), user.id);
+    counts.set(String(user.id), events.length);
+  }
+  return counts;
+}
+
 async function ingestEvent(
   project: ProjectContext,
   props: {
@@ -292,7 +329,7 @@ async function ingestBeaconPageView(
       headers: new Headers({
         'content-type': 'application/json',
         'user-agent': props.userAgent,
-        cookie: `_vuid=${props.cookieUserId}`,
+        cookie: userIdCookie(project, props.cookieUserId),
       }),
       body: JSON.stringify({
         Token: project.token,
@@ -308,8 +345,14 @@ async function ingestBeaconPageView(
   expect(response.status).toBe(200);
 }
 
-function cookieHeaders(cookieUserId: bigint, allowCookies: boolean) {
-  return { cookie: `_vuid=${cookieUserId}`, 'allow-cookies': String(allowCookies) };
+// the hub's per-project user id cookie (see getUserIdCookieName in src/utils/cookie.ts)
+function userIdCookie(project: ProjectContext, userId: bigint) {
+  const projectHash = createHash('sha256').update(project.projectId).digest('hex').slice(0, 10);
+  return `__Host-vuid_${projectHash}=${userId}`;
+}
+
+function cookieHeaders(project: ProjectContext, cookieUserId: bigint, allowCookies: boolean) {
+  return { cookie: userIdCookie(project, cookieUserId), 'allow-cookies': String(allowCookies) };
 }
 
 async function queryProjectUsers(project: ProjectContext) {
@@ -703,7 +746,7 @@ describe.sequential('hub ingestion integration', () => {
     }
   });
 
-  it('ignores the _vuid cookie on requests that do not allow cookies', async () => {
+  it('ignores the user id cookie on requests that do not allow cookies', async () => {
     const project = nextProjectContext();
     await createProject(project);
     const cookieUserId = generateUserId();
@@ -712,7 +755,7 @@ describe.sequential('hub ingestion integration', () => {
       await ingestPageView(project, {
         url: `https://${project.domain}/with-cookie`,
         contextId: 'cookieless-with-cookie',
-        headers: cookieHeaders(cookieUserId, false),
+        headers: cookieHeaders(project, cookieUserId, false),
       });
       await ingestPageView(project, {
         url: `https://${project.domain}/without-cookie`,
@@ -738,7 +781,7 @@ describe.sequential('hub ingestion integration', () => {
     }
   });
 
-  it('prefers the mapped body identifier over the _vuid cookie', async () => {
+  it('prefers the mapped body identifier over the user id cookie', async () => {
     const project = nextProjectContext();
     await createProject(project);
     const cookieUserId = generateUserId();
@@ -750,7 +793,7 @@ describe.sequential('hub ingestion integration', () => {
         identifier: 'cookie-identified-user',
         displayName: 'Cookie Identified User',
         contextId: 'identifier-with-cookie',
-        headers: cookieHeaders(cookieUserId, true),
+        headers: cookieHeaders(project, cookieUserId, true),
       });
 
       await waitFor('identified event despite cookie', async () => {
@@ -774,7 +817,7 @@ describe.sequential('hub ingestion integration', () => {
     }
   });
 
-  it('uses the _vuid cookie on requests that allow cookies and carry no identifier', async () => {
+  it('uses the user id cookie on requests that allow cookies and carry no identifier', async () => {
     const project = nextProjectContext();
     await createProject(project);
     const cookieUserId = generateUserId();
@@ -783,7 +826,7 @@ describe.sequential('hub ingestion integration', () => {
       await ingestPageView(project, {
         url: `https://${project.domain}/pricing`,
         contextId: 'cookie-mode-anonymous',
-        headers: cookieHeaders(cookieUserId, true),
+        headers: cookieHeaders(project, cookieUserId, true),
       });
 
       await waitFor('event under the cookie id', async () => {
@@ -834,7 +877,7 @@ describe.sequential('hub ingestion integration', () => {
     }
   });
 
-  it('identifies a cookieless visitor under the hashed id even when a _vuid cookie is present', async () => {
+  it('identifies a cookieless visitor under the hashed id even when a user id cookie is present', async () => {
     const project = nextProjectContext();
     await createProject(project);
     const cookieUserId = generateUserId();
@@ -845,7 +888,7 @@ describe.sequential('hub ingestion integration', () => {
         url: `https://${project.domain}/pricing`,
         userAgent: visitorUserAgent,
         contextId: 'cookieless-identify-anonymous',
-        headers: cookieHeaders(cookieUserId, false),
+        headers: cookieHeaders(project, cookieUserId, false),
       });
 
       await waitFor('anonymous visitor before identify', async () => {
@@ -857,7 +900,7 @@ describe.sequential('hub ingestion integration', () => {
 
       await identifyUser(project, 'cookieless-identify-user', 'Cookieless Identify User', {
         'user-agent': visitorUserAgent,
-        ...cookieHeaders(cookieUserId, false),
+        ...cookieHeaders(project, cookieUserId, false),
       });
       await waitForQueuesIdle(30000);
 
@@ -873,6 +916,76 @@ describe.sequential('hub ingestion integration', () => {
       expect(users[0].id).toBe(anonymousUser.id);
     } finally {
       await cleanupProject(project);
+    }
+  });
+
+  it('keeps a separate cookie user per project when projects share a cookie jar', async () => {
+    const projectA = nextProjectContext();
+    const projectB = nextProjectContext();
+    await createProject(projectA);
+    await createProject(projectB);
+
+    try {
+      const jar: CookieJar = new Map();
+      await ingestCookiePageView(projectA, jar, '/a-1');
+      await ingestCookiePageView(projectB, jar, '/b-1');
+      await ingestCookiePageView(projectA, jar, '/a-2');
+      await ingestCookiePageView(projectB, jar, '/b-2');
+
+      const cookieNames = [...jar.keys()];
+      expect(cookieNames).toHaveLength(2);
+      expect(cookieNames.every((name) => name.startsWith('__Host-vuid_'))).toBe(true);
+
+      await waitForStable('cookie events of both projects', async () => {
+        const [countsA, countsB] = await Promise.all([
+          getEventCountsByUser(projectA),
+          getEventCountsByUser(projectB),
+        ]);
+        return [...countsA.values()].join() === '2' && [...countsB.values()].join() === '2';
+      });
+
+      const [userA] = [...(await getEventCountsByUser(projectA)).keys()];
+      const [userB] = [...(await getEventCountsByUser(projectB)).keys()];
+      expect(userA).not.toBe(userB);
+      expect([...jar.values()].sort()).toEqual([userA, userB].sort());
+    } finally {
+      await cleanupProject(projectA);
+      await cleanupProject(projectB);
+    }
+  });
+
+  it('continues an active session from the legacy shared cookie only in its own project', async () => {
+    const projectA = nextProjectContext();
+    const projectB = nextProjectContext();
+    await createProject(projectA);
+    await createProject(projectB);
+
+    try {
+      // a session that started before the per-project cookie existed
+      await ingestPageView(projectA, { url: `https://${projectA.domain}/before`, contextId: 'legacy-session' });
+      await waitFor('legacy session user', async () => (await getEventCountsByUser(projectA)).size === 1);
+      const [legacyUserId] = [...(await getEventCountsByUser(projectA)).keys()];
+
+      const jar: CookieJar = new Map([['_vuid', legacyUserId]]);
+      await ingestCookiePageView(projectA, jar, '/after');
+      await ingestCookiePageView(projectB, jar, '/other-project');
+
+      await waitForStable('legacy cookie events', async () => {
+        const [countsA, countsB] = await Promise.all([
+          getEventCountsByUser(projectA),
+          getEventCountsByUser(projectB),
+        ]);
+        return countsA.get(legacyUserId) === 2 && countsA.size === 1 && countsB.size === 1;
+      });
+
+      const [userB] = [...(await getEventCountsByUser(projectB)).keys()];
+      expect(userB).not.toBe(legacyUserId);
+      expect([...jar.entries()].filter(([name]) => name.startsWith('__Host-vuid_')).map(([, value]) => value).sort()).toEqual(
+        [legacyUserId, userB].sort(),
+      );
+    } finally {
+      await cleanupProject(projectA);
+      await cleanupProject(projectB);
     }
   });
 

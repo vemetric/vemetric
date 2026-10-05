@@ -113,9 +113,9 @@ export async function getUserIdFromRequest(context: HonoContext, useBodyIdentifi
       }
 
       if (allowCookies) {
-        // without a proxy, the cookie is shared by all projects that use cookies, so only requests that allow cookies may read it
+        // the cookie may only be read on requests that allow cookies
         // if there is no cookie, we return null because the user id + cookie will be set later
-        return getUserIdFromCookie(context);
+        return await getUserIdFromCookie(context);
       }
 
       const userAgent = req.header('user-agent');

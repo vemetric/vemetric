@@ -18,10 +18,13 @@ const usersEventOrderByFilterSchema = eventApiFilterSchema.omit({ type: true }).
   description: 'Event filter used to determine when a user last fired a matching event.',
 });
 
-const usersOrderByItemSchema = z.union([
-  z.tuple([usersOrderByFieldSchema, sortDirectionSchema]),
-  z.tuple([usersEventOrderByFieldSchema, sortDirectionSchema, usersEventOrderByFilterSchema]),
-]);
+const usersOrderByItemSchema = z.union(
+  [
+    z.tuple([usersOrderByFieldSchema, sortDirectionSchema]),
+    z.tuple([usersEventOrderByFieldSchema, sortDirectionSchema, usersEventOrderByFilterSchema]),
+  ],
+  { error: 'orderBy item must be [field, direction] or ["lastEventFired", direction, eventFilter]' },
+);
 
 const usersOrderBySchema = z
   .array(usersOrderByItemSchema)

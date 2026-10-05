@@ -40,6 +40,8 @@ function createMockApiKey() {
   };
 }
 
+const ORDER_BY_ITEM_MESSAGE = 'orderBy item must be [field, direction] or ["lastEventFired", direction, eventFilter]';
+
 function expectValidationDetail(
   body: {
     error: {
@@ -121,7 +123,7 @@ describe('POST /api/v1/users (contract)', () => {
       expect(response.status).toBe(400);
       const body = await response.json();
       expect(body.error.code).toBe('VALIDATION_ERROR');
-      expectValidationDetail(body, 'orderBy.0', 'Invalid input');
+      expectValidationDetail(body, 'orderBy.0', ORDER_BY_ITEM_MESSAGE);
     });
 
     it('rejects invalid orderBy direction', async () => {
@@ -139,7 +141,7 @@ describe('POST /api/v1/users (contract)', () => {
       expect(response.status).toBe(400);
       const body = await response.json();
       expect(body.error.code).toBe('VALIDATION_ERROR');
-      expectValidationDetail(body, 'orderBy.0', 'Invalid input');
+      expectValidationDetail(body, 'orderBy.0', ORDER_BY_ITEM_MESSAGE);
     });
 
     it('rejects more than one orderBy item', async () => {
@@ -189,7 +191,7 @@ describe('POST /api/v1/users (contract)', () => {
       expect(response.status).toBe(400);
       const body = await response.json();
       expect(body.error.code).toBe('VALIDATION_ERROR');
-      expectValidationDetail(body, 'orderBy.0', 'Invalid input');
+      expectValidationDetail(body, 'orderBy.0', ORDER_BY_ITEM_MESSAGE);
     });
 
     it('rejects lastEventFired orderBy without event filter', async () => {
@@ -207,7 +209,7 @@ describe('POST /api/v1/users (contract)', () => {
       expect(response.status).toBe(400);
       const body = await response.json();
       expect(body.error.code).toBe('VALIDATION_ERROR');
-      expectValidationDetail(body, 'orderBy.0', 'Invalid input');
+      expectValidationDetail(body, 'orderBy.0', ORDER_BY_ITEM_MESSAGE);
     });
   });
 

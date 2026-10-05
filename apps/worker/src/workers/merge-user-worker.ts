@@ -1,150 +1,86 @@
+import { formatClickhouseDate } from '@vemetric/common/date';
 import type { MergeUserQueueProps } from '@vemetric/queues/merge-user-queue';
-import { mergeUserQueue } from '@vemetric/queues/merge-user-queue';
+import { mergeUserBackoff, mergeUserQueue } from '@vemetric/queues/merge-user-queue';
 import { mergeUserQueueName } from '@vemetric/queues/queue-names';
-import { DelayedError, Worker } from 'bullmq';
-import { clickhouseDevice, clickhouseEvent, clickhouseSession, clickhouseUser, getDeviceId } from 'clickhouse';
+import { DelayedError, Worker, type Job } from 'bullmq';
 import { dbUserIdentificationMap } from 'database';
-import {
-  persistSessionUpdates,
-  getBufferedSessions,
-  findPendingSession,
-  reassignBufferedSession,
-  deleteBufferedSession,
-} from '../ingestion';
-import { insertDeviceIfNotExists } from '../utils/device';
+import { getUser } from '../ingestion';
+import { loadMergeRecord, saveMergeRecord } from '../ingestion/merge-record';
 import { workerName } from '../utils/env';
 import { logger } from '../utils/logger';
-import { reassignExistingSessionsToEvents } from '../utils/merge-user';
+import { reconcileUser } from '../utils/merge-user';
 import { queueTelemetry } from '../utils/telemetry';
 
 const SESSION_RECHECK_DELAY_MS = 5_000;
 const MAX_SESSION_WAIT_MS = 5 * 60 * 1_000;
 
+// Records a merge of an anonymous id into an identified user. Repeated identifications into the
+// same user extend its cutoff; a merge into another user starts a new period of the anonymous id.
+async function registerMerge(job: Job<MergeUserQueueProps>, projectId: bigint, source: bigint, target: bigint) {
+  const identification = await dbUserIdentificationMap.findByUserId(String(projectId), String(target));
+  if (!identification) {
+    throw new Error(`User not found: ${target}`);
+  }
+  const cutoff = job.data.cutoff ?? formatClickhouseDate(new Date(job.timestamp + (job.opts.delay ?? 0)));
+  const displayName = job.data.displayName ?? (await getUser(projectId, target))?.displayName;
+
+  const record = (await loadMergeRecord(projectId, source)) ?? {};
+  const merges = [...(record.merges ?? [])];
+  const last = merges[merges.length - 1];
+  if (last?.target === String(target)) {
+    merges[merges.length - 1] = {
+      ...last,
+      cutoff: cutoff > last.cutoff ? cutoff : last.cutoff,
+      displayName: displayName ?? last.displayName,
+    };
+  } else if (!merges.some((entry) => entry.target === String(target) && entry.cutoff === cutoff)) {
+    merges.push({ target: String(target), cutoff, identifier: identification.identifier, displayName });
+    merges.sort((a, b) => (a.cutoff < b.cutoff ? -1 : 1));
+  }
+  await saveMergeRecord(projectId, source, { ...record, merges });
+}
+
 export async function initMergeUserWorker() {
-  // Serialize rare identity changes; device/session ingestion remains concurrent.
+  // Merges run one at a time across replicas; each run continues from the stored state.
   await mergeUserQueue.setGlobalConcurrency(1);
   return new Worker<MergeUserQueueProps>(
     mergeUserQueueName,
     async (job, token) => {
-      const { projectId: _projectId, oldUserId: _oldUserId, newUserId: _newUserId, displayName } = job.data;
-      const projectId = BigInt(_projectId);
-      const oldUserId = BigInt(_oldUserId);
-      const newUserId = BigInt(_newUserId);
-
-      const existingUser = await dbUserIdentificationMap.findByUserId(String(projectId), String(newUserId));
-      if (!existingUser) {
-        throw new Error(`User not found: ${newUserId}`);
+      const projectId = BigInt(job.data.projectId);
+      let userId: bigint;
+      if (job.data.oldUserId !== undefined && job.data.newUserId !== undefined) {
+        const oldUserId = BigInt(job.data.oldUserId);
+        const newUserId = BigInt(job.data.newUserId);
+        if (oldUserId === newUserId) return;
+        await registerMerge(job, projectId, oldUserId, newUserId);
+        userId = oldUserId;
+      } else if (job.data.userId !== undefined) {
+        // A follow-up for activity that arrived after the merge.
+        userId = BigInt(job.data.userId);
+      } else {
+        throw new Error('Merge job without user');
       }
-      const existingUserClickhouse = await clickhouseUser.findById(projectId, newUserId);
 
-      if (oldUserId === newUserId) return;
-
-      const existingEvents = await clickhouseEvent.findByUserId(projectId, oldUserId);
-      const oldUserSessions = await getBufferedSessions(
-        projectId,
-        oldUserId,
-        await clickhouseSession.findByUserId(projectId, oldUserId),
-      );
-      const { sessionsWithTimeUpdates, sessionIdMapping, unmatchedSessionIds } = await reassignExistingSessionsToEvents(
-        {
-          projectId,
-          newUserId,
-          existingEvents,
-        },
-      );
-
-      // The previous merge path moved only sessions that actually existed. Events can
-      // legitimately have a session ID with no surviving session, so do not create a
-      // required session from every event ID.
-      const sourceSessionIds = new Set(oldUserSessions.map((session) => session.id).filter(Boolean));
-      // A cached empty/partial state may mean initialization has started. Give it
-      // time to complete before taking the session snapshot again on the next attempt.
-      const pendingSessionId = await findPendingSession(
-        projectId,
-        [...existingEvents.map((event) => event.sessionId), ...Array.from(sessionIdMapping.values())].filter(Boolean),
-      );
-      if (pendingSessionId !== undefined) {
+      // A session that is still being initialized gets time to complete, so its events and entry
+      // data are merged with it. A page-leave-only placeholder may never initialize.
+      const startedAt = job.data.sessionWaitStartedAt;
+      const waitForPendingSessions = startedAt === undefined || Date.now() - startedAt < MAX_SESSION_WAIT_MS;
+      if (!waitForPendingSessions) {
+        logger.warn(
+          { projectId: job.data.projectId, userId: String(userId) },
+          'Session did not initialize before merge',
+        );
+      }
+      const outcome = await reconcileUser(projectId, userId, { waitForPendingSessions });
+      if (outcome.pendingSessionId !== undefined) {
         const now = Date.now();
-        const startedAt = job.data.sessionWaitStartedAt ?? now;
-        if (now - startedAt < MAX_SESSION_WAIT_MS) {
-          if (job.data.sessionWaitStartedAt === undefined) {
-            await job.updateData({ ...job.data, sessionWaitStartedAt: startedAt });
-          }
-          await job.moveToDelayed(Math.min(now + SESSION_RECHECK_DELAY_MS, startedAt + MAX_SESSION_WAIT_MS), token);
-          throw new DelayedError();
+        const waitStartedAt = startedAt ?? now;
+        if (startedAt === undefined) {
+          await job.updateData({ ...job.data, sessionWaitStartedAt: waitStartedAt });
         }
-        // A page-leave-only placeholder may never initialize. Continue with the
-        // events and the sessions that exist
-        logger.warn({ projectId: _projectId, sessionId: pendingSessionId }, 'Session did not initialize before merge');
+        await job.moveToDelayed(Math.min(now + SESSION_RECHECK_DELAY_MS, waitStartedAt + MAX_SESSION_WAIT_MS), token);
+        throw new DelayedError();
       }
-
-      logger.info(
-        { projectId: _projectId, oldUserId: _oldUserId, newUserId: _newUserId },
-        'found existing user, merging events and devices',
-      );
-
-      const existingDevices = await clickhouseDevice.findByUserId(projectId, oldUserId);
-      try {
-        if (existingDevices.length > 0) {
-          await clickhouseDevice.delete(existingDevices);
-        }
-      } catch (err) {
-        logger.error({ err }, 'Error deleting devices');
-      }
-
-      // A session is merged away (deleted) only if all its known events moved into one of the new
-      // user's sessions. Every other session moves to the new user: sessions without known events
-      // (they may still be queued) and partly matched sessions. Events are remapped per session, so
-      // a partly matched session keeps none of its events, as before this refactor.
-      const mergedSessionIds = new Set(
-        Array.from(sessionIdMapping.keys()).filter((sessionId) => !unmatchedSessionIds.has(sessionId)),
-      );
-      for (const sourceId of Array.from(sourceSessionIds)) {
-        if (!mergedSessionIds.has(sourceId)) {
-          await reassignBufferedSession(
-            projectId,
-            sourceId,
-            newUserId,
-            existingUser.identifier,
-            displayName ?? existingUserClickhouse?.displayName,
-          );
-        } else {
-          await deleteBufferedSession(projectId, sourceId);
-        }
-      }
-      // Extend the new user's sessions that received merged events.
-      if (sessionsWithTimeUpdates.length) await persistSessionUpdates(sessionsWithTimeUpdates);
-
-      if (!existingEvents.length) return;
-
-      // Delete all old events
-      await clickhouseEvent.delete(existingEvents.map((event) => ({ ...event, sessionId: '' })));
-
-      const insertedDeviceIds: bigint[] = [];
-      for (const event of existingEvents) {
-        const deviceId = getDeviceId(projectId, newUserId, event);
-        if (!insertedDeviceIds.includes(deviceId)) {
-          await insertDeviceIfNotExists(projectId, newUserId, deviceId, event);
-          insertedDeviceIds.push(deviceId);
-        }
-      }
-
-      // Add all events to the new user with proper session and device assignment
-      await clickhouseEvent.insert(
-        existingEvents.map((event) => {
-          const deviceId = getDeviceId(projectId, newUserId, event);
-
-          return {
-            ...event,
-            projectId,
-            userId: newUserId,
-            deviceId,
-            sessionId: sessionIdMapping.get(event.sessionId) ?? event.sessionId,
-            userDisplayName: displayName ?? existingUserClickhouse?.displayName,
-            userIdentifier: existingUser.identifier,
-          };
-        }),
-      );
     },
     {
       connection: {
@@ -153,6 +89,7 @@ export async function initMergeUserWorker() {
       name: workerName,
       telemetry: queueTelemetry,
       concurrency: 10,
+      settings: { backoffStrategy: mergeUserBackoff },
       removeOnComplete: {
         count: 1000,
       },

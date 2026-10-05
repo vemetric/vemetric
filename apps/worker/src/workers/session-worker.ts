@@ -4,6 +4,7 @@ import type { SessionQueueProps } from '@vemetric/queues/session-queue';
 import { sessionQueue } from '@vemetric/queues/session-queue';
 import { DelayedError, Worker } from 'bullmq';
 import { bufferSessionUpdate, bufferExistingSessionActivity } from '../ingestion';
+import { continueMergedSession, needsFollowUp, queueMergeFollowUp } from '../ingestion/merge-record';
 import { getDeviceDataFromHeaders } from '../utils/device';
 import { envPositiveInteger, workerName } from '../utils/env';
 import { logJobStep } from '../utils/job-logger';
@@ -12,7 +13,7 @@ import { getReferrerFromRequest } from '../utils/referrer';
 import { getSessionData } from '../utils/session';
 import { queueTelemetry } from '../utils/telemetry';
 import { getUrlParams } from '../utils/url';
-import { findIngestionUser } from '../utils/user-cache';
+import { findIngestionIdentity } from '../utils/user-cache';
 
 const CREATING_EVENT_WAIT_MS = 60_000;
 const CREATING_EVENT_RECHECK_MS = 1_000;
@@ -28,7 +29,9 @@ export async function initSessionWorker() {
       const userId = BigInt(_userId);
 
       if (type === 'extend') {
-        await bufferSessionUpdate(projectId, sessionId, createdAt);
+        if ((await bufferSessionUpdate(projectId, sessionId, createdAt)) === 'deleted') {
+          await continueMergedSession(projectId, userId, sessionId, createdAt);
+        }
         return;
       }
 
@@ -37,6 +40,10 @@ export async function initSessionWorker() {
       });
 
       if (activity === 'buffered') return;
+      if (activity === 'deleted') {
+        await continueMergedSession(projectId, userId, sessionId, createdAt);
+        return;
+      }
 
       // A later event of a new session overtook the event that created it. Wait for that event, so it
       // sets the session start and entry data as sequential processing did. After the wait (e.g. the
@@ -53,7 +60,7 @@ export async function initSessionWorker() {
       const { ipAddress, geoData, headers, url, reqIdentifier, reqDisplayName } = job.data;
 
       await logJobStep(job, 'before findIngestionUser');
-      const user = await findIngestionUser(projectId, userId);
+      const { user, mergeRecord } = await findIngestionIdentity(projectId, userId);
       await logJobStep(job, user ? 'after findIngestionUser found' : 'after findIngestionUser missing');
       const userIdentifier = user?.identifier ?? reqIdentifier;
       const userDisplayName = user?.displayName ?? reqDisplayName;
@@ -77,7 +84,7 @@ export async function initSessionWorker() {
       await logJobStep(job, 'after getSessionData');
 
       await logJobStep(job, 'before bufferSessionUpdate');
-      await bufferSessionUpdate(projectId, sessionId, createdAt, {
+      const result = await bufferSessionUpdate(projectId, sessionId, createdAt, {
         projectId,
         userId,
         userIdentifier,
@@ -91,6 +98,12 @@ export async function initSessionWorker() {
         userAgent,
         ...referrer,
       });
+      if (result === 'deleted') {
+        await continueMergedSession(projectId, userId, sessionId, createdAt);
+      } else if (needsFollowUp(mergeRecord, userId, { createdAt, sessionId })) {
+        // A session of an id that was merged into an identified user before this job ran.
+        await queueMergeFollowUp(projectId, userId);
+      }
       await logJobStep(job, 'session update buffered');
     },
     {

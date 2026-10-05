@@ -1,6 +1,7 @@
 import type { ClickhouseUser } from 'clickhouse';
 import { clickhouseUser } from 'clickhouse';
 import { envPositiveInteger } from './env';
+import { mergeRecordKey, type MergeRecord } from '../ingestion/merge-record';
 import { stateRedis } from '../ingestion/redis';
 import type { UserState } from '../ingestion/user-state';
 import { userKey as userStateKey } from '../ingestion/user-store';
@@ -37,15 +38,31 @@ const toIngestionUser = (user: IngestionUser | undefined | null): IngestionUser 
  * `invalidateIngestionUser`.
  */
 export async function findIngestionUser(projectId: bigint, userId: bigint): Promise<IngestionUser | null> {
+  return (await findIngestionIdentity(projectId, userId)).user;
+}
+
+/**
+ * The user (see findIngestionUser) together with the id's merge record, in one Redis round trip.
+ * Workers use the record to queue a follow-up when activity arrives after the id was merged.
+ */
+export async function findIngestionIdentity(
+  projectId: bigint,
+  userId: bigint,
+): Promise<{ user: IngestionUser | null; mergeRecord: MergeRecord | null }> {
   const key = userKey(projectId, userId);
-  const [state, cached] = await stateRedis().mget(userStateKey(projectId, userId), key);
-  if (state) return toIngestionUser((JSON.parse(state) as UserState).user);
-  if (cached && cached !== INVALIDATED) return JSON.parse(cached) as IngestionUser | null;
+  const [state, cached, merge] = await stateRedis().mget(
+    userStateKey(projectId, userId),
+    key,
+    mergeRecordKey(projectId, userId),
+  );
+  const mergeRecord = merge ? (JSON.parse(merge) as MergeRecord) : null;
+  if (state) return { user: toIngestionUser((JSON.parse(state) as UserState).user), mergeRecord };
+  if (cached && cached !== INVALIDATED) return { user: JSON.parse(cached) as IngestionUser | null, mergeRecord };
 
   // Without a state in Redis, ClickHouse holds the latest row: dirty states never expire.
   const value = toIngestionUser(await clickhouseUser.findById(projectId, userId));
   if (!cached) await stateRedis().set(key, JSON.stringify(value), 'EX', cacheTtl, 'NX');
-  return value;
+  return { user: value, mergeRecord };
 }
 
 export async function invalidateIngestionUser(projectId: bigint, userId: bigint) {

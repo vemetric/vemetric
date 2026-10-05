@@ -149,9 +149,8 @@ describe('applyUserOp', () => {
       at: at(9),
       firstPageView: { origin, pathname: '/x', initialDeviceId: BigInt('18446744073709551615') },
     });
-    const created = run([
-      { ...create(1), create: { ...(create(1) as Extract<UserOp, { type: 'create' }>).create, firstPageView: {} } },
-    ]);
+    const withoutAttribution = create(1) as Extract<UserOp, { type: 'create' }>;
+    const created = run([{ type: 'create', create: { ...withoutAttribution.create, firstPageView: {} } }]);
     const enriched = run([enrich('https://a.example')], created);
     expect(enriched.user).toMatchObject({
       origin: 'https://a.example',

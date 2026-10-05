@@ -84,7 +84,7 @@
   },
   "devDependencies": {
     "@chakra-ui/cli": "^3.37.0",
-    "@hono/vite-dev-server": "^0.12.2",
+    "@hono/vite-dev-server": "^0.26.1",
     "@tanstack/router-cli": "^1.167.39",
     "@tanstack/router-plugin": "^1.168.41",
     "@testing-library/react": "^16.3.3",

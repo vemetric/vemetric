@@ -746,6 +746,67 @@ describe.sequential('hub ingestion integration', () => {
     }
   });
 
+  it('keeps a return visit in one session when cookies are allowed only for identify', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
+    const projectId = BigInt(project.projectId);
+
+    try {
+      // A first visit sets the cookie at identification.
+      const first = await requestHub(
+        '/i',
+        project,
+        { identifier: 'returning@example.com', displayName: 'Returning' },
+        { 'allow-cookies': 'true' },
+      );
+      const cookie = first.headers.get('set-cookie')!.split(';')[0]!;
+      await waitForQueuesIdle(30000);
+      await expireHubSessions(project.projectId);
+      const user = (await clickhouseUser.findByIdentifier(projectId, 'returning@example.com'))!;
+
+      // The return visit starts with requests that do not use the cookie (like the hashed id
+      // cookieless requests get), then identifies with it.
+      const landing = await requestHub(
+        '/e',
+        project,
+        { name: EventNames.PageView, url: `https://${project.domain}/landing` },
+        { 'v-referrer': 'https://www.google.com/' },
+      );
+      expect(landing.status).toBe(200);
+      await waitForQueuesIdle();
+      const identify = await requestHub(
+        '/i',
+        project,
+        { identifier: 'returning@example.com', displayName: 'Returning' },
+        { 'allow-cookies': 'true', cookie },
+      );
+      expect(identify.status).toBe(200);
+      await requestHub(
+        '/e',
+        project,
+        { name: EventNames.PageView, url: `https://${project.domain}/dashboard`, identifier: 'returning@example.com' },
+        { cookie },
+      );
+      await waitForQueuesIdle(30000);
+
+      await waitForStable('return visit in one session', async () => {
+        const users = await clickhouseEvent.queryUsers({ projectId, filterQueries: '', ...getQueryRange() });
+        const events = await clickhouseEvent.findByUserId(projectId, user.id);
+        return (
+          users.length === 1 &&
+          users[0]!.id === user.id &&
+          events.length === 2 &&
+          new Set(events.map((event) => event.sessionId)).size === 1
+        );
+      });
+      expect(await clickhouseSession.findByUserId(projectId, user.id)).toMatchObject([
+        { pathname: '/landing', referrer: 'Google' },
+      ]);
+    } finally {
+      await cleanupProject(project);
+    }
+  });
+
   it('does not create duplicate users when an already identified user sends more events', async () => {
     const project = nextProjectContext();
     await createProject(project);

@@ -31,15 +31,50 @@ export const identifySchema = z.object({
 });
 export type IdentifySchema = z.infer<typeof identifySchema>;
 
+// Queues the merge of an anonymous id into the identified user. Without an active session of its
+// own, the user continues the visit that led to the login.
+async function mergeIntoUser(
+  projectId: bigint,
+  anonymousUserId: bigint,
+  identifiedUserId: bigint,
+  displayName?: string,
+) {
+  const fiveSecondRoundedDate = new Date();
+  fiveSecondRoundedDate.setMilliseconds(0);
+  fiveSecondRoundedDate.setSeconds(fiveSecondRoundedDate.getSeconds() - (fiveSecondRoundedDate.getSeconds() % 5));
+  const oldUserId = String(anonymousUserId);
+
+  await continueSession(projectId, anonymousUserId, identifiedUserId);
+  await addToQueue(
+    mergeUserQueue,
+    {
+      projectId: String(projectId),
+      oldUserId,
+      newUserId: String(identifiedUserId),
+      displayName,
+      cutoff: formatClickhouseDate(new Date(Date.now() + MERGE_DELAY_MS)),
+    },
+    {
+      ...mergeUserJobOptions,
+      jobId: `${String(projectId)}-${oldUserId}-${String(identifiedUserId)}-${fiveSecondRoundedDate.toISOString()}`,
+      delay: MERGE_DELAY_MS,
+    },
+  );
+}
+
 /**
  * Identifies the visitor. `userId` is the id the visitor's earlier requests used, or null when
- * there are none (e.g. a backend request). Returns the identified user's id.
+ * there are none (e.g. a backend request). `activeHashedUserId` is the visitor's hashed id when
+ * it differs from `userId` and was active in the last 30 minutes: requests that did not allow
+ * cookies used it, e.g. the start of a return visit when cookies are allowed only for identify.
+ * Returns the identified user's id.
  */
 export async function identifyUser(
   context: HonoContext,
   body: IdentifySchema,
   projectId: bigint,
   userId: bigint | null,
+  activeHashedUserId: bigint | null = null,
 ): Promise<bigint> {
   const { allowCookies, geoData } = context.var;
 
@@ -49,6 +84,13 @@ export async function identifyUser(
   const { set, setOnce } = body.data ?? {};
   const now = formatClickhouseDate(new Date());
   let anonymousUserId = userId;
+  // The hashed id is merged too, unless it belongs to an identified user itself.
+  const hashedUserId =
+    activeHashedUserId !== null &&
+    activeHashedUserId !== userId &&
+    !(await dbUserIdentificationMap.findByUserId(String(projectId), String(activeHashedUserId)))
+      ? activeHashedUserId
+      : null;
 
   if (userId !== null) {
     const existingUserWithId = await dbUserIdentificationMap.findByUserId(String(projectId), String(userId));
@@ -66,6 +108,9 @@ export async function identifyUser(
         avatarUrl,
         data: body.data,
       });
+      if (hashedUserId !== null) {
+        await mergeIntoUser(projectId, hashedUserId, userId, displayName);
+      }
 
       return userId;
     }
@@ -138,31 +183,15 @@ export async function identifyUser(
     });
   }
 
+  for (const anonymousId of Array.from(new Set([anonymousUserId, hashedUserId]))) {
+    if (anonymousId !== null && anonymousId !== identifiedUserId) {
+      await mergeIntoUser(projectId, anonymousId, identifiedUserId, displayName);
+    }
+  }
+
   const fiveSecondRoundedDate = new Date();
   fiveSecondRoundedDate.setMilliseconds(0);
   fiveSecondRoundedDate.setSeconds(fiveSecondRoundedDate.getSeconds() - (fiveSecondRoundedDate.getSeconds() % 5));
-
-  if (anonymousUserId !== null && anonymousUserId !== identifiedUserId) {
-    const oldUserId = String(anonymousUserId);
-
-    // Without an active session of its own, the user continues the visit that led to the login.
-    await continueSession(projectId, anonymousUserId, identifiedUserId);
-    await addToQueue(
-      mergeUserQueue,
-      {
-        projectId: String(projectId),
-        oldUserId,
-        newUserId: String(identifiedUserId),
-        displayName,
-        cutoff: formatClickhouseDate(new Date(Date.now() + MERGE_DELAY_MS)),
-      },
-      {
-        ...mergeUserJobOptions,
-        jobId: `${String(projectId)}-${oldUserId}-${String(identifiedUserId)}-${fiveSecondRoundedDate.toISOString()}`,
-        delay: MERGE_DELAY_MS,
-      },
-    );
-  }
 
   if (existingUserWithIdentifer) {
     // Queue enrichment for the existing user to backfill attribution data if needed

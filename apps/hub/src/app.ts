@@ -19,6 +19,7 @@ import { handlePageLeave } from './utils/page-leave';
 import { getProjectByToken } from './utils/project';
 import { releaseUserIdentificationLock, waitForUserIdentificationLock } from './utils/redis';
 import { getHashedUserId, getUserIdFromRequest, isPrefetchRequest } from './utils/request';
+import { hasActiveSession } from './utils/session';
 import { identifySchema, identifyUser } from './utils/user';
 
 export const app = new Hono<{ Variables: HonoContextVars }>();
@@ -180,9 +181,15 @@ app.post(
 
     try {
       // The id the visitor's earlier requests used: the cookie, or without one the hashed id
-      // (cookies may be allowed for this request only).
-      const userId = (await getUserIdFromRequest(context, false)) ?? (await getHashedUserId(context));
-      await identifyUser(context, body, projectId, userId);
+      // (cookies may be allowed for this request only). Requests of this visit that did not allow
+      // cookies used the hashed id even with a cookie, so it is merged too while it is active.
+      const hashedUserId = await getHashedUserId(context);
+      const userId = (await getUserIdFromRequest(context, false)) ?? hashedUserId;
+      const activeHashedUserId =
+        hashedUserId !== null && hashedUserId !== userId && (await hasActiveSession(projectId, hashedUserId))
+          ? hashedUserId
+          : null;
+      await identifyUser(context, body, projectId, userId, activeHashedUserId);
 
       await releaseUserIdentificationLock(projectId, identifier);
 

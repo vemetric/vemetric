@@ -5,8 +5,13 @@ import type { HonoContext } from '../types';
 const UID_COOKIE_NAME = '_vuid';
 
 export function getUserIdFromCookie(context: HonoContext) {
+  const value = getCookie(context, UID_COOKIE_NAME);
+  if (!value) {
+    return null;
+  }
+
   try {
-    return BigInt(getCookie(context, UID_COOKIE_NAME) ?? '');
+    return BigInt(value);
   } catch {
     return null;
   }

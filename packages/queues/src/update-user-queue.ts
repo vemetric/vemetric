@@ -22,4 +22,3 @@ export interface UpdateUserQueueProps {
 export const updateUserQueue = new Queue<UpdateUserQueueProps>(updateUserQueueName, {
   connection: defaultQueueConnection,
 });
-updateUserQueue.setGlobalConcurrency(1);

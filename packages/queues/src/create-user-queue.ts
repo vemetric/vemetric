@@ -18,4 +18,3 @@ export interface CreateUserQueueProps {
 export const createUserQueue = new Queue<CreateUserQueueProps>(createUserQueueName, {
   connection: defaultQueueConnection,
 });
-createUserQueue.setGlobalConcurrency(1);

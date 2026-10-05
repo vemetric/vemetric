@@ -2,12 +2,12 @@ import { formatClickhouseDate } from '@vemetric/common/date';
 import type { EnrichUserQueueProps } from '@vemetric/queues/enrich-user-queue';
 import { enrichUserQueueName } from '@vemetric/queues/queue-names';
 import { Worker } from 'bullmq';
-import { clickhouseEvent, clickhouseUser } from 'clickhouse';
+import { clickhouseEvent } from 'clickhouse';
+import { getUser, upsertUser } from '../ingestion';
 import { workerName } from '../utils/env';
 import { logger } from '../utils/logger';
 import { queueTelemetry } from '../utils/telemetry';
 import { getUserFirstPageViewData } from '../utils/user';
-import { invalidateIngestionUser } from '../utils/user-cache';
 
 export async function initEnrichUserWorker() {
   return new Worker<EnrichUserQueueProps>(
@@ -17,7 +17,7 @@ export async function initEnrichUserWorker() {
       const projectId = BigInt(_projectId);
       const userId = BigInt(_userId);
 
-      const existingUser = await clickhouseUser.findById(projectId, userId);
+      const existingUser = await getUser(projectId, userId);
       if (!existingUser) {
         logger.warn({ projectId: _projectId, userId: _userId }, 'User not found for enrichment');
         return;
@@ -34,15 +34,12 @@ export async function initEnrichUserWorker() {
         return;
       }
 
-      // Insert a new row with enriched attribution data
-      await clickhouseUser.insert([
-        {
-          ...existingUser,
-          updatedAt: formatClickhouseDate(new Date()),
-          ...getUserFirstPageViewData(firstPageView),
-        },
-      ]);
-      await invalidateIngestionUser(projectId, userId);
+      // Applied only if the user still has no attribution data
+      await upsertUser(projectId, userId, {
+        type: 'enrich',
+        at: formatClickhouseDate(new Date()),
+        firstPageView: getUserFirstPageViewData(firstPageView),
+      });
 
       logger.info({ projectId: _projectId, userId: _userId }, 'User enrichment completed');
     },

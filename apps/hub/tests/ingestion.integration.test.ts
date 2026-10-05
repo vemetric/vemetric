@@ -5,7 +5,7 @@ import { clickhouseClient, clickhouseDevice, clickhouseEvent, clickhouseSession,
 import { dbFunnel, prismaClient } from 'database';
 import Redis from 'ioredis';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { flushSessionBuffer, closeStateRedis } from '../../worker/src/ingestion';
+import { flushSessionBuffer, flushUserBuffer, closeStateRedis } from '../../worker/src/ingestion';
 
 vi.mock('@vemetric/common/request-ip', () => ({
   getClientIp: () => '127.0.0.1',
@@ -57,6 +57,7 @@ async function waitFor(description: string, predicate: () => Promise<boolean>, t
   while (Date.now() - startedAt < timeoutMs) {
     try {
       await flushSessionBuffer();
+      await flushUserBuffer();
       if (await predicate()) {
         return;
       }
@@ -166,7 +167,12 @@ async function waitForQueuesIdle(timeoutMs = 10000) {
 
       if (!counts.every((count) => Object.values(count).every((value) => value === 0))) return false;
       await flushSessionBuffer();
-      return (await runtime!.redis.zcard('vm:{session-state}:dirty')) === 0;
+      await flushUserBuffer();
+      const dirty = await Promise.all([
+        runtime!.redis.zcard('vm:{session-state}:dirty'),
+        runtime!.redis.zcard('vm:{user-state}:dirty'),
+      ]);
+      return dirty.every((count) => count === 0);
     },
     timeoutMs,
   );

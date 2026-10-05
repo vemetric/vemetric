@@ -1,7 +1,9 @@
 import type { ClickhouseUser } from 'clickhouse';
 import { clickhouseUser } from 'clickhouse';
-import { stateRedis } from '../ingestion';
 import { envPositiveInteger } from './env';
+import { stateRedis } from '../ingestion/redis';
+import type { UserState } from '../ingestion/user-state';
+import { userKey as userStateKey } from '../ingestion/user-store';
 
 // Only the user fields event and session enrichment read.
 export type IngestionUser = Pick<
@@ -16,17 +18,8 @@ const INVALIDATED = '-';
 const INVALIDATION_SECONDS = 10;
 const userKey = (projectId: bigint, userId: bigint) => `vm:user-lookup:${projectId}:${userId}`;
 
-/**
- * Cached `clickhouseUser.findById` for ingestion hot paths. A missing user is cached too:
- * most events belong to anonymous users. User writers call `invalidateIngestionUser`.
- */
-export async function findIngestionUser(projectId: bigint, userId: bigint): Promise<IngestionUser | null> {
-  const key = userKey(projectId, userId);
-  const cached = await stateRedis().get(key);
-  if (cached && cached !== INVALIDATED) return JSON.parse(cached) as IngestionUser | null;
-
-  const user = await clickhouseUser.findById(projectId, userId);
-  const value: IngestionUser | null = user
+const toIngestionUser = (user: IngestionUser | undefined | null): IngestionUser | null =>
+  user
     ? {
         identifier: user.identifier,
         displayName: user.displayName,
@@ -36,6 +29,21 @@ export async function findIngestionUser(projectId: bigint, userId: bigint): Prom
         longitude: user.longitude,
       }
     : null;
+
+/**
+ * Cached `clickhouseUser.findById` for ingestion hot paths. A missing user is cached too:
+ * most events belong to anonymous users. While a user's write state is in Redis it is used
+ * directly, so changes the flusher has not written yet are visible. User writers call
+ * `invalidateIngestionUser`.
+ */
+export async function findIngestionUser(projectId: bigint, userId: bigint): Promise<IngestionUser | null> {
+  const key = userKey(projectId, userId);
+  const [state, cached] = await stateRedis().mget(userStateKey(projectId, userId), key);
+  if (state) return toIngestionUser((JSON.parse(state) as UserState).user);
+  if (cached && cached !== INVALIDATED) return JSON.parse(cached) as IngestionUser | null;
+
+  // Without a state in Redis, ClickHouse holds the latest row: dirty states never expire.
+  const value = toIngestionUser(await clickhouseUser.findById(projectId, userId));
   if (!cached) await stateRedis().set(key, JSON.stringify(value), 'EX', cacheTtl, 'NX');
   return value;
 }

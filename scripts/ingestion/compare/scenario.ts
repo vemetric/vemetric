@@ -42,7 +42,12 @@ let hubFetch: (request: Request) => Promise<Response>;
 const workers: Worker[] = [];
 let queues: Queue[] = [];
 let redis: Redis;
-let ingestion: { flushSessionBuffer: () => Promise<number>; closeStateRedis: () => Promise<void> } | null = null;
+let ingestion: {
+  flushSessionBuffer: () => Promise<number>;
+  // Versions that buffer user writes in Redis
+  flushUserBuffer?: () => Promise<number>;
+  closeStateRedis: () => Promise<void>;
+} | null = null;
 
 const at = (seconds: number) => vi.setSystemTime(BASE + seconds * 1000);
 
@@ -75,7 +80,9 @@ async function idle() {
     if (counts.every((count) => Object.values(count).every((value) => value === 0))) {
       if (!ingestion) return;
       await ingestion.flushSessionBuffer();
-      if ((await redis.zcard('vm:{session-state}:dirty')) === 0) return;
+      await ingestion.flushUserBuffer?.();
+      const dirty = await Promise.all([redis.zcard('vm:{session-state}:dirty'), redis.zcard('vm:{user-state}:dirty')]);
+      if (dirty.every((count) => count === 0)) return;
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }

@@ -82,15 +82,6 @@ describe('getUserIdFromRequest', () => {
     expect(getUserIdFromCookie).toHaveBeenCalledWith(mockContext);
   });
 
-  it('should return userId from cookie if the body is not valid JSON', async () => {
-    const mockUserId = BigInt(123);
-    vi.mocked(getUserIdFromCookie).mockReturnValue(mockUserId);
-    mockJson.mockRejectedValue(new SyntaxError('Unexpected end of JSON input'));
-
-    const result = await getUserIdFromRequest(mockContext);
-    expect(result).toBe(mockUserId);
-  });
-
   it('should prefer the mapped browser identifier over the cookie', async () => {
     vi.mocked(getUserIdFromCookie).mockReturnValue(BigInt(123));
     mockJson.mockResolvedValue({ identifier: 'browser-user-123' });

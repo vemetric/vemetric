@@ -2,7 +2,7 @@ import { EventNames } from '@vemetric/common/event';
 import type { FunnelStep } from '@vemetric/common/funnel';
 import type { Queue, Worker } from 'bullmq';
 import { clickhouseClient, clickhouseDevice, clickhouseEvent, clickhouseSession, clickhouseUser } from 'clickhouse';
-import { dbFunnel, prismaClient } from 'database';
+import { dbFunnel, generateUserId, prismaClient } from 'database';
 import Redis from 'ioredis';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushSessionBuffer, closeStateRedis } from '../../worker/src/ingestion';
@@ -210,6 +210,7 @@ async function ingestPageView(
     displayName?: string;
     userAgent?: string;
     contextId?: string;
+    headers?: Record<string, string>;
   },
 ) {
   const response = await requestHub(
@@ -222,7 +223,7 @@ async function ingestPageView(
       displayName: props.displayName,
       contextId: props.contextId,
     },
-    props.userAgent ? { 'user-agent': props.userAgent } : {},
+    { ...(props.userAgent ? { 'user-agent': props.userAgent } : {}), ...props.headers },
   );
 
   expect(response.status).toBe(200);
@@ -268,6 +269,55 @@ async function identifyUser(
   );
 
   expect(response.status).toBe(200);
+}
+
+async function ingestBeaconPageView(
+  project: ProjectContext,
+  props: {
+    url: string;
+    allowCookies: boolean;
+    cookieUserId: bigint;
+    userAgent: string;
+    contextId: string;
+  },
+) {
+  if (!runtime) {
+    throw new Error('Test runtime not initialized');
+  }
+
+  // beacon requests can't set custom headers, so the SDK sends Token and Allow-Cookies in the body
+  const response = await runtime.fetch(
+    new Request('http://hub.test/e', {
+      method: 'POST',
+      headers: new Headers({
+        'content-type': 'application/json',
+        'user-agent': props.userAgent,
+        cookie: `_vuid=${props.cookieUserId}`,
+      }),
+      body: JSON.stringify({
+        Token: project.token,
+        'Allow-Cookies': String(props.allowCookies),
+        'V-SDK': 'integration-test',
+        name: EventNames.PageView,
+        url: props.url,
+        contextId: props.contextId,
+      }),
+    }),
+  );
+
+  expect(response.status).toBe(200);
+}
+
+function cookieHeaders(cookieUserId: bigint, allowCookies: boolean) {
+  return { cookie: `_vuid=${cookieUserId}`, 'allow-cookies': String(allowCookies) };
+}
+
+async function queryProjectUsers(project: ProjectContext) {
+  return clickhouseEvent.queryUsers({
+    projectId: BigInt(project.projectId),
+    filterQueries: '',
+    ...getQueryRange(),
+  });
 }
 
 function getQueryRange() {
@@ -648,6 +698,179 @@ describe.sequential('hub ingestion integration', () => {
       expect(users).toHaveLength(1);
       expect(users[0].id).toBe(identifiedUser!.id);
       await expectActiveUserMetrics(project.projectId, 1);
+    } finally {
+      await cleanupProject(project);
+    }
+  });
+
+  it('ignores the _vuid cookie on requests that do not allow cookies', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
+    const cookieUserId = generateUserId();
+
+    try {
+      await ingestPageView(project, {
+        url: `https://${project.domain}/with-cookie`,
+        contextId: 'cookieless-with-cookie',
+        headers: cookieHeaders(cookieUserId, false),
+      });
+      await ingestPageView(project, {
+        url: `https://${project.domain}/without-cookie`,
+        contextId: 'cookieless-without-cookie',
+      });
+
+      await waitFor('cookieless events under the hashed id', async () => {
+        const users = await queryProjectUsers(project);
+        if (users.length !== 1) {
+          return false;
+        }
+
+        const events = await clickhouseEvent.findByUserId(BigInt(project.projectId), users[0].id);
+        return events.length === 2;
+      });
+
+      const users = await queryProjectUsers(project);
+      expect(users).toHaveLength(1);
+      expect(users[0].id).not.toBe(cookieUserId);
+      expect(await clickhouseEvent.findByUserId(BigInt(project.projectId), cookieUserId)).toHaveLength(0);
+    } finally {
+      await cleanupProject(project);
+    }
+  });
+
+  it('prefers the mapped body identifier over the _vuid cookie', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
+    const cookieUserId = generateUserId();
+
+    try {
+      await identifyUser(project, 'cookie-identified-user', 'Cookie Identified User');
+      await ingestPageView(project, {
+        url: `https://${project.domain}/dashboard`,
+        identifier: 'cookie-identified-user',
+        displayName: 'Cookie Identified User',
+        contextId: 'identifier-with-cookie',
+        headers: cookieHeaders(cookieUserId, true),
+      });
+
+      await waitFor('identified event despite cookie', async () => {
+        const user = await clickhouseUser.findByIdentifier(BigInt(project.projectId), 'cookie-identified-user');
+        if (!user) {
+          return false;
+        }
+
+        const events = await clickhouseEvent.findByUserId(BigInt(project.projectId), user.id);
+        return events.length === 1;
+      });
+
+      const identifiedUser = await clickhouseUser.findByIdentifier(BigInt(project.projectId), 'cookie-identified-user');
+      const users = await queryProjectUsers(project);
+      expect(users).toHaveLength(1);
+      expect(users[0].id).toBe(identifiedUser!.id);
+      expect(identifiedUser!.id).not.toBe(cookieUserId);
+      expect(await clickhouseEvent.findByUserId(BigInt(project.projectId), cookieUserId)).toHaveLength(0);
+    } finally {
+      await cleanupProject(project);
+    }
+  });
+
+  it('uses the _vuid cookie on requests that allow cookies and carry no identifier', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
+    const cookieUserId = generateUserId();
+
+    try {
+      await ingestPageView(project, {
+        url: `https://${project.domain}/pricing`,
+        contextId: 'cookie-mode-anonymous',
+        headers: cookieHeaders(cookieUserId, true),
+      });
+
+      await waitFor('event under the cookie id', async () => {
+        const events = await clickhouseEvent.findByUserId(BigInt(project.projectId), cookieUserId);
+        return events.length === 1;
+      });
+
+      const users = await queryProjectUsers(project);
+      expect(users).toHaveLength(1);
+      expect(users[0].id).toBe(cookieUserId);
+    } finally {
+      await cleanupProject(project);
+    }
+  });
+
+  it('reads Allow-Cookies from the body of beacon requests', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
+    const allowedCookieUserId = generateUserId();
+    const ignoredCookieUserId = generateUserId();
+
+    try {
+      await ingestBeaconPageView(project, {
+        url: `https://${project.domain}/beacon-cookies-allowed`,
+        allowCookies: true,
+        cookieUserId: allowedCookieUserId,
+        userAgent: `${TEST_USER_AGENT} beacon-allowed`,
+        contextId: 'beacon-cookies-allowed',
+      });
+      await ingestBeaconPageView(project, {
+        url: `https://${project.domain}/beacon-cookies-not-allowed`,
+        allowCookies: false,
+        cookieUserId: ignoredCookieUserId,
+        userAgent: `${TEST_USER_AGENT} beacon-not-allowed`,
+        contextId: 'beacon-cookies-not-allowed',
+      });
+
+      await waitFor('beacon events', async () => {
+        const users = await queryProjectUsers(project);
+        return users.length === 2;
+      });
+
+      const userIds = (await queryProjectUsers(project)).map((user) => user.id);
+      expect(userIds).toContain(allowedCookieUserId);
+      expect(userIds).not.toContain(ignoredCookieUserId);
+    } finally {
+      await cleanupProject(project);
+    }
+  });
+
+  it('identifies a cookieless visitor under the hashed id even when a _vuid cookie is present', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
+    const cookieUserId = generateUserId();
+    const visitorUserAgent = `${TEST_USER_AGENT} cookieless-identify`;
+
+    try {
+      await ingestPageView(project, {
+        url: `https://${project.domain}/pricing`,
+        userAgent: visitorUserAgent,
+        contextId: 'cookieless-identify-anonymous',
+        headers: cookieHeaders(cookieUserId, false),
+      });
+
+      await waitFor('anonymous visitor before identify', async () => {
+        const users = await queryProjectUsers(project);
+        return users.length === 1;
+      });
+      const [anonymousUser] = await queryProjectUsers(project);
+      expect(anonymousUser.id).not.toBe(cookieUserId);
+
+      await identifyUser(project, 'cookieless-identify-user', 'Cookieless Identify User', {
+        'user-agent': visitorUserAgent,
+        ...cookieHeaders(cookieUserId, false),
+      });
+      await waitForQueuesIdle(30000);
+
+      await waitFor('identified user record', async () => {
+        const user = await clickhouseUser.findByIdentifier(BigInt(project.projectId), 'cookieless-identify-user');
+        return user !== null;
+      });
+
+      const identifiedUser = await clickhouseUser.findByIdentifier(BigInt(project.projectId), 'cookieless-identify-user');
+      expect(identifiedUser!.id).toBe(anonymousUser.id);
+      const users = await queryProjectUsers(project);
+      expect(users).toHaveLength(1);
+      expect(users[0].id).toBe(anonymousUser.id);
     } finally {
       await cleanupProject(project);
     }

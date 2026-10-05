@@ -1,7 +1,6 @@
 import { useBreakpointValue } from '@chakra-ui/react';
 import { initializePaddle } from '@paddle/paddle-js';
 import { createRootRoute, Outlet, useLocation, useNavigate } from '@tanstack/react-router';
-import { zodValidator } from '@tanstack/zod-adapter';
 import { vemetric } from '@vemetric/react';
 import { useEffect, useRef } from 'react';
 import { z } from 'zod';
@@ -46,7 +45,7 @@ const rootSearchSchema = z.object({
 });
 
 export const Route = createRootRoute({
-  validateSearch: zodValidator(rootSearchSchema),
+  validateSearch: rootSearchSchema,
   component: RootLayout,
 });
 

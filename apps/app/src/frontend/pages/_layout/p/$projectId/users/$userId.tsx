@@ -1,6 +1,5 @@
 import { Box, Card, Flex, SimpleGrid, LinkOverlay, Skeleton, Spinner, Button, Icon } from '@chakra-ui/react';
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { zodValidator } from '@tanstack/zod-adapter';
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { useEffect } from 'react';
 import { TbArrowDown, TbActivity } from 'react-icons/tb';
@@ -19,13 +18,13 @@ import { trpc } from '@/utils/trpc';
 import { getUserName } from '@/utils/user';
 
 const userSearchSchema = z.object({
-  date: z.string().date().optional(),
+  date: z.iso.date().optional(),
   f: filterConfigSchema,
 });
 
 export const Route = createFileRoute('/_layout/p/$projectId/users/$userId')({
   component: Page,
-  validateSearch: zodValidator(userSearchSchema),
+  validateSearch: userSearchSchema,
 });
 
 function Page() {

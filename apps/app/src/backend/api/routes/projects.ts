@@ -46,11 +46,11 @@ const projectRoute = createRoute({
                   description: 'Public token used for tracking',
                   example: 'project_token_123',
                 }),
-                createdAt: z.string().datetime().openapi({
+                createdAt: z.iso.datetime().openapi({
                   description: 'Project creation timestamp (ISO 8601)',
                   example: '2026-02-07T12:00:00.000Z',
                 }),
-                firstEventAt: z.string().datetime().nullable().openapi({
+                firstEventAt: z.iso.datetime().nullable().openapi({
                   description: 'Timestamp of the first ingested event, if available (ISO 8601)',
                   example: '2026-02-07T12:30:00.000Z',
                 }),

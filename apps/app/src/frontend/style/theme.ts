@@ -112,6 +112,11 @@ export const vemetricTheme = createSystem(defaultConfig, {
         from: { clipPath: 'circle(150% at var(--theme-toggle-x, 50%) var(--theme-toggle-y, 50%))' },
         to: { clipPath: 'circle(0% at var(--theme-toggle-x, 50%) var(--theme-toggle-y, 50%))' },
       },
+      // Reveals chart marks from left to right, relative to the whole chart (view-box) instead of each mark's own bounds
+      'chart-reveal': {
+        from: { clipPath: 'inset(0 100% 0 0) view-box' },
+        to: { clipPath: 'inset(0 0 0 0) view-box' },
+      },
     },
     tokens: {
       colors: {

@@ -20,7 +20,7 @@
     "@vemetric/logger": "workspace:*",
     "nanoid": "^5.0.4",
     "sqlstring": "^2.3.3",
-    "zod": "3.24.2"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/node": "^22.20.4",

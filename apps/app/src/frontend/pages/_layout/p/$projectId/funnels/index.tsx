@@ -1,6 +1,5 @@
 import { AspectRatio, Box, Button, Card, Flex, Icon, SimpleGrid, Skeleton } from '@chakra-ui/react';
 import { createFileRoute } from '@tanstack/react-router';
-import { zodValidator } from '@tanstack/zod-adapter';
 import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { TbChartFunnel, TbPlus } from 'react-icons/tb';
@@ -28,7 +27,7 @@ const searchSchema = z.object({
 });
 
 export const Route = createFileRoute('/_layout/p/$projectId/funnels/')({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
   search: {
     middlewares: [timeSpanSearchMiddleware],
   },

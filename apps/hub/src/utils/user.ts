@@ -155,7 +155,6 @@ export async function identifyUser(
         newUserId: String(identifiedUserId),
         displayName,
         cutoff: formatClickhouseDate(new Date(Date.now() + MERGE_DELAY_MS)),
-        firstIdentification: !existingUserWithIdentifer,
       },
       {
         ...mergeUserJobOptions,

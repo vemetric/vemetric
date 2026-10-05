@@ -226,14 +226,13 @@ async function mergeIntoTargets(
       await insertDeviceIfNotExists(projectId, target, deviceId, event);
     }
 
-    // The identified user's attribution comes from its first page view, now including merged ones:
-    // a user created by this identification takes the earliest one, an existing user only fills
-    // missing attribution (as before).
+    // The identified user's attribution (origin, referrer, UTM tags, first seen) comes from its
+    // earliest page view, now including the merged ones.
     if (moves.length) {
       const firstPageView = await clickhouseEvent.getFirstPageViewByUserId(projectId, target);
       if (firstPageView) {
         await upsertUser(projectId, target, {
-          type: entry.firstIdentification ? 'attribute' : 'enrich',
+          type: 'attribute',
           at: formatClickhouseDate(new Date()),
           firstPageView: getUserFirstPageViewData(firstPageView),
         });

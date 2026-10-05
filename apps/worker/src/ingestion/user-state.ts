@@ -46,7 +46,7 @@ export type UserOp =
   | { type: 'update'; update: UserUpdate }
   // Fills attribution data (origin, referrer, UTMs, first seen) of a user that has none.
   | { type: 'enrich'; at: string; firstPageView: Partial<ClickhouseUser> }
-  // Replaces it when this first page view is earlier, e.g. a visit merged at the user's first login.
+  // Replaces it when this first page view is earlier, e.g. a visit merged at a login.
   | { type: 'attribute'; at: string; firstPageView: Partial<ClickhouseUser> };
 
 // Bounds a state whose user is never created (updates for an anonymous id).

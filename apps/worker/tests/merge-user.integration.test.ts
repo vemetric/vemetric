@@ -6,7 +6,13 @@ import { clickhouseEvent, EXAMPLE_EVENT, type ClickhouseEvent } from '../../../p
 import { clickhouseSession, type ClickhouseSession } from '../../../packages/clickhouse/src/models/session';
 import { clickhouseUser } from '../../../packages/clickhouse/src/models/user';
 import { getDeviceId } from '../../../packages/clickhouse/src/utils/id';
-import { continueMergedSession, loadMergeRecord, needsFollowUp, saveMergeRecord } from '../src/ingestion/merge-record';
+import {
+  continueMergedSession,
+  loadMergeRecord,
+  mergeRecordKey,
+  needsFollowUp,
+  saveMergeRecord,
+} from '../src/ingestion/merge-record';
 import { closeStateRedis, stateRedis } from '../src/ingestion/redis';
 import { bufferSessionUpdate } from '../src/ingestion/session-buffer';
 import { flushSessionBuffer } from '../src/ingestion/session-flush';
@@ -83,7 +89,7 @@ async function visit(userId: bigint, id: string, pages: Array<[number, string]>,
   return events;
 }
 
-async function merge(cutoffMinutes: number, { firstIdentification = false } = {}) {
+async function merge(cutoffMinutes: number) {
   await saveMergeRecord(projectId, anonymous, {
     merges: [
       {
@@ -91,7 +97,6 @@ async function merge(cutoffMinutes: number, { firstIdentification = false } = {}
         cutoff: at(cutoffMinutes),
         identifier: 'alice',
         displayName: 'Alice',
-        firstIdentification,
       },
     ],
   });
@@ -174,24 +179,37 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('user merges against 
       [0, '/landing'],
       [5, '/pricing'],
     ]);
-    await merge(11, { firstIdentification: true });
+    await merge(11);
 
     await flushUserBuffer();
     expect(await clickhouseUser.findById(projectId, alice)).toMatchObject({ pathname: '/landing', firstSeenAt: at(0) });
   });
 
-  it('keeps the attribution of an existing user', async () => {
+  it('moves the attribution of an existing user to an earlier merged visit only', async () => {
     await visit(alice, 'OLD', [[-500, '/pricing']]);
     await upsertUser(projectId, alice, {
       type: 'enrich',
       at: at(-400),
       firstPageView: getUserFirstPageViewData((await clickhouseEvent.getFirstPageViewByUserId(projectId, alice))!),
     });
-    await visit(anonymous, 'S', [[-600, '/landing']]);
-    await merge(0);
-
+    // A later visit on another device leaves it as it is.
+    await visit(anonymous, 'LATER', [[-100, '/blog']]);
+    await merge(-90);
     await flushUserBuffer();
-    expect(await clickhouseUser.findById(projectId, alice)).toMatchObject({ pathname: '/pricing' });
+    expect(await clickhouseUser.findById(projectId, alice)).toMatchObject({
+      pathname: '/pricing',
+      firstSeenAt: at(-500),
+    });
+
+    // Anonymous history from before the user's first page view becomes its first touch.
+    await stateRedis().del(mergeRecordKey(projectId, anonymous));
+    await visit(anonymous, 'EARLIER', [[-600, '/landing']]);
+    await merge(0);
+    await flushUserBuffer();
+    expect(await clickhouseUser.findById(projectId, alice)).toMatchObject({
+      pathname: '/landing',
+      firstSeenAt: at(-600),
+    });
   });
 
   it('queues a follow-up for an event stored after the merge read the merged id', async () => {

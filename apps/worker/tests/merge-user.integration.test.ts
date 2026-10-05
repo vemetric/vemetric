@@ -216,6 +216,25 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('user merges against 
     expect(await liveRowsPerEvent()).toEqual(Array(9).fill(1));
   });
 
+  it("moves the user's own events of a continued session that is merged into an earlier one", async () => {
+    await visit(alice, 'T', [[0, '/dashboard'], [10, '/reports']]);
+    // The visitor logs in at minute 25 and Alice continues the visitor's session.
+    await visit(anonymous, 'E', [[20, '/landing'], [24, '/login']]);
+    await clickhouseEvent.insert([event(alice, 'E', 26, '/account')]);
+    await stateRedis().set(hubKey(alice), 'E', 'EX', 1800);
+    await merge(25);
+
+    expect((await eventsOf(alice)).map((e) => [e.pathname, e.sessionId])).toEqual([
+      ['/dashboard', 'T'],
+      ['/reports', 'T'],
+      ['/landing', 'T'],
+      ['/login', 'T'],
+      ['/account', 'T'],
+    ]);
+    expect((await sessionsOf(alice)).map((s) => s.id)).toEqual(['T']);
+    expect(await stateRedis().get(hubKey(alice))).toBe('T');
+  });
+
   it('keeps visits that are 30 minutes or more apart separate', async () => {
     await visit(alice, 'T', [[100, '/dashboard']]);
     await visit(anonymous, 'S', [

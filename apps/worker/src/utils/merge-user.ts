@@ -176,9 +176,10 @@ async function mergeIntoTargets(
     const targetRecord = (await loadMergeRecord(projectId, target)) ?? {};
     const sourceSessionIds = new Set(entrySessions.map((session) => session.id));
     for (const [member, survivor] of Array.from(survivors.entries())) {
-      if (sourceSessionIds.has(member)) {
-        decided[member] = { user: entry.target, session: survivor };
-      } else if (member !== survivor) {
+      if (sourceSessionIds.has(member)) decided[member] = { user: entry.target, session: survivor };
+      // The identified user's events of every merged-away session follow it too, including a session
+      // of the merged id that the user continued at login.
+      if (member !== survivor) {
         targetRecord.sessions = { ...targetRecord.sessions, [member]: { user: entry.target, session: survivor } };
       }
     }

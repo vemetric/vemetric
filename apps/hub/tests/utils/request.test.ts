@@ -75,10 +75,52 @@ describe('getUserIdFromRequest', () => {
   it('should return userId from cookie if available', async () => {
     const mockUserId = BigInt(123);
     vi.mocked(getUserIdFromCookie).mockReturnValue(mockUserId);
+    mockJson.mockResolvedValue({});
 
     const result = await getUserIdFromRequest(mockContext);
     expect(result).toBe(mockUserId);
     expect(getUserIdFromCookie).toHaveBeenCalledWith(mockContext);
+  });
+
+  it('should return userId from cookie if the body is not valid JSON', async () => {
+    const mockUserId = BigInt(123);
+    vi.mocked(getUserIdFromCookie).mockReturnValue(mockUserId);
+    mockJson.mockRejectedValue(new SyntaxError('Unexpected end of JSON input'));
+
+    const result = await getUserIdFromRequest(mockContext);
+    expect(result).toBe(mockUserId);
+  });
+
+  it('should prefer the mapped browser identifier over the cookie', async () => {
+    vi.mocked(getUserIdFromCookie).mockReturnValue(BigInt(123));
+    mockJson.mockResolvedValue({ identifier: 'browser-user-123' });
+    vi.mocked(dbUserIdentificationMap.findByIdentifier).mockResolvedValue({
+      userId: '789',
+      identifier: 'browser-user-123',
+      projectId: '123',
+      createdAt: new Date(),
+    });
+
+    const result = await getUserIdFromRequest(mockContext);
+    expect(result).toBe(BigInt(789));
+  });
+
+  it('should return userId from cookie if the browser identifier is not mapped', async () => {
+    vi.mocked(getUserIdFromCookie).mockReturnValue(BigInt(123));
+    mockJson.mockResolvedValue({ identifier: 'unknown-user' });
+    vi.mocked(dbUserIdentificationMap.findByIdentifier).mockResolvedValue(null);
+
+    const result = await getUserIdFromRequest(mockContext);
+    expect(result).toBe(BigInt(123));
+  });
+
+  it('should ignore the browser identifier and return the cookie userId for identify requests', async () => {
+    vi.mocked(getUserIdFromCookie).mockReturnValue(BigInt(123));
+    mockJson.mockResolvedValue({ identifier: 'browser-user-123' });
+
+    const result = await getUserIdFromRequest(mockContext, false);
+    expect(result).toBe(BigInt(123));
+    expect(dbUserIdentificationMap.findByIdentifier).not.toHaveBeenCalled();
   });
 
   it('should return userId from API call identifier', async () => {
@@ -160,6 +202,23 @@ describe('getUserIdFromRequest', () => {
       userAgent: 'test-agent',
       salt: 'current-salt',
     });
+  });
+
+  it('should not read the cookie when cookies not allowed', async () => {
+    vi.mocked(getUserIdFromCookie).mockReturnValue(BigInt(123));
+    mockJson.mockResolvedValue({});
+    Object.defineProperty(mockContext.var, 'allowCookies', { value: false });
+    Object.defineProperty(mockContext.var, 'ipAddress', { value: '127.0.0.1' });
+    vi.mocked(dbSalt.getLatestSalts).mockResolvedValue({
+      currentSalt: { id: 'current-salt', createdAt: new Date() },
+      previousSalt: { id: 'previous-salt', createdAt: new Date() },
+    });
+    vi.mocked(hasActiveSession).mockResolvedValue(false);
+    vi.mocked(generateUserId).mockReturnValue(BigInt(999));
+
+    const result = await getUserIdFromRequest(mockContext);
+    expect(result).toBe(BigInt(999));
+    expect(getUserIdFromCookie).not.toHaveBeenCalled();
   });
 
   it('should use previous salt if active session exists', async () => {

@@ -1,3 +1,4 @@
+import { getBaseDomain } from '@vemetric/common/env';
 import { Hono } from 'hono';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { HonoContextVars } from '../../src/types';
@@ -170,11 +171,26 @@ describe('user id cookie', () => {
   it('deletes the partitioned project cookie', async () => {
     const cookieA = await getCookieName(PROJECT_A);
     const response = await createApp(PROJECT_A).request('/delete');
-    const setCookie = response.headers.get('set-cookie') ?? '';
+    const setCookie = response.headers.getSetCookie().find((cookie) => cookie.startsWith(`${cookieA}=;`)) ?? '';
 
-    expect(setCookie).toMatch(new RegExp(`^${cookieA}=;`));
     expect(setCookie).toContain('Max-Age=0');
     expect(setCookie).toContain('Partitioned');
     expect(setCookie).not.toContain('Domain');
+  });
+
+  it('deletes the legacy cookie with the domain it was set on', async () => {
+    const legacyDelete = async (proxyHost?: string) => {
+      const response = await createApp(PROJECT_A, false, proxyHost).request('/delete');
+      return response.headers.getSetCookie().find((cookie) => cookie.startsWith('_vuid=;')) ?? '';
+    };
+
+    const withoutProxy = await legacyDelete();
+    expect(withoutProxy).toContain(`Domain=${getBaseDomain().split(':')[0]}`);
+    expect(withoutProxy).toContain('Max-Age=0');
+    expect(withoutProxy).toContain('SameSite=None');
+    expect(withoutProxy).toContain('Secure');
+    expect(withoutProxy).not.toContain('Partitioned');
+
+    expect(await legacyDelete('app.example.com')).toContain('Domain=app.example.com');
   });
 });

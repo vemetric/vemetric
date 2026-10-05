@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { getBaseDomain } from '@vemetric/common/env';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import type { CookieOptions } from 'hono/utils/cookie';
 import { getDomain } from 'tldts';
@@ -113,4 +114,12 @@ export function deleteUserIdCookie(context: HonoContext) {
   if (siteDomain) {
     deleteCookie(context, cookieName, { ...UID_COOKIE_OPTIONS, prefix: 'secure', domain: siteDomain });
   }
+
+  // the old shared cookie is removed too, with the attributes it was set with, e.g. when a visitor revokes consent
+  deleteCookie(context, LEGACY_UID_COOKIE_NAME, {
+    path: '/',
+    secure: true,
+    sameSite: 'None',
+    domain: context.var.proxyHost ?? getBaseDomain().split(':')[0], // remove port if present
+  });
 }

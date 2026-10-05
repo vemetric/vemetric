@@ -13,6 +13,9 @@ export interface MergeEntry {
   cutoff: string;
   identifier: string;
   displayName?: string;
+  // The user was created by this identification: the merged first page view becomes its
+  // attribution even when the user already got one from a later page view.
+  firstIdentification?: boolean;
 }
 
 /**

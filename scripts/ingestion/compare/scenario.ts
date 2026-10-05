@@ -258,13 +258,17 @@ describe('ingestion comparison scenario', () => {
 
     // Phase 5: logins of an existing user. First on a tablet while the user is active on the phone,
     // with tablet activity before and during the phone session.
+    // The clock jumps more than a minute between these steps, longer than a later event of a new
+    // session waits for the creating one, so each visit's first event is processed first.
     await expireHubSessions();
     at(8000);
     await pageView(UA.ipad, 'https://diff.example.com/landing', {}, { 'v-referrer': 'https://www.google.com/' });
+    await idle();
     at(8300);
     await pageView(UA.ipad, 'https://diff.example.com/pricing');
     at(8600);
     await pageView(UA.iphone, 'https://diff.example.com/dashboard', { identifier: 'alice' });
+    await idle();
     at(8900);
     await pageView(UA.ipad, 'https://diff.example.com/docs');
     at(9200);
@@ -280,6 +284,7 @@ describe('ingestion comparison scenario', () => {
     await expireHubSessions();
     at(11200);
     await pageView(UA.edge, 'https://diff.example.com/landing', {}, { 'v-referrer': 'https://duckduckgo.com/' });
+    await idle();
     at(11260);
     await pageView(UA.edge, 'https://diff.example.com/pricing');
     await idle();

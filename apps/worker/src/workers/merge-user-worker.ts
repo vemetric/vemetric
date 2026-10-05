@@ -32,9 +32,16 @@ async function registerMerge(job: Job<MergeUserQueueProps>, projectId: bigint, s
       ...last,
       cutoff: cutoff > last.cutoff ? cutoff : last.cutoff,
       displayName: displayName ?? last.displayName,
+      firstIdentification: last.firstIdentification || job.data.firstIdentification,
     };
   } else if (!merges.some((entry) => entry.target === String(target) && entry.cutoff === cutoff)) {
-    merges.push({ target: String(target), cutoff, identifier: identification.identifier, displayName });
+    merges.push({
+      target: String(target),
+      cutoff,
+      identifier: identification.identifier,
+      displayName,
+      firstIdentification: job.data.firstIdentification,
+    });
     merges.sort((a, b) => (a.cutoff < b.cutoff ? -1 : 1));
   }
   await saveMergeRecord(projectId, source, { ...record, merges });

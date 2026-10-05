@@ -4,16 +4,15 @@ import type { EventQueueProps } from '@vemetric/queues/event-queue';
 import { eventQueueName } from '@vemetric/queues/queue-names';
 import { Worker } from 'bullmq';
 import { clickhouseEvent, getDeviceId } from 'clickhouse';
-import { needsFollowUp } from '../ingestion/merge-record';
 import { getDeviceDataFromHeaders } from '../utils/device';
 import { envPositiveInteger, workerName } from '../utils/env';
 import { logger } from '../utils/logger';
-import { queueMergeFollowUp } from '../utils/merge-follow-up';
+import { followUpIfMerged } from '../utils/merge-follow-up';
 import { getReferrerFromRequest } from '../utils/referrer';
 import { getSessionData } from '../utils/session';
 import { queueTelemetry } from '../utils/telemetry';
 import { getUrlParams } from '../utils/url';
-import { findIngestionIdentity } from '../utils/user-cache';
+import { findIngestionUser } from '../utils/user-cache';
 
 export async function initEventWorker() {
   return new Worker<EventQueueProps>(
@@ -39,7 +38,7 @@ export async function initEventWorker() {
       const userId = BigInt(_userId);
       const isPageView = name === EventNames.PageView;
 
-      const { user, mergeRecord } = await findIngestionIdentity(projectId, userId);
+      const user = await findIngestionUser(projectId, userId);
       const userIdentifier = user?.identifier ?? reqIdentifier;
       const userDisplayName = reqDisplayName ?? user?.displayName;
 
@@ -81,10 +80,8 @@ export async function initEventWorker() {
         },
       ]);
 
-      // The id was merged into an identified user before this event was stored.
-      if (needsFollowUp(mergeRecord, userId, { createdAt, sessionId })) {
-        await queueMergeFollowUp(projectId, userId);
-      }
+      // The id may have been merged into an identified user before this event was stored.
+      await followUpIfMerged(projectId, userId, { createdAt, sessionId });
     },
     {
       connection: {

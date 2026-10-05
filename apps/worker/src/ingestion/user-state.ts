@@ -19,6 +19,8 @@ export interface UserState {
   fieldsAt?: Record<string, string>;
   // Updates that arrived before the user was created; applied by the create.
   pending?: UserUpdate[];
+  // The earliest first page view a merge brought before the user was created; applied by the create.
+  pendingFirstPageView?: Partial<StoredUser>;
 }
 
 export interface UserUpdate {
@@ -42,7 +44,10 @@ export interface UserCreate {
 export type UserOp =
   | { type: 'create'; create: UserCreate }
   | { type: 'update'; update: UserUpdate }
-  | { type: 'enrich'; at: string; firstPageView: Partial<ClickhouseUser> };
+  // Fills attribution data (origin, referrer, UTMs, first seen) of a user that has none.
+  | { type: 'enrich'; at: string; firstPageView: Partial<ClickhouseUser> }
+  // Replaces it when this first page view is earlier, e.g. a visit merged at the user's first login.
+  | { type: 'attribute'; at: string; firstPageView: Partial<ClickhouseUser> };
 
 // Bounds a state whose user is never created (updates for an anonymous id).
 export const MAX_PENDING_UPDATES = 100;
@@ -74,6 +79,13 @@ export function toClickhouseUser(user: StoredUser): ClickhouseUser {
     id: BigInt(user.id),
     initialDeviceId: user.initialDeviceId === undefined ? undefined : BigInt(user.initialDeviceId),
   };
+}
+
+// Whether a first page view happened before the user's current first seen time.
+function isEarlier(firstPageView: Partial<StoredUser>, than: Partial<StoredUser>) {
+  if (!firstPageView.firstSeenAt) return false;
+  if (!than.firstSeenAt) return true;
+  return normalizeTimestamp(firstPageView.firstSeenAt) < normalizeTimestamp(than.firstSeenAt);
 }
 
 function storedFields(fields: Partial<ClickhouseUser>): Partial<StoredUser> {
@@ -145,6 +157,23 @@ export function applyUserOp(
 ): { state: UserState; dirty: boolean } | null {
   const fieldsAt = state.fieldsAt ?? {};
 
+  if (op.type === 'attribute') {
+    const firstPageView = storedFields(op.firstPageView);
+    if (!state.user) {
+      // The create takes it over when it runs; until then keep the earliest one.
+      if (state.pendingFirstPageView && !isEarlier(firstPageView, state.pendingFirstPageView)) return null;
+      return { state: { ...state, pendingFirstPageView: firstPageView }, dirty: false };
+    }
+    const user = state.user;
+    if (user.origin && !isEarlier(firstPageView, user)) return null;
+    const attributed: StoredUser = {
+      ...user,
+      ...firstPageView,
+      updatedAt: nextUpdatedAt(user.updatedAt, normalizeTimestamp(op.at)),
+    };
+    return { state: { ...state, user: attributed }, dirty: true };
+  }
+
   if (op.type === 'enrich') {
     const user = state.user;
     if (!user || user.origin) return null;
@@ -194,6 +223,8 @@ export function applyUserOp(
     ...(create.geo ?? {}),
     ...storedFields(create.firstPageView ?? {}),
   };
+  const merged = state.pendingFirstPageView;
+  if (merged && (!user.origin || isEarlier(merged, user))) user = { ...user, ...merged };
   let createdFieldsAt: Record<string, string> = {
     displayName: createdAt,
     avatarUrl: createdAt,

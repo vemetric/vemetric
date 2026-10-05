@@ -1,3 +1,4 @@
+import { mergeUserQueue } from '@vemetric/queues/merge-user-queue';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { clickhouseClient } from '../../../packages/clickhouse/src/client';
 import { clickhouseDevice } from '../../../packages/clickhouse/src/models/device';
@@ -11,7 +12,9 @@ import { bufferSessionUpdate } from '../src/ingestion/session-buffer';
 import { flushSessionBuffer } from '../src/ingestion/session-flush';
 import { flushUserBuffer, getUser, upsertUser } from '../src/ingestion/user-buffer';
 import { insertDeviceIfNotExists } from '../src/utils/device';
+import { followUpIfMerged } from '../src/utils/merge-follow-up';
 import { reconcileUser } from '../src/utils/merge-user';
+import { getUserFirstPageViewData } from '../src/utils/user';
 
 const projectId = BigInt('18446744073709551000');
 const anonymous = BigInt('18446744073709551010');
@@ -80,9 +83,17 @@ async function visit(userId: bigint, id: string, pages: Array<[number, string]>,
   return events;
 }
 
-async function merge(cutoffMinutes: number) {
+async function merge(cutoffMinutes: number, { firstIdentification = false } = {}) {
   await saveMergeRecord(projectId, anonymous, {
-    merges: [{ target: String(alice), cutoff: at(cutoffMinutes), identifier: 'alice', displayName: 'Alice' }],
+    merges: [
+      {
+        target: String(alice),
+        cutoff: at(cutoffMinutes),
+        identifier: 'alice',
+        displayName: 'Alice',
+        firstIdentification,
+      },
+    ],
   });
   return reconcileUser(projectId, anonymous);
 }
@@ -143,6 +154,54 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('user merges against 
   afterAll(async () => {
     await closeStateRedis();
     await clickhouseClient.close();
+  });
+
+  it("attributes a user created at the login to the visitor's landing page", async () => {
+    // The first page view after the login was stored before the user was created.
+    await visit(alice, 'POST', [[12, '/dashboard']]);
+    await upsertUser(projectId, alice, {
+      type: 'create',
+      create: {
+        createdAt: at(11),
+        identifier: 'alice',
+        displayName: 'Alice',
+        avatarUrl: '',
+        data: {},
+        firstPageView: getUserFirstPageViewData((await clickhouseEvent.getFirstPageViewByUserId(projectId, alice))!),
+      },
+    });
+    await visit(anonymous, 'S', [
+      [0, '/landing'],
+      [5, '/pricing'],
+    ]);
+    await merge(11, { firstIdentification: true });
+
+    await flushUserBuffer();
+    expect(await clickhouseUser.findById(projectId, alice)).toMatchObject({ pathname: '/landing', firstSeenAt: at(0) });
+  });
+
+  it('keeps the attribution of an existing user', async () => {
+    await visit(alice, 'OLD', [[-500, '/pricing']]);
+    await upsertUser(projectId, alice, {
+      type: 'enrich',
+      at: at(-400),
+      firstPageView: getUserFirstPageViewData((await clickhouseEvent.getFirstPageViewByUserId(projectId, alice))!),
+    });
+    await visit(anonymous, 'S', [[-600, '/landing']]);
+    await merge(0);
+
+    await flushUserBuffer();
+    expect(await clickhouseUser.findById(projectId, alice)).toMatchObject({ pathname: '/pricing' });
+  });
+
+  it('queues a follow-up for an event stored after the merge read the merged id', async () => {
+    await visit(anonymous, 'S', [[0, '/landing']]);
+    await merge(10);
+    const late = event(anonymous, 'S', 6, '/late');
+    await clickhouseEvent.insert([late]);
+    await followUpIfMerged(projectId, anonymous, late);
+    expect(await mergeUserQueue.getDelayedCount()).toBe(1);
+    await mergeUserQueue.obliterate({ force: true });
   });
 
   it('moves an anonymous visit to the identified user with its entry data', async () => {
@@ -217,9 +276,15 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('user merges against 
   });
 
   it("moves the user's own events of a continued session that is merged into an earlier one", async () => {
-    await visit(alice, 'T', [[0, '/dashboard'], [10, '/reports']]);
+    await visit(alice, 'T', [
+      [0, '/dashboard'],
+      [10, '/reports'],
+    ]);
     // The visitor logs in at minute 25 and Alice continues the visitor's session.
-    await visit(anonymous, 'E', [[20, '/landing'], [24, '/login']]);
+    await visit(anonymous, 'E', [
+      [20, '/landing'],
+      [24, '/login'],
+    ]);
     await clickhouseEvent.insert([event(alice, 'E', 26, '/account')]);
     await stateRedis().set(hubKey(alice), 'E', 'EX', 1800);
     await merge(25);

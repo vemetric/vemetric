@@ -11,6 +11,9 @@ export interface MergeUserQueueProps {
   // Hub timestamp up to which the anonymous id's activity belongs to the identified user. Jobs
   // queued by earlier versions don't carry it; their creation time plus delay is used instead.
   cutoff?: string;
+  // The identified user was created by this identification, so its attribution comes from the
+  // earliest page view of the merged visitor.
+  firstIdentification?: boolean;
   // A follow-up for an id whose activity arrived after its merge, queued by the ingestion workers.
   userId?: string;
   // First readiness postponement, persisted so worker restarts do not reset the deadline.

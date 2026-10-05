@@ -4,17 +4,17 @@ import type { SessionQueueProps } from '@vemetric/queues/session-queue';
 import { sessionQueue } from '@vemetric/queues/session-queue';
 import { DelayedError, Worker } from 'bullmq';
 import { bufferSessionUpdate, bufferExistingSessionActivity } from '../ingestion';
-import { continueMergedSession, needsFollowUp } from '../ingestion/merge-record';
+import { continueMergedSession } from '../ingestion/merge-record';
 import { getDeviceDataFromHeaders } from '../utils/device';
 import { envPositiveInteger, workerName } from '../utils/env';
 import { logJobStep } from '../utils/job-logger';
 import { logger } from '../utils/logger';
-import { queueMergeFollowUp } from '../utils/merge-follow-up';
+import { followUpIfMerged } from '../utils/merge-follow-up';
 import { getReferrerFromRequest } from '../utils/referrer';
 import { getSessionData } from '../utils/session';
 import { queueTelemetry } from '../utils/telemetry';
 import { getUrlParams } from '../utils/url';
-import { findIngestionIdentity } from '../utils/user-cache';
+import { findIngestionUser } from '../utils/user-cache';
 
 const CREATING_EVENT_WAIT_MS = 60_000;
 const CREATING_EVENT_RECHECK_MS = 1_000;
@@ -61,7 +61,7 @@ export async function initSessionWorker() {
       const { ipAddress, geoData, headers, url, reqIdentifier, reqDisplayName } = job.data;
 
       await logJobStep(job, 'before findIngestionUser');
-      const { user, mergeRecord } = await findIngestionIdentity(projectId, userId);
+      const user = await findIngestionUser(projectId, userId);
       await logJobStep(job, user ? 'after findIngestionUser found' : 'after findIngestionUser missing');
       const userIdentifier = user?.identifier ?? reqIdentifier;
       const userDisplayName = user?.displayName ?? reqDisplayName;
@@ -101,9 +101,9 @@ export async function initSessionWorker() {
       });
       if (result === 'deleted') {
         await continueMergedSession(projectId, userId, sessionId, createdAt);
-      } else if (needsFollowUp(mergeRecord, userId, { createdAt, sessionId })) {
-        // A session of an id that was merged into an identified user before this job ran.
-        await queueMergeFollowUp(projectId, userId);
+      } else {
+        // The id may have been merged into an identified user before this session was buffered.
+        await followUpIfMerged(projectId, userId, { createdAt, sessionId });
       }
       await logJobStep(job, 'session update buffered');
     },

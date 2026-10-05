@@ -160,4 +160,39 @@ describe('applyUserOp', () => {
     expect(applyUserOp(enriched, enrich('https://b.example'), ids)).toBeNull();
     expect(applyUserOp({ revision: 0 }, enrich('https://b.example'), ids)).toBeNull();
   });
+
+  describe('attribution of a first login', () => {
+    const landing: UserOp = {
+      type: 'attribute',
+      at: at(30),
+      firstPageView: { origin: 'https://example.com', pathname: '/landing', referrer: 'Google', firstSeenAt: at(0) },
+    };
+    const dashboard = { origin: 'https://example.com', pathname: '/dashboard', referrer: '', firstSeenAt: at(20) };
+
+    it('replaces attribution from a later page view with the earlier merged one', () => {
+      const created = run([{ type: 'create', create: { ...(create(10) as any).create, firstPageView: dashboard } }]);
+      expect(run([landing], created).user).toMatchObject({
+        pathname: '/landing',
+        referrer: 'Google',
+        firstSeenAt: at(0),
+      });
+    });
+
+    it('keeps attribution that is already earlier', () => {
+      const created = run([{ type: 'create', create: { ...(create(10) as any).create, firstPageView: dashboard } }]);
+      const later: UserOp = { ...landing, firstPageView: { ...landing.firstPageView, firstSeenAt: at(25) } };
+      expect(applyUserOp(created, later, ids)).toBeNull();
+    });
+
+    it('applies a merged first page view that arrived before the create', () => {
+      const waiting = run([landing]);
+      expect(waiting.user).toBeUndefined();
+      const state = run(
+        [{ type: 'create', create: { ...(create(10) as any).create, firstPageView: dashboard } }],
+        waiting,
+      );
+      expect(state.user).toMatchObject({ pathname: '/landing', firstSeenAt: at(0) });
+      expect(state.pendingFirstPageView).toBeUndefined();
+    });
+  });
 });

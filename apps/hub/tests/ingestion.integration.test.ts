@@ -617,6 +617,11 @@ describe.sequential('hub ingestion integration', () => {
         '/blog',
       ]);
       expect(await clickhouseSession.findByUserId(projectId, user!.id)).toMatchObject([{ pathname: '/landing' }]);
+      // The user's attribution comes from the visit before the login, not from the page after it.
+      await waitForStable('first login attribution', async () => {
+        const row = await clickhouseUser.findById(projectId, user!.id);
+        return row?.pathname === '/landing';
+      });
     } finally {
       await cleanupProject(project);
     }

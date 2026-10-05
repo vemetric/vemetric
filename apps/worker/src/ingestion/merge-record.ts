@@ -1,15 +1,8 @@
-import { mergeUserJobOptions, mergeUserQueue } from '@vemetric/queues/merge-user-queue';
-import { addToQueue } from '@vemetric/queues/queue-utils';
 import { stateRedis } from './redis';
 import { bufferSessionUpdate } from './session-buffer';
 import { envPositiveInteger } from '../utils/env';
 
 const recordTtl = envPositiveInteger('USER_MERGE_RECORD_TTL_SECONDS', 24 * 60 * 60);
-// A follow-up runs a few seconds after the late activity that triggered it. Triggers within the
-// deduplication window share one follow-up, which has not started yet when they arrive (window
-// shorter than the delay), so it sees all of their writes.
-const FOLLOW_UP_DELAY_MS = 5000;
-const FOLLOW_UP_DEDUPLICATION_MS = 4000;
 
 export const mergeRecordKey = (projectId: bigint | string, userId: bigint | string) =>
   `vm:{user-merge}:${projectId}:${userId}`;
@@ -77,16 +70,4 @@ export async function continueMergedSession(projectId: bigint, userId: bigint, s
     session = decided.session;
     if ((await bufferSessionUpdate(projectId, session, at)) !== 'deleted') return;
   }
-}
-
-export async function queueMergeFollowUp(projectId: bigint, userId: bigint) {
-  await addToQueue(
-    mergeUserQueue,
-    { projectId: String(projectId), userId: String(userId) },
-    {
-      ...mergeUserJobOptions,
-      delay: FOLLOW_UP_DELAY_MS,
-      deduplication: { id: `follow-up:${projectId}:${userId}`, ttl: FOLLOW_UP_DEDUPLICATION_MS },
-    },
-  );
 }

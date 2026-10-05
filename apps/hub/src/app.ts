@@ -17,8 +17,8 @@ import { eventSchema, trackEvent, validateSpecialEvents } from './utils/event';
 import { logger } from './utils/logger';
 import { handlePageLeave } from './utils/page-leave';
 import { getProjectByToken } from './utils/project';
-import { getUserIdentificationLock, releaseUserIdentificationLock } from './utils/redis';
-import { getUserIdFromRequest, isPrefetchRequest } from './utils/request';
+import { releaseUserIdentificationLock, waitForUserIdentificationLock } from './utils/redis';
+import { getHashedUserId, getUserIdFromRequest, isPrefetchRequest } from './utils/request';
 import { identifySchema, identifyUser } from './utils/user';
 
 export const app = new Hono<{ Variables: HonoContextVars }>();
@@ -170,19 +170,23 @@ app.post(
 
     const { projectId } = context.var;
 
-    const { lockAcquired } = await getUserIdentificationLock(projectId, identifier);
+    // Another identification of the same identifier (e.g. a backend request at signup) runs first;
+    // this one then merges its own anonymous activity into the user.
+    const { lockAcquired } = await waitForUserIdentificationLock(projectId, identifier);
     if (!lockAcquired) {
       logger.info({ projectId: String(projectId), identifier }, 'Identification already running');
       return context.text('Identification is running', 202);
     }
 
     try {
-      const userId = await getUserIdFromRequest(context, false);
-      const response = await identifyUser(context, body, projectId, userId);
+      // The id the visitor's earlier requests used: the cookie, or without one the hashed id
+      // (cookies may be allowed for this request only).
+      const userId = (await getUserIdFromRequest(context, false)) ?? (await getHashedUserId(context));
+      await identifyUser(context, body, projectId, userId);
 
       await releaseUserIdentificationLock(projectId, identifier);
 
-      return response;
+      return context.text('', 200);
     } catch (err) {
       await releaseUserIdentificationLock(projectId, identifier);
       logger.error({ err }, 'Error identifying user');

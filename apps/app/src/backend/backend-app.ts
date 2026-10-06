@@ -1,5 +1,6 @@
 import { trpcServer } from '@hono/trpc-server';
 import { getClientIp } from '@vemetric/common/request-ip';
+import { isSelfHosted } from '@vemetric/common/self-hosted';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { csrf } from 'hono/csrf';
@@ -141,7 +142,10 @@ export function createBackendApp() {
     return auth.handler(c.req.raw);
   });
 
-  backendApp.post('/takeapaddle', paddleWebhookHandler);
+  // Self hosted instances have no Paddle billing at all, so the webhook is not registered.
+  if (!isSelfHosted()) {
+    backendApp.post('/takeapaddle', paddleWebhookHandler);
+  }
 
   backendApp.use(
     '/trpc/*',

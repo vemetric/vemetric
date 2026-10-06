@@ -1,4 +1,5 @@
 import { proxy, useSnapshot } from 'valtio';
+import { IS_SELF_HOSTED } from '@/utils/self-hosted';
 
 declare global {
   interface Window {
@@ -10,6 +11,9 @@ declare global {
 
 export const crispChatStore = proxy({ renderScript: false, isLoading: false });
 
+/** The support chat talks to Vemetric's own Crisp workspace, so it stays off when self hosted. */
+export const isCrispChatEnabled = !IS_SELF_HOSTED;
+
 export const useIsCrispChatLoading = () => {
   return useSnapshot(crispChatStore).isLoading;
 };
@@ -18,6 +22,10 @@ export const useOpenCrispChat = () => {
   const renderScript = useSnapshot(crispChatStore).renderScript;
 
   return (toggle?: boolean) => {
+    if (!isCrispChatEnabled) {
+      return;
+    }
+
     if (!window.$crisp) {
       crispChatStore.isLoading = true;
       window.$crisp = [];

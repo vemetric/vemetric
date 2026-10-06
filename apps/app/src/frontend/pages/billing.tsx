@@ -1,9 +1,15 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { SplashScreen } from '@/components/splash-screen';
 import { requireAuthentication, requireOrganizationOnboarded } from '@/utils/auth-guards';
+import { IS_SELF_HOSTED } from '@/utils/self-hosted';
 
 export const Route = createFileRoute('/billing')({
   beforeLoad: async () => {
+    // Self hosted instances have no billing to link to.
+    if (IS_SELF_HOSTED) {
+      throw redirect({ to: '/', replace: true });
+    }
+
     const session = await requireAuthentication();
 
     // No organizations - redirect to home (which will handle onboarding)

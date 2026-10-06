@@ -1,6 +1,6 @@
 import type { CardRootProps } from '@chakra-ui/react';
 import { List, Box, Flex, Card, SimpleGrid, Button, Stack, Span, HStack, Text } from '@chakra-ui/react';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { TbChevronRight } from 'react-icons/tb';
 import { z } from 'zod';
@@ -14,6 +14,7 @@ import { authClient } from '@/utils/auth';
 import { requireOnboardingPricing } from '@/utils/auth-guards';
 import { openPaddleCheckout } from '@/utils/paddle';
 import { PRICING_PLANS } from '@/utils/pricing';
+import { IS_SELF_HOSTED } from '@/utils/self-hosted';
 import { trpc } from '@/utils/trpc';
 
 const PricingCard = (props: CardRootProps) => {
@@ -26,7 +27,19 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute('/onboarding/pricing')({
   validateSearch: searchSchema,
-  beforeLoad: ({ search }) => requireOnboardingPricing({ search }),
+  beforeLoad: async ({ search }) => {
+    await requireOnboardingPricing({ search });
+
+    // Self hosted instances have no pricing plans, skip straight to the next onboarding step.
+    // In practice requireOnboardingPricing already redirects away before this point, because
+    // the backend marks self hosted organizations as pricingOnboarded: true. This check stays
+    // as a safety net for the case where only VITE_SELF_HOSTED is set on the frontend without
+    // SELF_HOSTED on the backend: the two switches are set independently, and without this
+    // redirect a user could still land on a pricing page that should not exist in that mode.
+    if (IS_SELF_HOSTED) {
+      throw redirect({ to: '/onboarding/project', search: { orgId: search.orgId }, replace: true });
+    }
+  },
   pendingComponent: SplashScreen,
   component: Page,
 });

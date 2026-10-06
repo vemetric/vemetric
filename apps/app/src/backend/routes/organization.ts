@@ -1,4 +1,5 @@
 import { TRPCError } from '@trpc/server';
+import { isSelfHosted } from '@vemetric/common/self-hosted';
 import {
   OrganizationRole,
   dbAuthUser,
@@ -11,13 +12,24 @@ import {
 } from 'database';
 import { z } from 'zod';
 import { logger } from '../utils/backend-logger';
-import { getSubscriptionStatus } from '../utils/billing';
+import {
+  InvitationJoinError,
+  MAX_FREE_PLAN_MEMBERS,
+  joinOrganizationFromInvitation,
+  type InvitationJoinFailure,
+} from '../utils/invitation';
 import { loggedInProcedure, organizationAdminProcedure, publicProcedure, router } from '../utils/trpc';
 import { vemetric } from '../utils/vemetric-client';
 
 const MAX_FREE_ORGANIZATIONS = 2;
-const MAX_FREE_PLAN_MEMBERS = 2;
 const inputName = z.string().min(2).max(100);
+
+/** Transport mapping for the failure reasons the shared invitation join can report. */
+const INVITATION_JOIN_ERROR_CODES: Record<InvitationJoinFailure, 'NOT_FOUND' | 'BAD_REQUEST' | 'FORBIDDEN'> = {
+  ORGANIZATION_NOT_FOUND: 'NOT_FOUND',
+  ALREADY_MEMBER: 'BAD_REQUEST',
+  MEMBER_LIMIT_REACHED: 'FORBIDDEN',
+};
 
 export const organizationRouter = router({
   create: loggedInProcedure
@@ -34,8 +46,11 @@ export const organizationRouter = router({
       } = opts;
 
       const organization = await serializableTransaction(async (client) => {
+        // This limit is not tied to isActive, since it caps free organizations
+        // regardless of billing status. Self hosted instances have no organization
+        // limit at all, so the check is skipped entirely for them.
         const freeOrgCount = await dbOrganization.countUserFreeAdminOrganizations({ userId: user.id, client });
-        if (freeOrgCount >= MAX_FREE_ORGANIZATIONS) {
+        if (!isSelfHosted() && freeOrgCount >= MAX_FREE_ORGANIZATIONS) {
           throw new TRPCError({
             code: 'FORBIDDEN',
             message: `You can only create up to ${MAX_FREE_ORGANIZATIONS} free organizations. Please upgrade an existing organization to create more.`,
@@ -407,72 +422,19 @@ export const organizationRouter = router({
       });
     }
 
-    const organization = await dbOrganization.findById(invitation.organizationId);
-    if (!organization) {
-      throw new TRPCError({ code: 'NOT_FOUND', message: 'Organization not found' });
-    }
-
-    const subscriptionStatus = await getSubscriptionStatus(organization);
-
-    const result = await serializableTransaction(async (client) => {
-      const userMembership = await dbOrganization.countMembers({
-        organizationId: invitation.organizationId,
+    try {
+      return await joinOrganizationFromInvitation({
         userId: user.id,
-        client,
-      });
-      if (userMembership > 0) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'You are already a member of this organization',
-        });
-      }
-
-      if (!subscriptionStatus.isActive) {
-        const memberCount = await dbOrganization.countMembers({
-          organizationId: invitation.organizationId,
-          client,
-        });
-        if (memberCount >= MAX_FREE_PLAN_MEMBERS) {
-          throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: `This organization has reached its member limit on the free plan. Please ask an admin to upgrade to add more members.`,
-          });
-        }
-      }
-
-      await dbOrganization.addUser({
         organizationId: invitation.organizationId,
-        userId: user.id,
         role: invitation.role,
-        client,
+        token,
+        consumeInvitation: true,
       });
-
-      // Copy project access restrictions from invitation to user (only for MEMBER role)
-      if (invitation.role === 'MEMBER') {
-        const invitationProjectIds = await dbInvitationProjectAccess.getProjectIds({
-          invitationToken: token,
-          organizationId: invitation.organizationId,
-          client,
-        });
-
-        if (invitationProjectIds.length > 0) {
-          await dbUserProjectAccess.setUserProjectAccess({
-            userId: user.id,
-            organizationId: invitation.organizationId,
-            projectIds: invitationProjectIds,
-            client,
-          });
-        }
+    } catch (error) {
+      if (error instanceof InvitationJoinError) {
+        throw new TRPCError({ code: INVITATION_JOIN_ERROR_CODES[error.reason], message: error.message });
       }
-
-      await dbInvitation.delete({ token, client });
-
-      return {
-        organizationId: invitation.organizationId,
-        organizationName: invitation.organization.name,
-      };
-    });
-
-    return result;
+      throw error;
+    }
   }),
 });

@@ -133,7 +133,8 @@ describe('getUserIdFromRequest', () => {
     vi.mocked(getUserIdFromCookie).mockResolvedValue(null);
     mockJson.mockResolvedValue({ userIdentifier: 'non-existent', displayName: 'Test User' });
     vi.mocked(dbUserIdentificationMap.findByIdentifier).mockResolvedValue(null);
-    vi.mocked(generateUserId).mockReturnValue(BigInt(999));
+    // identifyUser returns the identified user's id, also when another request identified it meanwhile.
+    vi.mocked(identifyUser).mockResolvedValue(BigInt(999));
 
     const result = await getUserIdFromRequest(mockContext);
     expect(result).toBe(BigInt(999));
@@ -145,7 +146,7 @@ describe('getUserIdFromRequest', () => {
         identifier: 'non-existent',
       },
       BigInt(123),
-      BigInt(999),
+      null,
     );
   });
 

@@ -306,6 +306,23 @@ export const clickhouseEvent = {
       return mapRowToEvent(row);
     });
   },
+  // Events of a user in the given sessions. Grouped per session as well, so an event moved to
+  // another session of the same user only counts in the session it was moved to.
+  findByUserIdInSessions: async (
+    projectId: bigint,
+    userId: bigint,
+    sessionIds: string[],
+  ): Promise<Array<ClickhouseEvent>> => {
+    if (!sessionIds.length) return [];
+    const resultSet = await clickhouseClient.query({
+      query: `SELECT ${EVENT_KEY_SELECTOR} FROM ${TABLE_NAME} WHERE projectId=${escape(projectId)} AND userId=${escape(
+        userId,
+      )} AND sessionId IN (${sessionIds.map((id) => escape(id)).join(',')}) GROUP BY id, sessionId HAVING sum(sign) > 0`,
+      format: 'JSONEachRow',
+    });
+    const result = (await resultSet.json()) as Array<any>;
+    return result.map((row) => mapRowToEvent(row));
+  },
   getLatestEventsByUserId: async (props: {
     projectId: bigint;
     userId: bigint;
@@ -340,9 +357,11 @@ export const clickhouseEvent = {
         ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
         ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
         ${filterQueries || ''}
-        GROUP BY id 
-        HAVING sum(sign) > 0 
-        ORDER BY eventTime DESC 
+        -- An event a merge moved into another session of the same user keeps its cancelled row
+        -- in the old session until ClickHouse collapses them.
+        GROUP BY id, sessionId
+        HAVING sum(sign) > 0
+        ORDER BY eventTime DESC
         LIMIT ${escape(limit)}
         ${offset !== undefined ? `OFFSET ${escape(offset)}` : ''}`,
       format: 'JSONEachRow',
@@ -920,6 +939,26 @@ export const clickhouseEvent = {
       table: TABLE_NAME,
       values: events.map((event) => ({ ...event, sign: -1 })),
     });
+  },
+  /**
+   * Moves events to another user or session: one insert per batch carries both the cancel row of
+   * the stored event and its moved copy. Both rows of an event share its partition (createdAt), so
+   * each event is moved completely or not at all, and a retry only has to move what is left.
+   * The cancel row keeps the stored session id, so reads grouped per session (like the user's
+   * event list) never show a moved event in its old session.
+   */
+  moveEvents: async (moves: Array<{ from: ClickhouseEvent; to: ClickhouseEvent }>) => {
+    // Well below max_insert_block_size, so every batch is a single block.
+    const BATCH_SIZE = 10_000;
+    for (let offset = 0; offset < moves.length; offset += BATCH_SIZE) {
+      await clickhouseInsert({
+        table: TABLE_NAME,
+        values: moves.slice(offset, offset + BATCH_SIZE).flatMap(({ from, to }) => [
+          { ...from, sign: -1 },
+          { ...to, sign: 1 },
+        ]),
+      });
+    }
   },
   getEventCountsByDay: async (props: {
     projectId: bigint;

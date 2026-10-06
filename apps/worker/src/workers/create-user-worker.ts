@@ -1,23 +1,18 @@
 import { EMPTY_GEO_DATA, getGeoDataFromIp } from '@vemetric/common/geo';
 import { createUserQueue, type CreateUserQueueProps } from '@vemetric/queues/create-user-queue';
 import { createUserQueueName } from '@vemetric/queues/queue-names';
-import { addToQueue } from '@vemetric/queues/queue-utils';
-import { updateUserQueue } from '@vemetric/queues/update-user-queue';
 import { Worker } from 'bullmq';
-import type { ClickhouseUser } from 'clickhouse';
-import { clickhouseEvent, clickhouseUser } from 'clickhouse';
-import { workerName } from '../utils/env';
+import { clickhouseEvent } from 'clickhouse';
+import { getUser, upsertUser } from '../ingestion';
+import { envPositiveInteger, workerName } from '../utils/env';
 import { logJobStep } from '../utils/job-logger';
 import { logger } from '../utils/logger';
 import { queueTelemetry } from '../utils/telemetry';
 import { getUserFirstPageViewData } from '../utils/user';
-import { invalidateIngestionUser } from '../utils/user-cache';
 
 export async function initCreateUserWorker() {
-  // User writes read, modify and rewrite the whole row. One job at a time across replicas, as with the
-  // single worker today. This does not serialize create, update and enrich writes against each other;
-  // a per-user lock is a follow-up.
-  await createUserQueue.setGlobalConcurrency(1);
+  // User writes are compare-and-set operations on the user's state, so jobs run concurrently.
+  await createUserQueue.removeGlobalConcurrency();
   return new Worker<CreateUserQueueProps>(
     createUserQueueName,
     async (job) => {
@@ -36,46 +31,19 @@ export async function initCreateUserWorker() {
       const userId = BigInt(_userId);
 
       await logJobStep(job, `start project=${projectId} user=${userId}`);
-      await logJobStep(job, 'before clickhouseUser.findById');
-      const existingUser = await clickhouseUser.findById(projectId, userId);
-      await logJobStep(
-        job,
-        existingUser ? 'after clickhouseUser.findById existing' : 'after clickhouseUser.findById missing',
-      );
-      if (existingUser) {
-        // if the user already exists, we update the user with the new data
-        await logJobStep(job, 'before enqueue updateUser');
-        await addToQueue(updateUserQueue, {
-          projectId: String(projectId),
-          userId: String(userId),
-          updatedAt: createdAt,
-          data: {
-            set: data,
-          },
-        });
-        await logJobStep(job, 'done existing user enqueued update');
-        return;
-      }
-
-      await logJobStep(job, 'before clickhouseEvent.getFirstPageViewByUserId');
-      const firstPageView = await clickhouseEvent.getFirstPageViewByUserId(projectId, userId!);
-      await logJobStep(job, 'after clickhouseEvent.getFirstPageViewByUserId');
-      const user: ClickhouseUser = {
-        projectId,
-        id: userId,
-        identifier,
-        displayName,
-        avatarUrl: avatarUrl || '',
-        createdAt,
-        firstSeenAt: createdAt,
-        updatedAt: createdAt,
-        customData: data,
-        ...(geoData || (ipAddress ? await getGeoDataFromIp(ipAddress, logger, 5000) : EMPTY_GEO_DATA)),
-        ...getUserFirstPageViewData(firstPageView),
-      };
-      await logJobStep(job, 'before clickhouseUser.insert');
-      await clickhouseUser.insert([user]);
-      await invalidateIngestionUser(projectId, userId);
+      // Location and first page view only matter for a new user; an existing one just takes the data.
+      const exists = (await getUser(projectId, userId)) !== null;
+      await logJobStep(job, exists ? 'existing user' : 'new user');
+      const resolved = exists
+        ? {}
+        : {
+            geo: geoData || (ipAddress ? await getGeoDataFromIp(ipAddress, logger, 5000) : EMPTY_GEO_DATA),
+            firstPageView: getUserFirstPageViewData(await clickhouseEvent.getFirstPageViewByUserId(projectId, userId)),
+          };
+      await upsertUser(projectId, userId, {
+        type: 'create',
+        create: { createdAt, identifier, displayName, avatarUrl: avatarUrl || '', data, ...resolved },
+      });
       await logJobStep(job, 'done');
     },
     {
@@ -84,7 +52,7 @@ export async function initCreateUserWorker() {
       },
       name: workerName,
       telemetry: queueTelemetry,
-      concurrency: 1,
+      concurrency: envPositiveInteger('USER_WORKER_CONCURRENCY', 20),
       removeOnComplete: {
         count: 1000,
       },

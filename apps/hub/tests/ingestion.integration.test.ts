@@ -6,7 +6,7 @@ import { clickhouseClient, clickhouseDevice, clickhouseEvent, clickhouseSession,
 import { dbFunnel, generateUserId, prismaClient } from 'database';
 import Redis from 'ioredis';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { flushSessionBuffer, closeStateRedis } from '../../worker/src/ingestion';
+import { flushSessionBuffer, flushUserBuffer, closeStateRedis } from '../../worker/src/ingestion';
 
 vi.mock('@vemetric/common/request-ip', () => ({
   getClientIp: () => '127.0.0.1',
@@ -58,6 +58,7 @@ async function waitFor(description: string, predicate: () => Promise<boolean>, t
   while (Date.now() - startedAt < timeoutMs) {
     try {
       await flushSessionBuffer();
+      await flushUserBuffer();
       if (await predicate()) {
         return;
       }
@@ -149,6 +150,12 @@ async function flushRedis() {
   await runtime.redis.flushdb();
 }
 
+// Ends the hub's current sessions of a project, as 30 minutes without activity would.
+async function expireHubSessions(projectId: string) {
+  const keys = await runtime!.redis.keys(`sessionid:${projectId}:*`);
+  if (keys.length) await runtime!.redis.del(...keys);
+}
+
 async function optimizeEvents() {
   await clickhouseClient.command({ query: 'OPTIMIZE TABLE event FINAL' });
 }
@@ -167,7 +174,12 @@ async function waitForQueuesIdle(timeoutMs = 10000) {
 
       if (!counts.every((count) => Object.values(count).every((value) => value === 0))) return false;
       await flushSessionBuffer();
-      return (await runtime!.redis.zcard('vm:{session-state}:dirty')) === 0;
+      await flushUserBuffer();
+      const dirty = await Promise.all([
+        runtime!.redis.zcard('vm:{session-state}:dirty'),
+        runtime!.redis.zcard('vm:{user-state}:dirty'),
+      ]);
+      return dirty.every((count) => count === 0);
     },
     timeoutMs,
   );
@@ -654,6 +666,287 @@ describe.sequential('hub ingestion integration', () => {
     }
   });
 
+  it('gives a first-time identified visitor a new id and leaves a later visitor with the same hash anonymous', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
+    const projectId = BigInt(project.projectId);
+    const sharedAgent = `${TEST_USER_AGENT} shared-computer`;
+
+    try {
+      await ingestPageView(project, { url: `https://${project.domain}/landing`, userAgent: sharedAgent });
+      await waitForQueuesIdle();
+      const [hashedUser] = await clickhouseEvent.queryUsers({ projectId, filterQueries: '', ...getQueryRange() });
+
+      await identifyUser(project, 'first-login@example.com', 'First Login', { 'user-agent': sharedAgent });
+      await ingestPageView(project, {
+        url: `https://${project.domain}/dashboard`,
+        identifier: 'first-login@example.com',
+        displayName: 'First Login',
+        userAgent: sharedAgent,
+      });
+      await waitForQueuesIdle(30000);
+
+      // Another person on the same computer later the same day, after the first visit ended.
+      await expireHubSessions(project.projectId);
+      await ingestPageView(project, { url: `https://${project.domain}/blog`, userAgent: sharedAgent });
+      await waitForQueuesIdle(30000);
+
+      const user = await clickhouseUser.findByIdentifier(projectId, 'first-login@example.com');
+      expect(user!.id).not.toBe(hashedUser!.id);
+      await waitForStable('first login merged', async () => {
+        const events = await clickhouseEvent.findByUserId(projectId, user!.id);
+        return (
+          events
+            .map((event) => event.pathname)
+            .sort()
+            .join('|') === '/dashboard|/landing'
+        );
+      });
+      const identifiedEvents = await clickhouseEvent.findByUserId(projectId, user!.id);
+      expect(new Set(identifiedEvents.map((event) => event.userIdentifier))).toEqual(
+        new Set(['first-login@example.com']),
+      );
+      expect((await clickhouseEvent.findByUserId(projectId, hashedUser!.id)).map((event) => event.pathname)).toEqual([
+        '/blog',
+      ]);
+      expect(await clickhouseSession.findByUserId(projectId, user!.id)).toMatchObject([{ pathname: '/landing' }]);
+      // The user's attribution comes from the visit before the login, not from the page after it.
+      await waitForStable('first login attribution', async () => {
+        const row = await clickhouseUser.findById(projectId, user!.id);
+        return row?.pathname === '/landing';
+      });
+    } finally {
+      await cleanupProject(project);
+    }
+  });
+
+  it('keeps an anonymous visit in one session when the visitor logs into an existing user', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
+    const projectId = BigInt(project.projectId);
+    const visitorAgent = `${TEST_USER_AGENT} login`;
+
+    try {
+      // An existing user without an active session.
+      await identifyUser(project, 'login-user@example.com', 'Login User');
+      await waitForQueuesIdle(30000);
+      const existingUser = (await clickhouseUser.findByIdentifier(projectId, 'login-user@example.com'))!;
+
+      const landing = await requestHub(
+        '/e',
+        project,
+        { name: EventNames.PageView, url: `https://${project.domain}/landing` },
+        { 'user-agent': visitorAgent, 'v-referrer': 'https://www.google.com/' },
+      );
+      expect(landing.status).toBe(200);
+      await ingestPageView(project, { url: `https://${project.domain}/pricing`, userAgent: visitorAgent });
+      await waitForQueuesIdle();
+
+      await identifyUser(project, 'login-user@example.com', 'Login User', { 'user-agent': visitorAgent });
+      await ingestPageView(project, {
+        url: `https://${project.domain}/account`,
+        identifier: 'login-user@example.com',
+        userAgent: visitorAgent,
+      });
+      await waitForQueuesIdle(30000);
+
+      await waitForStable('login visit merged into one session', async () => {
+        const events = await clickhouseEvent.findByUserId(projectId, existingUser.id);
+        return events.length === 3 && new Set(events.map((event) => event.sessionId)).size === 1;
+      });
+      const sessions = await clickhouseSession.findByUserId(projectId, existingUser.id);
+      expect(sessions).toHaveLength(1);
+      expect(sessions[0]).toMatchObject({
+        pathname: '/landing',
+        referrer: 'Google',
+        userIdentifier: 'login-user@example.com',
+      });
+    } finally {
+      await cleanupProject(project);
+    }
+  });
+
+  it('merges the anonymous activity of an identify that waited for another one', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
+    const projectId = BigInt(project.projectId);
+
+    try {
+      await ingestPageView(project, { url: `https://${project.domain}/phone`, userAgent: `${TEST_USER_AGENT} phone` });
+      await ingestPageView(project, {
+        url: `https://${project.domain}/laptop`,
+        userAgent: `${TEST_USER_AGENT} laptop`,
+      });
+      await waitForQueuesIdle();
+
+      const responses = await Promise.all(
+        ['phone', 'laptop'].map((device) =>
+          requestHub(
+            '/i',
+            project,
+            { identifier: 'parallel@example.com', displayName: 'Parallel' },
+            { 'user-agent': `${TEST_USER_AGENT} ${device}` },
+          ),
+        ),
+      );
+      expect(responses.map((response) => response.status)).toEqual([200, 200]);
+      await waitForQueuesIdle(30000);
+
+      const user = await clickhouseUser.findByIdentifier(projectId, 'parallel@example.com');
+      await waitForStable('both devices merged', async () => {
+        const users = await clickhouseEvent.queryUsers({ projectId, filterQueries: '', ...getQueryRange() });
+        return users.length === 1 && users[0]!.id === user!.id;
+      });
+    } finally {
+      await cleanupProject(project);
+    }
+  });
+
+  it('merges the hashed id when cookies are allowed only for identify', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
+    const projectId = BigInt(project.projectId);
+
+    try {
+      await ingestPageView(project, { url: `https://${project.domain}/landing` });
+      await waitForQueuesIdle();
+
+      const identify = await requestHub(
+        '/i',
+        project,
+        { identifier: 'cookie-login@example.com', displayName: 'Cookie Login' },
+        { 'allow-cookies': 'true' },
+      );
+      expect(identify.status).toBe(200);
+      const cookie = identify.headers.get('set-cookie')?.split(';')[0];
+      expect(cookie).toMatch(/^__Host-vuid_[0-9a-f]{10}=\d+$/);
+
+      await requestHub(
+        '/e',
+        project,
+        { name: EventNames.PageView, url: `https://${project.domain}/dashboard` },
+        { cookie: cookie! },
+      );
+      await waitForQueuesIdle(30000);
+
+      const user = await clickhouseUser.findByIdentifier(projectId, 'cookie-login@example.com');
+      await waitForStable('pre-login visit merged', async () => {
+        const users = await clickhouseEvent.queryUsers({ projectId, filterQueries: '', ...getQueryRange() });
+        return users.length === 1 && users[0]!.id === user!.id;
+      });
+    } finally {
+      await cleanupProject(project);
+    }
+  });
+
+  it('keeps a return visit in one session when cookies are allowed only for identify', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
+    const projectId = BigInt(project.projectId);
+
+    try {
+      // A first visit sets the cookie at identification.
+      const first = await requestHub(
+        '/i',
+        project,
+        { identifier: 'returning@example.com', displayName: 'Returning' },
+        { 'allow-cookies': 'true' },
+      );
+      const cookie = first.headers.get('set-cookie')!.split(';')[0]!;
+      await waitForQueuesIdle(30000);
+      await expireHubSessions(project.projectId);
+      const user = (await clickhouseUser.findByIdentifier(projectId, 'returning@example.com'))!;
+
+      // The return visit starts with requests that do not use the cookie (like the hashed id
+      // cookieless requests get), then identifies with it.
+      const landing = await requestHub(
+        '/e',
+        project,
+        { name: EventNames.PageView, url: `https://${project.domain}/landing` },
+        { 'v-referrer': 'https://www.google.com/' },
+      );
+      expect(landing.status).toBe(200);
+      await waitForQueuesIdle();
+      const identify = await requestHub(
+        '/i',
+        project,
+        { identifier: 'returning@example.com', displayName: 'Returning' },
+        { 'allow-cookies': 'true', cookie },
+      );
+      expect(identify.status).toBe(200);
+      await requestHub(
+        '/e',
+        project,
+        { name: EventNames.PageView, url: `https://${project.domain}/dashboard`, identifier: 'returning@example.com' },
+        { cookie },
+      );
+      await waitForQueuesIdle(30000);
+
+      await waitForStable('return visit in one session', async () => {
+        const users = await clickhouseEvent.queryUsers({ projectId, filterQueries: '', ...getQueryRange() });
+        const events = await clickhouseEvent.findByUserId(projectId, user.id);
+        return (
+          users.length === 1 &&
+          users[0]!.id === user.id &&
+          events.length === 2 &&
+          new Set(events.map((event) => event.sessionId)).size === 1
+        );
+      });
+      expect(await clickhouseSession.findByUserId(projectId, user.id)).toMatchObject([
+        { pathname: '/landing', referrer: 'Google' },
+      ]);
+    } finally {
+      await cleanupProject(project);
+    }
+  });
+
+  it('does not merge another visitor on the hashed id into a cookie user with a running visit', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
+    const projectId = BigInt(project.projectId);
+
+    try {
+      const first = await requestHub(
+        '/i',
+        project,
+        { identifier: 'busy@example.com', displayName: 'Busy' },
+        { 'allow-cookies': 'true' },
+      );
+      const cookie = first.headers.get('set-cookie')!.split(';')[0]!;
+      await waitForQueuesIdle(30000);
+      await expireHubSessions(project.projectId);
+      const user = (await clickhouseUser.findByIdentifier(projectId, 'busy@example.com'))!;
+
+      // The user is browsing with the cookie, while someone else with the same IP address and
+      // browser browses without consent to cookies.
+      await requestHub(
+        '/e',
+        project,
+        { name: EventNames.PageView, url: `https://${project.domain}/dashboard` },
+        { cookie, 'allow-cookies': 'true' },
+      );
+      await requestHub('/e', project, { name: EventNames.PageView, url: `https://${project.domain}/someone-else` });
+      await waitForQueuesIdle();
+      await requestHub(
+        '/i',
+        project,
+        { identifier: 'busy@example.com', displayName: 'Busy' },
+        { cookie, 'allow-cookies': 'true' },
+      );
+      await waitForQueuesIdle(30000);
+
+      await waitForStable('other visitor stays anonymous', async () => {
+        const users = await queryProjectUsers(project);
+        return users.length === 2 && users.some((entry) => entry.id === user.id);
+      });
+      expect((await clickhouseEvent.findByUserId(projectId, user.id)).map((event) => event.pathname)).toEqual([
+        '/dashboard',
+      ]);
+    } finally {
+      await cleanupProject(project);
+    }
+  });
+
   it('does not create duplicate users when an already identified user sends more events', async () => {
     const project = nextProjectContext();
     await createProject(project);
@@ -877,7 +1170,7 @@ describe.sequential('hub ingestion integration', () => {
     }
   });
 
-  it('identifies a cookieless visitor under the hashed id even when a user id cookie is present', async () => {
+  it('merges the hashed id of a cookieless visitor at identify even when a user id cookie is present', async () => {
     const project = nextProjectContext();
     await createProject(project);
     const cookieUserId = generateUserId();
@@ -909,11 +1202,19 @@ describe.sequential('hub ingestion integration', () => {
         return user !== null;
       });
 
-      const identifiedUser = await clickhouseUser.findByIdentifier(BigInt(project.projectId), 'cookieless-identify-user');
-      expect(identifiedUser!.id).toBe(anonymousUser.id);
-      const users = await queryProjectUsers(project);
-      expect(users).toHaveLength(1);
-      expect(users[0].id).toBe(anonymousUser.id);
+      // The identified user gets a fresh id; the hashed id (not the cookie id) is merged into it.
+      const identifiedUser = await clickhouseUser.findByIdentifier(
+        BigInt(project.projectId),
+        'cookieless-identify-user',
+      );
+      expect(identifiedUser!.id).not.toBe(anonymousUser.id);
+      expect(identifiedUser!.id).not.toBe(cookieUserId);
+      await waitForStable('hashed id merged', async () => {
+        const users = await queryProjectUsers(project);
+        return users.length === 1 && users[0].id === identifiedUser!.id;
+      });
+      const events = await clickhouseEvent.findByUserId(BigInt(project.projectId), identifiedUser!.id);
+      expect(events.map((event) => event.pathname)).toEqual(['/pricing']);
     } finally {
       await cleanupProject(project);
     }
@@ -937,10 +1238,7 @@ describe.sequential('hub ingestion integration', () => {
       expect(cookieNames.every((name) => name.startsWith('__Host-vuid_'))).toBe(true);
 
       await waitForStable('cookie events of both projects', async () => {
-        const [countsA, countsB] = await Promise.all([
-          getEventCountsByUser(projectA),
-          getEventCountsByUser(projectB),
-        ]);
+        const [countsA, countsB] = await Promise.all([getEventCountsByUser(projectA), getEventCountsByUser(projectB)]);
         return [...countsA.values()].join() === '2' && [...countsB.values()].join() === '2';
       });
 
@@ -971,18 +1269,18 @@ describe.sequential('hub ingestion integration', () => {
       await ingestCookiePageView(projectB, jar, '/other-project');
 
       await waitForStable('legacy cookie events', async () => {
-        const [countsA, countsB] = await Promise.all([
-          getEventCountsByUser(projectA),
-          getEventCountsByUser(projectB),
-        ]);
+        const [countsA, countsB] = await Promise.all([getEventCountsByUser(projectA), getEventCountsByUser(projectB)]);
         return countsA.get(legacyUserId) === 2 && countsA.size === 1 && countsB.size === 1;
       });
 
       const [userB] = [...(await getEventCountsByUser(projectB)).keys()];
       expect(userB).not.toBe(legacyUserId);
-      expect([...jar.entries()].filter(([name]) => name.startsWith('__Host-vuid_')).map(([, value]) => value).sort()).toEqual(
-        [legacyUserId, userB].sort(),
-      );
+      expect(
+        [...jar.entries()]
+          .filter(([name]) => name.startsWith('__Host-vuid_'))
+          .map(([, value]) => value)
+          .sort(),
+      ).toEqual([legacyUserId, userB].sort());
     } finally {
       await cleanupProject(projectA);
       await cleanupProject(projectB);

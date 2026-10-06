@@ -45,7 +45,7 @@ export function isPrefetchRequest(req: HonoRequest) {
 
 export async function getUserIdFromRequest(context: HonoContext, useBodyIdentifier = true) {
   const { req } = context;
-  const { projectId, allowCookies, ipAddress } = context.var;
+  const { projectId, allowCookies } = context.var;
 
   try {
     const bodyData = await req.json();
@@ -82,8 +82,9 @@ export async function getUserIdFromRequest(context: HonoContext, useBodyIdentifi
       }
 
       try {
-        const userId = generateUserId();
-        await identifyUser(
+        // A backend request has no anonymous activity to merge. The user may have been identified
+        // meanwhile; identifyUser then returns the existing id.
+        const userId = await identifyUser(
           context,
           {
             identifier: userIdentifier,
@@ -91,7 +92,7 @@ export async function getUserIdFromRequest(context: HonoContext, useBodyIdentifi
             data: bodyData.userData,
           },
           projectId,
-          userId,
+          null,
         );
 
         await releaseUserIdentificationLock(projectId, userIdentifier);
@@ -118,33 +119,42 @@ export async function getUserIdFromRequest(context: HonoContext, useBodyIdentifi
         return await getUserIdFromCookie(context);
       }
 
-      const userAgent = req.header('user-agent');
-      if (userAgent) {
-        const { currentSalt, previousSalt } = await dbSalt.getLatestSalts();
-
-        const previousUserId = generateUserId({
-          projectId,
-          ipAddress,
-          userAgent,
-          salt: previousSalt?.id ?? '',
-        });
-        if (await hasActiveSession(projectId, previousUserId)) {
-          // if there is a session with the previous user id, we ensure continuity by using the same user id
-          return previousUserId;
-        }
-
-        return generateUserId({
-          projectId,
-          ipAddress,
-          userAgent,
-          salt: currentSalt?.id ?? '',
-        });
-      } else {
-        return generateUserId();
-      }
+      return (await getHashedUserId(context)) ?? generateUserId();
     }
   } catch (err) {
     logger.error({ err, 'req.path': req.path }, 'Failed to get user from request.');
     throw err;
   }
+}
+
+/**
+ * The cookieless id of a request: a hash of project, IP address and browser with the salt of the
+ * day. A visitor whose session started with the previous salt keeps that id. Null without a
+ * user agent.
+ */
+export async function getHashedUserId(context: HonoContext): Promise<bigint | null> {
+  const { projectId, ipAddress } = context.var;
+  const userAgent = context.req.header('user-agent');
+  if (!userAgent) {
+    return null;
+  }
+  const { currentSalt, previousSalt } = await dbSalt.getLatestSalts();
+
+  const previousUserId = generateUserId({
+    projectId,
+    ipAddress,
+    userAgent,
+    salt: previousSalt?.id ?? '',
+  });
+  if (await hasActiveSession(projectId, previousUserId)) {
+    // if there is a session with the previous user id, we ensure continuity by using the same user id
+    return previousUserId;
+  }
+
+  return generateUserId({
+    projectId,
+    ipAddress,
+    userAgent,
+    salt: currentSalt?.id ?? '',
+  });
 }

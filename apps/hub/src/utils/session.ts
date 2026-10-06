@@ -36,6 +36,27 @@ if redis.call('GET', KEYS[1]) == ARGV[1] then
 end
 return 0`;
 
+// Lets KEYS[2] continue the session of KEYS[1] unless KEYS[2] already has an active session.
+export const CONTINUE_SESSION = `
+local id = redis.call('GET', KEYS[1])
+if not id then return 0 end
+if redis.call('SET', KEYS[2], id, 'EX', ARGV[1], 'NX') then return 1 end
+return 0`;
+
+/**
+ * When a visitor logs in, the identified user continues the visitor's session, so the visit stays
+ * one session with its real start, landing page and referrer. The merge then moves the session to
+ * the user. A user who is already active (e.g. on another device) keeps their own session; the
+ * merge joins both into one visit.
+ */
+export async function continueSession(projectId: bigint, fromUserId: bigint, toUserId: bigint) {
+  const redis = await getRedisClient();
+  await redis.eval(CONTINUE_SESSION, {
+    keys: [getRedisSessionKey(projectId, fromUserId), getRedisSessionKey(projectId, toUserId)],
+    arguments: [String(REDIS_SESSION_DURATION)],
+  });
+}
+
 export async function getOrCreateSessionId(projectId: bigint, userId: bigint) {
   const redis = await getRedisClient();
   const [sessionId, created] = (await redis.eval(GET_OR_CREATE_SESSION, {

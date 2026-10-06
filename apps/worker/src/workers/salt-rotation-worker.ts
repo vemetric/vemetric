@@ -5,6 +5,10 @@ import { workerName } from '../utils/env';
 import { logger } from '../utils/logger';
 import { queueTelemetry } from '../utils/telemetry';
 
+// The hub only knows the current and the previous salt, so a second salt on the same day would
+// drop yesterday's salt and break user continuity across midnight.
+const MIN_SALT_AGE_MS = 12 * 60 * 60 * 1000;
+
 export async function initSaltRotation() {
   const saltRotationQueue = new Queue(saltRotationQueueName, {
     connection: {
@@ -12,6 +16,7 @@ export async function initSaltRotation() {
     },
   });
 
+  await saltRotationQueue.setGlobalConcurrency(1);
   await saltRotationQueue.upsertJobScheduler(
     saltRotationQueue.name,
     {
@@ -30,8 +35,14 @@ export async function initSaltRotation() {
   return new Worker(
     saltRotationQueue.name,
     async () => {
-      await dbSalt.createSalt();
-      logger.info('created new salt');
+      // Retries and stalled reruns must not create another salt once this run's salt exists.
+      const { currentSalt } = await dbSalt.getLatestSalts();
+      if (currentSalt && Date.now() - currentSalt.createdAt.getTime() < MIN_SALT_AGE_MS) {
+        logger.info({ saltCreatedAt: currentSalt.createdAt }, 'skipped salt creation, current salt is recent');
+      } else {
+        await dbSalt.createSalt();
+        logger.info('created new salt');
+      }
 
       await dbSalt.cleanupOldSalts();
       logger.info('cleanup old salts');

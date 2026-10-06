@@ -900,6 +900,53 @@ describe.sequential('hub ingestion integration', () => {
     }
   });
 
+  it('does not merge another visitor on the hashed id into a cookie user with a running visit', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
+    const projectId = BigInt(project.projectId);
+
+    try {
+      const first = await requestHub(
+        '/i',
+        project,
+        { identifier: 'busy@example.com', displayName: 'Busy' },
+        { 'allow-cookies': 'true' },
+      );
+      const cookie = first.headers.get('set-cookie')!.split(';')[0]!;
+      await waitForQueuesIdle(30000);
+      await expireHubSessions(project.projectId);
+      const user = (await clickhouseUser.findByIdentifier(projectId, 'busy@example.com'))!;
+
+      // The user is browsing with the cookie, while someone else with the same IP address and
+      // browser browses without consent to cookies.
+      await requestHub(
+        '/e',
+        project,
+        { name: EventNames.PageView, url: `https://${project.domain}/dashboard` },
+        { cookie, 'allow-cookies': 'true' },
+      );
+      await requestHub('/e', project, { name: EventNames.PageView, url: `https://${project.domain}/someone-else` });
+      await waitForQueuesIdle();
+      await requestHub(
+        '/i',
+        project,
+        { identifier: 'busy@example.com', displayName: 'Busy' },
+        { cookie, 'allow-cookies': 'true' },
+      );
+      await waitForQueuesIdle(30000);
+
+      await waitForStable('other visitor stays anonymous', async () => {
+        const users = await queryProjectUsers(project);
+        return users.length === 2 && users.some((entry) => entry.id === user.id);
+      });
+      expect((await clickhouseEvent.findByUserId(projectId, user.id)).map((event) => event.pathname)).toEqual([
+        '/dashboard',
+      ]);
+    } finally {
+      await cleanupProject(project);
+    }
+  });
+
   it('does not create duplicate users when an already identified user sends more events', async () => {
     const project = nextProjectContext();
     await createProject(project);

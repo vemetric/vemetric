@@ -31,13 +31,15 @@ export const identifySchema = z.object({
 });
 export type IdentifySchema = z.infer<typeof identifySchema>;
 
-// Queues the merge of an anonymous id into the identified user. Without an active session of its
-// own, the user continues the visit that led to the login.
+// Queues the merge of an anonymous id into the identified user (only one of its sessions when
+// `sessionId` is given). Without an active session of its own, the user continues the visit that
+// led to the login.
 async function mergeIntoUser(
   projectId: bigint,
   anonymousUserId: bigint,
   identifiedUserId: bigint,
   displayName?: string,
+  sessionId?: string,
 ) {
   const fiveSecondRoundedDate = new Date();
   fiveSecondRoundedDate.setMilliseconds(0);
@@ -53,10 +55,11 @@ async function mergeIntoUser(
       newUserId: String(identifiedUserId),
       displayName,
       cutoff: formatClickhouseDate(new Date(Date.now() + MERGE_DELAY_MS)),
+      sessionId,
     },
     {
       ...mergeUserJobOptions,
-      jobId: `${String(projectId)}-${oldUserId}-${String(identifiedUserId)}-${fiveSecondRoundedDate.toISOString()}`,
+      jobId: `${String(projectId)}-${oldUserId}-${String(identifiedUserId)}-${fiveSecondRoundedDate.toISOString()}${sessionId ? `-${sessionId}` : ''}`,
       delay: MERGE_DELAY_MS,
     },
   );
@@ -64,17 +67,17 @@ async function mergeIntoUser(
 
 /**
  * Identifies the visitor. `userId` is the id the visitor's earlier requests used, or null when
- * there are none (e.g. a backend request). `activeHashedUserId` is the visitor's hashed id when
- * it differs from `userId` and was active in the last 30 minutes: requests that did not allow
- * cookies used it, e.g. the start of a return visit when cookies are allowed only for identify.
- * Returns the identified user's id.
+ * there are none (e.g. a backend request). `hashedVisit` is the current session of the visitor's
+ * hashed id when this visit started on it although the visitor has a cookie: requests that did not
+ * allow cookies used it, e.g. the start of a return visit when cookies are allowed only for
+ * identify. Only that session is merged. Returns the identified user's id.
  */
 export async function identifyUser(
   context: HonoContext,
   body: IdentifySchema,
   projectId: bigint,
   userId: bigint | null,
-  activeHashedUserId: bigint | null = null,
+  hashedVisit: { userId: bigint; sessionId: string } | null = null,
 ): Promise<bigint> {
   const { allowCookies, geoData } = context.var;
 
@@ -84,12 +87,12 @@ export async function identifyUser(
   const { set, setOnce } = body.data ?? {};
   const now = formatClickhouseDate(new Date());
   let anonymousUserId = userId;
-  // The hashed id is merged too, unless it belongs to an identified user itself.
-  const hashedUserId =
-    activeHashedUserId !== null &&
-    activeHashedUserId !== userId &&
-    !(await dbUserIdentificationMap.findByUserId(String(projectId), String(activeHashedUserId)))
-      ? activeHashedUserId
+  // The hashed visit is merged too, unless the hashed id belongs to an identified user itself.
+  const hashed =
+    hashedVisit !== null &&
+    hashedVisit.userId !== userId &&
+    !(await dbUserIdentificationMap.findByUserId(String(projectId), String(hashedVisit.userId)))
+      ? hashedVisit
       : null;
 
   if (userId !== null) {
@@ -108,8 +111,8 @@ export async function identifyUser(
         avatarUrl,
         data: body.data,
       });
-      if (hashedUserId !== null) {
-        await mergeIntoUser(projectId, hashedUserId, userId, displayName);
+      if (hashed !== null) {
+        await mergeIntoUser(projectId, hashed.userId, userId, displayName, hashed.sessionId);
       }
 
       return userId;
@@ -183,10 +186,11 @@ export async function identifyUser(
     });
   }
 
-  for (const anonymousId of Array.from(new Set([anonymousUserId, hashedUserId]))) {
-    if (anonymousId !== null && anonymousId !== identifiedUserId) {
-      await mergeIntoUser(projectId, anonymousId, identifiedUserId, displayName);
-    }
+  if (anonymousUserId !== null && anonymousUserId !== identifiedUserId) {
+    await mergeIntoUser(projectId, anonymousUserId, identifiedUserId, displayName);
+  }
+  if (hashed !== null && hashed.userId !== identifiedUserId) {
+    await mergeIntoUser(projectId, hashed.userId, identifiedUserId, displayName, hashed.sessionId);
   }
 
   const fiveSecondRoundedDate = new Date();

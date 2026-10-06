@@ -11,6 +11,9 @@ export interface MergeUserQueueProps {
   // Hub timestamp up to which the anonymous id's activity belongs to the identified user. Jobs
   // queued by earlier versions don't carry it; their creation time plus delay is used instead.
   cutoff?: string;
+  // Merge only this session of the anonymous id (and its events), not all of its activity up to
+  // the cutoff: the start of a visit that ran on a hashed id other visitors share.
+  sessionId?: string;
   // A follow-up for an id whose activity arrived after its merge, queued by the ingestion workers.
   userId?: string;
   // First readiness postponement, persisted so worker restarts do not reset the deadline.

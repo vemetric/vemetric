@@ -27,18 +27,23 @@ async function registerMerge(job: Job<MergeUserQueueProps>, projectId: bigint, s
   const record = (await loadMergeRecord(projectId, source)) ?? {};
   const merges = [...(record.merges ?? [])];
   const last = merges[merges.length - 1];
-  if (last?.target === String(target)) {
+  if (last?.target === String(target) && last.session === job.data.sessionId) {
     merges[merges.length - 1] = {
       ...last,
       cutoff: cutoff > last.cutoff ? cutoff : last.cutoff,
       displayName: displayName ?? last.displayName,
     };
-  } else if (!merges.some((entry) => entry.target === String(target) && entry.cutoff === cutoff)) {
+  } else if (
+    !merges.some(
+      (entry) => entry.target === String(target) && entry.cutoff === cutoff && entry.session === job.data.sessionId,
+    )
+  ) {
     merges.push({
       target: String(target),
       cutoff,
       identifier: identification.identifier,
       displayName,
+      ...(job.data.sessionId ? { session: job.data.sessionId } : {}),
     });
     merges.sort((a, b) => (a.cutoff < b.cutoff ? -1 : 1));
   }

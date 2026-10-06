@@ -13,6 +13,9 @@ export interface MergeEntry {
   cutoff: string;
   identifier: string;
   displayName?: string;
+  // Only this session of the merged id (and its events) belongs to the target; the cutoff does not
+  // apply. Used for a visit that ran on a hashed id other visitors share.
+  session?: string;
 }
 
 /**
@@ -38,7 +41,7 @@ export async function saveMergeRecord(projectId: bigint, userId: bigint, record:
 }
 
 export function mergeEntryFor(record: MergeRecord | null, createdAt: string) {
-  return record?.merges?.find((entry) => createdAt <= entry.cutoff);
+  return record?.merges?.find((entry) => !entry.session && createdAt <= entry.cutoff);
 }
 
 /**
@@ -52,6 +55,7 @@ export function needsFollowUp(
 ) {
   if (!record) return false;
   if (mergeEntryFor(record, activity.createdAt)) return true;
+  if (activity.sessionId && record.merges?.some((entry) => entry.session === activity.sessionId)) return true;
   const decided = activity.sessionId ? record.sessions?.[activity.sessionId] : undefined;
   return decided !== undefined && (decided.user !== String(userId) || decided.session !== activity.sessionId);
 }

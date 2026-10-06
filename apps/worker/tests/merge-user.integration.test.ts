@@ -222,6 +222,29 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('user merges against 
     await mergeUserQueue.obliterate({ force: true });
   });
 
+  it('merges only the given session of a hashed id other visitors share', async () => {
+    // Someone else with the same IP address and browser earlier that day, then the visitor's own visit.
+    await visit(anonymous, 'OTHER', [[0, '/blog']]);
+    await visit(anonymous, 'VISIT', [
+      [120, '/landing'],
+      [125, '/pricing'],
+    ]);
+    await saveMergeRecord(projectId, anonymous, {
+      merges: [{ target: String(alice), cutoff: at(130), identifier: 'alice', displayName: 'Alice', session: 'VISIT' }],
+    });
+    await reconcileUser(projectId, anonymous);
+
+    expect((await eventsOf(alice)).map((e) => [e.pathname, e.sessionId])).toEqual([
+      ['/landing', 'VISIT'],
+      ['/pricing', 'VISIT'],
+    ]);
+    expect((await eventsOf(anonymous)).map((e) => e.pathname)).toEqual(['/blog']);
+    expect((await sessionsOf(anonymous)).map((s) => s.id)).toEqual(['OTHER']);
+    const record = await loadMergeRecord(projectId, anonymous);
+    expect(needsFollowUp(record, anonymous, event(anonymous, 'VISIT', 140, '/late'))).toBe(true);
+    expect(needsFollowUp(record, anonymous, event(anonymous, 'OTHER', 5, '/late'))).toBe(false);
+  });
+
   it('moves an anonymous visit to the identified user with its entry data', async () => {
     await visit(
       anonymous,

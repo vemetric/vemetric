@@ -66,8 +66,14 @@ async function loadTargetSessions(projectId: bigint, target: bigint, from: numbe
   return sessions;
 }
 
+// The merge a time belongs to; merges of a single session claim only that session.
 function entryIndexFor(merges: MergeEntry[], at: string) {
-  const index = merges.findIndex((entry) => at <= entry.cutoff);
+  const index = merges.findIndex((entry) => !entry.session && at <= entry.cutoff);
+  return index === -1 ? undefined : index;
+}
+
+function entryIndexForSession(merges: MergeEntry[], sessionId: string) {
+  const index = merges.findIndex((entry) => entry.session === sessionId);
   return index === -1 ? undefined : index;
 }
 
@@ -129,14 +135,18 @@ async function mergeIntoTargets(
     const decision = decided[session.id];
     const index = decision
       ? merges.findIndex((entry) => entry.target === decision.user)
-      : entryIndexFor(merges, formatClickhouseDate(new Date(toMs(session.startedAt))));
+      : (entryIndexForSession(merges, session.id) ??
+        entryIndexFor(merges, formatClickhouseDate(new Date(toMs(session.startedAt)))));
     if (index !== undefined && index !== -1) sessionEntry.set(session.id, index);
   }
   const eventEntry = (event: ClickhouseEvent) => {
     const decision = decided[event.sessionId];
     if (decision) return merges.findIndex((entry) => entry.target === decision.user);
     if (liveSourceSessions.has(event.sessionId)) return sessionEntry.get(event.sessionId);
-    return entryIndexFor(merges, formatClickhouseDate(new Date(toMs(event.createdAt))));
+    return (
+      entryIndexForSession(merges, event.sessionId) ??
+      entryIndexFor(merges, formatClickhouseDate(new Date(toMs(event.createdAt))))
+    );
   };
   const movingEvents = sourceEvents
     .map((event) => ({ event, index: eventEntry(event) }))

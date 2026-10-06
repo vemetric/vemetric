@@ -19,7 +19,7 @@ import { handlePageLeave } from './utils/page-leave';
 import { getProjectByToken } from './utils/project';
 import { releaseUserIdentificationLock, waitForUserIdentificationLock } from './utils/redis';
 import { getHashedUserId, getUserIdFromRequest, isPrefetchRequest } from './utils/request';
-import { hasActiveSession } from './utils/session';
+import { getSessionId, hasActiveSession } from './utils/session';
 import { identifySchema, identifyUser } from './utils/user';
 
 export const app = new Hono<{ Variables: HonoContextVars }>();
@@ -181,15 +181,28 @@ app.post(
 
     try {
       // The id the visitor's earlier requests used: the cookie, or without one the hashed id
-      // (cookies may be allowed for this request only). Requests of this visit that did not allow
-      // cookies used the hashed id even with a cookie, so it is merged too while it is active.
+      // (cookies may be allowed for this request only).
       const hashedUserId = await getHashedUserId(context);
-      const userId = (await getUserIdFromRequest(context, false)) ?? hashedUserId;
-      const activeHashedUserId =
-        hashedUserId !== null && hashedUserId !== userId && (await hasActiveSession(projectId, hashedUserId))
-          ? hashedUserId
+      const requestUserId = await getUserIdFromRequest(context, false);
+      const userId = requestUserId ?? hashedUserId;
+      // With a cookie, requests of this visit that did not allow cookies ran on the hashed id. That
+      // is only this visitor's when the cookie's user has no visit of its own running, and then only
+      // the hashed id's current session is: others with the same IP address and browser share the
+      // hashed id for the rest of the day.
+      const hashedSessionId =
+        requestUserId !== null &&
+        hashedUserId !== null &&
+        hashedUserId !== requestUserId &&
+        !(await hasActiveSession(projectId, requestUserId))
+          ? await getSessionId(projectId, hashedUserId)
           : null;
-      await identifyUser(context, body, projectId, userId, activeHashedUserId);
+      await identifyUser(
+        context,
+        body,
+        projectId,
+        userId,
+        hashedUserId !== null && hashedSessionId !== null ? { userId: hashedUserId, sessionId: hashedSessionId } : null,
+      );
 
       await releaseUserIdentificationLock(projectId, identifier);
 

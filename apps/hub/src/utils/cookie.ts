@@ -11,7 +11,8 @@ const LEGACY_UID_COOKIE_NAME = '_vuid';
 // 13 months
 const UID_COOKIE_MAX_AGE_SECONDS = 395 * 24 * 60 * 60;
 
-// Partitioned keeps a separate cookie per top-level site, so sites never share a user id
+// Partitioned makes browsers keep a separate copy of the cookie per top-level website,
+// so a cookie set while visiting one website is never sent from another
 const UID_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: true,

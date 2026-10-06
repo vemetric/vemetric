@@ -74,7 +74,7 @@ describe('getUserIdFromRequest', () => {
 
   it('should return userId from cookie if available', async () => {
     const mockUserId = BigInt(123);
-    vi.mocked(getUserIdFromCookie).mockReturnValue(mockUserId);
+    vi.mocked(getUserIdFromCookie).mockResolvedValue(mockUserId);
     mockJson.mockResolvedValue({});
 
     const result = await getUserIdFromRequest(mockContext);
@@ -83,7 +83,7 @@ describe('getUserIdFromRequest', () => {
   });
 
   it('should prefer the mapped browser identifier over the cookie', async () => {
-    vi.mocked(getUserIdFromCookie).mockReturnValue(BigInt(123));
+    vi.mocked(getUserIdFromCookie).mockResolvedValue(BigInt(123));
     mockJson.mockResolvedValue({ identifier: 'browser-user-123' });
     vi.mocked(dbUserIdentificationMap.findByIdentifier).mockResolvedValue({
       userId: '789',
@@ -97,7 +97,7 @@ describe('getUserIdFromRequest', () => {
   });
 
   it('should return userId from cookie if the browser identifier is not mapped', async () => {
-    vi.mocked(getUserIdFromCookie).mockReturnValue(BigInt(123));
+    vi.mocked(getUserIdFromCookie).mockResolvedValue(BigInt(123));
     mockJson.mockResolvedValue({ identifier: 'unknown-user' });
     vi.mocked(dbUserIdentificationMap.findByIdentifier).mockResolvedValue(null);
 
@@ -106,7 +106,7 @@ describe('getUserIdFromRequest', () => {
   });
 
   it('should ignore the browser identifier and return the cookie userId for identify requests', async () => {
-    vi.mocked(getUserIdFromCookie).mockReturnValue(BigInt(123));
+    vi.mocked(getUserIdFromCookie).mockResolvedValue(BigInt(123));
     mockJson.mockResolvedValue({ identifier: 'browser-user-123' });
 
     const result = await getUserIdFromRequest(mockContext, false);
@@ -115,7 +115,7 @@ describe('getUserIdFromRequest', () => {
   });
 
   it('should return userId from API call identifier', async () => {
-    vi.mocked(getUserIdFromCookie).mockReturnValue(null);
+    vi.mocked(getUserIdFromCookie).mockResolvedValue(null);
     mockJson.mockResolvedValue({ userIdentifier: 'api-user-123' });
     vi.mocked(dbUserIdentificationMap.findByIdentifier).mockResolvedValue({
       userId: '456',
@@ -130,7 +130,7 @@ describe('getUserIdFromRequest', () => {
   });
 
   it('should automatically identify user via API if user identifier not found', async () => {
-    vi.mocked(getUserIdFromCookie).mockReturnValue(null);
+    vi.mocked(getUserIdFromCookie).mockResolvedValue(null);
     mockJson.mockResolvedValue({ userIdentifier: 'non-existent', displayName: 'Test User' });
     vi.mocked(dbUserIdentificationMap.findByIdentifier).mockResolvedValue(null);
     // identifyUser returns the identified user's id, also when another request identified it meanwhile.
@@ -151,7 +151,7 @@ describe('getUserIdFromRequest', () => {
   });
 
   it('should return userId from browser identifier', async () => {
-    vi.mocked(getUserIdFromCookie).mockReturnValue(null);
+    vi.mocked(getUserIdFromCookie).mockResolvedValue(null);
     mockJson.mockResolvedValue({ identifier: 'browser-user-123' });
     vi.mocked(dbUserIdentificationMap.findByIdentifier).mockResolvedValue({
       userId: '789',
@@ -166,7 +166,7 @@ describe('getUserIdFromRequest', () => {
   });
 
   it('should return null if cookies allowed and no identifier found', async () => {
-    vi.mocked(getUserIdFromCookie).mockReturnValue(null);
+    vi.mocked(getUserIdFromCookie).mockResolvedValue(null);
     mockJson.mockResolvedValue({});
     Object.defineProperty(mockContext.var, 'allowCookies', { value: true });
 
@@ -175,7 +175,7 @@ describe('getUserIdFromRequest', () => {
   });
 
   it('should generate userId from IP and UserAgent when cookies not allowed', async () => {
-    vi.mocked(getUserIdFromCookie).mockReturnValue(null);
+    vi.mocked(getUserIdFromCookie).mockResolvedValue(null);
     mockJson.mockResolvedValue({});
     Object.defineProperty(mockContext.var, 'allowCookies', { value: false });
     Object.defineProperty(mockContext.var, 'ipAddress', { value: '127.0.0.1' });
@@ -197,7 +197,7 @@ describe('getUserIdFromRequest', () => {
   });
 
   it('should not read the cookie when cookies not allowed', async () => {
-    vi.mocked(getUserIdFromCookie).mockReturnValue(BigInt(123));
+    vi.mocked(getUserIdFromCookie).mockResolvedValue(BigInt(123));
     mockJson.mockResolvedValue({});
     Object.defineProperty(mockContext.var, 'allowCookies', { value: false });
     Object.defineProperty(mockContext.var, 'ipAddress', { value: '127.0.0.1' });
@@ -214,7 +214,7 @@ describe('getUserIdFromRequest', () => {
   });
 
   it('should use previous salt if active session exists', async () => {
-    vi.mocked(getUserIdFromCookie).mockReturnValue(null);
+    vi.mocked(getUserIdFromCookie).mockResolvedValue(null);
     mockJson.mockResolvedValue({});
     Object.defineProperty(mockContext.var, 'allowCookies', { value: false });
     Object.defineProperty(mockContext.var, 'ipAddress', { value: '192.168.1.1' });
@@ -236,7 +236,7 @@ describe('getUserIdFromRequest', () => {
   });
 
   it('should generate random userId if no user agent', async () => {
-    vi.mocked(getUserIdFromCookie).mockReturnValue(null);
+    vi.mocked(getUserIdFromCookie).mockResolvedValue(null);
     mockJson.mockResolvedValue({});
     Object.defineProperty(mockContext.var, 'allowCookies', { value: false });
     mockHeader.mockImplementation(() => null);

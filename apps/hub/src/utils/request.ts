@@ -105,7 +105,7 @@ export async function getUserIdFromRequest(context: HonoContext, useBodyIdentifi
       if (useBodyIdentifier && bodyData.identifier) {
         // this is the case when the user was already identified in the browser and it sends the identifier from the sessionStorage to the server
         // for the /i (identify) endpoint we ignore it though, because there we want to merge possible events from the old id to the new user id
-        // it takes precedence over the cookie, which can belong to another user or project
+        // it takes precedence over the cookie, which can belong to another user
 
         user = await dbUserIdentificationMap.findByIdentifier(String(projectId), bodyData.identifier);
         if (user) {
@@ -114,9 +114,9 @@ export async function getUserIdFromRequest(context: HonoContext, useBodyIdentifi
       }
 
       if (allowCookies) {
-        // without a proxy, the cookie is shared by all projects that use cookies, so only requests that allow cookies may read it
-        // if there is no cookie, we return null because the user id + cookie will be set later
-        return getUserIdFromCookie(context);
+        // in cookie mode the user id comes from the cookie
+        // if there is none, we return null because the user id + cookie will be set later
+        return await getUserIdFromCookie(context);
       }
 
       return (await getHashedUserId(context)) ?? generateUserId();

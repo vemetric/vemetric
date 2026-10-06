@@ -52,6 +52,11 @@ function parseUserId(value: string | undefined) {
 
 export async function getUserIdFromCookie(context: HonoContext) {
   const { projectId, allowCookies } = context.var;
+  // cookies may only be read on requests that allow them
+  if (!allowCookies) {
+    return null;
+  }
+
   const cookieName = getUserIdCookieName(projectId);
 
   const siteUserId = parseUserId(getCookie(context, cookieName, 'secure'));
@@ -66,10 +71,6 @@ export async function getUserIdFromCookie(context: HonoContext) {
       setUserIdCookie(context, hostUserId);
     }
     return hostUserId;
-  }
-
-  if (!allowCookies) {
-    return null;
   }
 
   // an id from the old shared cookie is only taken over if it's in an active session of this project,

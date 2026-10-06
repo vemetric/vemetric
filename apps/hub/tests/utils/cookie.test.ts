@@ -116,9 +116,19 @@ describe('user id cookie', () => {
     expect(setCookies).toEqual([]);
   });
 
-  it('ignores the legacy cookie when cookies are not allowed', async () => {
-    const { userId } = await readUserId(PROJECT_A, '_vuid=77', false);
-    expect(userId).toBeNull();
+  it('ignores all cookies when cookies are not allowed', async () => {
+    vi.mocked(hasActiveSession).mockResolvedValue(true);
+    const name = (await getCookieName(PROJECT_A)).replace('__Host-', '');
+
+    for (const [cookie, proxyHost] of [
+      [`__Host-${name}=42`, 'app.example.com'],
+      [`__Secure-${name}=43`, undefined],
+      ['_vuid=77', undefined],
+    ] as const) {
+      const { userId, setCookies } = await readUserId(PROJECT_A, cookie, false, proxyHost);
+      expect(userId).toBeNull();
+      expect(setCookies).toEqual([]);
+    }
     expect(hasActiveSession).not.toHaveBeenCalled();
   });
 

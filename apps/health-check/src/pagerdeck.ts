@@ -20,7 +20,7 @@ export function formatError(error: unknown): string {
   if (error instanceof Error) {
     return error.stack ?? `${error.name}: ${error.message}`;
   }
-  return typeof error === 'string' ? error : JSON.stringify(error);
+  return typeof error === 'string' ? error : (JSON.stringify(error) ?? String(error));
 }
 
 export async function reportToPagerDeck(title: string, body: string): Promise<void> {

@@ -152,7 +152,6 @@
       "version": "1.0.0",
       "dependencies": {
         "@clickhouse/client-web": "^1.18.2",
-        "@vemetric/node": "0.3.0",
         "uuid": "^11.1.0",
       },
       "devDependencies": {

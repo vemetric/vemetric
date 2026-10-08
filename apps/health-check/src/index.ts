@@ -1,4 +1,5 @@
 import { createClient, type ClickHouseClient } from '@clickhouse/client-web';
+import { Vemetric } from '@vemetric/node';
 import { v4 as uuidv4 } from 'uuid';
 import { formatError, reportToPagerDeck } from './pagerdeck';
 
@@ -6,7 +7,6 @@ import { formatError, reportToPagerDeck } from './pagerdeck';
 // Use environment variables for configuration
 const VEMETRIC_TOKEN: string | undefined = process.env.VEMETRIC_TOKEN;
 const VEMETRIC_PROJECT_ID: string | undefined = process.env.VEMETRIC_PROJECT_ID;
-const VEMETRIC_HUB_URL: string = process.env.VEMETRIC_HUB_URL ?? 'https://hub.vemetric.com';
 const CLICKHOUSE_HOST: string = process.env.CLICKHOUSE_HOST ?? 'http://localhost:8123';
 const CLICKHOUSE_PASSWORD: string = process.env.CLICKHOUSE_PASSWORD ?? '';
 
@@ -48,46 +48,35 @@ async function runHealthCheck(): Promise<void> {
     return fail('Health check misconfigured', 'VEMETRIC_PROJECT_ID environment variable is not configured.');
   }
 
-  // 2. Generate unique token
+  // 2. Initialize Vemetric SDK
+  const vemetric = new Vemetric({
+    token: VEMETRIC_TOKEN,
+  });
+
+  // 3. Generate unique token
   const healthCheckToken = uuidv4();
   console.log(`Generated health check token: ${healthCheckToken}`);
 
-  // 3. Send event to the Vemetric hub
-  // Not using the @vemetric/node SDK here, as it swallows request errors and we want to know if the hub is down
-  let sendError: string | null = null;
+  // 4. Send event to Vemetric
+  // The SDK only logs failed requests and doesn't throw, so a down hub shows up as the event missing in Clickhouse below
   try {
-    console.log(`Sending event "${HEALTH_CHECK_EVENT_NAME}" to ${VEMETRIC_HUB_URL}...`);
-    const response = await fetch(`${VEMETRIC_HUB_URL}/e`, {
-      method: 'POST',
-      headers: {
-        Token: VEMETRIC_TOKEN,
-        'Content-Type': 'application/json',
+    console.log(`Sending event "${HEALTH_CHECK_EVENT_NAME}" to Vemetric...`);
+    await vemetric.trackEvent(HEALTH_CHECK_EVENT_NAME, {
+      userIdentifier: 'health-checker',
+      eventData: {
+        healthCheckToken, // Include the token here
       },
-      body: JSON.stringify({
-        name: HEALTH_CHECK_EVENT_NAME,
-        userIdentifier: 'health-checker',
-        customData: {
-          healthCheckToken, // Include the token here
-        },
-      }),
-      signal: AbortSignal.timeout(QUERY_TIMEOUT_MS),
     });
-    if (!response.ok) {
-      sendError = `Hub responded with ${response.status} ${await response.text()}`;
-    }
+    console.log('Event sent successfully.');
   } catch (error) {
-    sendError = formatError(error);
+    await fail('Health check FAILED: could not send event to Vemetric', formatError(error));
   }
-  if (sendError) {
-    await fail('Health check FAILED: could not send event to the hub', sendError);
-  }
-  console.log('Event sent successfully.');
 
-  // 4. Wait for event propagation
+  // 5. Wait for event propagation
   console.log(`Waiting ${CHECK_DELAY_MS / 1000} seconds for event propagation...`);
   await delay(CHECK_DELAY_MS);
 
-  // 5. Initialize Clickhouse Client
+  // 6. Initialize Clickhouse Client
   const clickhouseClient: ClickHouseClient = createClient({
     host: CLICKHOUSE_HOST,
     username: 'default',
@@ -96,7 +85,7 @@ async function runHealthCheck(): Promise<void> {
     // Note: AbortSignal/timeout is handled per query below
   });
 
-  // 6. Query Clickhouse for the event
+  // 7. Query Clickhouse for the event
   let clickhouseError: string | null = null;
   let latestEventCustomData: ExpectedCustomData | null | { raw: unknown } = null;
   try {
@@ -163,7 +152,7 @@ async function runHealthCheck(): Promise<void> {
     console.log('Clickhouse connection closed.');
   }
 
-  // 7. Verify the token
+  // 8. Verify the token
   // Type guard to ensure latestEventCustomData has the expected structure
   if (
     latestEventCustomData &&

@@ -1,6 +1,7 @@
 import { createClient, type ClickHouseClient } from '@clickhouse/client-web';
 import { Vemetric } from '@vemetric/node';
 import { v4 as uuidv4 } from 'uuid';
+import { formatError, reportToPagerDeck } from './pagerdeck';
 
 // --- Configuration ---
 // Use environment variables for configuration
@@ -28,18 +29,23 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Logs the failure, reports it to PagerDeck and exits with a failure code
+async function fail(title: string, details: string): Promise<never> {
+  console.error(`${title}\n${details}`);
+  await reportToPagerDeck(title, details);
+  process.exit(1);
+}
+
 // --- Main Health Check Logic ---
 async function runHealthCheck(): Promise<void> {
   console.log('Starting health check...');
 
   // 1. Validate Configuration
   if (!VEMETRIC_TOKEN) {
-    console.error('Error: VEMETRIC_TOKEN environment variable is not configured.');
-    process.exit(1);
+    return fail('Health check misconfigured', 'VEMETRIC_TOKEN environment variable is not configured.');
   }
   if (!VEMETRIC_PROJECT_ID) {
-    console.error('Error: VEMETRIC_PROJECT_ID environment variable is not configured.');
-    process.exit(1);
+    return fail('Health check misconfigured', 'VEMETRIC_PROJECT_ID environment variable is not configured.');
   }
 
   // 2. Initialize Vemetric SDK
@@ -62,8 +68,7 @@ async function runHealthCheck(): Promise<void> {
     });
     console.log('Event sent successfully.');
   } catch (error) {
-    console.error('Error sending event to Vemetric:', error);
-    process.exit(1); // Exit with failure code
+    await fail('Health check FAILED: could not send event to Vemetric', formatError(error));
   }
 
   // 5. Wait for event propagation
@@ -80,6 +85,7 @@ async function runHealthCheck(): Promise<void> {
   });
 
   // 7. Query Clickhouse for the event
+  let clickhouseError: string | null = null;
   let latestEventCustomData: ExpectedCustomData | null | { raw: unknown } = null;
   try {
     console.log('Querying Clickhouse for the latest event...');
@@ -135,9 +141,9 @@ async function runHealthCheck(): Promise<void> {
   } catch (error) {
     // Check if it's an AbortError (timeout)
     if (error instanceof Error && error.name === 'AbortError') {
-      console.error(`Error querying Clickhouse: Query timed out after ${QUERY_TIMEOUT_MS}ms.`);
+      clickhouseError = `Query timed out after ${QUERY_TIMEOUT_MS}ms.`;
     } else {
-      console.error('Error querying Clickhouse:', error);
+      clickhouseError = formatError(error);
     }
     // Continue to verification, which will fail if data wasn't retrieved
   } finally {
@@ -156,16 +162,16 @@ async function runHealthCheck(): Promise<void> {
     console.log('✅ Health check PASSED: Found event with matching token in Clickhouse.');
     process.exit(0); // Exit with success code
   } else {
-    console.error(`❌ Health check FAILED: Did not find event with token ${healthCheckToken} in Clickhouse.`);
-    if (latestEventCustomData) {
-      console.error('Last found custom data:', JSON.stringify(latestEventCustomData));
+    const details = [`Did not find event with token ${healthCheckToken} in Clickhouse.`];
+    if (clickhouseError) {
+      details.push(`Error querying Clickhouse: ${clickhouseError}`);
     }
-    process.exit(1); // Exit with failure code
+    if (latestEventCustomData) {
+      details.push(`Last found custom data: ${JSON.stringify(latestEventCustomData)}`);
+    }
+    await fail('❌ Health check FAILED: event not found in Clickhouse', details.join('\n'));
   }
 }
 
 // Run the check
-runHealthCheck().catch((err) => {
-  console.error('Unhandled error during health check:', err);
-  process.exit(1);
-});
+runHealthCheck().catch((err) => fail('Health check FAILED: unhandled error', formatError(err)));

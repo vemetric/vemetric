@@ -12,3 +12,4 @@ If the health check fails, it reports the failure to [PagerDeck](https://pagerde
 | ---------------------- | ------------------------------------------------------------------------------------- |
 | `PAGERDECK_INGEST_KEY` | Ingest key of the PagerDeck source (`src_live_...`). Reporting is skipped if not set. |
 | `PAGERDECK_API_URL`    | Optional, defaults to `https://api.pagerdeck.com/v1/push`                             |
+| `PAGERDECK_TTL`        | Optional, defaults to `30m`. Use a short value like `30s` when testing.               |

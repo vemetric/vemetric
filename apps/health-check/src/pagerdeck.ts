@@ -6,14 +6,32 @@ const PAGERDECK_TIMEOUT_MS = 10000;
 // Repeated failures are grouped into one incident until it's resolved in PagerDeck
 const DEDUP_KEY = 'vemetric:health-check';
 // The health check runs every 15 minutes, so the incident auto-resolves after two runs without a new failure
-const TTL = '30m';
+const TTL: string = process.env.PAGERDECK_TTL ?? '30m';
 
-// API limits: title max 250 bytes, body max 8 KiB
-const MAX_TITLE_LENGTH = 200;
-const MAX_BODY_LENGTH = 7000;
+// API limits in UTF-8 bytes: title max 250 bytes, body max 8 KiB
+const MAX_TITLE_BYTES = 250;
+const MAX_BODY_BYTES = 8192;
+const ELLIPSIS = '…';
 
-function truncate(value: string, maxLength: number): string {
-  return value.length > maxLength ? `${value.slice(0, maxLength)}…` : value;
+// Truncates to a maximum number of UTF-8 bytes without cutting a character in half
+export function truncateBytes(value: string, maxBytes: number): string {
+  if (Buffer.byteLength(value) <= maxBytes) {
+    return value;
+  }
+
+  const budget = maxBytes - Buffer.byteLength(ELLIPSIS);
+  let result = '';
+  let bytes = 0;
+  // Iterating a string yields whole code points, so surrogate pairs stay intact
+  for (const char of value) {
+    const charBytes = Buffer.byteLength(char);
+    if (bytes + charBytes > budget) {
+      break;
+    }
+    result += char;
+    bytes += charBytes;
+  }
+  return result + ELLIPSIS;
 }
 
 export function formatError(error: unknown): string {
@@ -37,8 +55,8 @@ export async function reportToPagerDeck(title: string, body: string): Promise<vo
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        title: truncate(title, MAX_TITLE_LENGTH),
-        body: truncate(body, MAX_BODY_LENGTH),
+        title: truncateBytes(title, MAX_TITLE_BYTES),
+        body: truncateBytes(body, MAX_BODY_BYTES),
         severity: 'error',
         tags: ['prod', 'health-check'],
         dedup_key: DEDUP_KEY,

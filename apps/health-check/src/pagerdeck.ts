@@ -1,12 +1,12 @@
 // Reports health check failures to PagerDeck (https://pagerdeck.com/integrations/webhook)
-const PAGERDECK_API_URL: string = process.env.PAGERDECK_API_URL ?? 'https://api.pagerdeck.com/v1/push';
+const PAGERDECK_API_URL: string = process.env.PAGERDECK_API_URL || 'https://api.pagerdeck.com/v1/push';
 const PAGERDECK_INGEST_KEY: string | undefined = process.env.PAGERDECK_INGEST_KEY;
 const PAGERDECK_TIMEOUT_MS = 10000;
 
 // Repeated failures are grouped into one incident until it's resolved in PagerDeck
 const DEDUP_KEY = 'vemetric:health-check';
 // The health check runs every 15 minutes, so the incident auto-resolves after two runs without a new failure
-const TTL: string = process.env.PAGERDECK_TTL ?? '30m';
+const TTL: string = process.env.PAGERDECK_TTL || '30m';
 
 // API limits in UTF-8 bytes: title max 250 bytes, body max 8 KiB
 const MAX_TITLE_BYTES = 250;
@@ -19,19 +19,10 @@ export function truncateBytes(value: string, maxBytes: number): string {
     return value;
   }
 
-  const budget = maxBytes - Buffer.byteLength(ELLIPSIS);
-  let result = '';
-  let bytes = 0;
-  // Iterating a string yields whole code points, so surrogate pairs stay intact
-  for (const char of value) {
-    const charBytes = Buffer.byteLength(char);
-    if (bytes + charBytes > budget) {
-      break;
-    }
-    result += char;
-    bytes += charBytes;
-  }
-  return result + ELLIPSIS;
+  // encodeInto only writes complete characters and returns how many UTF-16 code units of the string fit
+  const buffer = new Uint8Array(maxBytes - Buffer.byteLength(ELLIPSIS));
+  const { read } = new TextEncoder().encodeInto(value, buffer);
+  return value.slice(0, read) + ELLIPSIS;
 }
 
 export function formatError(error: unknown): string {

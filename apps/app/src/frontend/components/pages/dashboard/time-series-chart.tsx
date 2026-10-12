@@ -47,8 +47,8 @@ const revealSeries = (element: Element, { duration, delay = 0, easing = 'ease' }
 // The spacing includes half a label extra, as the last label is aligned with the right edge.
 const X_LABEL_CHAR_WIDTH = 7;
 const X_LABEL_GAP = 15;
-// Room for marks centered on the outer points (half an events bar, the hover dot)
-const EDGE_INSET = 8;
+// Keeps marks centered on the outer points (half an events bar, the hover dot) inside the chart
+const X_EDGE_PADDING = 8;
 
 const tween = (duration: number) => ({ type: 'tween' as const, duration, easing: 'ease' as const });
 
@@ -82,10 +82,14 @@ export const TimeSeriesChart = (props: Props) => {
     return defineChart({
       chart: ({ width }) => {
         const labelWidth = Math.max(0, ...data.map((row) => row.startDate.length)) * X_LABEL_CHAR_WIDTH;
-        const plotWidth = width - EDGE_INSET - (hideYAxis ? EDGE_INSET : 40);
+        const plotWidth = width - (hideYAxis ? 0 : 40);
+        // The point scale's padding is relative to the step between points
+        const xPadding = (X_EDGE_PADDING * Math.max(data.length - 1, 0)) / Math.max(plotWidth - 2 * X_EDGE_PADDING, 1);
         const xLabelStep = Math.max(
           1,
-          Math.ceil(((labelWidth * 1.5 + X_LABEL_GAP) * (data.length - 1)) / Math.max(plotWidth, 1)),
+          Math.ceil(
+            ((labelWidth * 1.5 + X_LABEL_GAP) * (data.length - 1)) / Math.max(plotWidth - 2 * X_EDGE_PADDING, 1),
+          ),
         );
         const xLabels = data.map((_, index) => index).filter((index) => (data.length - 1 - index) % xLabelStep === 0);
         // Aligns the outer labels with the chart edges instead of reserving extra space for them
@@ -93,7 +97,7 @@ export const TimeSeriesChart = (props: Props) => {
           if (index === data.length - 1) {
             return 'end';
           }
-          const position = EDGE_INSET + (index * plotWidth) / Math.max(data.length - 1, 1);
+          const position = X_EDGE_PADDING + (index * (plotWidth - 2 * X_EDGE_PADDING)) / Math.max(data.length - 1, 1);
           const overflowsLeft = hideYAxis && position < labelWidth / 2;
           return index === xLabels[0] && overflowsLeft ? 'start' : 'middle';
         };
@@ -163,7 +167,7 @@ export const TimeSeriesChart = (props: Props) => {
           ],
           scales: {
             x: {
-              scale: scalePoint<number>,
+              scale: () => scalePoint<number>().padding(xPadding),
               axis: {
                 line: false,
                 ticks: {
@@ -223,7 +227,7 @@ export const TimeSeriesChart = (props: Props) => {
               ],
             },
           ],
-          margin: { top: showEvents ? 40 : 15, right: EDGE_INSET, ...(hideYAxis ? { left: EDGE_INSET } : {}) },
+          margin: { top: showEvents ? 40 : 15, right: 0, ...(hideYAxis ? { left: 0 } : {}) },
           theme: { muted: 'var(--chakra-colors-gray-500)', foreground: 'var(--chakra-colors-gray-500)' },
         };
       },

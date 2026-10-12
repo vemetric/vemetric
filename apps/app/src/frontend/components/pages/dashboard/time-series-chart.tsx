@@ -132,7 +132,8 @@ export const TimeSeriesChart = (props: Props) => {
                     id: 'events',
                     x,
                     y1: 0,
-                    y2: 'events',
+                    // Skips empty bars, as their stroke would still be visible
+                    y2: (row) => row.events || null,
                     yScale: 'events',
                     fill: 'url(#events-fill)',
                     stroke: `var(--chakra-colors-${eventsColor}-500)`,

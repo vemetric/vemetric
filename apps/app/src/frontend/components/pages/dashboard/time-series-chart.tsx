@@ -7,11 +7,11 @@ import { scaleLinear } from '@tanstack/charts/scales/linear';
 import { scalePoint } from '@tanstack/charts/scales/point';
 import { tooltip } from '@tanstack/charts/tooltip';
 import { formatNumber } from '@vemetric/common/math';
-import { useMemo } from 'react';
+import { useLayoutEffect, useMemo, useRef } from 'react';
 import type { ChartCategory } from '@/components/pages/dashboard/chart-category-card';
 import { CHART_CATEGORY_MAP } from '@/components/pages/dashboard/chart-category-card';
 import type { ChartCategoryKey } from '@/hooks/use-chart-toggles';
-import { getNiceTicks, getVisibleTicks, measureTickLabel } from '@/utils/chart-ticks';
+import { getEquidistantTicks, getNiceTicks, getVisibleTicks, measureTickLabel } from '@/utils/chart-ticks';
 import { ChartTooltip } from './chart-tooltip';
 import type { transformChartSeries } from './dashboard-chart';
 
@@ -30,6 +30,25 @@ const tooltipAnchor: ChartTooltipAnchor = (_points, { focus, scales }) => ({
   y: -TOOLTIP_OFFSET,
 });
 
+type RevealOptions = { duration: number; delay?: number; easing?: string };
+
+// TanStack Charts only grows lines and areas from the baseline, so we reveal new series from left to right ourselves.
+// This uses the Web Animations API instead of CSS animations, because the chart moves existing series in the DOM when
+// another one is removed, which would restart their CSS animations.
+// The class names aren't documented by TanStack Charts, so check they still exist when upgrading.
+const SERIES_SELECTOR = '.ts-chart__area, .ts-chart__line';
+const revealSeries = (element: Element, { duration, delay = 0, easing = 'ease' }: RevealOptions) => {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    return;
+  }
+  element.animate([{ clipPath: 'inset(0 100% 0 0) view-box' }, { clipPath: 'inset(0 0 0 0) view-box' }], {
+    duration,
+    delay,
+    easing,
+    fill: 'backwards',
+  });
+};
+
 const tween = (duration: number) => ({ type: 'tween' as const, duration, easing: 'ease' as const });
 
 const getTicks = (values: number[], min: number | 'auto', max: number | 'auto', allowDecimals: boolean) => {
@@ -45,7 +64,7 @@ interface Props {
   showEvents: boolean;
   showEndDate: boolean;
   /** Reveals the series from left to right when they appear */
-  reveal?: { duration: number; delay?: number; easing?: string };
+  reveal?: RevealOptions;
   /** Morphs the series when the data changes (used for the live view) */
   animateUpdates?: boolean;
   hideYAxis: boolean;
@@ -72,7 +91,7 @@ export const TimeSeriesChart = (props: Props) => {
 
   const definition = useMemo(() => {
     const x = (_row: ChartRow, { index }: { index: number }) => index;
-    // Data updates morph the series, the reveal is done via CSS (see below)
+    // Data updates morph the series, the reveal is done separately (see revealSeries)
     const seriesMotion: ChartMotionDefinition<ChartRow> = animateUpdates
       ? ({ phase }) => (phase === 'update' ? { transition: tween(1500) } : false)
       : false;
@@ -117,7 +136,7 @@ export const TimeSeriesChart = (props: Props) => {
 
     return defineChart({
       chart: ({ width, height }) => {
-        // Only show the tick labels that fit, the same way recharts did (point scale without padding)
+        // Only show the tick labels that fit (point scale without padding)
         const plotWidth = width - margin.left - margin.right;
         const plotHeight = height - margin.top - margin.bottom;
         const xStep = data.length > 1 ? plotWidth / (data.length - 1) : 0;
@@ -125,7 +144,8 @@ export const TimeSeriesChart = (props: Props) => {
           coordinate: data.length > 1 ? margin.left + index * xStep : margin.left + plotWidth / 2,
           size: measureTickLabel(row.startDate).width,
         }));
-        const xTicks = getVisibleTicks(xCandidates, { start: 0, end: width, minTickGap: 15, mode: 'preserveStartEnd' });
+        // Evenly spaced x-axis labels, always including the most recent one
+        const xTicks = getEquidistantTicks(xCandidates, { start: 0, end: width, minTickGap: 15 });
         // Moves the first and last label inwards when they'd overflow the chart
         const xLabelShifts = new Map(
           xTicks.map(({ index, labelCoordinate }) => [index, labelCoordinate - xCandidates[index].coordinate]),
@@ -285,6 +305,36 @@ export const TimeSeriesChart = (props: Props) => {
     });
   }, [data, categories, showEvents, animateUpdates, hideYAxis, autoMinValue, minValue, maxValue, allowDecimals]);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const revealRef = useRef(reveal);
+  useLayoutEffect(() => {
+    revealRef.current = reveal;
+  }, [reveal]);
+  // Reveals series when they're added to the DOM (mutation observers run before the next paint, so they don't flash)
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+    // Series that are currently shown, so each one is only revealed once when it appears
+    let shownSeries = new Set<string>();
+    const revealNewSeries = () => {
+      const nextShownSeries = new Set<string>();
+      for (const element of container.querySelectorAll(SERIES_SELECTOR)) {
+        const key = element.getAttribute('data-ts-key') ?? '';
+        nextShownSeries.add(key);
+        if (revealRef.current && !shownSeries.has(key)) {
+          revealSeries(element, revealRef.current);
+        }
+      }
+      shownSeries = nextShownSeries;
+    };
+    revealNewSeries();
+    const observer = new MutationObserver(revealNewSeries);
+    observer.observe(container, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <Box
       w="100%"
@@ -300,15 +350,8 @@ export const TimeSeriesChart = (props: Props) => {
         '--ts-chart-tooltip-padding': '0',
         '--ts-chart-tooltip-max-width': 'none',
         '--ts-chart-tooltip-font': '400 1rem/1.5 var(--chakra-fonts-body)',
-        // TanStack Charts only grows lines and areas from the baseline, so we reveal them from left to right ourselves.
-        // These class names aren't documented by TanStack Charts, so check they still exist when upgrading.
-        '& .ts-chart__area, & .ts-chart__line': reveal
-          ? {
-              animation: `chart-reveal ${reveal.duration}ms ${reveal.easing ?? 'ease'} ${reveal.delay ?? 0}ms both`,
-              _motionReduce: { animation: 'none' },
-            }
-          : undefined,
       }}
+      ref={containerRef}
     >
       <RendererChart
         definition={definition}

@@ -20,13 +20,16 @@ const chartData = transformChartSeries(
   getTimespanInterval(timespan),
   timespan,
 );
-const CHART_REVEAL = { duration: 2000, delay: 500, easing: 'ease-in-out' };
+const INTRO_REVEAL = { duration: 2000, delay: 500, easing: 'ease-in-out' };
+// Series that are toggled on after the intro appear right away
+const TOGGLE_REVEAL = { duration: 1000, easing: 'ease-out' };
 
 export const AuthIllustration = () => {
   const [startAnimation, setStartAnimation] = useState(false);
   const [animateChartHeight, setAnimateChartHeight] = useState(false);
   const [animateChart, setAnimateChart] = useState(false);
   const [animateTransform, setAnimateTransform] = useState(false);
+  const [introRevealDone, setIntroRevealDone] = useState(false);
   const [activeCategoryKeys, setActiveCategoryKeys] = useState<Array<ChartCategoryKey>>(['users', 'pageViews']);
   const activeCategories = useMemo(
     () =>
@@ -54,12 +57,17 @@ export const AuthIllustration = () => {
     const timeout2 = setTimeout(() => setAnimateChartHeight(true), 1400 + initialDelay);
     const timeout3 = setTimeout(() => setAnimateChart(true), 1700 + initialDelay);
     const timeout4 = setTimeout(() => setAnimateTransform(true), 2000 + initialDelay);
+    const timeout5 = setTimeout(
+      () => setIntroRevealDone(true),
+      1700 + initialDelay + INTRO_REVEAL.delay + INTRO_REVEAL.duration,
+    );
 
     return () => {
       clearTimeout(timeout1);
       clearTimeout(timeout2);
       clearTimeout(timeout3);
       clearTimeout(timeout4);
+      clearTimeout(timeout5);
     };
   }, []);
 
@@ -174,7 +182,7 @@ export const AuthIllustration = () => {
                             categories={activeCategories}
                             showEvents={false}
                             showEndDate={false}
-                            reveal={CHART_REVEAL}
+                            reveal={introRevealDone ? TOGGLE_REVEAL : INTRO_REVEAL}
                             hideYAxis={false}
                           />
                         )}

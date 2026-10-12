@@ -158,6 +158,56 @@ export function getVisibleTicks(
   );
 }
 
+// Shows every n-th label, so they're evenly spaced, and always includes the last one.
+// The smallest n for which all labels fit (with at least `minTickGap` pixels between them) wins.
+// Labels at the edges are moved inwards if they'd otherwise overflow [start, end].
+export function getEquidistantTicks(
+  candidates: TickCandidate[],
+  { start, end, minTickGap }: { start: number; end: number; minTickGap: number },
+): VisibleTick[] {
+  const last = candidates.length - 1;
+  if (last < 0) {
+    return [];
+  }
+  const sign = candidates.length >= 2 ? Math.sign(candidates[1].coordinate - candidates[0].coordinate) || 1 : 1;
+  if (sign === -1) {
+    [start, end] = [end, start];
+  }
+
+  const getLabelCoordinate = (index: number) => {
+    const { coordinate, size } = candidates[index];
+    const endOverflow = sign * (coordinate + (sign * size) / 2 - end);
+    if (endOverflow > 0) {
+      return coordinate - endOverflow * sign;
+    }
+    const startOverflow = sign * (coordinate - (sign * size) / 2 - start);
+    return startOverflow < 0 ? coordinate - startOverflow * sign : coordinate;
+  };
+
+  for (let step = 1; step <= candidates.length; step++) {
+    const ticks: VisibleTick[] = [];
+    let nextStart = start;
+    let fits = true;
+    // Anchored at the last label, so it's always part of the sequence
+    for (let index = last % step; index <= last; index += step) {
+      const labelCoordinate = getLabelCoordinate(index);
+      const { size } = candidates[index];
+      if (!isTickVisible(sign, labelCoordinate, size, nextStart, end)) {
+        fits = false;
+        break;
+      }
+      ticks.push({ index, labelCoordinate });
+      nextStart = labelCoordinate + sign * (size / 2 + minTickGap);
+    }
+    if (fits) {
+      return ticks;
+    }
+  }
+
+  // Not even a single label fits, so we only show the last one
+  return [{ index: last, labelCoordinate: getLabelCoordinate(last) }];
+}
+
 const labelSizeCache = new Map<string, { width: number; height: number }>();
 
 /** Measures a 12px tick label the same way recharts did, so the same labels fit */

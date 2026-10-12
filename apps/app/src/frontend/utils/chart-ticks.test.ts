@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getNiceTicks, getVisibleTicks } from './chart-ticks';
+import { getEquidistantTicks, getNiceTicks, getVisibleTicks } from './chart-ticks';
 
 // Expected values were generated with recharts' getNiceTickValues, which this helper replaces
 describe('getNiceTicks', () => {
@@ -66,5 +66,41 @@ describe('getVisibleTicks', () => {
 
   it('should return no ticks without candidates', () => {
     expect(getVisibleTicks([], { start: 0, end: 100, minTickGap: 5, mode: 'preserveEnd' })).toEqual([]);
+  });
+});
+
+describe('getEquidistantTicks', () => {
+  const bounds = { start: 0, end: 600, minTickGap: 15 };
+
+  it('should show every n-th label and move the edge labels inwards', () => {
+    const candidates = [0, 100, 200, 300, 400, 500, 600].map((coordinate) => ({ coordinate, size: 120 }));
+    expect(getEquidistantTicks(candidates, bounds)).toEqual([
+      { index: 0, labelCoordinate: 60 },
+      { index: 2, labelCoordinate: 200 },
+      { index: 4, labelCoordinate: 400 },
+      { index: 6, labelCoordinate: 540 },
+    ]);
+  });
+
+  it('should anchor the labels at the last one', () => {
+    const candidates = [0, 100, 200, 300, 400, 500].map((coordinate) => ({ coordinate, size: 120 }));
+    expect(getEquidistantTicks(candidates, { ...bounds, end: 500 })).toEqual([
+      { index: 1, labelCoordinate: 100 },
+      { index: 3, labelCoordinate: 300 },
+      { index: 5, labelCoordinate: 440 },
+    ]);
+  });
+
+  it('should keep every label when there is enough space', () => {
+    const candidates = [50, 150, 250].map((coordinate) => ({ coordinate, size: 40 }));
+    expect(getEquidistantTicks(candidates, { ...bounds, end: 300 }).map(({ index }) => index)).toEqual([0, 1, 2]);
+  });
+
+  it('should only show the last label when no label fits', () => {
+    // Still moved inwards as far as possible
+    expect(getEquidistantTicks([{ coordinate: 50, size: 200 }], { ...bounds, end: 100 })).toEqual([
+      { index: 0, labelCoordinate: 0 },
+    ]);
+    expect(getEquidistantTicks([], bounds)).toEqual([]);
   });
 });

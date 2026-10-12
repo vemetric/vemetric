@@ -43,7 +43,8 @@ const revealSeries = (element: Element, { duration, delay = 0, easing = 'ease' }
   });
 };
 
-// Every n-th x-axis label is shown (anchored at the most recent one), based on an approximate 12px character width
+// Every n-th x-axis label is shown (anchored at the most recent one), based on an approximate 12px character width.
+// The spacing includes half a label extra, as the last label is aligned with the right edge.
 const X_LABEL_CHAR_WIDTH = 7;
 const X_LABEL_GAP = 15;
 
@@ -79,12 +80,20 @@ export const TimeSeriesChart = (props: Props) => {
     return defineChart({
       chart: ({ width }) => {
         const labelWidth = Math.max(0, ...data.map((row) => row.startDate.length)) * X_LABEL_CHAR_WIDTH;
-        const plotWidth = width - (hideYAxis ? 0 : 40) - labelWidth / 2;
+        const plotWidth = width - (hideYAxis ? 0 : 40);
         const xLabelStep = Math.max(
           1,
-          Math.ceil(((labelWidth + X_LABEL_GAP) * (data.length - 1)) / Math.max(plotWidth, 1)),
+          Math.ceil(((labelWidth * 1.5 + X_LABEL_GAP) * (data.length - 1)) / Math.max(plotWidth, 1)),
         );
         const xLabels = data.map((_, index) => index).filter((index) => (data.length - 1 - index) % xLabelStep === 0);
+        // Aligns the outer labels with the chart edges instead of reserving extra space for them
+        const getXLabelAnchor = (index: number) => {
+          if (index === data.length - 1) {
+            return 'end';
+          }
+          const overflowsLeft = hideYAxis && (index * width) / Math.max(data.length - 1, 1) < labelWidth / 2;
+          return index === xLabels[0] && overflowsLeft ? 'start' : 'middle';
+        };
         return {
           marks: [
             crosshair({ x: { stroke: '#d1d5db', strokeOpacity: 1, strokeWidth: 1 }, y: false }),
@@ -159,7 +168,12 @@ export const TimeSeriesChart = (props: Props) => {
                   size: 0,
                   padding: 14,
                 },
-                tickLabels: { fontSize: 12, opacity: 1, thin: { minGap: 15 } },
+                tickLabels: {
+                  fontSize: 12,
+                  opacity: 1,
+                  anchor: ({ value }) => getXLabelAnchor(value),
+                  thin: { minGap: 15, priority: 'ends' },
+                },
               },
             },
             y: {
@@ -205,7 +219,7 @@ export const TimeSeriesChart = (props: Props) => {
               ],
             },
           ],
-          margin: { top: showEvents ? 40 : 15 },
+          margin: { top: showEvents ? 40 : 15, right: 0, ...(hideYAxis ? { left: 0 } : {}) },
           theme: { muted: 'var(--chakra-colors-gray-500)', foreground: 'var(--chakra-colors-gray-500)' },
         };
       },

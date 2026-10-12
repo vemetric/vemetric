@@ -28,7 +28,6 @@ import type { TrendsData } from '@/utils/trends';
 import type { DashboardData } from '@/utils/trpc';
 import { TimeSeriesChart } from './time-series-chart';
 
-// Reveals the series when they appear in the live view
 const LIVE_REVEAL = { duration: 1500 };
 
 export const getTimespanInterval = (timespan: TimeSpan, _startDate?: string, _endDate?: string) => {
@@ -138,11 +137,6 @@ interface Props extends CardRootProps {
   timespanEndDate?: string;
   data: DashboardData;
   trends?: TrendsData;
-  autoMinValue?: boolean;
-  minValue?: number;
-  maxValue?: number;
-  allowDecimals?: boolean;
-  tickGap?: number;
   publicDashboard?: boolean;
   filterConfig?: IFilterConfig;
 }
@@ -154,10 +148,6 @@ export const DashboardChart = (props: Props) => {
     timespan,
     timespanStartDate,
     timespanEndDate,
-    autoMinValue = false,
-    minValue,
-    maxValue,
-    allowDecimals = true,
     publicDashboard = false,
     filterConfig,
     ...cardProps
@@ -294,10 +284,6 @@ export const DashboardChart = (props: Props) => {
                 reveal={timespan === 'live' ? LIVE_REVEAL : undefined}
                 animateUpdates={timespan === 'live'}
                 hideYAxis={!!isMobile}
-                autoMinValue={autoMinValue}
-                minValue={minValue}
-                maxValue={maxValue}
-                allowDecimals={allowDecimals}
               />
             </Box>
           </AspectRatio>

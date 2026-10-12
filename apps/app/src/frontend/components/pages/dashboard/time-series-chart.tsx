@@ -11,20 +11,17 @@ import { useLayoutEffect, useMemo, useRef } from 'react';
 import type { ChartCategory } from '@/components/pages/dashboard/chart-category-card';
 import { CHART_CATEGORY_MAP } from '@/components/pages/dashboard/chart-category-card';
 import type { ChartCategoryKey } from '@/hooks/use-chart-toggles';
-import { getEquidistantTicks, getNiceTicks, getVisibleTicks, measureTickLabel } from '@/utils/chart-ticks';
 import { ChartTooltip } from './chart-tooltip';
 import type { transformChartSeries } from './dashboard-chart';
 
 type ChartRow = ReturnType<typeof transformChartSeries>[number];
 type MetricKey = Exclude<ChartCategoryKey, 'events'>;
 
-// Motion is disabled for the chart as a whole and only enabled for specific marks below.
-// Resize updates are animated as well: otherwise a resize during the bars' entrance (which already happens on mount,
-// when the measured height changes by a fraction of a pixel) makes the next data update grow the bars from zero again.
+// Animating resizes works around a TanStack Charts bug: a resize during the bars' entrance makes later updates regrow them
 const renderer = motion({ resize: true });
 
 const TOOLTIP_OFFSET = 20;
-// Follows the hovered x value while staying at the top of the chart (the offset only applies horizontally)
+// The offset would also apply vertically, so this keeps the tooltip at the top
 const tooltipAnchor: ChartTooltipAnchor = (_points, { focus, scales }) => ({
   x: scales.x.map(focus.primary.xValue) ?? 0,
   y: -TOOLTIP_OFFSET,
@@ -32,10 +29,7 @@ const tooltipAnchor: ChartTooltipAnchor = (_points, { focus, scales }) => ({
 
 type RevealOptions = { duration: number; delay?: number; easing?: string };
 
-// TanStack Charts only grows lines and areas from the baseline, so we reveal new series from left to right ourselves.
-// This uses the Web Animations API instead of CSS animations, because the chart moves existing series in the DOM when
-// another one is removed, which would restart their CSS animations.
-// The class names aren't documented by TanStack Charts, so check they still exist when upgrading.
+// Not CSS animations, as they restart when the chart moves series in the DOM. Undocumented class names, check on upgrades.
 const SERIES_SELECTOR = '.ts-chart__area, .ts-chart__line';
 const revealSeries = (element: Element, { duration, delay = 0, easing = 'ease' }: RevealOptions) => {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -49,124 +43,50 @@ const revealSeries = (element: Element, { duration, delay = 0, easing = 'ease' }
   });
 };
 
-const tween = (duration: number) => ({ type: 'tween' as const, duration, easing: 'ease' as const });
+// Every n-th x-axis label is shown (anchored at the most recent one), based on an approximate 12px character width
+const X_LABEL_CHAR_WIDTH = 7;
+const X_LABEL_GAP = 15;
 
-const getTicks = (values: number[], min: number | 'auto', max: number | 'auto', allowDecimals: boolean) => {
-  const finiteValues = values.filter(Number.isFinite);
-  const dataMin = finiteValues.length > 0 ? Math.min(...finiteValues) : 0;
-  const dataMax = finiteValues.length > 0 ? Math.max(...finiteValues) : 0;
-  return getNiceTicks(min === 'auto' ? dataMin : min, max === 'auto' ? dataMax : max, 5, allowDecimals);
-};
+const tween = (duration: number) => ({ type: 'tween' as const, duration, easing: 'ease' as const });
 
 interface Props {
   data: ChartRow[];
   categories: Array<[MetricKey, ChartCategory]>;
   showEvents: boolean;
   showEndDate: boolean;
-  /** Reveals the series from left to right when they appear */
   reveal?: RevealOptions;
-  /** Morphs the series when the data changes (used for the live view) */
   animateUpdates?: boolean;
   hideYAxis: boolean;
-  autoMinValue?: boolean;
-  minValue?: number;
-  maxValue?: number;
-  allowDecimals?: boolean;
 }
 
 export const TimeSeriesChart = (props: Props) => {
-  const {
-    data,
-    categories,
-    showEvents,
-    showEndDate,
-    reveal,
-    animateUpdates = false,
-    hideYAxis,
-    autoMinValue = false,
-    minValue,
-    maxValue,
-    allowDecimals = true,
-  } = props;
+  const { data, categories, showEvents, showEndDate, reveal, animateUpdates = false, hideYAxis } = props;
 
   const definition = useMemo(() => {
     const x = (_row: ChartRow, { index }: { index: number }) => index;
-    // Data updates morph the series, the reveal is done separately (see revealSeries)
     const seriesMotion: ChartMotionDefinition<ChartRow> = animateUpdates
       ? ({ phase }) => (phase === 'update' ? { transition: tween(1500) } : false)
       : false;
 
-    // Metrics without a dedicated y-axis share the visible one, the others get their own hidden scale
-    const sharedAxisValues = categories
-      .filter(([, { yAxisId }]) => !yAxisId)
-      .flatMap(([key]) => data.map((row) => row[`${key}Full`]));
-    const yTicks = getTicks(
-      sharedAxisValues,
-      autoMinValue ? 'auto' : (minValue ?? 0),
-      maxValue ?? 'auto',
-      allowDecimals,
-    );
     const hiddenScales = Object.fromEntries(
-      [
-        ...categories.filter(([, { yAxisId }]) => yAxisId).map(([key, { yAxisId }]) => [yAxisId!, `${key}Full`]),
-        ...(showEvents ? [['events', 'events']] : []),
-      ].map(([scaleId, valueKey]) => {
-        const ticks = getTicks(
-          data.map((row) => row[valueKey as keyof ChartRow] as number),
-          0,
-          'auto',
-          true,
-        );
-        return [
-          scaleId,
-          {
-            channel: 'y' as const,
-            scale: scaleLinear().domain([ticks[0], ticks[ticks.length - 1]]),
-            axis: false as const,
-          },
-        ];
-      }),
+      [...categories.flatMap(([, { yAxisId }]) => (yAxisId ? [yAxisId] : [])), ...(showEvents ? ['events'] : [])].map(
+        (scaleId) => [scaleId, { channel: 'y' as const, scale: scaleLinear, nice: 5, axis: false as const }],
+      ),
     );
-    const getBaseline = (yAxisId?: string) => (yAxisId ? hiddenScales[yAxisId].scale.domain()[0] : yTicks[0]);
 
     const eventsColor = CHART_CATEGORY_MAP.events.color;
 
-    const margin = { top: showEvents ? 40 : 15, right: 0, bottom: 30, left: hideYAxis ? 0 : 40 };
-    const formatYTick = (value: number) => formatNumber(value, true);
-
     return defineChart({
-      chart: ({ width, height }) => {
-        // Only show the tick labels that fit (point scale without padding)
-        const plotWidth = width - margin.left - margin.right;
-        const plotHeight = height - margin.top - margin.bottom;
-        const xStep = data.length > 1 ? plotWidth / (data.length - 1) : 0;
-        const xCandidates = data.map((row, index) => ({
-          coordinate: data.length > 1 ? margin.left + index * xStep : margin.left + plotWidth / 2,
-          size: measureTickLabel(row.startDate).width,
-        }));
-        // Evenly spaced x-axis labels, always including the most recent one
-        const xTicks = getEquidistantTicks(xCandidates, { start: 0, end: width, minTickGap: 15 });
-        // Moves the first and last label inwards when they'd overflow the chart
-        const xLabelShifts = new Map(
-          xTicks.map(({ index, labelCoordinate }) => [index, labelCoordinate - xCandidates[index].coordinate]),
+      chart: ({ width }) => {
+        const labelWidth = Math.max(0, ...data.map((row) => row.startDate.length)) * X_LABEL_CHAR_WIDTH;
+        const plotWidth = width - (hideYAxis ? 0 : 40) - labelWidth / 2;
+        const xLabelStep = Math.max(
+          1,
+          Math.ceil(((labelWidth + X_LABEL_GAP) * (data.length - 1)) / Math.max(plotWidth, 1)),
         );
-
-        const [yMin, yMax] = [yTicks[0], yTicks[yTicks.length - 1]];
-        const yCandidates = yTicks.map((value) => ({
-          coordinate: margin.top + (1 - (value - yMin) / (yMax - yMin || 1)) * plotHeight,
-          size: measureTickLabel(formatYTick(value)).height,
-        }));
-        // The grid lines also only use the visible ticks
-        const visibleYTicks = getVisibleTicks(yCandidates, {
-          start: 0,
-          end: height,
-          minTickGap: 5,
-          mode: 'preserveEnd',
-        }).map(({ index }) => yTicks[index]);
-
+        const xLabels = data.map((_, index) => index).filter((index) => (data.length - 1 - index) % xLabelStep === 0);
         return {
           marks: [
-            // Vertical line at the hovered x value, below the series
             crosshair({ x: { stroke: '#d1d5db', strokeOpacity: 1, strokeWidth: 1 }, y: false }),
             ...categories.flatMap(([key, { color, yAxisId }]) => {
               const stroke = `var(--chakra-colors-${color}-500)`;
@@ -176,10 +96,9 @@ export const TimeSeriesChart = (props: Props) => {
                 areaY(data, {
                   ...options,
                   id: `${key}-area`,
-                  y1: getBaseline(yAxisId),
+                  y1: 0,
                   y2: `${key}Full`,
                   fill: `url(#${key}-fill)`,
-                  // Default fill opacity of recharts' Area
                   fillOpacity: 0.6,
                 }),
                 // Solid line for complete data
@@ -213,7 +132,6 @@ export const TimeSeriesChart = (props: Props) => {
                   }),
                 ]
               : []),
-            // Highlights the hovered data point of each series, on top of all other marks
             ...categories.map(([key, { color, yAxisId }]) =>
               whenFocused(
                 dot(data, {
@@ -236,22 +154,23 @@ export const TimeSeriesChart = (props: Props) => {
               axis: {
                 line: false,
                 ticks: {
-                  values: xTicks.map(({ index }) => index),
+                  values: xLabels,
                   format: (index) => data[index]?.startDate ?? '',
                   size: 0,
                   padding: 14,
                 },
-                tickLabels: { fontSize: 12, opacity: 1, thin: false, dx: ({ value }) => xLabelShifts.get(value) ?? 0 },
+                tickLabels: { fontSize: 12, opacity: 1, thin: { minGap: 15 } },
               },
             },
             y: {
-              scale: scaleLinear().domain([yMin, yMax]),
+              scale: scaleLinear,
+              nice: 5,
               axis: hideYAxis
-                ? { line: false, ticks: { values: visibleYTicks, size: 0 }, tickLabels: false }
+                ? { line: false, ticks: { count: 3, size: 0 }, tickLabels: false }
                 : {
                     line: false,
-                    ticks: { values: visibleYTicks, size: 0, padding: 8, format: formatYTick },
-                    tickLabels: { fontSize: 12, opacity: 1, thin: false },
+                    ticks: { count: 5, size: 0, padding: 8, format: (value) => formatNumber(value, true) },
+                    tickLabels: { fontSize: 12, opacity: 1 },
                   },
               grid: {
                 stroke: 'var(--chakra-colors-gray-emphasized)',
@@ -286,7 +205,7 @@ export const TimeSeriesChart = (props: Props) => {
               ],
             },
           ],
-          margin,
+          margin: { top: showEvents ? 40 : 15 },
           theme: { muted: 'var(--chakra-colors-gray-500)', foreground: 'var(--chakra-colors-gray-500)' },
         };
       },
@@ -303,20 +222,19 @@ export const TimeSeriesChart = (props: Props) => {
         motion: tween(100),
       },
     });
-  }, [data, categories, showEvents, animateUpdates, hideYAxis, autoMinValue, minValue, maxValue, allowDecimals]);
+  }, [data, categories, showEvents, animateUpdates, hideYAxis]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const revealRef = useRef(reveal);
   useLayoutEffect(() => {
     revealRef.current = reveal;
   }, [reveal]);
-  // Reveals series when they're added to the DOM (mutation observers run before the next paint, so they don't flash)
+  // Mutation observers run before the next paint, so new series don't flash before being revealed
   useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) {
       return;
     }
-    // Series that are currently shown, so each one is only revealed once when it appears
     let shownSeries = new Set<string>();
     const revealNewSeries = () => {
       const nextShownSeries = new Set<string>();
@@ -340,9 +258,8 @@ export const TimeSeriesChart = (props: Props) => {
       w="100%"
       h="100%"
       css={{
-        // Chakra's CSS reset makes text inherit the font, which would override the font size TanStack Charts sets
+        // Chakra's CSS reset overrides the font size TanStack Charts sets on SVG text
         '& .ts-chart text': { fontSize: 'xs' },
-        // Our own tooltip body replaces the chrome of the built-in tooltip
         '--ts-chart-tooltip-background': 'transparent',
         '--ts-chart-tooltip-border': 'none',
         '--ts-chart-tooltip-border-radius': '0',

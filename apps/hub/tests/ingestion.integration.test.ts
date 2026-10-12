@@ -247,7 +247,12 @@ async function ingestCookiePageView(project: ProjectContext, jar: CookieJar, pat
   for (const setCookie of response.headers.getSetCookie()) {
     const [pair] = setCookie.split(';');
     const separatorIndex = pair.indexOf('=');
-    jar.set(pair.slice(0, separatorIndex), pair.slice(separatorIndex + 1));
+    const name = pair.slice(0, separatorIndex);
+    if (setCookie.includes('Max-Age=0')) {
+      jar.delete(name);
+    } else {
+      jar.set(name, pair.slice(separatorIndex + 1));
+    }
   }
 }
 
@@ -954,38 +959,27 @@ describe.sequential('hub ingestion integration', () => {
     }
   });
 
-  it('continues an active session from the legacy shared cookie only in its own project', async () => {
-    const projectA = nextProjectContext();
-    const projectB = nextProjectContext();
-    await createProject(projectA);
-    await createProject(projectB);
+  it('deletes the legacy shared cookie without using its id', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
 
     try {
       // a session that started before the per-project cookie existed
-      await ingestPageView(projectA, { url: `https://${projectA.domain}/before`, contextId: 'legacy-session' });
-      await waitFor('legacy session user', async () => (await getEventCountsByUser(projectA)).size === 1);
-      const [legacyUserId] = [...(await getEventCountsByUser(projectA)).keys()];
+      await ingestPageView(project, { url: `https://${project.domain}/before`, contextId: 'legacy-session' });
+      await waitFor('legacy session user', async () => (await getEventCountsByUser(project)).size === 1);
+      const [legacyUserId] = [...(await getEventCountsByUser(project)).keys()];
 
       const jar: CookieJar = new Map([['_vuid', legacyUserId]]);
-      await ingestCookiePageView(projectA, jar, '/after');
-      await ingestCookiePageView(projectB, jar, '/other-project');
+      await ingestCookiePageView(project, jar, '/after');
+      expect(jar.has('_vuid')).toBe(false);
 
-      await waitForStable('legacy cookie events', async () => {
-        const [countsA, countsB] = await Promise.all([
-          getEventCountsByUser(projectA),
-          getEventCountsByUser(projectB),
-        ]);
-        return countsA.get(legacyUserId) === 2 && countsA.size === 1 && countsB.size === 1;
-      });
-
-      const [userB] = [...(await getEventCountsByUser(projectB)).keys()];
-      expect(userB).not.toBe(legacyUserId);
-      expect([...jar.entries()].filter(([name]) => name.startsWith('__Host-vuid_')).map(([, value]) => value).sort()).toEqual(
-        [legacyUserId, userB].sort(),
-      );
+      await waitForStable('cookie event', async () => (await getEventCountsByUser(project)).size === 2);
+      const cookieUserId = jar.get([...jar.keys()].find((name) => name.startsWith('__Host-vuid_'))!);
+      expect(cookieUserId).toBeDefined();
+      expect(cookieUserId).not.toBe(legacyUserId);
+      expect((await getEventCountsByUser(project)).get(cookieUserId!)).toBe(1);
     } finally {
-      await cleanupProject(projectA);
-      await cleanupProject(projectB);
+      await cleanupProject(project);
     }
   });
 

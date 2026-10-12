@@ -1,13 +1,13 @@
 import { getBaseDomain } from '@vemetric/common/env';
 import { Hono } from 'hono';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import type { HonoContextVars } from '../../src/types';
-import { deleteUserIdCookie, getUserIdFromCookie, setUserIdCookie } from '../../src/utils/cookie';
-import { hasActiveSession } from '../../src/utils/session';
-
-vi.mock('../../src/utils/session', () => ({
-  hasActiveSession: vi.fn(),
-}));
+import {
+  deleteLegacyUserIdCookie,
+  deleteUserIdCookie,
+  getUserIdFromCookie,
+  setUserIdCookie,
+} from '../../src/utils/cookie';
 
 const PROJECT_A = BigInt(123);
 const PROJECT_B = BigInt(456);
@@ -20,8 +20,8 @@ function createApp(projectId: bigint, allowCookies = true, proxyHost?: string) {
     context.set('proxyHost', proxyHost);
     await next();
   });
-  app.get('/read', async (context) => {
-    const userId = await getUserIdFromCookie(context);
+  app.get('/read', (context) => {
+    const userId = getUserIdFromCookie(context);
     return context.json({ userId: userId === null ? null : String(userId) });
   });
   app.get('/set', (context) => {
@@ -30,6 +30,10 @@ function createApp(projectId: bigint, allowCookies = true, proxyHost?: string) {
   });
   app.get('/delete', (context) => {
     deleteUserIdCookie(context);
+    return context.text('');
+  });
+  app.get('/delete-legacy', (context) => {
+    deleteLegacyUserIdCookie(context);
     return context.text('');
   });
   return app;
@@ -52,10 +56,6 @@ async function setForProxy(proxyHost: string) {
 }
 
 describe('user id cookie', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('sets a host-only, partitioned cookie per project', async () => {
     const response = await createApp(PROJECT_A).request('/set');
     const setCookie = response.headers.get('set-cookie') ?? '';
@@ -88,36 +88,14 @@ describe('user id cookie', () => {
     expect((await readUserId(PROJECT_A, `${cookieA}=abc`)).userId).toBeNull();
   });
 
-  it('prefers the project cookie over the legacy cookie', async () => {
+  it('never uses the id of the legacy cookie', async () => {
     const cookieA = await getCookieName(PROJECT_A);
 
-    const { userId, setCookies } = await readUserId(PROJECT_A, `${cookieA}=42; _vuid=77`);
-    expect(userId).toBe('42');
-    expect(setCookies).toEqual([]);
-    expect(hasActiveSession).not.toHaveBeenCalled();
-  });
-
-  it('takes over the legacy cookie id when it has an active session in this project', async () => {
-    vi.mocked(hasActiveSession).mockResolvedValue(true);
-    const cookieA = await getCookieName(PROJECT_A);
-
-    const { userId, setCookies } = await readUserId(PROJECT_A, '_vuid=77');
-    expect(userId).toBe('77');
-    expect(hasActiveSession).toHaveBeenCalledWith(PROJECT_A, BigInt(77));
-    expect(setCookies).toHaveLength(1);
-    expect(setCookies[0]).toMatch(new RegExp(`^${cookieA}=77;`));
-  });
-
-  it('ignores the legacy cookie id without an active session in this project', async () => {
-    vi.mocked(hasActiveSession).mockResolvedValue(false);
-
-    const { userId, setCookies } = await readUserId(PROJECT_A, '_vuid=77');
-    expect(userId).toBeNull();
-    expect(setCookies).toEqual([]);
+    expect((await readUserId(PROJECT_A, '_vuid=77')).userId).toBeNull();
+    expect((await readUserId(PROJECT_A, `${cookieA}=42; _vuid=77`)).userId).toBe('42');
   });
 
   it('ignores all cookies when cookies are not allowed', async () => {
-    vi.mocked(hasActiveSession).mockResolvedValue(true);
     const name = (await getCookieName(PROJECT_A)).replace('__Host-', '');
 
     for (const [cookie, proxyHost] of [
@@ -129,7 +107,6 @@ describe('user id cookie', () => {
       expect(userId).toBeNull();
       expect(setCookies).toEqual([]);
     }
-    expect(hasActiveSession).not.toHaveBeenCalled();
   });
 
   it('sets the cookie on the site domain behind a proxy, so subdomains share it', async () => {
@@ -190,7 +167,9 @@ describe('user id cookie', () => {
 
   it('deletes the legacy cookie with the domain it was set on', async () => {
     const legacyDelete = async (proxyHost?: string) => {
-      const response = await createApp(PROJECT_A, false, proxyHost).request('/delete');
+      const response = await createApp(PROJECT_A, false, proxyHost).request('/delete-legacy', {
+        headers: { cookie: '_vuid=77' },
+      });
       return response.headers.getSetCookie().find((cookie) => cookie.startsWith('_vuid=;')) ?? '';
     };
 
@@ -202,5 +181,10 @@ describe('user id cookie', () => {
     expect(withoutProxy).not.toContain('Partitioned');
 
     expect(await legacyDelete('app.example.com')).toContain('Domain=app.example.com');
+  });
+
+  it('only deletes the legacy cookie when it is sent', async () => {
+    const response = await createApp(PROJECT_A).request('/delete-legacy');
+    expect(response.headers.getSetCookie()).toEqual([]);
   });
 });

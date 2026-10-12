@@ -115,6 +115,10 @@ app.use('*', async (context, next) => {
     return context.text('', 200);
   }
 
+  context.set('proxyHost', req.header('V-Host'));
+  // deleting the old cookie needs neither the project nor consent, so it also covers excluded visitors
+  deleteLegacyUserIdCookie(context);
+
   const project = await getProjectByToken(context, bodyData);
   context.set('project', project);
   context.set('projectId', BigInt(project.id));
@@ -147,9 +151,6 @@ app.use('*', async (context, next) => {
     allowCookies = allowCookiesHeader === 'true';
   }
   context.set('allowCookies', allowCookies);
-
-  context.set('proxyHost', req.header('V-Host'));
-  deleteLegacyUserIdCookie(context);
 
   return middleware(context, next);
 });

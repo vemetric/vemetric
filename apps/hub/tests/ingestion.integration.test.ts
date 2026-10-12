@@ -983,6 +983,27 @@ describe.sequential('hub ingestion integration', () => {
     }
   });
 
+  it('deletes the legacy shared cookie for visitors from excluded IPs', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
+    await prismaClient.project.update({ where: { id: project.projectId }, data: { excludedIps: '127.0.0.1' } });
+
+    try {
+      const response = await requestHub(
+        '/e',
+        project,
+        { name: EventNames.PageView, url: `https://${project.domain}/excluded` },
+        { 'allow-cookies': 'true', cookie: '_vuid=123' },
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.getSetCookie().some((cookie) => cookie.startsWith('_vuid=;'))).toBe(true);
+      expect(await getEventCountsByUser(project)).toEqual(new Map());
+    } finally {
+      await cleanupProject(project);
+    }
+  });
+
   it('exposes ingested data through active-users, user-list, latest-events, and filterable-data queries', async () => {
     const project = nextProjectContext();
     await createProject(project);

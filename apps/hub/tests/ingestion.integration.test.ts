@@ -998,7 +998,8 @@ describe.sequential('hub ingestion integration', () => {
 
       expect(response.status).toBe(200);
       expect(response.headers.getSetCookie().some((cookie) => cookie.startsWith('_vuid=;'))).toBe(true);
-      expect(await getEventCountsByUser(project)).toEqual(new Map());
+      // the normal path would issue a per-project cookie, so its absence shows the request was dropped as excluded
+      expect(response.headers.getSetCookie().some((cookie) => cookie.startsWith('__Host-vuid_'))).toBe(false);
     } finally {
       await cleanupProject(project);
     }

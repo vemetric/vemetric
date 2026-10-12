@@ -27,6 +27,7 @@
     "pino-pretty": "^13.0.0",
     "redis": "^4.7.1",
     "remeda": "^1.61.0",
+    "tldts": "^7.4.16",
     "zod": "^4.6.5"
   },
   "devDependencies": {

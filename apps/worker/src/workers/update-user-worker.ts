@@ -1,17 +1,14 @@
 import { updateUserQueueName } from '@vemetric/queues/queue-names';
 import { updateUserQueue, type UpdateUserQueueProps } from '@vemetric/queues/update-user-queue';
 import { Worker } from 'bullmq';
-import { clickhouseUser } from 'clickhouse';
-import { isDeepEqual } from 'remeda';
-import { workerName } from '../utils/env';
+import { upsertUser } from '../ingestion';
+import { envPositiveInteger, workerName } from '../utils/env';
 import { logJobStep } from '../utils/job-logger';
 import { queueTelemetry } from '../utils/telemetry';
-import { getUpdatedUserData } from '../utils/user';
-import { invalidateIngestionUser } from '../utils/user-cache';
 
 export async function initUpdateUserWorker() {
-  // One job at a time across replicas, as with the single worker today (see initCreateUserWorker).
-  await updateUserQueue.setGlobalConcurrency(1);
+  // See initCreateUserWorker: user writes no longer need to run one at a time.
+  await updateUserQueue.removeGlobalConcurrency();
   return new Worker<UpdateUserQueueProps>(
     updateUserQueueName,
     async (job) => {
@@ -20,39 +17,8 @@ export async function initUpdateUserWorker() {
       const userId = BigInt(_userId);
 
       await logJobStep(job, `start project=${projectId} user=${userId}`);
-      await logJobStep(job, 'before clickhouseUser.findById');
-      const user = await clickhouseUser.findById(projectId, userId);
-      await logJobStep(job, user ? 'after clickhouseUser.findById found' : 'after clickhouseUser.findById missing');
-      if (!user) {
-        await logJobStep(job, 'done missing user');
-        return;
-      }
-      const updatedUserData = getUpdatedUserData(user.customData as object, data ?? {});
-
-      let hasChanged = false;
-      if (displayName && displayName !== user.displayName) {
-        hasChanged = true;
-      } else if (typeof avatarUrl === 'string' && avatarUrl !== user.avatarUrl) {
-        hasChanged = true;
-      } else if (data && !isDeepEqual(user.customData, updatedUserData)) {
-        hasChanged = true;
-      }
-
-      if (!hasChanged) {
-        await logJobStep(job, 'done no changes');
-        return;
-      }
-
-      const updatedUser = { ...user, customData: updatedUserData, updatedAt };
-      if (displayName) {
-        updatedUser.displayName = displayName;
-      }
-      if (typeof avatarUrl === 'string') {
-        updatedUser.avatarUrl = avatarUrl;
-      }
-      await logJobStep(job, 'before clickhouseUser.insert');
-      await clickhouseUser.insert([updatedUser]);
-      await invalidateIngestionUser(projectId, userId);
+      // An update for a user that does not exist yet waits in Redis for its create.
+      await upsertUser(projectId, userId, { type: 'update', update: { updatedAt, displayName, avatarUrl, data } });
       await logJobStep(job, 'done');
     },
     {
@@ -61,7 +27,7 @@ export async function initUpdateUserWorker() {
       },
       name: workerName,
       telemetry: queueTelemetry,
-      concurrency: 1,
+      concurrency: envPositiveInteger('USER_WORKER_CONCURRENCY', 20),
       removeOnComplete: {
         count: 1000,
       },

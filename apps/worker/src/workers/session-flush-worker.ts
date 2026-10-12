@@ -2,7 +2,7 @@ import { sessionFlushQueueName } from '@vemetric/queues/queue-names';
 import { defaultQueueConnection } from '@vemetric/queues/queue-utils';
 import { sessionFlushQueue } from '@vemetric/queues/session-flush-queue';
 import { Worker } from 'bullmq';
-import { flushSessionBuffer } from '../ingestion';
+import { flushSessionBuffer, flushUserBuffer } from '../ingestion';
 import { envPositiveInteger, workerName } from '../utils/env';
 import { queueTelemetry } from '../utils/telemetry';
 
@@ -26,6 +26,11 @@ export async function initSessionFlushWorker() {
       // Dirty keys are never removed before a successful write.
       for (let batch = 0; batch < 10; batch++) {
         if ((await flushSessionBuffer(batchSize)) < batchSize) break;
+      }
+      // User rows too: the user table keeps the last inserted row, so they need this single
+      // writer to be written in order.
+      for (let batch = 0; batch < 10; batch++) {
+        if ((await flushUserBuffer(batchSize)) < batchSize) break;
       }
     },
     { connection: defaultQueueConnection, name: workerName, concurrency: 1, telemetry: queueTelemetry },

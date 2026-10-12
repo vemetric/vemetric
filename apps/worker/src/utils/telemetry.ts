@@ -9,6 +9,7 @@ import { logger } from './logger';
 import { parseRedisMemoryInfo } from './redis-info';
 import { stateRedis } from '../ingestion/redis';
 import { pendingSessionStats } from '../ingestion/session-flush';
+import { userStore } from '../ingestion/user-store';
 
 const axiomToken = process.env.AXIOM_TOKEN;
 const axiomUrl = process.env.AXIOM_URL ?? 'https://api.axiom.co';
@@ -72,6 +73,26 @@ function registerIngestionGauges() {
       }
     },
     [pending, oldestAge],
+  );
+
+  const pendingUsers = meter.createObservableGauge('vemetric.users.pending', {
+    description: 'User rows waiting to be written to ClickHouse',
+  });
+  const oldestUserAge = meter.createObservableGauge('vemetric.users.pending_oldest_age', {
+    description: 'Seconds the oldest pending user row has been waiting',
+    unit: 's',
+  });
+  meter.addBatchObservableCallback(
+    async (result) => {
+      try {
+        const stats = await userStore.pendingStats();
+        result.observe(pendingUsers, stats.count);
+        result.observe(oldestUserAge, stats.oldestAgeSeconds);
+      } catch (err) {
+        logger.error({ err }, 'Failed to read pending user metrics');
+      }
+    },
+    [pendingUsers, oldestUserAge],
   );
 
   const usedMemory = meter.createObservableGauge('vemetric.redis.used_memory', {

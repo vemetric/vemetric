@@ -4,9 +4,8 @@ import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import type { CookieOptions } from 'hono/utils/cookie';
 import { getDomain } from 'tldts';
 import type { HonoContext } from '../types';
-import { hasActiveSession } from './session';
 
-// the old cookie was shared by all projects on the base domain (or the proxy host)
+// the old cookie was shared by all projects on the base domain (or the proxy host), it's removed whenever it's sent
 const LEGACY_UID_COOKIE_NAME = '_vuid';
 // 13 months
 const UID_COOKIE_MAX_AGE_SECONDS = 395 * 24 * 60 * 60;
@@ -50,7 +49,7 @@ function parseUserId(value: string | undefined) {
   }
 }
 
-export async function getUserIdFromCookie(context: HonoContext) {
+export function getUserIdFromCookie(context: HonoContext) {
   const { projectId, allowCookies } = context.var;
   // cookies may only be read on requests that allow them
   if (!allowCookies) {
@@ -73,15 +72,7 @@ export async function getUserIdFromCookie(context: HonoContext) {
     return hostUserId;
   }
 
-  // an id from the old shared cookie is only taken over if it's in an active session of this project,
-  // so sessions that were running when the per-project cookie was introduced continue
-  const legacyUserId = parseUserId(getCookie(context, LEGACY_UID_COOKIE_NAME));
-  if (legacyUserId === null || !(await hasActiveSession(projectId, legacyUserId))) {
-    return null;
-  }
-
-  setUserIdCookie(context, legacyUserId);
-  return legacyUserId;
+  return null;
 }
 
 export function setUserIdCookie(context: HonoContext, userId: bigint) {
@@ -116,8 +107,15 @@ export function deleteUserIdCookie(context: HonoContext) {
   if (siteDomain) {
     deleteCookie(context, cookieName, { ...UID_COOKIE_OPTIONS, prefix: 'secure', domain: siteDomain });
   }
+}
 
-  // the old shared cookie is removed too, with the attributes it was set with, e.g. when a visitor revokes consent
+// deleting needs no consent, so this runs on every request that still sends the old cookie
+export function deleteLegacyUserIdCookie(context: HonoContext) {
+  if (getCookie(context, LEGACY_UID_COOKIE_NAME) === undefined) {
+    return;
+  }
+
+  // with the attributes it was set with
   deleteCookie(context, LEGACY_UID_COOKIE_NAME, {
     path: '/',
     secure: true,

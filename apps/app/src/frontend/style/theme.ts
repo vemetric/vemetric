@@ -112,6 +112,10 @@ export const vemetricTheme = createSystem(defaultConfig, {
         from: { clipPath: 'circle(150% at var(--theme-toggle-x, 50%) var(--theme-toggle-y, 50%))' },
         to: { clipPath: 'circle(0% at var(--theme-toggle-x, 50%) var(--theme-toggle-y, 50%))' },
       },
+      'chart-reveal': {
+        from: { clipPath: 'inset(0 100% 0 0) view-box' },
+        to: { clipPath: 'inset(0 0 0 0) view-box' },
+      },
     },
     tokens: {
       colors: {

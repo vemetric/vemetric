@@ -16,16 +16,15 @@ import {
   Button,
 } from '@chakra-ui/react';
 import { Link } from '@tanstack/react-router';
-import { formatNumber } from '@vemetric/common/math';
 import { motion } from 'motion/react';
 import { TbWorldPlus } from 'react-icons/tb';
-import { ResponsiveContainer, AreaChart as RechartsAreaChart, XAxis, YAxis, Area, CartesianGrid } from 'recharts';
 import { BaseLayout } from '@/components/base-layout';
 import { CreateProjectDialog } from '@/components/create-project-dialog';
 import { LoadingImage } from '@/components/loading-image';
 import { Status } from '@/components/ui/status';
 import { getFaviconUrl } from '@/utils/favicon';
 import { trpc } from '@/utils/trpc';
+import { ActiveUsersSparkline } from './active-users-sparkline';
 
 const CARD_ASPECT_RATIO = 8 / 4;
 
@@ -69,76 +68,8 @@ const ProjectCard = (props: Props) => {
                   No data available.
                 </Text>
               ) : (
-                <Box
-                  pos="absolute"
-                  inset={-1}
-                  bottom={1}
-                  css={{
-                    '& .recharts-area-area': {
-                      stroke: 'transparent!important',
-                    },
-                  }}
-                >
-                  <ResponsiveContainer>
-                    <RechartsAreaChart data={project.activeUserTimeSeries} margin={{ top: 20, bottom: 10 }}>
-                      <XAxis
-                        dataKey="date"
-                        interval="preserveStartEnd"
-                        fill=""
-                        stroke=""
-                        tickLine={false}
-                        axisLine={true}
-                        minTickGap={15}
-                        hide
-                      />
-                      <YAxis
-                        yAxisId="activeUsers"
-                        type="number"
-                        domain={['auto', 'auto']}
-                        axisLine={false}
-                        tickLine={false}
-                        width={40}
-                        tickFormatter={(value) => formatNumber(value, true)}
-                        hide
-                      />
-                      <CartesianGrid
-                        vertical={false}
-                        stroke="var(--chakra-colors-gray-emphasized)"
-                        strokeOpacity={0.5}
-                        strokeWidth={0.8}
-                        strokeDasharray="10 5"
-                        yAxisId="activeUsers"
-                      />
-                      <defs>
-                        <linearGradient
-                          style={{ color: `var(--chakra-colors-blue-500)` }}
-                          id={'gradient-' + project.id}
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop offset="5%" stopColor="currentColor" stopOpacity={0.7} />
-                          <stop offset="95%" stopColor="currentColor" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <Area
-                        style={{ stroke: `var(--chakra-colors-blue-500)` }}
-                        strokeOpacity={1}
-                        name="Active Users"
-                        type="linear"
-                        yAxisId="activeUsers"
-                        dataKey="count"
-                        stroke=""
-                        strokeWidth={2}
-                        strokeLinejoin="round"
-                        strokeLinecap="round"
-                        isAnimationActive={true}
-                        connectNulls={false}
-                        fill={`url(#gradient-${project.id})`}
-                      />
-                    </RechartsAreaChart>
-                  </ResponsiveContainer>
+                <Box pos="absolute" inset={-1} bottom={1} color="blue.500">
+                  <ActiveUsersSparkline data={project.activeUserTimeSeries} />
                 </Box>
               )}
             </Box>

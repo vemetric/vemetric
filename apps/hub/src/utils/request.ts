@@ -116,7 +116,7 @@ export async function getUserIdFromRequest(context: HonoContext, useBodyIdentifi
       if (allowCookies) {
         // in cookie mode the user id comes from the cookie
         // if there is none, we return null because the user id + cookie will be set later
-        return await getUserIdFromCookie(context);
+        return getUserIdFromCookie(context);
       }
 
       return (await getHashedUserId(context)) ?? generateUserId();

@@ -5,8 +5,8 @@ import { getNormalizedDomain } from '@vemetric/common/url';
 import { getDripSequence, getStepDelay } from '@vemetric/email/email-drip-sequences';
 import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
 import { addToQueue } from '@vemetric/queues/queue-utils';
-import { clickhouseEvent } from 'clickhouse';
-import { dbProject, serializableTransaction } from 'database';
+import { clickhouseClient, clickhouseEvent } from 'clickhouse';
+import { dbProject, dbUserIdentificationMap, prismaClient, serializableTransaction } from 'database';
 import { z } from 'zod';
 import { logger } from '../utils/backend-logger';
 import { sendProjectDeletionConfirmation } from '../utils/email';
@@ -422,4 +422,48 @@ export const projectsRouter = router({
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to send confirmation email' });
       }
     }),
+
+  resetProjectData: organizationAdminProcedure.input(z.object({ projectId: z.string() })).mutation(async (opts) => {
+    const {
+      input: { projectId },
+      ctx: { organization },
+    } = opts;
+
+    const project = await dbProject.findById(projectId);
+    if (!project) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Project not found' });
+    }
+
+    // Verify project belongs to this organization
+    if (project.organizationId !== organization.id) {
+      throw new TRPCError({ code: 'FORBIDDEN', message: 'Project does not belong to this organization' });
+    }
+
+    // Delete all analytics data from ClickHouse
+    const tables = ['event', 'session', 'session_v2', 'device', 'user'];
+    await Promise.all([
+      ...tables.map((table) =>
+        clickhouseClient.command({
+          query: `ALTER TABLE ${table} DELETE WHERE projectId = {projectId:UInt64} SETTINGS mutations_sync = 2`,
+          query_params: { projectId },
+        }),
+      ),
+    ]).catch((err) => {
+      logger.error({ err, projectId }, 'Failed to delete project data from ClickHouse');
+      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to reset project data' });
+    });
+
+    await Promise.all([
+      dbUserIdentificationMap.deleteByProjectId(projectId),
+      prismaClient.project.update({
+        where: { id: projectId },
+        data: { firstEventAt: null },
+      }),
+    ]).catch((err) => {
+      logger.error({ err, projectId }, 'Failed to reset project data in database');
+      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to reset project data' });
+    });
+
+    return { success: true };
+  }), 
 });

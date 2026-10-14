@@ -12,7 +12,7 @@ import { pinoLogger as honoPino } from 'hono-pino';
 import { z } from 'zod';
 import type { HonoContextVars } from './types';
 import { isBot } from './utils/bots';
-import { deleteUserIdCookie, setUserIdCookie } from './utils/cookie';
+import { deleteLegacyUserIdCookie, deleteUserIdCookie, setUserIdCookie } from './utils/cookie';
 import { eventSchema, trackEvent, validateSpecialEvents } from './utils/event';
 import { logger } from './utils/logger';
 import { handlePageLeave } from './utils/page-leave';
@@ -115,6 +115,10 @@ app.use('*', async (context, next) => {
     return context.text('', 200);
   }
 
+  context.set('proxyHost', req.header('V-Host'));
+  // deleting the old cookie needs neither the project nor consent, so it also covers excluded visitors
+  deleteLegacyUserIdCookie(context);
+
   const project = await getProjectByToken(context, bodyData);
   context.set('project', project);
   context.set('projectId', BigInt(project.id));
@@ -147,8 +151,6 @@ app.use('*', async (context, next) => {
     allowCookies = allowCookiesHeader === 'true';
   }
   context.set('allowCookies', allowCookies);
-
-  context.set('proxyHost', req.header('V-Host'));
 
   return middleware(context, next);
 });

@@ -29,11 +29,30 @@ class CustomLogger implements Logger {
   }
 }
 
+/**
+ * Under load, Bun 1.4 occasionally sends a request on a pooled keep-alive socket that ClickHouse
+ * already closed. The request never reaches ClickHouse and fails with ECONNRESET, so it is retried
+ * once (a failed job would be retried with the same request anyway). Request bodies are always
+ * strings (the web client rejects streams) and can be sent again.
+ */
+export const fetchWithStaleSocketRetry = Object.assign(async (...[input, init]: Parameters<typeof fetch>) => {
+  try {
+    return await fetch(input, init);
+  } catch (err) {
+    if ((err as { code?: string } | null)?.code !== 'ECONNRESET' || init?.signal?.aborted) {
+      throw err;
+    }
+    logger.warn({ err }, 'ClickHouse request hit a closed keep-alive socket, retrying');
+    return await fetch(input, init);
+  }
+}, fetch);
+
 export const clickhouseClient = createClient({
   database: process.env.CLICKHOUSE_DB ?? 'vemetric',
   host: process.env.CLICKHOUSE_HOST ?? 'http://localhost:8123',
   username: process.env.CLICKHOUSE_USER ?? 'default',
   password: process.env.CLICKHOUSE_PASSWORD ?? '',
+  fetch: fetchWithStaleSocketRetry,
   max_open_connections: 50,
   request_timeout: 60000,
   keep_alive: {

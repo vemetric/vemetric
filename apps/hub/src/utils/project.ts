@@ -19,6 +19,11 @@ export async function getProjectByToken(context: Context, bodyData: any) {
     }
   }
 
+  // The body is user-controlled JSON: an object like { startsWith: 'a' } would become a Prisma filter
+  if (typeof token !== 'string') {
+    throw new HTTPException(401);
+  }
+
   const project = await dbProject.findByToken(token);
   if (!project) {
     throw new HTTPException(401);

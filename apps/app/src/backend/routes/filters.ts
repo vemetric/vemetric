@@ -7,7 +7,7 @@ import { clickhouseEvent } from 'clickhouse';
 import { dbFunnel } from 'database';
 import { addDays, differenceInDays, isAfter, startOfDay } from 'date-fns';
 import { z } from 'zod';
-import { projectOrPublicProcedure, publicTimespanProcedure, router } from '../utils/trpc';
+import { projectProcedure, publicTimespanProcedure, router } from '../utils/trpc';
 
 export const filtersRouter = router({
   getFilterableData: publicTimespanProcedure.query(async (opts) => {
@@ -78,7 +78,7 @@ export const filtersRouter = router({
     };
   }),
 
-  getEventPropertiesWithValues: projectOrPublicProcedure
+  getEventPropertiesWithValues: projectProcedure
     .input(
       z.object({
         eventName: z.string(),

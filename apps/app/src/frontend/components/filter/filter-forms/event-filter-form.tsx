@@ -24,7 +24,7 @@ interface Props {
 }
 
 export const EventFilterForm = ({ filter: _filter, onChange, onSubmit, buttonText = 'Save' }: Props) => {
-  const { projectId, domain } = useProjectContext();
+  const { projectId } = useProjectContext();
   const { eventNames } = useFilterContext();
   const [filter, setFilter] = useState<IEventFilter>(
     _filter ?? {
@@ -37,13 +37,13 @@ export const EventFilterForm = ({ filter: _filter, onChange, onSubmit, buttonTex
 
   const { data: propertyValues, isLoading } = trpc.filters.getEventPropertiesWithValues.useQuery(
     {
-      projectId,
-      domain,
+      projectId: projectId ?? '',
       eventName: nameFilter.value,
       operator: nameFilter.operator,
     },
     {
-      enabled: !!nameFilter.value && (filter.propertiesFilter?.length ?? 0) > 0,
+      // Public dashboards have no projectId, as event property values are only available to project members
+      enabled: !!projectId && !!nameFilter.value && (filter.propertiesFilter?.length ?? 0) > 0,
     },
   );
 

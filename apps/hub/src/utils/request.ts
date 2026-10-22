@@ -101,7 +101,7 @@ export async function getUserIdFromRequest(context: HonoContext, useBodyIdentifi
         throw err;
       }
     } else {
-      if (useBodyIdentifier && bodyData.identifier) {
+      if (useBodyIdentifier && typeof bodyData.identifier === 'string' && bodyData.identifier) {
         // this is the case when the user was already identified in the browser and it sends the identifier from the sessionStorage to the server
         // for the /i (identify) endpoint we ignore it though, because there we want to merge possible events from the old id to the new user id
         // it takes precedence over the cookie, which can belong to another user

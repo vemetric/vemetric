@@ -94,20 +94,23 @@ describe('public API OpenAPI spec', () => {
     }
   });
 
-  it('documents rate limit headers on success and 429 responses', async () => {
+  it('documents rate limit headers on success, 401 and 429 responses', async () => {
     const spec = await getSpec();
 
     expect(Object.keys(spec.components.responses.RateLimited.headers)).toEqual([
       'RateLimit-Limit',
       'RateLimit-Remaining',
       'RateLimit-Reset',
+      'RateLimit-Policy',
       'Retry-After',
     ]);
+    expect(Object.keys(spec.components.responses.Unauthorized.headers)).toEqual(['RateLimit-Policy']);
     for (const { operation } of getOperations(spec)) {
       expect(Object.keys(operation.responses['200'].headers ?? {})).toEqual([
         'RateLimit-Limit',
         'RateLimit-Remaining',
         'RateLimit-Reset',
+        'RateLimit-Policy',
       ]);
     }
   });

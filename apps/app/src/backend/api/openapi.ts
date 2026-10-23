@@ -24,6 +24,7 @@ Validation errors (\`VALIDATION_ERROR\`) additionally contain a \`details\` arra
 Each project can make 100 requests per 60 seconds. Every authenticated response carries
 \`RateLimit-Limit\`, \`RateLimit-Remaining\` and \`RateLimit-Reset\` (seconds until the window resets) headers.
 When the limit is exceeded the API responds with \`429\` and a \`Retry-After\` header (in seconds).
+Every response, including \`401\`, carries a \`RateLimit-Policy\` header describing the quota (e.g. \`100;w=60\`).
 
 ## Versioning & Deprecation
 
@@ -71,7 +72,8 @@ export const apiErrorResponseSchema = z
 const ref = (type: 'responses' | 'headers', name: string) => ({ $ref: `#/components/${type}/${name}` });
 
 const ERROR_RESPONSES = {
-  BadRequest: 'Bad request - invalid request payload or parameters. Code: `VALIDATION_ERROR`.',
+  BadRequest:
+    'Bad request - invalid request payload or parameters. Codes: `VALIDATION_ERROR`, `HTTP_ERROR` (malformed JSON body).',
   Unauthorized: 'Unauthorized - missing, malformed, invalid or revoked API key. Code: `UNAUTHORIZED`.',
   Forbidden: 'Forbidden - the request is not allowed for the current plan. Code: `PLAN_LIMIT_EXCEEDED`.',
   NotFound:
@@ -87,9 +89,12 @@ const RATE_LIMIT_HEADERS = {
   'RateLimit-Reset': 'Number of seconds until the current window resets.',
 } as const;
 
-export const rateLimitResponseHeaders = Object.fromEntries(
-  Object.keys(RATE_LIMIT_HEADERS).map((name) => [name, ref('headers', name)]),
-);
+const rateLimitPolicyHeader = { 'RateLimit-Policy': ref('headers', 'RateLimit-Policy') };
+
+export const rateLimitResponseHeaders = {
+  ...Object.fromEntries(Object.keys(RATE_LIMIT_HEADERS).map((name) => [name, ref('headers', name)])),
+  ...rateLimitPolicyHeader,
+};
 
 export const errorResponses = {
   400: ref('responses', 'BadRequest'),
@@ -125,6 +130,10 @@ export function registerOpenApiDocs(api: OpenAPIHono<PublicApiHonoEnv>) {
       schema: { type: 'integer', minimum: 0 },
     });
   }
+  registry.registerComponent('headers', 'RateLimit-Policy', {
+    description: 'Rate-limit quota as `<limit>;w=<window in seconds>`. Sent on every response, including 401.',
+    schema: { type: 'string', example: '100;w=60' },
+  });
   registry.registerComponent('headers', 'Retry-After', {
     description: 'Number of seconds to wait before making a new request.',
     schema: { type: 'integer', minimum: 0 },
@@ -136,7 +145,9 @@ export function registerOpenApiDocs(api: OpenAPIHono<PublicApiHonoEnv>) {
       headers:
         name === 'RateLimited'
           ? { ...rateLimitResponseHeaders, 'Retry-After': ref('headers', 'Retry-After') }
-          : undefined,
+          : name === 'Unauthorized'
+            ? rateLimitPolicyHeader
+            : undefined,
       content: {
         'application/json': {
           schema: { $ref: '#/components/schemas/ErrorResponse' },

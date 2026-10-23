@@ -1,14 +1,10 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
-import { createRoute, z } from '@hono/zod-openapi';
+import { createRoute } from '@hono/zod-openapi';
 import type { IUserSortConfig } from '@vemetric/common/sort';
 import { clickhouseEvent, clickhouseUser, getUserFilterQueries } from 'clickhouse';
 import { getFilterFunnelsData } from '../../utils/filter';
 import { isRetentionRestricted, RETENTION_UPGRADE_MESSAGE } from '../../utils/retention';
-import {
-  authorizationHeaderSchema,
-  commonOpenApiErrorResponses,
-  planLimitExceededOpenApiResponse,
-} from '../schemas/common';
+import { commonErrorResponses, errorResponses, rateLimitResponseHeaders } from '../openapi';
 import {
   userEventsRequestSchema,
   userEventsResponseSchema,
@@ -30,10 +26,11 @@ const API_USERS_FIELD_TO_INTERNAL = {
 const usersListRoute = createRoute({
   method: 'post',
   path: '/v1/users',
+  operationId: 'listUsers',
+  tags: ['Users'],
   summary: 'List users',
   description: 'Returns a list of users with optional filters, sorting and date range.',
   request: {
-    headers: authorizationHeaderSchema,
     body: {
       required: true,
       content: {
@@ -46,65 +43,51 @@ const usersListRoute = createRoute({
   responses: {
     200: {
       description: 'Success',
+      headers: rateLimitResponseHeaders,
       content: {
         'application/json': {
           schema: usersListResponseSchema,
         },
       },
     },
-    403: planLimitExceededOpenApiResponse,
-    ...commonOpenApiErrorResponses,
+    403: errorResponses[403],
+    ...commonErrorResponses,
   },
 });
 
 const usersSingleRoute = createRoute({
   method: 'get',
   path: '/v1/users/single',
+  operationId: 'getUser',
+  tags: ['Users'],
   summary: 'Get user',
   description: 'Returns one user by id or identifier.',
   request: {
-    headers: authorizationHeaderSchema,
     query: userSingleQuerySchema,
   },
   responses: {
     200: {
       description: 'Success',
+      headers: rateLimitResponseHeaders,
       content: {
         'application/json': {
           schema: usersSingleResponseSchema,
         },
       },
     },
-    404: {
-      description: 'User was not found',
-      content: {
-        'application/json': {
-          schema: z.object({
-            error: z
-              .object({
-                code: z.literal('USER_NOT_FOUND').openapi({
-                  description: 'Machine-readable error code.',
-                }),
-                message: z.string().openapi({
-                  description: 'Human-readable error message.',
-                }),
-              })
-              .openapi({ description: 'Error details.' }),
-          }),
-        },
-      },
-    },
-    ...commonOpenApiErrorResponses,
+    404: errorResponses[404],
+    ...commonErrorResponses,
   },
 });
 
 const userEventsRoute = createRoute({
   method: 'post',
   path: '/v1/users/events',
+  operationId: 'listUserEvents',
+  tags: ['Users'],
   summary: 'List user events',
   description: 'Returns events for one user within a specified date range and with optional filters.',
   request: {
-    headers: authorizationHeaderSchema,
     query: userSingleQuerySchema,
     body: {
       required: true,
@@ -118,33 +101,16 @@ const userEventsRoute = createRoute({
   responses: {
     200: {
       description: 'Success',
+      headers: rateLimitResponseHeaders,
       content: {
         'application/json': {
           schema: userEventsResponseSchema,
         },
       },
     },
-    403: planLimitExceededOpenApiResponse,
-    404: {
-      description: 'User was not found',
-      content: {
-        'application/json': {
-          schema: z.object({
-            error: z
-              .object({
-                code: z.literal('USER_NOT_FOUND').openapi({
-                  description: 'Machine-readable error code.',
-                }),
-                message: z.string().openapi({
-                  description: 'Human-readable error message.',
-                }),
-              })
-              .openapi({ description: 'Error details.' }),
-          }),
-        },
-      },
-    },
-    ...commonOpenApiErrorResponses,
+    403: errorResponses[403],
+    404: errorResponses[404],
+    ...commonErrorResponses,
   },
 });
 

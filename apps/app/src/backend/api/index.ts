@@ -1,16 +1,17 @@
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { authMiddleware } from './middleware/auth';
 import { loggingMiddleware } from './middleware/logging';
-import { createRateLimitMiddleware } from './middleware/rate-limit';
+import { createRateLimitMiddleware, createRateLimitPolicyMiddleware } from './middleware/rate-limit';
+import { API_DOCS_URL, registerOpenApiDocs } from './openapi';
 import { registerAnalyticsRoutes } from './routes/analytics';
 import { registerFilterValueRoutes } from './routes/filter-values';
 import { registerFunnelRoutes } from './routes/funnels';
 import { registerProjectRoutes } from './routes/projects';
 import { registerUserRoutes } from './routes/users';
 import type { PublicApiHonoEnv } from './types';
-import { createValidationErrorResponse, errorHandler } from './utils/errors';
+import { createErrorBody, createValidationErrorResponse, errorHandler } from './utils/errors';
 
-export const API_DOCS_URL = 'https://vemetric.com/docs/api/getting-started';
+export { API_DOCS_URL };
 
 export function createPublicApi() {
   const rateLimitMiddleware = createRateLimitMiddleware();
@@ -23,14 +24,7 @@ export function createPublicApi() {
     },
   });
 
-  api.doc('/openapi.json', {
-    openapi: '3.0.0',
-    info: {
-      title: 'Vemetric API',
-      version: '1.0.0',
-      description: 'Privacy-first analytics API',
-    },
-  });
+  registerOpenApiDocs(api);
 
   api.get('/', (c) => c.redirect(API_DOCS_URL, 302));
   api.get('/docs', (c) => c.redirect(API_DOCS_URL, 302));
@@ -38,6 +32,7 @@ export function createPublicApi() {
   if (process.env.NODE_ENV !== 'test') {
     api.use('/v1/*', loggingMiddleware);
   }
+  api.use('/v1/*', createRateLimitPolicyMiddleware());
   api.use('/v1/*', authMiddleware);
   api.use('/v1/*', rateLimitMiddleware);
 
@@ -48,15 +43,7 @@ export function createPublicApi() {
   registerFunnelRoutes(api);
 
   api.notFound((c) => {
-    return c.json(
-      {
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Route not found. See https://vemetric.com/docs/api',
-        },
-      },
-      404,
-    );
+    return c.json(createErrorBody('NOT_FOUND', 'Route not found. See https://vemetric.com/docs/api'), 404);
   });
 
   api.onError(errorHandler);

@@ -4,11 +4,7 @@ import { COUNTRIES } from '@vemetric/common/countries';
 import { getEventName } from '@vemetric/common/event';
 import { clickhouseEvent } from 'clickhouse';
 import { isRetentionRestricted, RETENTION_UPGRADE_MESSAGE } from '../../utils/retention';
-import {
-  authorizationHeaderSchema,
-  commonOpenApiErrorResponses,
-  planLimitExceededOpenApiResponse,
-} from '../schemas/common';
+import { commonErrorResponses, errorResponses, rateLimitResponseHeaders } from '../openapi';
 import { filterValuesRequestSchema, filterValuesResponseSchema } from '../schemas/filter-values';
 import type { PublicApiHonoEnv } from '../types';
 import { formatApiDate, resolveApiDateRange } from '../utils/date';
@@ -17,10 +13,11 @@ import { ApiError } from '../utils/errors';
 const filterValuesRoute = createRoute({
   method: 'post',
   path: '/v1/filters/values',
+  operationId: 'getFilterValues',
+  tags: ['Filters'],
   summary: 'Get filter values',
   description: 'Returns available filter values for one or more fields with pagination.',
   request: {
-    headers: authorizationHeaderSchema,
     body: {
       required: true,
       content: {
@@ -33,14 +30,15 @@ const filterValuesRoute = createRoute({
   responses: {
     200: {
       description: 'Success',
+      headers: rateLimitResponseHeaders,
       content: {
         'application/json': {
           schema: filterValuesResponseSchema,
         },
       },
     },
-    403: planLimitExceededOpenApiResponse,
-    ...commonOpenApiErrorResponses,
+    403: errorResponses[403],
+    ...commonErrorResponses,
   },
 });
 

@@ -4,8 +4,8 @@ import { getUserFilterQueries, parseMetricsQueryGroupingToken } from 'clickhouse
 import { getFilterFunnelsData } from '../../utils/filter';
 import { isRetentionRestricted, RETENTION_UPGRADE_MESSAGE } from '../../utils/retention';
 import { DEFAULT_METRICS } from '../consts/analytics';
+import { commonErrorResponses, errorResponses, rateLimitResponseHeaders } from '../openapi';
 import { analyticsQueryRequestSchema, analyticsQueryResponseSchema } from '../schemas/analytics';
-import { authorizationHeaderSchema, commonOpenApiErrorResponses, planLimitExceededOpenApiResponse } from '../schemas/common';
 import type { PublicApiHonoEnv } from '../types';
 import { buildGroupObject, resolveAutoIntervalGrouping } from '../utils/analytics/grouping';
 import { getEmptyMetricValue, normalizeMetricValue } from '../utils/analytics/metrics';
@@ -18,10 +18,11 @@ import { ApiError } from '../utils/errors';
 const analyticsRoute = createRoute({
   method: 'post',
   path: '/v1/analytics/query',
+  operationId: 'queryAnalytics',
+  tags: ['Analytics'],
   summary: 'Query analytics',
   description: 'Query analytics metrics with optional grouping, sorting and filters.',
   request: {
-    headers: authorizationHeaderSchema,
     body: {
       required: true,
       content: {
@@ -34,14 +35,15 @@ const analyticsRoute = createRoute({
   responses: {
     200: {
       description: 'Success',
+      headers: rateLimitResponseHeaders,
       content: {
         'application/json': {
           schema: analyticsQueryResponseSchema,
         },
       },
     },
-    403: planLimitExceededOpenApiResponse,
-    ...commonOpenApiErrorResponses,
+    403: errorResponses[403],
+    ...commonErrorResponses,
   },
 });
 

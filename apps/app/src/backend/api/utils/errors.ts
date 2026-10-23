@@ -5,10 +5,32 @@ import type { z } from 'zod';
 import { logger } from './api-logger';
 import type { PublicApiHonoEnv } from '../types';
 
-export class ApiError extends HTTPException {
-  code: string;
+/**
+ * Every machine-readable error code the public API can return in `error.code`.
+ * Documented as the enum of the `Error` schema in the OpenAPI spec.
+ */
+export const API_ERROR_CODES = [
+  'VALIDATION_ERROR',
+  'UNAUTHORIZED',
+  'PLAN_LIMIT_EXCEEDED',
+  'NOT_FOUND',
+  'USER_NOT_FOUND',
+  'FUNNEL_NOT_FOUND',
+  'RATE_LIMIT_EXCEEDED',
+  'HTTP_ERROR',
+  'INTERNAL_ERROR',
+] as const;
 
-  constructor(status: ContentfulStatusCode, code: string, message: string) {
+export type ApiErrorCode = (typeof API_ERROR_CODES)[number];
+
+export function createErrorBody(code: ApiErrorCode, message: string) {
+  return { error: { code, message } };
+}
+
+export class ApiError extends HTTPException {
+  code: ApiErrorCode;
+
+  constructor(status: ContentfulStatusCode, code: ApiErrorCode, message: string) {
     super(status, { message });
     this.code = code;
   }
@@ -29,11 +51,11 @@ export function createValidationErrorResponse(issues: z.core.$ZodIssue[]) {
 
 export function errorHandler(err: Error, c: Context<PublicApiHonoEnv>) {
   if (err instanceof ApiError) {
-    return c.json({ error: { code: err.code, message: err.message } }, err.status);
+    return c.json(createErrorBody(err.code, err.message), err.status);
   }
 
   if (err instanceof HTTPException) {
-    return c.json({ error: { code: 'HTTP_ERROR', message: err.message } }, err.status);
+    return c.json(createErrorBody('HTTP_ERROR', err.message), err.status);
   }
 
   const apiKey = c.var.apiKey;
@@ -49,13 +71,5 @@ export function errorHandler(err: Error, c: Context<PublicApiHonoEnv>) {
     },
     'Unhandled public API error',
   );
-  return c.json(
-    {
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: 'An unexpected error occurred',
-      },
-    },
-    500,
-  );
+  return c.json(createErrorBody('INTERNAL_ERROR', 'An unexpected error occurred'), 500);
 }

@@ -7,6 +7,7 @@ import { clickhouseEvent, getDeviceId } from 'clickhouse';
 import { getDeviceDataFromHeaders } from '../utils/device';
 import { envPositiveInteger, workerName } from '../utils/env';
 import { logger } from '../utils/logger';
+import { followUpIfMerged } from '../utils/merge-follow-up';
 import { getReferrerFromRequest } from '../utils/referrer';
 import { getSessionData } from '../utils/session';
 import { queueTelemetry } from '../utils/telemetry';
@@ -78,6 +79,9 @@ export async function initEventWorker() {
           customData: customData ?? {},
         },
       ]);
+
+      // The id may have been merged into an identified user before this event was stored.
+      await followUpIfMerged(projectId, userId, { createdAt, sessionId });
     },
     {
       connection: {

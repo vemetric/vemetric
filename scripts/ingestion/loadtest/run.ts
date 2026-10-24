@@ -4,7 +4,7 @@
  * databases, sends traffic over HTTP at a fixed rate, and reports throughput, backlog, Redis
  * memory and whether the stored data matches what was sent. See scripts/ingestion/README.md.
  *
- *   bun run loadtest -- [--rate 500] [--duration 60] [--workers 1] [--unique 0.5] [--ref .]
+ *   bun run loadtest -- [--rate 500] [--duration 60] [--workers 1] [--unique 0.5] [--identify 0] [--ref .]
  */
 import { mkdirSync, openSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -29,6 +29,7 @@ const { values: args } = parseArgs({
     duration: { type: 'string', default: '60' },
     workers: { type: 'string', default: '1' },
     unique: { type: 'string', default: '0.5' },
+    identify: { type: 'string', default: '0' },
     'drain-timeout': { type: 'string', default: '600' },
   },
 });
@@ -37,11 +38,20 @@ const duration = Number(args.duration);
 const workerCount = Number(args.workers);
 // Share of events from identities that send one event only (bot-like traffic, nothing to reuse).
 const uniqueShare = Number(args.unique);
+// Share of returning visitors that log in after their second pageview; half of them into a user
+// that already logged in on another device.
+const identifyShare = Number(args.identify);
 
 const PROJECT = { id: '9930000000000001', token: 'loadtest-token', domain: 'loadtest.example.com' };
 const HUB_PORT = 4004;
 const PAGEVIEWS_PER_VISITOR = 5;
-const QUEUES = ['event', 'session', 'create-device'];
+const LOGIN_AFTER_PAGEVIEWS = 2;
+const QUEUES = [
+  'event',
+  'session',
+  'create-device',
+  ...(identifyShare > 0 ? ['create-user', 'update-user', 'enrich-user', 'merge-user'] : []),
+];
 const USER_AGENTS = [
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
@@ -116,16 +126,21 @@ function newIdentity() {
     sent: 0,
     accepted: 0,
     lastSentAt: 0,
+    identifier: undefined as string | undefined,
+    identified: false,
   };
 }
 type Identity = ReturnType<typeof newIdentity>;
 const visitors: Identity[] = [];
+const loggedIn: Identity[] = [];
+const identifiers: string[] = [];
 
 const stats = {
   sent: 0,
   accepted: 0,
   identities: 0,
   pageLeaves: 0,
+  logins: 0,
   failed: 0,
   inFlight: 0,
   skipped: 0,
@@ -133,7 +148,7 @@ const stats = {
 };
 const MAX_IN_FLIGHT = 1000;
 
-async function send(path: '/e' | '/l', identity: Identity, body: Record<string, unknown>) {
+async function send(path: '/e' | '/l' | '/i', identity: Identity, body: Record<string, unknown>) {
   if (stats.inFlight >= MAX_IN_FLIGHT) {
     stats.skipped++;
     return;
@@ -158,6 +173,11 @@ async function send(path: '/e' | '/l', identity: Identity, body: Record<string, 
     if (response.ok && path === '/e') {
       stats.accepted++;
       if (identity.accepted++ === 0) stats.identities++;
+    } else if (response.ok && path === '/i') {
+      // Like the SDK, later events carry the identifier once the identification succeeded.
+      stats.logins++;
+      identity.identified = true;
+      loggedIn.push(identity);
     } else if (response.ok) stats.pageLeaves++;
     else stats.failed++;
   } catch {
@@ -180,12 +200,26 @@ function sendOne() {
     if (!candidate || Date.now() - candidate.lastSentAt < 1000 || Math.random() < 1 / PAGEVIEWS_PER_VISITOR) {
       identity = newIdentity();
       visitors.push(identity);
+      if (Math.random() < identifyShare) {
+        identity.identifier =
+          identifiers.length && Math.random() < 0.5
+            ? identifiers[Math.floor(Math.random() * identifiers.length)]
+            : `loadtest-user-${identitySequence}`;
+        if (!identifiers.includes(identity.identifier!)) identifiers.push(identity.identifier!);
+      }
     } else {
       identity = candidate;
     }
   }
   const url = `https://${PROJECT.domain}${PATHS[(identity.sent + identitySequence) % PATHS.length]}`;
-  void send('/e', identity, { name: '$$pageView', url });
+  void send('/e', identity, {
+    name: '$$pageView',
+    url,
+    ...(identity.identified ? { identifier: identity.identifier, displayName: identity.identifier } : {}),
+  });
+  if (identity.identifier && identity.sent + 1 === LOGIN_AFTER_PAGEVIEWS) {
+    void send('/i', identity, { identifier: identity.identifier, displayName: identity.identifier });
+  }
   identity.sent++;
   identity.lastSentAt = Date.now();
   if (identity.sent >= PAGEVIEWS_PER_VISITOR) {
@@ -206,13 +240,14 @@ async function sample(phase: string) {
     accepted: stats.accepted,
     redisMb: Math.round(memory / 1e6),
     dirtySessions: await redis.zcard('vm:{session-state}:dirty'),
+    dirtyUsers: await redis.zcard('vm:{user-state}:dirty'),
   };
   QUEUES.forEach((name, i) => (row[`${name}Backlog`] = Object.values(counts[i]!).reduce((a, b) => a + b, 0)));
   samples.push(row);
   const previous = samples.at(-2);
   const acceptedRate = previous ? Math.round((row.accepted! - previous.accepted!) / (row.t! - previous.t! || 1)) : 0;
   console.log(
-    `${phase.padEnd(5)} t=${String(row.t).padStart(4)}s accepted=${row.accepted} (${acceptedRate}/s) backlog event=${row.eventBacklog} session=${row.sessionBacklog} device=${row['create-deviceBacklog']} dirty=${row.dirtySessions} redis=${row.redisMb}MB`,
+    `${phase.padEnd(5)} t=${String(row.t).padStart(4)}s accepted=${row.accepted} (${acceptedRate}/s) backlog event=${row.eventBacklog} session=${row.sessionBacklog} device=${row['create-deviceBacklog']}${identifyShare > 0 ? ` merge=${row['merge-userBacklog']}` : ''} dirty=${row.dirtySessions} redis=${row.redisMb}MB`,
   );
   return row;
 }
@@ -237,7 +272,7 @@ const drainStart = performance.now();
 let drained = false;
 while ((performance.now() - drainStart) / 1000 < Number(args['drain-timeout'])) {
   const row = await sample('drain');
-  if (QUEUES.every((name) => row[`${name}Backlog`] === 0) && row.dirtySessions === 0) {
+  if (QUEUES.every((name) => row[`${name}Backlog`] === 0) && row.dirtySessions === 0 && row.dirtyUsers === 0) {
     drained = true;
     break;
   }
@@ -261,19 +296,42 @@ const stored = {
     `SELECT count() FROM (SELECT userId, id, argMax(deleted, revision) AS d FROM device_v2 WHERE ${projectFilter} GROUP BY userId, id) WHERE d = 0`,
   ),
 };
-// Every identity is one user with one device and, within the test, one session.
-const expected = { events: stats.accepted, sessions: stats.identities, devices: stats.identities };
+const anonymous = `userId NOT IN (SELECT id FROM user WHERE ${projectFilter})`;
+const identified = `userId IN (SELECT id FROM user WHERE ${projectFilter})`;
+const loggedInIdentities = new Set(loggedIn);
+const anonymousIdentities = stats.identities - loggedIn.filter((identity) => identity.accepted > 0).length;
+// Every anonymous identity is one user with one device and, within the test, one session. Every
+// event of a visitor who logged in belongs to an identified user, one per identifier.
+const expected = {
+  events: stats.accepted,
+  anonymousSessions: anonymousIdentities,
+  anonymousDevices: anonymousIdentities,
+  identifiedEvents: Array.from(loggedInIdentities).reduce((sum, identity) => sum + identity.accepted, 0),
+  identifiedUsers: new Set(loggedIn.map((identity) => identity.identifier)).size,
+};
+Object.assign(stored, {
+  anonymousSessions: await one(
+    `SELECT count() FROM (SELECT id, argMax(deleted, revision) AS d, argMax(userId, revision) AS userId FROM session_v3 WHERE ${projectFilter} GROUP BY id) WHERE d = 0 AND ${anonymous}`,
+  ),
+  anonymousDevices: await one(
+    `SELECT count() FROM (SELECT userId, id, argMax(deleted, revision) AS d FROM device_v2 WHERE ${projectFilter} GROUP BY userId, id) WHERE d = 0 AND ${anonymous}`,
+  ),
+  identifiedEvents: await one(`SELECT sum(sign) FROM event WHERE ${projectFilter} AND ${identified}`),
+  identifiedUsers: await one(`SELECT uniqExact(id) FROM user WHERE ${projectFilter}`),
+});
+const { sessions: _sessions, devices: _devices, ...comparable } = stored as Record<string, number>;
 
 const sorted = [...stats.latencies].sort((a, b) => a - b);
 const percentile = (p: number) => Math.round(sorted[Math.floor((sorted.length - 1) * p)] ?? 0);
 const max = (key: string) => Math.max(...samples.map((row) => row[key] ?? 0));
 const report = {
   ref: args.ref,
-  config: { rate, duration, workers: workerCount, uniqueShare },
+  config: { rate, duration, workers: workerCount, uniqueShare, identifyShare },
   hub: {
     acceptedPerSecond: Math.round(stats.accepted / sendSeconds),
     accepted: stats.accepted,
     pageLeaves: stats.pageLeaves,
+    logins: stats.logins,
     failed: stats.failed,
     skippedByGenerator: stats.skipped,
     latencyMs: { p50: percentile(0.5), p99: percentile(0.99) },
@@ -284,7 +342,7 @@ const report = {
     maxBacklog: Object.fromEntries(QUEUES.map((name) => [name, max(`${name}Backlog`)])),
     peakRedisMb: max('redisMb'),
   },
-  data: { expected, stored, matches: JSON.stringify(expected) === JSON.stringify(stored) },
+  data: { expected, stored, matches: JSON.stringify(expected) === JSON.stringify(comparable) },
 };
 writeFileSync(join(reportDir, 'report.json'), JSON.stringify({ ...report, samples }, null, 2));
 console.log(`\n${JSON.stringify(report, null, 2)}\nReport and logs: ${reportDir}`);

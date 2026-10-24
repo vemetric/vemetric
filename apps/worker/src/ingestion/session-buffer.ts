@@ -12,11 +12,12 @@ export async function bufferSessionUpdate(
   at: string,
   session?: ClickhouseSession,
   explicitDuration?: number,
-) {
+): Promise<'deleted' | undefined> {
   const key = sessionKey(projectId, id);
   for (let attempt = 0; attempt < 100; attempt++) {
     const { raw, state } = await sessionStore.load(key);
-    if (state.deleted) return;
+    // A deleted session stays deleted; the caller may continue the session it was merged into.
+    if (state.deleted) return 'deleted';
     const incoming = session ? storedSession(session) : undefined;
     if (incoming) incoming.id = id;
     // Tracking updates preserve ownership already assigned to this session.
@@ -33,14 +34,15 @@ export async function bufferSessionUpdate(
 
 // The common path needs no ClickHouse/user lookup or repeated UA/referrer parsing.
 // Returns 'uninitialized' when no session exists yet and 'predates' for an event earlier than the
-// session start; both take the full path, which can correct the entry metadata.
+// session start; both take the full path, which can correct the entry metadata. 'deleted' means
+// the session was merged away.
 export async function bufferExistingSessionActivity(
   projectId: bigint,
   id: string,
   at: string,
   geoData?: GeoData,
   { knownNew = false } = {},
-): Promise<'buffered' | 'uninitialized' | 'predates'> {
+): Promise<'buffered' | 'uninitialized' | 'predates' | 'deleted'> {
   at = formatClickhouseDate(new Date(clickhouseDateToISO(at)));
   const key = sessionKey(projectId, id);
   // State for a session first seen at `at` is written later and then kept for at least the
@@ -49,7 +51,7 @@ export async function bufferExistingSessionActivity(
   knownNew &&= Date.now() - Date.parse(clickhouseDateToISO(at)) < (cleanTtl * 1000) / 2;
   for (let attempt = 0; attempt < 100; attempt++) {
     const { raw, state } = await sessionStore.load(key, { knownNew });
-    if (state.deleted) return 'buffered';
+    if (state.deleted) return 'deleted';
     if (!state.session) return 'uninitialized';
     if (at < state.session.startedAt) return 'predates';
     const incoming = geoData ? { ...state.session, ...geoData } : undefined;

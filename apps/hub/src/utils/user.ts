@@ -1,13 +1,14 @@
 import { formatClickhouseDate } from '@vemetric/common/date';
 import { createUserQueue } from '@vemetric/queues/create-user-queue';
 import { enrichUserQueue } from '@vemetric/queues/enrich-user-queue';
-import { mergeUserQueue } from '@vemetric/queues/merge-user-queue';
+import { mergeUserJobOptions, mergeUserQueue } from '@vemetric/queues/merge-user-queue';
 import { addToQueue } from '@vemetric/queues/queue-utils';
 import { updateUserDataModel, updateUserQueue } from '@vemetric/queues/update-user-queue';
 import { generateUserId, dbUserIdentificationMap } from 'database';
 import { z } from 'zod';
 import { setUserIdCookie } from './cookie';
 import { logger } from './logger';
+import { continueSession } from './session';
 import type { HonoContext } from '../types';
 
 const enableLogs = false;
@@ -18,6 +19,10 @@ const logInfo = (params: Record<string, unknown>, msg: string) => {
   logger.info(params, msg);
 };
 
+// The merge runs this long after the identification, and the anonymous id's activity up to the
+// same point belongs to the identified user (requests that were already on their way).
+const MERGE_DELAY_MS = 6000;
+
 export const identifySchema = z.object({
   identifier: z.string().min(1),
   displayName: z.string().optional(),
@@ -26,12 +31,54 @@ export const identifySchema = z.object({
 });
 export type IdentifySchema = z.infer<typeof identifySchema>;
 
+// Queues the merge of an anonymous id into the identified user (only one of its sessions when
+// `sessionId` is given). Without an active session of its own, the user continues the visit that
+// led to the login.
+async function mergeIntoUser(
+  projectId: bigint,
+  anonymousUserId: bigint,
+  identifiedUserId: bigint,
+  displayName?: string,
+  sessionId?: string,
+) {
+  const fiveSecondRoundedDate = new Date();
+  fiveSecondRoundedDate.setMilliseconds(0);
+  fiveSecondRoundedDate.setSeconds(fiveSecondRoundedDate.getSeconds() - (fiveSecondRoundedDate.getSeconds() % 5));
+  const oldUserId = String(anonymousUserId);
+
+  await continueSession(projectId, anonymousUserId, identifiedUserId);
+  await addToQueue(
+    mergeUserQueue,
+    {
+      projectId: String(projectId),
+      oldUserId,
+      newUserId: String(identifiedUserId),
+      displayName,
+      cutoff: formatClickhouseDate(new Date(Date.now() + MERGE_DELAY_MS)),
+      sessionId,
+    },
+    {
+      ...mergeUserJobOptions,
+      jobId: `${String(projectId)}-${oldUserId}-${String(identifiedUserId)}-${fiveSecondRoundedDate.toISOString()}${sessionId ? `-${sessionId}` : ''}`,
+      delay: MERGE_DELAY_MS,
+    },
+  );
+}
+
+/**
+ * Identifies the visitor. `userId` is the id the visitor's earlier requests used, or null when
+ * there are none (e.g. a backend request). `hashedVisit` is the current session of the visitor's
+ * hashed id when this visit started on it although the visitor has a cookie: requests that did not
+ * allow cookies used it, e.g. the start of a return visit when cookies are allowed only for
+ * identify. Only that session is merged. Returns the identified user's id.
+ */
 export async function identifyUser(
   context: HonoContext,
   body: IdentifySchema,
   projectId: bigint,
   userId: bigint | null,
-) {
+  hashedVisit: { userId: bigint; sessionId: string } | null = null,
+): Promise<bigint> {
   const { allowCookies, geoData } = context.var;
 
   const { identifier, displayName, avatarUrl } = body;
@@ -39,6 +86,14 @@ export async function identifyUser(
 
   const { set, setOnce } = body.data ?? {};
   const now = formatClickhouseDate(new Date());
+  let anonymousUserId = userId;
+  // The hashed visit is merged too, unless the hashed id belongs to an identified user itself.
+  const hashed =
+    hashedVisit !== null &&
+    hashedVisit.userId !== userId &&
+    !(await dbUserIdentificationMap.findByUserId(String(projectId), String(hashedVisit.userId)))
+      ? hashedVisit
+      : null;
 
   if (userId !== null) {
     const existingUserWithId = await dbUserIdentificationMap.findByUserId(String(projectId), String(userId));
@@ -56,11 +111,14 @@ export async function identifyUser(
         avatarUrl,
         data: body.data,
       });
+      if (hashed !== null) {
+        await mergeIntoUser(projectId, hashed.userId, userId, displayName, hashed.sessionId);
+      }
 
-      return context.text('', 200);
+      return userId;
     }
 
-    if (existingUserWithId && existingUserWithId?.identifier !== identifier) {
+    if (existingUserWithId) {
       logInfo(
         {
           projectId: String(projectId),
@@ -70,26 +128,26 @@ export async function identifyUser(
         },
         'user already identified, but with different identifier',
       );
-      // we have a user with the same id but different identifier, so we generate a new id before executing the merge logic (leave the old user as it is)
-      userId = null;
+      // The id belongs to another identified user, which keeps its activity.
+      anonymousUserId = null;
     }
   }
 
+  let identifiedUserId: bigint;
   const existingUserWithIdentifer = await dbUserIdentificationMap.findByIdentifier(String(projectId), identifier);
   if (!existingUserWithIdentifer) {
     logInfo(
       { projectId: String(projectId), userId: String(userId), identifier },
       'user identified for the first time, create the user',
     );
-    // the user has been identified for the first time .. no need to merge, we'll just assign all the past events directly to him
-    if (userId === null) {
-      userId = generateUserId();
-    }
+    // An identified user always gets a new id. The anonymous id (for cookieless tracking a hash of
+    // IP address and browser that other visitors can share for the rest of the day) is merged into it.
+    identifiedUserId = generateUserId();
     try {
-      await dbUserIdentificationMap.create(String(projectId), String(userId), identifier);
+      await dbUserIdentificationMap.create(String(projectId), String(identifiedUserId), identifier);
     } catch (err) {
       logger.error(
-        { projectId: String(projectId), userId: String(userId), identifier, err },
+        { projectId: String(projectId), userId: String(identifiedUserId), identifier, err },
         'Error creating user identification map entry',
       );
       throw err;
@@ -99,7 +157,7 @@ export async function identifyUser(
       createUserQueue,
       {
         projectId: String(projectId),
-        userId: String(userId),
+        userId: String(identifiedUserId),
         createdAt: now,
         geoData,
         identifier,
@@ -108,67 +166,55 @@ export async function identifyUser(
         data: { ...set, ...setOnce },
       },
       {
-        jobId: `${String(projectId)}-${String(userId)}`,
+        jobId: `${String(projectId)}-${String(identifiedUserId)}`,
       },
     );
   } else {
-    const newUserId = BigInt(existingUserWithIdentifer.userId);
+    identifiedUserId = BigInt(existingUserWithIdentifer.userId);
     logInfo(
-      { projectId: String(projectId), userId: String(userId), newUserId: String(newUserId), identifier },
+      { projectId: String(projectId), userId: String(userId), newUserId: String(identifiedUserId), identifier },
       'user was already identified, try to merge',
     );
 
     await addToQueue(updateUserQueue, {
       projectId: String(projectId),
-      userId: String(newUserId),
+      userId: String(identifiedUserId),
       updatedAt: now,
       displayName,
       avatarUrl,
       data: body.data,
     });
+  }
 
-    const fiveSecondRoundedDate = new Date();
-    fiveSecondRoundedDate.setMilliseconds(0);
-    fiveSecondRoundedDate.setSeconds(fiveSecondRoundedDate.getSeconds() - (fiveSecondRoundedDate.getSeconds() % 5));
+  if (anonymousUserId !== null && anonymousUserId !== identifiedUserId) {
+    await mergeIntoUser(projectId, anonymousUserId, identifiedUserId, displayName);
+  }
+  if (hashed !== null && hashed.userId !== identifiedUserId) {
+    await mergeIntoUser(projectId, hashed.userId, identifiedUserId, displayName, hashed.sessionId);
+  }
 
-    if (userId !== null) {
-      const oldUserId = String(userId);
+  const fiveSecondRoundedDate = new Date();
+  fiveSecondRoundedDate.setMilliseconds(0);
+  fiveSecondRoundedDate.setSeconds(fiveSecondRoundedDate.getSeconds() - (fiveSecondRoundedDate.getSeconds() % 5));
 
-      await addToQueue(
-        mergeUserQueue,
-        {
-          projectId: String(projectId),
-          oldUserId,
-          newUserId: String(newUserId),
-          displayName,
-        },
-        {
-          jobId: `${String(projectId)}-${oldUserId}-${String(newUserId)}-${fiveSecondRoundedDate.toISOString()}`,
-          delay: 6000,
-        },
-      );
-    }
-
+  if (existingUserWithIdentifer) {
     // Queue enrichment for the existing user to backfill attribution data if needed
     await addToQueue(
       enrichUserQueue,
       {
         projectId: String(projectId),
-        userId: String(newUserId),
+        userId: String(identifiedUserId),
       },
       {
-        jobId: `${String(projectId)}-${String(newUserId)}-${fiveSecondRoundedDate.toISOString()}`,
+        jobId: `${String(projectId)}-${String(identifiedUserId)}-${fiveSecondRoundedDate.toISOString()}`,
         delay: 10000, // Delay to ensure user is created/updated first
       },
     );
-
-    // we set the cookie to the id of the existing user
-    userId = newUserId;
   }
 
   if (allowCookies) {
-    setUserIdCookie(context, userId);
+    setUserIdCookie(context, identifiedUserId);
   }
 
-  return context.text('', 200);
+  return identifiedUserId;
 }

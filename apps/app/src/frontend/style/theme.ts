@@ -20,9 +20,15 @@ export const vemetricTheme = createSystem(defaultConfig, {
       colorPalette: 'gray',
       bg: 'bg.muted',
     },
-    // Reserve space for the scrollbar on project pages so switching between pages with and without scrollable content doesn't shift the layout
+    // Always show the scrollbar on project pages so switching between pages with and without scrollable content doesn't shift the layout.
+    // Not scrollbarGutter: 'stable', as browsers with overlay scrollbars (e.g. Chrome on macOS) reserve no space for it even though
+    // the custom ::-webkit-scrollbar below takes up 8px, and it also stops the dialogs' scroll lock from compensating for the scrollbar.
     'html:has([data-project-layout])': {
-      scrollbarGutter: 'stable',
+      overflowY: 'scroll',
+      // Keep the always visible track invisible on pages without scrollable content
+      '&::-webkit-scrollbar': {
+        backgroundColor: 'transparent',
+      },
     },
     '*': {
       '&::-webkit-scrollbar': {

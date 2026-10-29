@@ -64,13 +64,13 @@ export const GitHubAuthCard = ({ accountId, hasPassword, hasOtherProvider, onUpd
               <TbBrandGithub />
             </Box>
             <Box>
-              <Text fontWeight="semibold">GitHub</Text>
               <Flex align="center" gap={1}>
-                <Text fontSize="sm" color="fg.muted">
-                  {isConnected ? 'Your GitHub account is connected' : 'Connect your GitHub account'}
-                </Text>
+                <Text fontWeight="semibold">GitHub</Text>
                 {isConnected && <Icon as={TbCheck} color="green.500" />}
               </Flex>
+              <Text fontSize="sm" color="fg.muted">
+                {isConnected ? 'Your GitHub account is connected' : 'Connect your GitHub account'}
+              </Text>
             </Box>
           </Flex>
           {isConnected ? (

@@ -64,13 +64,13 @@ export const GoogleAuthCard = ({ accountId, hasPassword, hasOtherProvider, onUpd
               <TbBrandGoogleFilled />
             </Box>
             <Box>
-              <Text fontWeight="semibold">Google</Text>
               <Flex align="center" gap={1}>
-                <Text fontSize="sm" color="fg.muted">
-                  {isConnected ? 'Your Google account is connected' : 'Connect your Google account'}
-                </Text>
+                <Text fontWeight="semibold">Google</Text>
                 {isConnected && <Icon as={TbCheck} color="green.500" />}
               </Flex>
+              <Text fontSize="sm" color="fg.muted">
+                {isConnected ? 'Your Google account is connected' : 'Connect your Google account'}
+              </Text>
             </Box>
           </Flex>
           {isConnected ? (

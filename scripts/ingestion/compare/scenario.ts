@@ -33,6 +33,9 @@ const UA = {
   android:
     'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36',
   server: 'node-fetch/1.0',
+  ipad: 'Mozilla/5.0 (iPad; CPU OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+  edge: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0',
+  linux: 'Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0',
 };
 const ANDROID_HINTS = { 'sec-ch-ua-platform': '"Android"', 'sec-ch-ua-mobile': '?1', 'sec-ch-ua-model': '"Pixel 8"' };
 const burstUa = (i: number) =>
@@ -42,7 +45,12 @@ let hubFetch: (request: Request) => Promise<Response>;
 const workers: Worker[] = [];
 let queues: Queue[] = [];
 let redis: Redis;
-let ingestion: { flushSessionBuffer: () => Promise<number>; closeStateRedis: () => Promise<void> } | null = null;
+let ingestion: {
+  flushSessionBuffer: () => Promise<number>;
+  // Versions that buffer user writes in Redis
+  flushUserBuffer?: () => Promise<number>;
+  closeStateRedis: () => Promise<void>;
+} | null = null;
 
 const at = (seconds: number) => vi.setSystemTime(BASE + seconds * 1000);
 
@@ -66,16 +74,21 @@ async function send(path: '/e' | '/i' | '/l', userAgent: string, body: Record<st
 const pageView = (ua: string, url: string, extra: Record<string, unknown> = {}, headers = {}) =>
   send('/e', ua, { name: EventNames.PageView, url, ...extra }, headers);
 
-async function idle() {
+// Waits until all queues (except the given ones) are empty and buffered state is written.
+async function idle({ except = [] as string[] } = {}) {
   const started = Date.now();
   while (Date.now() - started < 60_000) {
     const counts = await Promise.all(
-      queues.map((queue) => queue.getJobCounts('waiting', 'active', 'delayed', 'prioritized', 'paused')),
+      queues
+        .filter((queue) => !except.includes(queue.name))
+        .map((queue) => queue.getJobCounts('waiting', 'active', 'delayed', 'prioritized', 'paused')),
     );
     if (counts.every((count) => Object.values(count).every((value) => value === 0))) {
       if (!ingestion) return;
       await ingestion.flushSessionBuffer();
-      if ((await redis.zcard('vm:{session-state}:dirty')) === 0) return;
+      await ingestion.flushUserBuffer?.();
+      const dirty = await Promise.all([redis.zcard('vm:{session-state}:dirty'), redis.zcard('vm:{user-state}:dirty')]);
+      if (dirty.every((count) => count === 0)) return;
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
@@ -242,6 +255,56 @@ describe('ingestion comparison scenario', () => {
     at(7300);
     await Promise.all(Array.from({ length: 10 }, (_, i) => send('/l', burstUa(i), {})));
     await idle();
+
+    // Phase 5: logins of an existing user. First on a tablet while the user is active on the phone,
+    // with tablet activity before and during the phone session.
+    // The clock jumps more than a minute between these steps, longer than a later event of a new
+    // session waits for the creating one, so each visit's first event is processed first.
+    await expireHubSessions();
+    at(8000);
+    await pageView(UA.ipad, 'https://diff.example.com/landing', {}, { 'v-referrer': 'https://www.google.com/' });
+    await idle();
+    at(8300);
+    await pageView(UA.ipad, 'https://diff.example.com/pricing');
+    at(8600);
+    await pageView(UA.iphone, 'https://diff.example.com/dashboard', { identifier: 'alice' });
+    await idle();
+    at(8900);
+    await pageView(UA.ipad, 'https://diff.example.com/docs');
+    at(9200);
+    await pageView(UA.iphone, 'https://diff.example.com/reports', { identifier: 'alice' });
+    await idle();
+    at(9300);
+    await send('/i', UA.ipad, { identifier: 'alice', displayName: 'Alice' });
+    at(9310);
+    await pageView(UA.ipad, 'https://diff.example.com/account', { identifier: 'alice' });
+    await idle();
+
+    // Then, more than 30 minutes later, on another computer without an active session of the user.
+    await expireHubSessions();
+    at(11200);
+    await pageView(UA.edge, 'https://diff.example.com/landing', {}, { 'v-referrer': 'https://duckduckgo.com/' });
+    await idle();
+    at(11260);
+    await pageView(UA.edge, 'https://diff.example.com/pricing');
+    await idle();
+    at(11320);
+    await send('/i', UA.edge, { identifier: 'alice', displayName: 'Alice' });
+    at(11325);
+    await pageView(UA.edge, 'https://diff.example.com/account', { identifier: 'alice' });
+    await idle();
+
+    // Then, again later, with a pre-login event that is processed only after the merge ran.
+    await expireHubSessions();
+    const eventWorkers = workers.filter((worker) => worker.name === 'event');
+    await Promise.all(eventWorkers.map((worker) => worker.pause()));
+    at(13200);
+    await pageView(UA.linux, 'https://diff.example.com/late');
+    at(13210);
+    await send('/i', UA.linux, { identifier: 'alice', displayName: 'Alice' });
+    await idle({ except: ['event'] });
+    eventWorkers.forEach((worker) => worker.resume());
+    await idle();
     vi.useRealTimers();
     // Compare the settled state: reads without FINAL depend on when ClickHouse merges parts in
     // the background, which differs between runs, not between versions.
@@ -309,7 +372,7 @@ describe('ingestion comparison scenario', () => {
       };
     });
 
-    const range = { startDate: new Date(BASE - 3600_000), endDate: new Date(BASE + 3 * 3600_000) };
+    const range = { startDate: new Date(BASE - 3600_000), endDate: new Date(BASE + 4 * 3600_000) };
     const opts = { ...range, filterQueries: '', filterConfig: undefined, timeSpan: '24hrs' } as any;
     const dashboards = {
       visitDuration: await clickhouseSession.getVisitDurationTimeSeries(projectId, opts),

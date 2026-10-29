@@ -50,6 +50,16 @@ export async function getUserIdentificationLock(projectId: bigint, identifier: s
 
   return { lockAcquired: Boolean(lockAcquired) };
 }
+// Waits for a running identification of the same identifier to finish, then takes the lock.
+export async function waitForUserIdentificationLock(projectId: bigint, identifier: string, timeoutMs = 5000) {
+  const startedAt = Date.now();
+  while (true) {
+    const result = await getUserIdentificationLock(projectId, identifier);
+    if (result.lockAcquired || Date.now() - startedAt >= timeoutMs) return result;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}
+
 export async function releaseUserIdentificationLock(projectId: bigint, identifier: string) {
   const redisClient = await getRedisClient();
   const redisKey = getRedisUserIdentifyKey(projectId, identifier);

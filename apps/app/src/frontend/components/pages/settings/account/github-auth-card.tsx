@@ -6,15 +6,16 @@ import { authClient } from '@/utils/auth';
 import { getAppUrl } from '@/utils/url';
 
 interface GitHubAuthCardProps {
-  isConnected: boolean;
+  accountId?: string;
   hasPassword: boolean;
   hasOtherProvider: boolean;
   onUpdate: () => Promise<void>;
 }
 
-export const GitHubAuthCard = ({ isConnected, hasPassword, hasOtherProvider, onUpdate }: GitHubAuthCardProps) => {
+export const GitHubAuthCard = ({ accountId, hasPassword, hasOtherProvider, onUpdate }: GitHubAuthCardProps) => {
   const [isLoading, setIsLoading] = useState(false);
 
+  const isConnected = Boolean(accountId);
   const canUnlink = isConnected && (hasPassword || hasOtherProvider);
 
   const handleLink = async () => {
@@ -33,10 +34,11 @@ export const GitHubAuthCard = ({ isConnected, hasPassword, hasOtherProvider, onU
   };
 
   const handleUnlink = async () => {
+    if (!accountId) {
+      return;
+    }
     setIsLoading(true);
-    const result = await authClient.unlinkAccount({
-      providerId: 'github',
-    });
+    const result = await authClient.unlinkAccount({ accountId });
     setIsLoading(false);
 
     if (result.error) {

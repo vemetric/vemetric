@@ -46,7 +46,7 @@
     "@vemetric/node": "0.3.0",
     "@vemetric/queues": "workspace:*",
     "@vemetric/react": "0.6.1",
-    "better-auth": "~1.6.33",
+    "better-auth": "~1.7.14",
     "clickhouse": "workspace:*",
     "cobe": "^2.0.1",
     "database": "workspace:*",

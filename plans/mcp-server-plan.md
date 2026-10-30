@@ -78,8 +78,24 @@ Possible later additions: `compare` flag on `query_analytics` (current vs previo
 
 ### Prompts
 
-- `weekly_report`: summary of the last 7 days vs the 7 days before (users, pageviews, top pages, top sources, top countries, notable events, funnel conversion changes).
-- `investigate_drop`: given a metric and a date, find which dimensions explain a drop or spike.
+Prompts are ready-made instructions the user picks in their client (e.g. as a slash command). They only use the tools above. Not every client shows prompts, so the server must work fully without them.
+
+First release:
+
+- `period_report` (`period`: week/month): the period vs the one before. Users, pageviews, top pages, top sources, top countries, notable events, funnel conversion changes.
+- `investigate_change` (`metric`, `date`): compare the day with normal days, then break it down by referrer, country, page and device to find what explains the drop or spike.
+- `funnel_analysis` (`funnel`): where people drop off, and which segments (country, device, referrer, campaign) convert better or worse.
+- `conversion_sources` (`event`, e.g. signup): which sources, campaigns and landing pages bring the most conversions for the event, not just the most traffic.
+- `user_journey` (`user`: id or identifier): first/last seen, location, key events and sessions of one user. For support and sales.
+
+Prompts must respect the plan's retention: e.g. on the free plan, `period_report` with `month` can't compare with the month before, so the prompt tells the model to compare within what the plan includes or say what's missing instead of running into errors.
+
+Later candidates:
+
+- `launch_review` (`date`, optional `campaign`/`referrer`): before vs after a launch, which referrers brought traffic, how many conversions came from it.
+- `page_report` (`path`): traffic trend, sources, bounce rate, visit duration, countries and devices of one page.
+- `event_report` (`event`): trend of a custom event, breakdown by its properties, which users trigger it.
+- `audience_overview` (optional `period`): countries, cities, devices, browsers, operating systems.
 
 ### Output
 
@@ -128,8 +144,8 @@ Real questions an assistant should be able to answer, with the expected tool cal
 14. "What did user jane@example.com do in the last week?" → `get_user_events` (`identifier`).
 15. "Which users from Germany visited the pricing page this month?" → `list_users` with location + page filters.
 16. "Which pages do visitors from the newsletter campaign visit?" → `query_analytics` (`groupBy: page:path`, UTM filter).
-17. "What happened to traffic on 2026-09-30? It looks like it dropped." → `query_analytics` per hour/day + breakdowns by referrer/country/page (the `investigate_drop` prompt).
-18. "Give me a weekly report." → `weekly_report` prompt.
+17. "What happened to traffic on 2026-09-30? It looks like it dropped." → `query_analytics` per hour/day + breakdowns by referrer/country/page (the `investigate_change` prompt).
+18. "Give me a weekly report." → `period_report` prompt (`week`).
 19. "How many visitors did we have in January 2025?" on a free plan → `PLAN_LIMIT_EXCEEDED`. The assistant tells the user that this period isn't included in their Vemetric plan, mentions the upgrade, offers the last 30 days instead, and doesn't retry with other ranges.
 20. "What's the average visit duration on the blog?" → `query_analytics` (`visitDuration`, page filter `/blog*`). Should also explain that visit duration isn't available per page when grouping by `page:path`.
 

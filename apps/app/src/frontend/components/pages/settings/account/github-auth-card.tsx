@@ -6,15 +6,16 @@ import { authClient } from '@/utils/auth';
 import { getAppUrl } from '@/utils/url';
 
 interface GitHubAuthCardProps {
-  isConnected: boolean;
+  accountId?: string;
   hasPassword: boolean;
   hasOtherProvider: boolean;
   onUpdate: () => Promise<void>;
 }
 
-export const GitHubAuthCard = ({ isConnected, hasPassword, hasOtherProvider, onUpdate }: GitHubAuthCardProps) => {
+export const GitHubAuthCard = ({ accountId, hasPassword, hasOtherProvider, onUpdate }: GitHubAuthCardProps) => {
   const [isLoading, setIsLoading] = useState(false);
 
+  const isConnected = Boolean(accountId);
   const canUnlink = isConnected && (hasPassword || hasOtherProvider);
 
   const handleLink = async () => {
@@ -33,10 +34,11 @@ export const GitHubAuthCard = ({ isConnected, hasPassword, hasOtherProvider, onU
   };
 
   const handleUnlink = async () => {
+    if (!accountId) {
+      return;
+    }
     setIsLoading(true);
-    const result = await authClient.unlinkAccount({
-      providerId: 'github',
-    });
+    const result = await authClient.unlinkAccount({ accountId });
     setIsLoading(false);
 
     if (result.error) {
@@ -62,13 +64,13 @@ export const GitHubAuthCard = ({ isConnected, hasPassword, hasOtherProvider, onU
               <TbBrandGithub />
             </Box>
             <Box>
-              <Text fontWeight="semibold">GitHub</Text>
               <Flex align="center" gap={1}>
-                <Text fontSize="sm" color="fg.muted">
-                  {isConnected ? 'Your GitHub account is connected' : 'Connect your GitHub account'}
-                </Text>
+                <Text fontWeight="semibold">GitHub</Text>
                 {isConnected && <Icon as={TbCheck} color="green.500" />}
               </Flex>
+              <Text fontSize="sm" color="fg.muted">
+                {isConnected ? 'Your GitHub account is connected' : 'Connect your GitHub account'}
+              </Text>
             </Box>
           </Flex>
           {isConnected ? (

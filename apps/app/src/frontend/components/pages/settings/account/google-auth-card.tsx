@@ -6,15 +6,16 @@ import { authClient } from '@/utils/auth';
 import { getAppUrl } from '@/utils/url';
 
 interface GoogleAuthCardProps {
-  isConnected: boolean;
+  accountId?: string;
   hasPassword: boolean;
   hasOtherProvider: boolean;
   onUpdate: () => Promise<void>;
 }
 
-export const GoogleAuthCard = ({ isConnected, hasPassword, hasOtherProvider, onUpdate }: GoogleAuthCardProps) => {
+export const GoogleAuthCard = ({ accountId, hasPassword, hasOtherProvider, onUpdate }: GoogleAuthCardProps) => {
   const [isLoading, setIsLoading] = useState(false);
 
+  const isConnected = Boolean(accountId);
   const canUnlink = isConnected && (hasPassword || hasOtherProvider);
 
   const handleLink = async () => {
@@ -33,10 +34,11 @@ export const GoogleAuthCard = ({ isConnected, hasPassword, hasOtherProvider, onU
   };
 
   const handleUnlink = async () => {
+    if (!accountId) {
+      return;
+    }
     setIsLoading(true);
-    const result = await authClient.unlinkAccount({
-      providerId: 'google',
-    });
+    const result = await authClient.unlinkAccount({ accountId });
     setIsLoading(false);
 
     if (result.error) {
@@ -62,13 +64,13 @@ export const GoogleAuthCard = ({ isConnected, hasPassword, hasOtherProvider, onU
               <TbBrandGoogleFilled />
             </Box>
             <Box>
-              <Text fontWeight="semibold">Google</Text>
               <Flex align="center" gap={1}>
-                <Text fontSize="sm" color="fg.muted">
-                  {isConnected ? 'Your Google account is connected' : 'Connect your Google account'}
-                </Text>
+                <Text fontWeight="semibold">Google</Text>
                 {isConnected && <Icon as={TbCheck} color="green.500" />}
               </Flex>
+              <Text fontSize="sm" color="fg.muted">
+                {isConnected ? 'Your Google account is connected' : 'Connect your Google account'}
+              </Text>
             </Box>
           </Flex>
           {isConnected ? (

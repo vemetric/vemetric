@@ -2,42 +2,62 @@
 
 ## Goal
 
-Let AI assistants (Claude, ChatGPT, Cursor, VS Code, …) answer questions about a Vemetric project by calling read-only tools.
+Let AI assistants (Claude, ChatGPT, Cursor, VS Code, …) answer questions about a user's Vemetric projects by calling read-only tools. There is no beta: once the phases below are done, the MCP server is generally available to all Vemetric users.
 
 ## Decisions
 
 - **Library:** official MCP TypeScript SDK v2 (`@modelcontextprotocol/server` + `@modelcontextprotocol/hono`), mounted in the existing Hono app.
 - **Endpoint:** `/mcp` next to `/api` in `apps/app/src/backend/app.ts`. Stateless Streamable HTTP, no sessions.
-- **Auth (beta):** existing API keys (`Authorization: Bearer vem_…`), reusing `authMiddleware`. OAuth follows for GA.
+- **Auth:** OAuth 2.1 as the main path (the MCP standard), API keys as a fallback. See [Authentication](#authentication).
 - **Plans:** available on all plans. The same retention limits as the REST API apply (`PLAN_LIMIT_EXCEEDED`).
 - **Read-only:** every tool sets `readOnlyHint: true` and `openWorldHint: false`.
 - **Shared logic:** tools call the same service functions as the REST API (`apps/app/src/backend/api/services/*`, Phase 1). A service takes an `ApiServiceContext` (`project`, `subscriptionStatus`) and the validated input, and returns the REST response object.
 
-## Project scoping
+## Authentication
 
-API keys are project-scoped, OAuth tokens will be user-scoped. Every project-bound tool therefore takes an optional `projectId` from day one:
+Both kinds of credentials arrive as `Authorization: Bearer <token>` on `/mcp`. The MCP auth middleware tells them apart by the `vem_` prefix of API keys.
 
-- API key: `projectId` may be omitted. If it is set, it must match the key's project, otherwise the tool returns `PROJECT_NOT_FOUND`.
-- OAuth (GA): `projectId` is required when the user has more than one project. `list_projects` returns the choices. The MCP layer checks membership and builds the `ApiServiceContext` for that project.
+### OAuth (main path)
 
-The services never look at auth, so the same calls work for both.
+The MCP authorization spec is OAuth 2.1. Clients like Claude.ai and ChatGPT only connect this way, and a one-click "Connect" with no key to copy is what users expect.
+
+- **Provider:** `@better-auth/oauth-provider` (separate package since better-auth 1.7; the old `mcp`/`oidc-provider` plugins are no longer in core), added to the existing Better Auth instance in `apps/app/src/backend/utils/auth.ts`.
+- **Client registration:** dynamic client registration (RFC 7591) without authentication, since MCP clients are public clients. Add Client ID Metadata Documents through `@better-auth/cimd`, which the newer MCP spec prefers. Delete registered clients that never got a token after some time.
+- **Discovery:** `/.well-known/oauth-protected-resource/mcp` (RFC 9728) and the authorization server metadata (RFC 8414), registered at the domain root before the static app. A `401` from `/mcp` carries `WWW-Authenticate: Bearer resource_metadata="…"` so clients can start the flow.
+- **Tokens:** PKCE, audience bound to the `/mcp` URL (RFC 8707 resource indicator, checked on every request), one scope `analytics:read` (plus `offline_access` for refresh tokens).
+- **Pages in the SPA:** the existing login page returns to the authorization flow after sign-in. A new consent page shows the client's name and redirect domain (clients register themselves, so the name alone can't be trusted) and lets the user choose the projects (see [Project access](#project-access)).
+- **Connected apps:** a settings section that lists the authorized clients with their projects and lets the user change the projects or revoke access.
+- **Self-hosting:** issuer and resource URLs come from `getVemetricUrl`.
+- **Database:** Prisma migration for the plugin's tables (clients, tokens, consents) plus our own project selection table.
+
+### API keys (fallback)
+
+Not part of the MCP spec, but static bearer tokens are common practice (GitHub, Stripe and others accept personal tokens on their remote MCP servers), and the developer clients (Claude Code, Cursor, VS Code, Codex, …) support custom headers. Useful for headless agents, CI scripts and clients without OAuth. The existing API keys are project-scoped and reuse the key lookup of the REST `authMiddleware`.
+
+## Project access
+
+The services never look at auth. The MCP layer turns the credentials into a list of allowed projects and builds the `ApiServiceContext` for the requested one.
+
+- **OAuth:** one connection covers several projects. On the consent page the user picks either "All projects, including future ones" or specific projects from all organizations they belong to. The choice is stored per user and client and can be changed later under connected apps. On every request: allowed projects = selection ∩ projects the user is currently a member of, so leaving an organization removes access right away.
+- **API key:** the key's project only.
+- **Tools:** every project-bound tool takes an optional `projectId`. If the credentials allow exactly one project, it may be omitted. Otherwise a missing `projectId` returns an error that tells the model to call `list_projects`. A project outside the allowed list returns `PROJECT_NOT_FOUND` (no hint that it exists).
 
 ## Tools
 
 The inputs are derived from the REST request schemas (same defaults and the same `superRefine` checks). Descriptions are rewritten for LLMs.
 
-| Tool | Service | Notes |
-| --- | --- | --- |
-| `get_project` | `getProject` | Name, domain, created/first event timestamps. Also returns `today` (UTC) so the model can resolve "last week" etc. Drop `token` and the excluded IPs from the MCP output. |
-| `query_analytics` | `queryAnalytics` | Main tool. `dateRange`, `metrics`, `groupBy` (max 1), `orderBy`, `limit` (MCP default 20 instead of 100), `filters`, `filtersOperator`. |
-| `list_filter_values` | `getFilterValues` | Discover valid values (event names, paths, countries, UTM values, …) before filtering. MCP default `limit` 50. |
+| Tool                    | Service                    | Notes                                                                                                                                                                                                                                                           |
+| ----------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_project`           | `getProject`               | Name, domain, created/first event timestamps. Also returns `today` (UTC) so the model can resolve "last week" etc. Drop `token` and the excluded IPs from the MCP output.                                                                                       |
+| `query_analytics`       | `queryAnalytics`           | Main tool. `dateRange`, `metrics`, `groupBy` (max 1), `orderBy`, `limit` (MCP default 20 instead of 100), `filters`, `filtersOperator`.                                                                                                                         |
+| `list_filter_values`    | `getFilterValues`          | Discover valid values (event names, paths, countries, UTM values, …) before filtering. MCP default `limit` 50.                                                                                                                                                  |
 | `list_event_properties` | new: `listEventProperties` | **Gap:** the REST API has no way to list the property names of an event, but `event:prop:<name>` grouping and property filters need them. Backed by `clickhouseEvent.getEventProperties` (already used by the dashboard). Add a REST endpoint at the same time. |
-| `list_users` | `listUsers` | Filters + sort. MCP default `limit` 20. Leave out `avatarUrl`. |
-| `get_user` | `getUser` | `id` or `identifier`. |
-| `get_user_events` | `getUserEvents` | `id` or `identifier` + `dateRange`, `filters`, `limit` (MCP default 50). |
-| `list_funnels` | `listFunnels` | Funnel ids, names, step definitions. |
-| `get_funnel_results` | `getFunnelResults` | `funnelId` + `dateRange` + `filters`. |
-| `list_projects` (GA) | new | Only with OAuth. |
+| `list_users`            | `listUsers`                | Filters + sort. MCP default `limit` 20. Leave out `avatarUrl`.                                                                                                                                                                                                  |
+| `get_user`              | `getUser`                  | `id` or `identifier`.                                                                                                                                                                                                                                           |
+| `get_user_events`       | `getUserEvents`            | `id` or `identifier` + `dateRange`, `filters`, `limit` (MCP default 50).                                                                                                                                                                                        |
+| `list_funnels`          | `listFunnels`              | Funnel ids, names, step definitions.                                                                                                                                                                                                                            |
+| `get_funnel_results`    | `getFunnelResults`         | `funnelId` + `dateRange` + `filters`.                                                                                                                                                                                                                           |
+| `list_projects`         | new                        | Projects the credentials allow (id, name, domain). With an API key, the key's project.                                                                                                                                                                          |
 
 Possible later additions: `compare` flag on `query_analytics` (current vs previous period in one call), tools for the dashboard's "live" view.
 
@@ -58,13 +78,14 @@ Possible later additions: `compare` flag on `query_analytics` (current vs previo
   - `PLAN_LIMIT_EXCEEDED` → "This date range is outside the free plan's retention (about the last 30 days). Use a shorter range or upgrade to the Professional plan."
   - `USER_NOT_FOUND` / `FUNNEL_NOT_FOUND` → "… Use list_users / list_funnels to find valid ids."
   - Validation errors → field + message from the zod issues, plus a hint to call `list_filter_values`.
-- Auth failures stay HTTP 401 (with `WWW-Authenticate` for OAuth later), not tool errors.
+- Auth failures stay HTTP 401 with `WWW-Authenticate`, not tool errors.
 - Unexpected errors: generic message for the model, full error logged.
 
 ### Security
 
 - All data in tool results that visitors can influence (paths, referrers, UTM values, event names, event and user properties, user display names) is untrusted. The server instructions and tool descriptions tell the model that tool results are data, never instructions.
 - Read-only tools only.
+- The consent page makes clear which client gets access to which projects, since any client can register itself.
 - Separate rate-limit bucket `ratelimit:mcp:<projectId>`, so an agent loop does not use up the REST quota (and the other way round).
 - Log tool name, project id, duration and error code to Axiom. No result payloads in logs.
 
@@ -99,8 +120,8 @@ Real questions an assistant should be able to answer, with the expected tool cal
 
 ## Phases
 
-0. **Design** (this document).
+0. **Design** (this document). ✅
 1. **Refactor:** move the logic of the public API route handlers into `apps/app/src/backend/api/services/*`. Existing unit and integration tests pass unchanged. ✅
-2. **Beta:** `/mcp` endpoint with API keys, the tools above (incl. `list_event_properties`), prompts, rate limiting, logging, tests via the SDK in-memory client, MCP Inspector + real clients, "Connect your AI assistant" snippets in `api-tab.tsx` and a docs page.
-3. **GA:** OAuth via the Better Auth OAuth provider plugin, `list_projects`, membership checks, connected-apps revocation, issuer URLs from `getVemetricUrl` for self-hosters.
-4. **Launch:** MCP Registry, Anthropic connectors directory, Cursor/VS Code listings, blog post + changelog.
+2. **MCP server:** `/mcp` endpoint, the MCP auth middleware with API keys, project access, all tools above (incl. `list_projects` and `list_event_properties` + its REST endpoint), prompts, rate limiting, logging, tests via the SDK in-memory client, MCP Inspector. Can be deployed, but isn't announced or documented yet.
+3. **OAuth:** `@better-auth/oauth-provider` + `@better-auth/cimd`, discovery endpoints, consent page with project selection, connected apps settings, client clean-up, tests with real clients (Claude.ai, ChatGPT, Claude Code, Cursor, VS Code) against a public URL.
+4. **Launch (GA for all users):** docs page, "Connect your AI assistant" in the app, MCP Registry, Anthropic connectors directory, Cursor/VS Code listings, blog post + changelog.

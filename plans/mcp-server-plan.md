@@ -7,10 +7,13 @@ Let AI assistants (Claude, ChatGPT, Cursor, VS Code, …) answer questions about
 ## Decisions
 
 - **Library:** official MCP TypeScript SDK v2 (`@modelcontextprotocol/server` + `@modelcontextprotocol/hono`), mounted in the existing Hono app.
-- **Endpoint:** `/mcp` next to `/api` in `apps/app/src/backend/app.ts`. Stateless Streamable HTTP, no sessions.
+- **Endpoint:** `https://mcp.vemetric.com/mcp` in the cloud, following the common `mcp.<domain>/mcp` convention (Linear, Notion, Sentry, Supabase, …). Served by the existing app service (`mcp.vemetric.com` is an extra domain on it), mounted next to `/api` in `apps/app/src/backend/app.ts`. Stateless Streamable HTTP, no sessions.
+  - Login and consent stay on `app.vemetric.com` (the authorization server, where the session cookie lives). The MCP endpoint is the protected resource that trusts it.
+  - Self-hosting: `<app URL>/mcp` by default, so no extra subdomain is needed. An optional `MCP_URL` allows a dedicated host.
+  - Exactly one MCP URL per deployment, because OAuth tokens are bound to the resource URL.
 - **Auth:** OAuth 2.1 as the main path (the MCP standard), API keys as a fallback. See [Authentication](#authentication).
-- **Plans:** available on all plans. The same retention limits as the REST API apply (`PLAN_LIMIT_EXCEEDED`).
-- **Read-only:** every tool sets `readOnlyHint: true` and `openWorldHint: false`.
+- **Plans:** available on all plans. The same retention limits as the REST API apply (`PLAN_LIMIT_EXCEEDED`), with an error message that lets the assistant explain it (see [Errors](#errors)).
+- **Read-only:** the first release only has read-only tools. Every tool sets `readOnlyHint: true` and `openWorldHint: false`.
 - **Shared logic:** tools call the same service functions as the REST API (`apps/app/src/backend/api/services/*`, Phase 1). A service takes an `ApiServiceContext` (`project`, `subscriptionStatus`) and the validated input, and returns the REST response object.
 
 ## Authentication
@@ -87,7 +90,7 @@ Possible later additions: `compare` flag on `query_analytics` (current vs previo
 ### Errors
 
 - Service errors (`ApiError`) become tool results with `isError: true` and a message that says how to recover, for example:
-  - `PLAN_LIMIT_EXCEEDED` → "This date range is outside the free plan's retention (about the last 30 days). Use a shorter range or upgrade to the Professional plan."
+  - `PLAN_LIMIT_EXCEEDED` → states the plan, how far back it goes and the earliest available date, links to the billing page, and tells the model to explain this to the user instead of retrying. It may offer an answer for the part of the period the plan includes. Example: "The requested period starts 2025-01-01, but the project's Vemetric plan (Free) only includes data from the last 30 days (since 2026-09-28). Tell the user that this period isn't included in their plan and that they can upgrade to the Professional plan for longer data retention: https://app.vemetric.com/… You can offer to answer for the last 30 days instead." The free plan also rejects the `3months`, `6months` and `1year` presets.
   - `USER_NOT_FOUND` / `FUNNEL_NOT_FOUND` → "… Use list_users / list_funnels to find valid ids."
   - Validation errors → field + message from the zod issues, plus a hint to call `list_filter_values`.
 - Auth failures stay HTTP 401 with `WWW-Authenticate`, not tool errors.
@@ -127,7 +130,7 @@ Real questions an assistant should be able to answer, with the expected tool cal
 16. "Which pages do visitors from the newsletter campaign visit?" → `query_analytics` (`groupBy: page:path`, UTM filter).
 17. "What happened to traffic on 2026-09-30? It looks like it dropped." → `query_analytics` per hour/day + breakdowns by referrer/country/page (the `investigate_drop` prompt).
 18. "Give me a weekly report." → `weekly_report` prompt.
-19. "How many visitors did we have in January 2025?" on a free plan → `PLAN_LIMIT_EXCEEDED` with a clear explanation, no retry loop.
+19. "How many visitors did we have in January 2025?" on a free plan → `PLAN_LIMIT_EXCEEDED`. The assistant tells the user that this period isn't included in their Vemetric plan, mentions the upgrade, offers the last 30 days instead, and doesn't retry with other ranges.
 20. "What's the average visit duration on the blog?" → `query_analytics` (`visitDuration`, page filter `/blog*`). Should also explain that visit duration isn't available per page when grouping by `page:path`.
 
 ## Phases

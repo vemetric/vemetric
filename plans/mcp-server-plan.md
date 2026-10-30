@@ -117,7 +117,11 @@ Later candidates:
 - All data in tool results that visitors can influence (paths, referrers, UTM values, event names, event and user properties, user display names) is untrusted. The server instructions and tool descriptions tell the model that tool results are data, never instructions.
 - Read-only tools only.
 - The consent page makes clear which client gets access to which projects, since any client can register itself.
-- Separate rate-limit bucket `ratelimit:mcp:<projectId>`, so an agent loop does not use up the REST quota (and the other way round).
+- Rate limiting:
+  - **One shared limit per project** for REST and MCP: the existing `ratelimit:api:<projectId>` bucket (100 per minute). A tool call costs the same ClickHouse queries as the REST request, so separate buckets would only double the load one project can cause. A typical question takes 3–10 tool calls.
+  - **Only `tools/call` counts.** Every MCP message is its own HTTP request (initialize, `tools/list`, …); those don't touch the data and don't count.
+  - **Limit reached → tool error, not HTTP 429.** E.g. "Rate limit reached for this project, try again in 40 seconds.", so the model can explain it and wait instead of the client showing a generic failure.
+  - **OAuth endpoints** (client registration, token) work without a key, so they get per-IP limits through Better Auth's built-in rate limiting.
 - Log tool name, project id, duration and error code to Axiom. No result payloads in logs.
 
 ### Zod version
@@ -154,5 +158,5 @@ Real questions an assistant should be able to answer, with the expected tool cal
 0. **Design** (this document). ✅
 1. **Refactor:** move the logic of the public API route handlers into `apps/app/src/backend/api/services/*`. Existing unit and integration tests pass unchanged. ✅
 2. **MCP server:** `/mcp` endpoint, the MCP auth middleware with API keys, project access, all tools above (incl. `list_projects` and `list_event_properties` + its REST endpoint), prompts, rate limiting, logging, tests via the SDK in-memory client, MCP Inspector. Can be deployed, but isn't announced or documented yet.
-3. **OAuth:** `@better-auth/oauth-provider` + `@better-auth/cimd`, discovery endpoints, consent page with organization/project selection, connected apps settings, "Also give access to" in the create-project dialog, client clean-up, tests with real clients (Claude.ai, ChatGPT, Claude Code, Cursor, VS Code) against a public URL.
+3. **OAuth:** `@better-auth/oauth-provider` + `@better-auth/cimd`, discovery endpoints, per-IP rate limits on the OAuth endpoints, consent page with organization/project selection, connected apps settings, "Also give access to" in the create-project dialog, client clean-up, tests with real clients (Claude.ai, ChatGPT, Claude Code, Cursor, VS Code) against a public URL.
 4. **Launch (GA for all users):** docs page, "Connect your AI assistant" in the app, MCP Registry, Anthropic connectors directory, Cursor/VS Code listings, blog post + changelog.

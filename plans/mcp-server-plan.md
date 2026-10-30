@@ -25,10 +25,10 @@ The MCP authorization spec is OAuth 2.1. Clients like Claude.ai and ChatGPT only
 - **Client registration:** dynamic client registration (RFC 7591) without authentication, since MCP clients are public clients. Add Client ID Metadata Documents through `@better-auth/cimd`, which the newer MCP spec prefers. Delete registered clients that never got a token after some time.
 - **Discovery:** `/.well-known/oauth-protected-resource/mcp` (RFC 9728) and the authorization server metadata (RFC 8414), registered at the domain root before the static app. A `401` from `/mcp` carries `WWW-Authenticate: Bearer resource_metadata="…"` so clients can start the flow.
 - **Tokens:** PKCE, audience bound to the `/mcp` URL (RFC 8707 resource indicator, checked on every request), one scope `analytics:read` (plus `offline_access` for refresh tokens).
-- **Pages in the SPA:** the existing login page returns to the authorization flow after sign-in. A new consent page shows the client's name and redirect domain (clients register themselves, so the name alone can't be trusted) and lets the user choose the projects (see [Project access](#project-access)).
-- **Connected apps:** a settings section that lists the authorized clients with their projects and lets the user change the projects or revoke access.
+- **Pages in the SPA:** the existing login page returns to the authorization flow after sign-in. A new consent page shows the client's name and redirect domain (clients register themselves, so the name alone can't be trusted) and lets the user choose organizations and projects (see [Project access](#project-access)).
+- **Connected apps:** a settings section that lists the authorized clients with their organizations/projects and lets the user change them or revoke access.
 - **Self-hosting:** issuer and resource URLs come from `getVemetricUrl`.
-- **Database:** Prisma migration for the plugin's tables (clients, tokens, consents) plus our own project selection table.
+- **Database:** Prisma migration for the plugin's tables (clients, tokens, consents) plus our own table for the organization/project selection.
 
 ### API keys (fallback)
 
@@ -38,8 +38,20 @@ Not part of the MCP spec, but static bearer tokens are common practice (GitHub, 
 
 The services never look at auth. The MCP layer turns the credentials into a list of allowed projects and builds the `ApiServiceContext` for the requested one.
 
-- **OAuth:** one connection covers several projects. On the consent page the user picks either "All projects, including future ones" or specific projects from all organizations they belong to. The choice is stored per user and client and can be changed later under connected apps. On every request: allowed projects = selection ∩ projects the user is currently a member of, so leaving an organization removes access right away.
+- **OAuth:** one connection covers several projects. On the consent page the user chooses one of:
+  1. **All current and future organizations** (and all their projects).
+  2. **Individual organizations.** For each one either **all current and future projects**, or
+  3. **individual projects** of that organization. Projects created later are not added automatically.
+
+  The choice is stored per user and client (`allOrganizations` flag + rows of either `organizationId` with "all projects" or `organizationId` + `projectId`). On every request the allowed projects are resolved against the user's current memberships, so joining an organization counts right away when (1) is chosen, and leaving one removes access right away in every case.
+
+- **Adding projects later:**
+  - **Connected apps** in the settings is the main place: the same organization/project selection as on the consent page, editable at any time.
+  - **When creating a project** in an organization where a connected client only has individual projects, the create dialog offers "Also give access to: Claude, Cursor, …" (unchecked by default).
+  - **In the assistant:** `list_projects` and the `PROJECT_NOT_FOUND` error include the link to connected apps, so the model can tell the user where to grant more access. It never reveals projects that are not shared.
+  - Connecting the client again works too, but many clients skip the consent screen when a valid token exists, so it is not the path we point users to.
 - **API key:** the key's project only.
+- **Read vs. write:** all tools are read-only for now, so there is no choice on the consent page; a permission choice with nothing behind it would only confuse. When write tools come (e.g. managing funnels), they get their own scope (`analytics:write`). The consent page then shows it as a separate permission, and existing connections are asked for it only when a write tool is first used (step-up authorization: `403 insufficient_scope`, supported by the SDK's `scopeChallenge`). API keys stay read-only.
 - **Tools:** every project-bound tool takes an optional `projectId`. If the credentials allow exactly one project, it may be omitted. Otherwise a missing `projectId` returns an error that tells the model to call `list_projects`. A project outside the allowed list returns `PROJECT_NOT_FOUND` (no hint that it exists).
 
 ## Tools
@@ -123,5 +135,5 @@ Real questions an assistant should be able to answer, with the expected tool cal
 0. **Design** (this document). ✅
 1. **Refactor:** move the logic of the public API route handlers into `apps/app/src/backend/api/services/*`. Existing unit and integration tests pass unchanged. ✅
 2. **MCP server:** `/mcp` endpoint, the MCP auth middleware with API keys, project access, all tools above (incl. `list_projects` and `list_event_properties` + its REST endpoint), prompts, rate limiting, logging, tests via the SDK in-memory client, MCP Inspector. Can be deployed, but isn't announced or documented yet.
-3. **OAuth:** `@better-auth/oauth-provider` + `@better-auth/cimd`, discovery endpoints, consent page with project selection, connected apps settings, client clean-up, tests with real clients (Claude.ai, ChatGPT, Claude Code, Cursor, VS Code) against a public URL.
+3. **OAuth:** `@better-auth/oauth-provider` + `@better-auth/cimd`, discovery endpoints, consent page with organization/project selection, connected apps settings, "Also give access to" in the create-project dialog, client clean-up, tests with real clients (Claude.ai, ChatGPT, Claude Code, Cursor, VS Code) against a public URL.
 4. **Launch (GA for all users):** docs page, "Connect your AI assistant" in the app, MCP Registry, Anthropic connectors directory, Cursor/VS Code listings, blog post + changelog.

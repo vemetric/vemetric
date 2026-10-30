@@ -118,7 +118,7 @@ Later candidates:
 - Read-only tools only.
 - The consent page makes clear which client gets access to which projects, since any client can register itself.
 - Rate limiting:
-  - **One shared limit per project** for REST and MCP: the existing `ratelimit:api:<projectId>` bucket (100 per minute). A tool call costs the same ClickHouse queries as the REST request, so separate buckets would only double the load one project can cause. A typical question takes 3–10 tool calls.
+  - **Separate buckets per project:** `ratelimit:api:<projectId>` for REST (existing) and `ratelimit:mcp:<projectId>` for MCP, both 100 per minute. An agent hitting the limit is visible and harmless (the model waits), but a REST integration hitting it fails silently in production (a stats widget breaks, a BI sync fails). Several teammates using assistants on the same project, or one parallel `investigate_change` run (20–30 tool calls), can plausibly reach 100 per minute, so MCP traffic must not eat the REST quota. The worst case of 200 calls per minute per project is harmless for ClickHouse; protecting the database itself would be a global concurrency limit, independent of REST or MCP.
   - **Only `tools/call` counts.** Every MCP message is its own HTTP request (initialize, `tools/list`, …); those don't touch the data and don't count.
   - **Limit reached → tool error, not HTTP 429.** E.g. "Rate limit reached for this project, try again in 40 seconds.", so the model can explain it and wait instead of the client showing a generic failure.
   - **OAuth endpoints** (client registration, token) work without a key, so they get per-IP limits through Better Auth's built-in rate limiting.

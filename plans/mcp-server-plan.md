@@ -7,7 +7,7 @@ Let AI assistants (Claude, ChatGPT, Cursor, VS Code, …) answer questions about
 ## Decisions
 
 - **Library:** official MCP TypeScript SDK v2 (`@modelcontextprotocol/server` + `@modelcontextprotocol/hono`), mounted in the existing Hono app.
-- **Endpoint:** `https://mcp.vemetric.com/mcp` in the cloud, following the common `mcp.<domain>/mcp` convention (Linear, Notion, Sentry, Supabase, …). Served by the existing app service (`mcp.vemetric.com` is an extra domain on it), mounted next to `/api` in `apps/app/src/backend/app.ts`. Stateless Streamable HTTP, no sessions.
+- **Endpoint:** `https://mcp.vemetric.com/mcp` in the cloud, following the common `mcp.<domain>/mcp` convention (Linear, Notion, Sentry, Supabase, …). Served by the existing app service (`mcp.vemetric.com` is an extra domain on it), mounted next to `/api` in `apps/app/src/backend/app.ts`. Stateless Streamable HTTP, no sessions. The root of `mcp.vemetric.com` redirects browsers to the docs page.
   - Login and consent stay on `app.vemetric.com` (the authorization server, where the session cookie lives). The MCP endpoint is the protected resource that trusts it.
   - Self-hosting: `<app URL>/mcp` by default, so no extra subdomain is needed. An optional `MCP_URL` allows a dedicated host.
   - Exactly one MCP URL per deployment, because OAuth tokens are bound to the resource URL.

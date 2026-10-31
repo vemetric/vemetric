@@ -5,7 +5,7 @@ import { clickhouseEvent, getUserFilterQueries } from 'clickhouse';
 import { dbFunnel } from 'database';
 import { getFilterFunnelsData } from '../../utils/filter';
 import { isRetentionRestricted, RETENTION_UPGRADE_MESSAGE } from '../../utils/retention';
-import { authorizationHeaderSchema, commonOpenApiErrorResponses, planLimitExceededOpenApiResponse } from '../schemas/common';
+import { commonErrorResponses, errorResponses, rateLimitResponseHeaders } from '../openapi';
 import {
   funnelIdSchema,
   funnelResultsRequestSchema,
@@ -21,31 +21,32 @@ import { mapFunnelStepToApi } from '../utils/funnel-step-mapper';
 const funnelsListRoute = createRoute({
   method: 'get',
   path: '/v1/funnels',
+  operationId: 'listFunnels',
+  tags: ['Funnels'],
   summary: 'List funnels',
   description: 'Returns the list of funnels for the authenticated project.',
-  request: {
-    headers: authorizationHeaderSchema,
-  },
   responses: {
     200: {
       description: 'Success',
+      headers: rateLimitResponseHeaders,
       content: {
         'application/json': {
           schema: funnelsListResponseSchema,
         },
       },
     },
-    ...commonOpenApiErrorResponses,
+    ...commonErrorResponses,
   },
 });
 
 const funnelResultsRoute = createRoute({
   method: 'post',
   path: '/v1/funnels/{id}',
+  operationId: 'getFunnelResults',
+  tags: ['Funnels'],
   summary: 'Get funnel results',
   description: 'Returns results for a funnel in the given date range and with optional filters.',
   request: {
-    headers: authorizationHeaderSchema,
     params: z.object({
       id: funnelIdSchema,
     }),
@@ -61,27 +62,16 @@ const funnelResultsRoute = createRoute({
   responses: {
     200: {
       description: 'Success',
+      headers: rateLimitResponseHeaders,
       content: {
         'application/json': {
           schema: funnelResultsResponseSchema,
         },
       },
     },
-    403: planLimitExceededOpenApiResponse,
-    404: {
-      description: 'Funnel was not found',
-      content: {
-        'application/json': {
-          schema: z.object({
-            error: z.object({
-              code: z.literal('FUNNEL_NOT_FOUND'),
-              message: z.string(),
-            }),
-          }),
-        },
-      },
-    },
-    ...commonOpenApiErrorResponses,
+    403: errorResponses.forbidden,
+    404: errorResponses.funnelNotFound,
+    ...commonErrorResponses,
   },
 });
 

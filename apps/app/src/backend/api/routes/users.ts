@@ -50,7 +50,7 @@ const usersListRoute = createRoute({
         },
       },
     },
-    403: errorResponses[403],
+    403: errorResponses.forbidden,
     ...commonErrorResponses,
   },
 });
@@ -75,7 +75,7 @@ const usersSingleRoute = createRoute({
         },
       },
     },
-    404: errorResponses[404],
+    404: errorResponses.userNotFound,
     ...commonErrorResponses,
   },
 });
@@ -108,8 +108,8 @@ const userEventsRoute = createRoute({
         },
       },
     },
-    403: errorResponses[403],
-    404: errorResponses[404],
+    403: errorResponses.forbidden,
+    404: errorResponses.userNotFound,
     ...commonErrorResponses,
   },
 });

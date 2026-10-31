@@ -94,6 +94,44 @@ describe('public API OpenAPI spec', () => {
     }
   });
 
+  it('gives every shared error response an example with its own error code', async () => {
+    const spec = await getSpec();
+    const exampleCodes = Object.fromEntries(
+      Object.entries(
+        spec.components.responses as Record<
+          string,
+          { content: Record<string, { example: { error: { code: string } } }> }
+        >,
+      ).map(([name, response]) => [name, response.content['application/json'].example.error.code]),
+    );
+
+    expect(exampleCodes).toEqual({
+      BadRequest: 'VALIDATION_ERROR',
+      Unauthorized: 'UNAUTHORIZED',
+      Forbidden: 'PLAN_LIMIT_EXCEEDED',
+      UserNotFound: 'USER_NOT_FOUND',
+      FunnelNotFound: 'FUNNEL_NOT_FOUND',
+      RateLimited: 'RATE_LIMIT_EXCEEDED',
+      InternalError: 'INTERNAL_ERROR',
+    });
+  });
+
+  it('points each 404 at the not-found response of its resource', async () => {
+    const operations = getOperations(await getSpec());
+
+    expect(
+      Object.fromEntries(
+        operations
+          .filter(({ operation }) => operation.responses['404'])
+          .map(({ operation }) => [operation.operationId, operation.responses['404'].$ref]),
+      ),
+    ).toEqual({
+      getUser: '#/components/responses/UserNotFound',
+      listUserEvents: '#/components/responses/UserNotFound',
+      getFunnelResults: '#/components/responses/FunnelNotFound',
+    });
+  });
+
   it('documents rate limit headers on success, 401 and 429 responses', async () => {
     const spec = await getSpec();
 

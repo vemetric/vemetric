@@ -69,8 +69,8 @@ const funnelResultsRoute = createRoute({
         },
       },
     },
-    403: errorResponses[403],
-    404: errorResponses[404],
+    403: errorResponses.forbidden,
+    404: errorResponses.funnelNotFound,
     ...commonErrorResponses,
   },
 });

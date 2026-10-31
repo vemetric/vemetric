@@ -1,7 +1,8 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import { z } from '@hono/zod-openapi';
 import type { PublicApiHonoEnv } from './types';
-import { API_ERROR_CODES } from './utils/errors';
+import { RETENTION_UPGRADE_MESSAGE } from '../utils/retention';
+import { API_ERROR_CODES, createErrorBody } from './utils/errors';
 
 export const API_DOCS_URL = 'https://vemetric.com/docs/api/getting-started';
 export const API_CHANGELOG_URL = 'https://vemetric.com/changelog';
@@ -71,16 +72,44 @@ export const apiErrorResponseSchema = z
 
 const ref = (type: 'responses' | 'headers', name: string) => ({ $ref: `#/components/${type}/${name}` });
 
+// Each shared error response carries its own example, so docs show the code that status actually returns.
 const ERROR_RESPONSES = {
-  BadRequest:
-    'Bad request - invalid request payload or parameters. Codes: `VALIDATION_ERROR`, `HTTP_ERROR` (malformed JSON body).',
-  Unauthorized: 'Unauthorized - missing, malformed, invalid or revoked API key. Code: `UNAUTHORIZED`.',
-  Forbidden: 'Forbidden - the request is not allowed for the current plan. Code: `PLAN_LIMIT_EXCEEDED`.',
-  NotFound:
-    'Not found - the requested resource does not exist. Codes: `NOT_FOUND`, `USER_NOT_FOUND`, `FUNNEL_NOT_FOUND`.',
-  RateLimited:
-    'Rate limit exceeded. Wait for the number of seconds given in `Retry-After`. Code: `RATE_LIMIT_EXCEEDED`.',
-  InternalError: 'Unexpected internal error. Code: `INTERNAL_ERROR`.',
+  BadRequest: {
+    description:
+      'Bad request - invalid request payload or parameters. Codes: `VALIDATION_ERROR`, `HTTP_ERROR` (malformed JSON body).',
+    example: {
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Invalid request parameters',
+        details: [{ field: 'dateRange', message: 'Invalid input' }],
+      },
+    },
+  },
+  Unauthorized: {
+    description: 'Unauthorized - missing, malformed, invalid or revoked API key. Code: `UNAUTHORIZED`.',
+    example: createErrorBody('UNAUTHORIZED', 'Invalid or revoked API key'),
+  },
+  Forbidden: {
+    description: 'Forbidden - the request is not allowed for the current plan. Code: `PLAN_LIMIT_EXCEEDED`.',
+    example: createErrorBody('PLAN_LIMIT_EXCEEDED', RETENTION_UPGRADE_MESSAGE),
+  },
+  UserNotFound: {
+    description: 'The requested user does not exist. Code: `USER_NOT_FOUND`.',
+    example: createErrorBody('USER_NOT_FOUND', 'User not found'),
+  },
+  FunnelNotFound: {
+    description: 'The requested funnel does not exist. Code: `FUNNEL_NOT_FOUND`.',
+    example: createErrorBody('FUNNEL_NOT_FOUND', 'Funnel not found'),
+  },
+  RateLimited: {
+    description:
+      'Rate limit exceeded. Wait for the number of seconds given in `Retry-After`. Code: `RATE_LIMIT_EXCEEDED`.',
+    example: createErrorBody('RATE_LIMIT_EXCEEDED', 'Rate limit exceeded. Try again shortly.'),
+  },
+  InternalError: {
+    description: 'Unexpected internal error. Code: `INTERNAL_ERROR`.',
+    example: createErrorBody('INTERNAL_ERROR', 'An unexpected error occurred'),
+  },
 } as const;
 
 const RATE_LIMIT_HEADERS = {
@@ -97,20 +126,21 @@ export const rateLimitResponseHeaders = {
 };
 
 export const errorResponses = {
-  400: ref('responses', 'BadRequest'),
-  401: ref('responses', 'Unauthorized'),
-  403: ref('responses', 'Forbidden'),
-  404: ref('responses', 'NotFound'),
-  429: ref('responses', 'RateLimited'),
-  500: ref('responses', 'InternalError'),
+  badRequest: ref('responses', 'BadRequest'),
+  unauthorized: ref('responses', 'Unauthorized'),
+  forbidden: ref('responses', 'Forbidden'),
+  userNotFound: ref('responses', 'UserNotFound'),
+  funnelNotFound: ref('responses', 'FunnelNotFound'),
+  rateLimited: ref('responses', 'RateLimited'),
+  internalError: ref('responses', 'InternalError'),
 } as const;
 
 /** Error responses every authenticated endpoint can return. */
 export const commonErrorResponses = {
-  400: errorResponses[400],
-  401: errorResponses[401],
-  429: errorResponses[429],
-  500: errorResponses[500],
+  400: errorResponses.badRequest,
+  401: errorResponses.unauthorized,
+  429: errorResponses.rateLimited,
+  500: errorResponses.internalError,
 } as const;
 
 export function registerOpenApiDocs(api: OpenAPIHono<PublicApiHonoEnv>) {
@@ -139,7 +169,7 @@ export function registerOpenApiDocs(api: OpenAPIHono<PublicApiHonoEnv>) {
     schema: { type: 'integer', minimum: 0 },
   });
 
-  for (const [name, description] of Object.entries(ERROR_RESPONSES)) {
+  for (const [name, { description, example }] of Object.entries(ERROR_RESPONSES)) {
     registry.registerComponent('responses', name, {
       description,
       headers:
@@ -151,6 +181,7 @@ export function registerOpenApiDocs(api: OpenAPIHono<PublicApiHonoEnv>) {
       content: {
         'application/json': {
           schema: { $ref: '#/components/schemas/ErrorResponse' },
+          example,
         },
       },
     });

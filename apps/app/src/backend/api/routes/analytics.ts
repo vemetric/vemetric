@@ -42,7 +42,7 @@ const analyticsRoute = createRoute({
         },
       },
     },
-    403: errorResponses[403],
+    403: errorResponses.forbidden,
     ...commonErrorResponses,
   },
 });

@@ -2,7 +2,7 @@ import type { OpenAPIHono } from '@hono/zod-openapi';
 import { z } from '@hono/zod-openapi';
 import type { PublicApiHonoEnv } from './types';
 import { RETENTION_UPGRADE_MESSAGE } from '../utils/retention';
-import { API_ERROR_CODES, createErrorBody } from './utils/errors';
+import { API_ERROR_CODES, type ApiErrorCode, createErrorBody } from './utils/errors';
 
 export const API_DOCS_URL = 'https://vemetric.com/docs/api/getting-started';
 export const API_CHANGELOG_URL = 'https://vemetric.com/changelog';
@@ -35,32 +35,34 @@ Deprecated endpoints are marked as \`deprecated\` in this spec, announced in the
 and send \`Deprecation\` and \`Sunset\` headers, plus a \`Link\` header with \`rel="deprecation"\`,
 at least 3 months before they are removed.`;
 
+const errorDetailsSchema = z
+  .array(
+    z.object({
+      field: z.string().openapi({
+        description: 'Path to the invalid request field.',
+        example: 'groupBy.0',
+      }),
+      message: z.string().openapi({
+        description: 'Validation error message for the field.',
+      }),
+    }),
+  )
+  .openapi({
+    description: 'Per-field validation issues. Only present for `VALIDATION_ERROR`.',
+  });
+
+const errorMessageSchema = z.string().openapi({
+  description: 'Human-readable error message.',
+});
+
+/** The union of all errors the API can return. Each error response documents a narrowed version of it. */
 export const apiErrorSchema = z
   .object({
     code: z.enum(API_ERROR_CODES).openapi({
       description: 'Machine-readable error code.',
-      example: 'UNAUTHORIZED',
     }),
-    message: z.string().openapi({
-      description: 'Human-readable error message.',
-      example: 'Invalid or revoked API key',
-    }),
-    details: z
-      .array(
-        z.object({
-          field: z.string().openapi({
-            description: 'Path to the invalid request field.',
-            example: 'groupBy.0',
-          }),
-          message: z.string().openapi({
-            description: 'Validation error message for the field.',
-          }),
-        }),
-      )
-      .optional()
-      .openapi({
-        description: 'Per-field validation issues. Only present for `VALIDATION_ERROR`.',
-      }),
+    message: errorMessageSchema,
+    details: errorDetailsSchema.optional(),
   })
   .openapi('Error', { description: 'Error details.' });
 
@@ -68,15 +70,38 @@ export const apiErrorResponseSchema = z
   .object({
     error: apiErrorSchema,
   })
-  .openapi('ErrorResponse', { description: 'Error response payload.' });
+  .openapi('ErrorResponse', { description: 'Error response payload. Any error the API returns has this shape.' });
+
+/** An error response body whose `code` is narrowed to the codes one response can return. */
+function narrowedErrorResponseSchema(
+  codes: readonly [ApiErrorCode, ...ApiErrorCode[]],
+  { codeDescription, withDetails = false }: { codeDescription?: string; withDetails?: boolean } = {},
+) {
+  return z
+    .object({
+      error: z
+        .object({
+          code: z.enum(codes).openapi({ description: codeDescription ?? 'Machine-readable error code.' }),
+          message: errorMessageSchema,
+          ...(withDetails ? { details: errorDetailsSchema.optional() } : {}),
+        })
+        .openapi({ description: 'Error details.' }),
+    })
+    .openapi({ description: 'Error response payload.' });
+}
 
 const ref = (type: 'responses' | 'headers', name: string) => ({ $ref: `#/components/${type}/${name}` });
 
-// Each shared error response carries its own example, so docs show the code that status actually returns.
+// Each error response has its own schema (narrowed to the codes it returns) and example,
+// so docs show the exact code of each status instead of every possible code.
 const ERROR_RESPONSES = {
   BadRequest: {
-    description:
-      'Bad request - invalid request payload or parameters. Codes: `VALIDATION_ERROR`, `HTTP_ERROR` (malformed JSON body).',
+    description: 'Bad request - invalid request payload or parameters',
+    schemaName: 'ValidationError',
+    schema: narrowedErrorResponseSchema(['VALIDATION_ERROR', 'HTTP_ERROR'], {
+      codeDescription: 'Machine-readable error code. `HTTP_ERROR` is returned for a malformed JSON body.',
+      withDetails: true,
+    }),
     example: {
       error: {
         code: 'VALIDATION_ERROR',
@@ -86,28 +111,39 @@ const ERROR_RESPONSES = {
     },
   },
   Unauthorized: {
-    description: 'Unauthorized - missing, malformed, invalid or revoked API key. Code: `UNAUTHORIZED`.',
+    description: 'Unauthorized - missing, malformed, invalid or revoked API key',
+    schemaName: 'UnauthorizedError',
+    schema: narrowedErrorResponseSchema(['UNAUTHORIZED']),
     example: createErrorBody('UNAUTHORIZED', 'Invalid or revoked API key'),
   },
   Forbidden: {
-    description: 'Forbidden - the request is not allowed for the current plan. Code: `PLAN_LIMIT_EXCEEDED`.',
+    description: 'Requested date range is not allowed for the current plan',
+    schemaName: 'PlanLimitExceededError',
+    schema: narrowedErrorResponseSchema(['PLAN_LIMIT_EXCEEDED']),
     example: createErrorBody('PLAN_LIMIT_EXCEEDED', RETENTION_UPGRADE_MESSAGE),
   },
   UserNotFound: {
-    description: 'The requested user does not exist. Code: `USER_NOT_FOUND`.',
+    description: 'User was not found',
+    schemaName: 'UserNotFoundError',
+    schema: narrowedErrorResponseSchema(['USER_NOT_FOUND']),
     example: createErrorBody('USER_NOT_FOUND', 'User not found'),
   },
   FunnelNotFound: {
-    description: 'The requested funnel does not exist. Code: `FUNNEL_NOT_FOUND`.',
+    description: 'Funnel was not found',
+    schemaName: 'FunnelNotFoundError',
+    schema: narrowedErrorResponseSchema(['FUNNEL_NOT_FOUND']),
     example: createErrorBody('FUNNEL_NOT_FOUND', 'Funnel not found'),
   },
   RateLimited: {
-    description:
-      'Rate limit exceeded. Wait for the number of seconds given in `Retry-After`. Code: `RATE_LIMIT_EXCEEDED`.',
+    description: 'Rate limit exceeded - retry after the number of seconds in the Retry-After header',
+    schemaName: 'RateLimitExceededError',
+    schema: narrowedErrorResponseSchema(['RATE_LIMIT_EXCEEDED']),
     example: createErrorBody('RATE_LIMIT_EXCEEDED', 'Rate limit exceeded. Try again shortly.'),
   },
   InternalError: {
-    description: 'Unexpected internal error. Code: `INTERNAL_ERROR`.',
+    description: 'Unexpected internal error',
+    schemaName: 'InternalError',
+    schema: narrowedErrorResponseSchema(['INTERNAL_ERROR']),
     example: createErrorBody('INTERNAL_ERROR', 'An unexpected error occurred'),
   },
 } as const;
@@ -151,7 +187,8 @@ export function registerOpenApiDocs(api: OpenAPIHono<PublicApiHonoEnv>) {
   registry.registerComponent('securitySchemes', 'bearerAuth', {
     type: 'http',
     scheme: 'bearer',
-    description: 'Project API key, created in the project settings on the API tab. Example: `vem_...`.',
+    description:
+      "Project API key (starts with `vem_`), created in the project settings on the API tab. Requests only return data of that key's project.",
   });
 
   for (const [name, description] of Object.entries(RATE_LIMIT_HEADERS)) {
@@ -169,7 +206,8 @@ export function registerOpenApiDocs(api: OpenAPIHono<PublicApiHonoEnv>) {
     schema: { type: 'integer', minimum: 0 },
   });
 
-  for (const [name, { description, example }] of Object.entries(ERROR_RESPONSES)) {
+  for (const [name, { description, schemaName, schema, example }] of Object.entries(ERROR_RESPONSES)) {
+    registry.register(schemaName, schema);
     registry.registerComponent('responses', name, {
       description,
       headers:
@@ -180,7 +218,7 @@ export function registerOpenApiDocs(api: OpenAPIHono<PublicApiHonoEnv>) {
             : undefined,
       content: {
         'application/json': {
-          schema: { $ref: '#/components/schemas/ErrorResponse' },
+          schema: { $ref: `#/components/schemas/${schemaName}` },
           example,
         },
       },

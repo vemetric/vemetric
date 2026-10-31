@@ -116,6 +116,31 @@ describe('public API OpenAPI spec', () => {
     });
   });
 
+  it('narrows each error response schema to the codes it returns', async () => {
+    const spec = await getSpec();
+    const responses = spec.components.responses as Record<
+      string,
+      { content: Record<string, { schema: { $ref: string } }> }
+    >;
+    const narrowed = Object.fromEntries(
+      Object.entries(responses).map(([name, response]) => {
+        const schemaName = response.content['application/json'].schema.$ref.replace('#/components/schemas/', '');
+        const error = spec.components.schemas[schemaName].properties.error;
+        return [name, { codes: error.properties.code.enum, hasDetails: 'details' in error.properties }];
+      }),
+    );
+
+    expect(narrowed).toEqual({
+      BadRequest: { codes: ['VALIDATION_ERROR', 'HTTP_ERROR'], hasDetails: true },
+      Unauthorized: { codes: ['UNAUTHORIZED'], hasDetails: false },
+      Forbidden: { codes: ['PLAN_LIMIT_EXCEEDED'], hasDetails: false },
+      UserNotFound: { codes: ['USER_NOT_FOUND'], hasDetails: false },
+      FunnelNotFound: { codes: ['FUNNEL_NOT_FOUND'], hasDetails: false },
+      RateLimited: { codes: ['RATE_LIMIT_EXCEEDED'], hasDetails: false },
+      InternalError: { codes: ['INTERNAL_ERROR'], hasDetails: false },
+    });
+  });
+
   it('points each 404 at the not-found response of its resource', async () => {
     const operations = getOperations(await getSpec());
 

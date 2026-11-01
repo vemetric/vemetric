@@ -102,7 +102,7 @@ export const apiKeysRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const projectIds = input.allProjects ? [] : [...new Set(input.projectIds)];
+      const projectIds = input.allProjects ? [] : Array.from(new Set(input.projectIds));
       if (!input.allProjects) {
         if (projectIds.length === 0) {
           throw new TRPCError({ code: 'BAD_REQUEST', message: 'Choose at least one project for the API key.' });

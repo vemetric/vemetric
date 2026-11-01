@@ -1,4 +1,5 @@
 import type * as clickhouse from 'clickhouse';
+import { Hono } from 'hono';
 import type { Mock } from 'vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPublicApi } from '../index';
@@ -201,6 +202,20 @@ describe('public API project selection', () => {
         ],
       });
       expect(findByOrganizationId).toHaveBeenCalledWith({ organizationId: 'org_1' });
+    });
+
+    it('list their projects when the API is mounted under a path, as in the app', async () => {
+      findByKeyHash.mockResolvedValue(organizationKey({ allProjects: true }));
+      findByOrganizationId.mockResolvedValue([shop]);
+      const app = new Hono().route('/api', createPublicApi());
+
+      const response = await app.request('/api/v1/projects', { headers: { Authorization: AUTHORIZATION } });
+
+      expect(response.status).toBe(200);
+      const mountedProjectResponse = await app.request('/api/v1/project', {
+        headers: { Authorization: AUTHORIZATION },
+      });
+      expect(mountedProjectResponse.status).toBe(400);
     });
 
     it('list their chosen projects without needing the header', async () => {

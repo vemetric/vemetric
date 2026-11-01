@@ -32,7 +32,7 @@ Validation errors (\`VALIDATION_ERROR\`) additionally contain a \`details\` arra
 ## Rate limits
 
 Each project can make 100 requests per 60 seconds, shared by all keys that access it.
-Requests that don't target a project (\`GET /v1/projects\`) count against a separate quota of the key. Every authenticated response carries
+Requests that don't name a project (\`GET /v1/projects\` with an organization key) count against a separate quota of the key. Every authenticated response carries
 \`RateLimit-Limit\`, \`RateLimit-Remaining\` and \`RateLimit-Reset\` (seconds until the window resets) headers.
 When the limit is exceeded the API responds with \`429\` and a \`Retry-After\` header (in seconds).
 Every response, including \`401\`, carries a \`RateLimit-Policy\` header describing the quota (e.g. \`100;w=60\`).

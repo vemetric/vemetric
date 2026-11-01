@@ -3,7 +3,7 @@ import type { SubscriptionStatus } from '../utils/billing';
 
 export type PublicApiHonoVars = {
   apiKey: AuthenticatedApiKey;
-  /** Set for every route except `GET /v1/projects`. */
+  /** Set when the request names a project; guaranteed on routes with the `requireProject` middleware. */
   project: Project;
   subscriptionStatus: SubscriptionStatus;
   requestContent?: string;

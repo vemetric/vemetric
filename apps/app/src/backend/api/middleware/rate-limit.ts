@@ -51,7 +51,7 @@ export function createRateLimitMiddleware(options: RateLimitMiddlewareOptions = 
       return;
     }
 
-    // Requests without a project (`GET /v1/projects`) count against a bucket of the key.
+    // Requests without a project (e.g. `GET /v1/projects` with an organization key) count against a bucket of the key.
     const redisKey = project ? `ratelimit:api:${project.id}` : `ratelimit:api:key:${apiKey.id}`;
     const redisClient = await getRedisClient();
     const result = await redisClient.eval(RATE_LIMIT_SCRIPT, {

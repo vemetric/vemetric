@@ -1,5 +1,6 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import { createRoute, z } from '@hono/zod-openapi';
+import { requireProject } from '../middleware/project';
 import { commonErrorResponses, errorResponses, projectRequestHeaders, rateLimitResponseHeaders } from '../openapi';
 import { getProject, listProjects } from '../services/project';
 import type { PublicApiHonoEnv } from '../types';
@@ -45,6 +46,7 @@ const projectRoute = createRoute({
   summary: 'Get project',
   description:
     "Returns the data of the project: the key's own project for a project key, the project in the `X-Vemetric-Project` header for an organization key.",
+  middleware: requireProject,
   request: {
     headers: projectRequestHeaders,
   },

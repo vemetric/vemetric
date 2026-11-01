@@ -1,44 +1,15 @@
-import {
-  AbsoluteCenter,
-  Badge,
-  Box,
-  Button,
-  Card,
-  Field,
-  Flex,
-  IconButton,
-  Input,
-  Spinner,
-  Switch,
-  Table,
-  Text,
-} from '@chakra-ui/react';
+import { Box, Button, Card, Field, Flex, Input, Link, Text } from '@chakra-ui/react';
 import { useState } from 'react';
-import { TbAlertTriangle, TbApi, TbKey, TbPlus, TbTrash } from 'react-icons/tb';
+import { TbApi, TbBuilding, TbPlus } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
-import { CodeBox } from '@/components/code-box';
 import { DocsButton } from '@/components/docs-button';
-import {
-  DialogBody,
-  DialogCloseTrigger,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogRoot,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { EmptyState } from '@/components/ui/empty-state';
 import { toaster } from '@/components/ui/toaster';
-import { Tooltip } from '@/components/ui/tooltip';
-import { UserIdentity } from '@/components/user-identity';
-import { dateTimeFormatter } from '@/utils/date-time-formatter';
+import { useOrgSettingsDialog } from '@/hooks/use-org-settings-dialog';
 import type { ApiKeyItem } from '@/utils/trpc';
 import { trpc } from '@/utils/trpc';
-
-type NewKey = {
-  rawKey: string;
-  keyPrefix: string;
-};
+import { ApiKeysCard } from '../api-keys/api-keys-card';
+import { NewApiKeyDialog } from '../api-keys/new-api-key-dialog';
+import { RevokeApiKeyDialog } from '../api-keys/revoke-api-key-dialog';
 
 interface Props {
   projectId: string;
@@ -46,9 +17,9 @@ interface Props {
 
 export const ProjectApiTab = ({ projectId }: Props) => {
   const [name, setName] = useState('');
-  const [newKey, setNewKey] = useState<NewKey | null>(null);
+  const [newKey, setNewKey] = useState<string | null>(null);
   const [keyToRevoke, setKeyToRevoke] = useState<ApiKeyItem | null>(null);
-  const [showRevokedKeys, setShowRevokedKeys] = useState(false);
+  const { open: openOrgSettings } = useOrgSettingsDialog();
 
   const {
     data,
@@ -57,11 +28,12 @@ export const ProjectApiTab = ({ projectId }: Props) => {
   } = trpc.apiKeys.list.useQuery({
     projectId,
   });
+  const { data: organizationKeys } = trpc.apiKeys.listOrganizationKeysForProject.useQuery({ projectId });
 
   const { mutate: createKey, isPending: isCreating } = trpc.apiKeys.create.useMutation({
     onSuccess: async (result) => {
       setName('');
-      setNewKey(result);
+      setNewKey(result.rawKey);
       await refetch();
     },
     onError: (error) => {
@@ -91,11 +63,6 @@ export const ProjectApiTab = ({ projectId }: Props) => {
     },
   });
 
-  const keys = data ?? [];
-  const activeKeys = keys.filter((key) => !key.revokedAt);
-  const revokedKeys = keys.filter((key) => Boolean(key.revokedAt));
-  const visibleKeys = showRevokedKeys ? [...activeKeys, ...revokedKeys] : activeKeys;
-
   const onCreateKey = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -114,6 +81,8 @@ export const ProjectApiTab = ({ projectId }: Props) => {
       name: trimmedName,
     });
   };
+
+  const organizationKeyNames = (organizationKeys ?? []).map((key) => key.name);
 
   return (
     <Flex flexDir="column" gap={6} maxW="900px">
@@ -146,185 +115,65 @@ export const ProjectApiTab = ({ projectId }: Props) => {
             </Button>
           </Flex>
           <Text fontSize="sm" color="fg.muted" mt={3}>
-            API keys are scoped to this project and can only be managed by organization admins.
+            API keys are scoped to this project and can only be managed by organization admins. Need one key for several
+            projects?{' '}
+            <Link as="button" color="purple.fg" fontWeight="medium" onClick={() => openOrgSettings('api')}>
+              Create an organization API key
+            </Link>
+            .
           </Text>
         </Card.Body>
       </Card.Root>
 
-      <Card.Root>
-        <Card.Header>
-          <Flex align="center" gap={2}>
-            <CardIcon>
-              <TbKey />
-            </CardIcon>
-            <Text fontWeight="semibold">Keys</Text>
-            <Box flexGrow={1} />
-            {!isLoadingKeys && <Badge colorPalette="purple">{activeKeys.length}</Badge>}
-          </Flex>
-        </Card.Header>
-        <Card.Body overflow="auto">
-          {isLoadingKeys ? (
-            <Box h="100px" pos="relative">
-              <AbsoluteCenter>
-                <Spinner />
-              </AbsoluteCenter>
-            </Box>
-          ) : visibleKeys.length === 0 ? (
-            <Box p={6} textAlign="center">
-              <EmptyState icon={<TbKey />} title="No API keys available for this project." />
-            </Box>
-          ) : (
-            <Table.Root size="sm" variant="outline" rounded="md">
-              <Table.Header>
-                <Table.Row>
-                  <Table.ColumnHeader>Name</Table.ColumnHeader>
-                  <Table.ColumnHeader>Prefix</Table.ColumnHeader>
-                  <Table.ColumnHeader>Status</Table.ColumnHeader>
-                  <Table.ColumnHeader w="80px">Actions</Table.ColumnHeader>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {visibleKeys.map((key) => (
-                  <Table.Row
-                    key={key.id}
-                    css={{ '&:last-of-type > td': { borderBottom: 'none' } }}
-                    opacity={key.revokedAt ? 0.65 : 1}
-                  >
-                    <Table.Cell>{key.name}</Table.Cell>
-                    <Table.Cell>
-                      <CodeBox size="sm" disableCopy>
-                        {key.keyPrefix}
-                      </CodeBox>
-                    </Table.Cell>
-                    <Table.Cell w="100px">
-                      <Tooltip
-                        content={
-                          <Box py="1">
-                            <Text fontSize="xs" mb={2}>
-                              Created on {dateTimeFormatter.formatDate(key.createdAt)} by
-                            </Text>
-                            <UserIdentity
-                              displayName={key.createdBy?.name || key.createdBy?.email || 'Unknown'}
-                              image={key.createdBy?.image}
-                              avatarSize="2xs"
-                            />
-                            {key.revokedAt && (
-                              <>
-                                <Text fontSize="xs" mt={5} mb={2}>
-                                  Revoked on {dateTimeFormatter.formatDate(key.revokedAt)} by
-                                </Text>
-                                <UserIdentity
-                                  displayName={key.revokedBy?.name || key.revokedBy?.email || 'Unknown'}
-                                  image={key.revokedBy?.image}
-                                  avatarSize="2xs"
-                                />
-                              </>
-                            )}
-                          </Box>
-                        }
-                      >
-                        <Badge colorPalette={key.revokedAt ? 'red' : 'green'} cursor="help">
-                          {key.revokedAt ? 'Revoked' : 'Active'}
-                        </Badge>
-                      </Tooltip>
-                    </Table.Cell>
-                    <Table.Cell>
-                      {!key.revokedAt && (
-                        <IconButton
-                          aria-label="Revoke API key"
-                          variant="ghost"
-                          size="xs"
-                          colorPalette="red"
-                          onClick={() => setKeyToRevoke(key)}
-                        >
-                          <TbTrash />
-                        </IconButton>
-                      )}
-                    </Table.Cell>
-                  </Table.Row>
-                ))}
-              </Table.Body>
-            </Table.Root>
-          )}
+      <ApiKeysCard
+        keys={data ?? []}
+        isLoading={isLoadingKeys}
+        emptyTitle="No API keys available for this project."
+        onRevoke={setKeyToRevoke}
+      />
 
-          <Flex mt={4} align="center" justify="flex-end" gap={2}>
-            <Switch.Root
-              size="sm"
-              checked={showRevokedKeys}
-              onCheckedChange={({ checked }) => setShowRevokedKeys(checked)}
-            >
-              <Switch.HiddenInput />
-              <Switch.Control />
-              <Switch.Label fontSize="xs" color="fg.subtle">
-                Show revoked keys
-              </Switch.Label>
-            </Switch.Root>
-          </Flex>
-        </Card.Body>
-      </Card.Root>
-
-      <DialogRoot open={Boolean(newKey)} onOpenChange={() => setNewKey(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Copy API Key</DialogTitle>
-          </DialogHeader>
-          <DialogBody>
-            <Flex direction="column" gap={3}>
-              <Text fontSize="sm" color="fg.muted">
-                This is the only time the full key is shown.
-                <br />
-                Copy it now and store it securely.
-              </Text>
-              {newKey && <CodeBox>{newKey.rawKey}</CodeBox>}
-            </Flex>
-          </DialogBody>
-          <DialogFooter>
-            <Button onClick={() => setNewKey(null)}>Done</Button>
-          </DialogFooter>
-          <DialogCloseTrigger />
-        </DialogContent>
-      </DialogRoot>
-
-      <DialogRoot open={Boolean(keyToRevoke)} onOpenChange={() => setKeyToRevoke(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Revoke API Key</DialogTitle>
-          </DialogHeader>
-          <DialogBody>
-            <Flex gap={2} align="flex-start">
-              <CardIcon bg="red.subtle" color="red.600" borderColor="red.muted">
-                <TbAlertTriangle />
+      {organizationKeyNames.length > 0 && (
+        <Card.Root>
+          <Card.Body>
+            <Flex align="flex-start" gap={3}>
+              <CardIcon>
+                <TbBuilding />
               </CardIcon>
-              <Text fontSize="sm">
-                Revoke key <strong>{keyToRevoke?.name}</strong>? Existing integrations using this key will stop working
-                immediately.
+              <Text fontSize="sm" color="fg.muted">
+                {organizationKeyNames.length === 1
+                  ? 'The organization API key '
+                  : `${organizationKeyNames.length} organization API keys `}
+                <Text as="span" fontWeight="medium" color="fg">
+                  {organizationKeyNames.join(', ')}
+                </Text>{' '}
+                {organizationKeyNames.length === 1 ? 'also has' : 'also have'} access to this project.{' '}
+                <Link as="button" color="purple.fg" fontWeight="medium" onClick={() => openOrgSettings('api')}>
+                  Manage them in the organization settings
+                </Link>
+                .
               </Text>
             </Flex>
-          </DialogBody>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setKeyToRevoke(null)}>
-              Cancel
-            </Button>
-            <Button
-              colorPalette="red"
-              loading={isRevoking}
-              onClick={() => {
-                if (!keyToRevoke) {
-                  return;
-                }
+          </Card.Body>
+        </Card.Root>
+      )}
 
-                revokeKey({
-                  projectId,
-                  keyId: keyToRevoke.id,
-                });
-              }}
-            >
-              Revoke Key
-            </Button>
-          </DialogFooter>
-          <DialogCloseTrigger />
-        </DialogContent>
-      </DialogRoot>
+      <NewApiKeyDialog rawKey={newKey} onClose={() => setNewKey(null)} />
+
+      <RevokeApiKeyDialog
+        keyName={keyToRevoke?.name ?? null}
+        isRevoking={isRevoking}
+        onClose={() => setKeyToRevoke(null)}
+        onRevoke={() => {
+          if (!keyToRevoke) {
+            return;
+          }
+
+          revokeKey({
+            projectId,
+            keyId: keyToRevoke.id,
+          });
+        }}
+      />
     </Flex>
   );
 };

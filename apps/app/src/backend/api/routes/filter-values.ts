@@ -1,5 +1,6 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import { createRoute } from '@hono/zod-openapi';
+import { requireProject } from '../middleware/project';
 import { commonErrorResponses, errorResponses, projectRequestHeaders, rateLimitResponseHeaders } from '../openapi';
 import { filterValuesRequestSchema, filterValuesResponseSchema } from '../schemas/filter-values';
 import { getFilterValues } from '../services/filter-values';
@@ -12,6 +13,7 @@ const filterValuesRoute = createRoute({
   tags: ['Filters'],
   summary: 'Get filter values',
   description: 'Returns available filter values for one or more fields with pagination.',
+  middleware: requireProject,
   request: {
     headers: projectRequestHeaders,
     body: {

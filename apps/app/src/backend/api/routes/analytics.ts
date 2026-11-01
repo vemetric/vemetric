@@ -1,5 +1,6 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import { createRoute } from '@hono/zod-openapi';
+import { requireProject } from '../middleware/project';
 import { commonErrorResponses, errorResponses, projectRequestHeaders, rateLimitResponseHeaders } from '../openapi';
 import { analyticsQueryRequestSchema, analyticsQueryResponseSchema } from '../schemas/analytics';
 import { queryAnalytics } from '../services/analytics';
@@ -12,6 +13,7 @@ const analyticsRoute = createRoute({
   tags: ['Analytics'],
   summary: 'Query analytics',
   description: 'Query analytics metrics with optional grouping, sorting and filters.',
+  middleware: requireProject,
   request: {
     headers: projectRequestHeaders,
     body: {

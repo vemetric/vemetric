@@ -54,7 +54,8 @@ Unlike OAuth tokens, a key acts for the organization, not for a user: it keeps w
   - **Organization keys** always need it, even if the key currently covers only one project. Otherwise an integration would break as soon as a second project is created. A missing header returns `400 PROJECT_REQUIRED`.
   - A project the key doesn't cover returns `404 PROJECT_NOT_FOUND` (no hint that it exists).
   - New `GET /v1/projects` lists the projects the key covers (id, name, domain). With a project key, it returns that one project.
-- **Rate limit:** still per project (`ratelimit:api:<projectId>`), so an organization key spread over several projects uses each project's bucket.
+- **Rate limit:** still per project (`ratelimit:api:<projectId>`), so an organization key spread over several projects uses each project's bucket. Requests that don't name a project (`GET /v1/projects` with an organization key) use a bucket of the key (`ratelimit:api:key:<keyId>`).
+- **Implementation:** `resolveApiKeyProject` / `listApiKeyProjects` in `apps/app/src/backend/api/utils/api-key-access.ts` (the resolver MCP builds on). The global `projectMiddleware` sets the project a request names; project routes declare the `requireProject` route middleware, which returns `PROJECT_REQUIRED`. It is route-level rather than path-based because the public API is mounted under `/api`.
 - **UI:** the organization settings get an API keys section for organization keys (name, scope, created by/at, revoke). The project settings keep the project keys and mention the organization keys that also cover the project, with a link.
 
 ## Project access
@@ -177,7 +178,7 @@ Real questions an assistant should be able to answer, with the expected tool cal
 
 0. **Design** (this document). ✅
 1. **Refactor:** move the logic of the public API route handlers into `apps/app/src/backend/api/services/*`. Existing unit and integration tests pass unchanged. ✅
-2. **Organization API keys:** see [API key scopes](#api-key-scopes). Migration, the credential → allowed projects resolver that MCP and OAuth reuse later, the `X-Vemetric-Project` header in the REST `authMiddleware` (`PROJECT_REQUIRED`, `PROJECT_NOT_FOUND` in `API_ERROR_CODES`), `GET /v1/projects`, organization settings UI, API docs. Its own PR, shipped before the MCP server.
+2. **Organization API keys:** ✅ (branch `claude/org-api-keys`) see [API key scopes](#api-key-scopes). Migration, the credential → allowed projects resolver that MCP and OAuth reuse later, the `X-Vemetric-Project` header in the REST `authMiddleware` (`PROJECT_REQUIRED`, `PROJECT_NOT_FOUND` in `API_ERROR_CODES`), `GET /v1/projects`, organization settings UI, API docs. Its own PR, shipped before the MCP server.
 3. **MCP server:** `/mcp` endpoint, the MCP auth middleware with API keys, project access, all tools above (incl. `list_projects` and `list_event_properties` + its REST endpoint), prompts, rate limiting, logging, tests via the SDK in-memory client, MCP Inspector. Can be deployed, but isn't announced or documented yet.
 4. **OAuth:** `@better-auth/oauth-provider` + `@better-auth/cimd`, discovery endpoints, per-IP rate limits on the OAuth endpoints, consent page with organization/project selection, connected apps settings, "Also give access to" in the create-project dialog, client clean-up, tests with real clients (Claude.ai, ChatGPT, Claude Code, Cursor, VS Code) against a public URL.
 5. **Launch (GA for all users):** docs page, "Connect your AI assistant" in the app, MCP Registry, Anthropic connectors directory, Cursor/VS Code listings, blog post + changelog.

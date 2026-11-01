@@ -32,14 +32,25 @@ export async function listApiKeyProjects(apiKey: AuthenticatedApiKey): Promise<P
 }
 
 /**
- * The project a request is about. Project keys don't need `requestedProjectId` (if given, it must be the key's
- * project). Organization keys always need it, even when they cover only one project, so an integration doesn't
- * break once a second project is created.
+ * Organization keys always need to name the project, even when they cover only one project, so an integration
+ * doesn't break once a second project is created.
+ */
+export function projectRequiredError() {
+  return new ApiError(
+    400,
+    'PROJECT_REQUIRED',
+    `Organization API keys need the project ID in the ${PROJECT_HEADER} header. GET /v1/projects lists the projects this key covers.`,
+  );
+}
+
+/**
+ * The project a request names: a project key's own project (`requestedProjectId` must match it if given), or the
+ * covered project in `requestedProjectId` for an organization key. `undefined` for an organization key without it.
  */
 export async function resolveApiKeyProject(
   apiKey: AuthenticatedApiKey,
   requestedProjectId: string | undefined,
-): Promise<Project> {
+): Promise<Project | undefined> {
   if (apiKey.project) {
     if (requestedProjectId !== undefined && requestedProjectId !== apiKey.project.id) {
       throw projectNotFound();
@@ -48,11 +59,7 @@ export async function resolveApiKeyProject(
   }
 
   if (requestedProjectId === undefined) {
-    throw new ApiError(
-      400,
-      'PROJECT_REQUIRED',
-      `Organization API keys need the project ID in the ${PROJECT_HEADER} header. GET /v1/projects lists the projects this key covers.`,
-    );
+    return undefined;
   }
 
   const project = await dbProject.findById(requestedProjectId);

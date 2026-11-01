@@ -1,6 +1,6 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import { createRoute, z } from '@hono/zod-openapi';
-import { commonErrorResponses, errorResponses, rateLimitResponseHeaders } from '../openapi';
+import { commonErrorResponses, errorResponses, projectRequestHeaders, rateLimitResponseHeaders } from '../openapi';
 import {
   funnelIdSchema,
   funnelResultsRequestSchema,
@@ -17,6 +17,9 @@ const funnelsListRoute = createRoute({
   tags: ['Funnels'],
   summary: 'List funnels',
   description: 'Returns the list of funnels for the authenticated project.',
+  request: {
+    headers: projectRequestHeaders,
+  },
   responses: {
     200: {
       description: 'Success',
@@ -27,6 +30,7 @@ const funnelsListRoute = createRoute({
         },
       },
     },
+    404: errorResponses.projectNotFound,
     ...commonErrorResponses,
   },
 });
@@ -39,6 +43,7 @@ const funnelResultsRoute = createRoute({
   summary: 'Get funnel results',
   description: 'Returns results for a funnel in the given date range and with optional filters.',
   request: {
+    headers: projectRequestHeaders,
     params: z.object({
       id: funnelIdSchema,
     }),

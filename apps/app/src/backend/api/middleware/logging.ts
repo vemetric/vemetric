@@ -29,6 +29,7 @@ export const loggingMiddleware = createMiddleware<PublicApiHonoEnv>(async (c, ne
     throw error;
   } finally {
     const apiKey = c.get('apiKey');
+    const project = c.get('project');
 
     logger.info({
       type: 'api.request',
@@ -37,7 +38,8 @@ export const loggingMiddleware = createMiddleware<PublicApiHonoEnv>(async (c, ne
       status,
       latencyMs: Date.now() - start,
       apiKeyId: apiKey?.id,
-      projectId: apiKey?.projectId,
+      organizationId: apiKey?.organizationId,
+      projectId: project?.id,
     });
   }
 });

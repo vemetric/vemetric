@@ -1,6 +1,8 @@
 import { OpenAPIHono } from '@hono/zod-openapi';
+import { except } from 'hono/combine';
 import { authMiddleware } from './middleware/auth';
 import { loggingMiddleware } from './middleware/logging';
+import { projectMiddleware } from './middleware/project';
 import { createRateLimitMiddleware, createRateLimitPolicyMiddleware } from './middleware/rate-limit';
 import { API_DOCS_URL, registerOpenApiDocs } from './openapi';
 import { registerAnalyticsRoutes } from './routes/analytics';
@@ -34,6 +36,8 @@ export function createPublicApi() {
   }
   api.use('/v1/*', createRateLimitPolicyMiddleware());
   api.use('/v1/*', authMiddleware);
+  // Every route is about one project, except the list of projects the key covers.
+  api.use('/v1/*', except('/v1/projects', projectMiddleware));
   api.use('/v1/*', rateLimitMiddleware);
 
   registerProjectRoutes(api);

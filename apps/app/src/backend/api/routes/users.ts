@@ -1,6 +1,6 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import { createRoute } from '@hono/zod-openapi';
-import { commonErrorResponses, errorResponses, rateLimitResponseHeaders } from '../openapi';
+import { commonErrorResponses, errorResponses, projectRequestHeaders, rateLimitResponseHeaders } from '../openapi';
 import {
   userEventsRequestSchema,
   userEventsResponseSchema,
@@ -20,6 +20,7 @@ const usersListRoute = createRoute({
   summary: 'List users',
   description: 'Returns a list of users with optional filters, sorting and date range.',
   request: {
+    headers: projectRequestHeaders,
     body: {
       required: true,
       content: {
@@ -40,6 +41,7 @@ const usersListRoute = createRoute({
       },
     },
     403: errorResponses.forbidden,
+    404: errorResponses.projectNotFound,
     ...commonErrorResponses,
   },
 });
@@ -52,6 +54,7 @@ const usersSingleRoute = createRoute({
   summary: 'Get user',
   description: 'Returns one user by id or identifier.',
   request: {
+    headers: projectRequestHeaders,
     query: userSingleQuerySchema,
   },
   responses: {
@@ -77,6 +80,7 @@ const userEventsRoute = createRoute({
   summary: 'List user events',
   description: 'Returns events for one user within a specified date range and with optional filters.',
   request: {
+    headers: projectRequestHeaders,
     query: userSingleQuerySchema,
     body: {
       required: true,

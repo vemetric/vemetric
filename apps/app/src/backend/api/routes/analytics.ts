@@ -1,6 +1,6 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import { createRoute } from '@hono/zod-openapi';
-import { commonErrorResponses, errorResponses, rateLimitResponseHeaders } from '../openapi';
+import { commonErrorResponses, errorResponses, projectRequestHeaders, rateLimitResponseHeaders } from '../openapi';
 import { analyticsQueryRequestSchema, analyticsQueryResponseSchema } from '../schemas/analytics';
 import { queryAnalytics } from '../services/analytics';
 import type { PublicApiHonoEnv } from '../types';
@@ -13,6 +13,7 @@ const analyticsRoute = createRoute({
   summary: 'Query analytics',
   description: 'Query analytics metrics with optional grouping, sorting and filters.',
   request: {
+    headers: projectRequestHeaders,
     body: {
       required: true,
       content: {
@@ -33,6 +34,7 @@ const analyticsRoute = createRoute({
       },
     },
     403: errorResponses.forbidden,
+    404: errorResponses.projectNotFound,
     ...commonErrorResponses,
   },
 });

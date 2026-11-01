@@ -16,6 +16,8 @@ export const API_ERROR_CODES = [
   'NOT_FOUND',
   'USER_NOT_FOUND',
   'FUNNEL_NOT_FOUND',
+  'PROJECT_REQUIRED',
+  'PROJECT_NOT_FOUND',
   'RATE_LIMIT_EXCEEDED',
   'HTTP_ERROR',
   'INTERNAL_ERROR',
@@ -59,6 +61,7 @@ export function errorHandler(err: Error, c: Context<PublicApiHonoEnv>) {
   }
 
   const apiKey = c.var.apiKey;
+  const project = c.var.project;
   logger.error(
     {
       method: c.req.method,
@@ -66,7 +69,8 @@ export function errorHandler(err: Error, c: Context<PublicApiHonoEnv>) {
       queryParams: c.req.query(),
       reqContent: c.var.requestContent,
       apiKeyId: apiKey?.id,
-      projectId: apiKey?.projectId,
+      organizationId: apiKey?.organizationId,
+      projectId: project?.id,
       err,
     },
     'Unhandled public API error',

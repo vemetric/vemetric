@@ -1,20 +1,20 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import { createRoute, z } from '@hono/zod-openapi';
-import { authorizationHeaderSchema, commonOpenApiErrorResponses } from '../schemas/common';
+import { commonErrorResponses, rateLimitResponseHeaders } from '../openapi';
 import { getProject } from '../services/project';
 import type { PublicApiHonoEnv } from '../types';
 
 const projectRoute = createRoute({
   method: 'get',
   path: '/v1/project',
+  operationId: 'getProject',
+  tags: ['Project'],
   summary: 'Get project',
   description: 'Returns the data of the project associated with the provided API key.',
-  request: {
-    headers: authorizationHeaderSchema,
-  },
   responses: {
     200: {
       description: 'Success',
+      headers: rateLimitResponseHeaders,
       content: {
         'application/json': {
           schema: z.object({
@@ -64,7 +64,7 @@ const projectRoute = createRoute({
         },
       },
     },
-    ...commonOpenApiErrorResponses,
+    ...commonErrorResponses,
   },
 });
 

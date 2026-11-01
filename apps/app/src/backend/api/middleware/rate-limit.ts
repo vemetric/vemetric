@@ -20,9 +20,28 @@ type RateLimitMiddlewareOptions = {
   windowSec?: number;
 };
 
+function resolveOptions(options: RateLimitMiddlewareOptions) {
+  return {
+    limit: options.limit ?? DEFAULT_LIMIT,
+    windowSec: options.windowSec ?? DEFAULT_WINDOW_SEC,
+  };
+}
+
+/**
+ * Advertises the rate-limit policy (`RateLimit-Policy`) on every API response,
+ * including the ones rejected before a project is known (e.g. 401).
+ */
+export function createRateLimitPolicyMiddleware(options: RateLimitMiddlewareOptions = {}) {
+  const { limit, windowSec } = resolveOptions(options);
+
+  return createMiddleware<PublicApiHonoEnv>(async (c, next) => {
+    c.header('RateLimit-Policy', `${limit};w=${windowSec}`);
+    await next();
+  });
+}
+
 export function createRateLimitMiddleware(options: RateLimitMiddlewareOptions = {}) {
-  const limit = options.limit ?? DEFAULT_LIMIT;
-  const windowSec = options.windowSec ?? DEFAULT_WINDOW_SEC;
+  const { limit, windowSec } = resolveOptions(options);
 
   return createMiddleware<PublicApiHonoEnv>(async (c, next) => {
     const project = c.get('project');
@@ -48,11 +67,16 @@ export function createRateLimitMiddleware(options: RateLimitMiddlewareOptions = 
     const remaining = Math.max(0, limit - current);
     const resetAt = Math.ceil(Date.now() / 1000) + ttlSec;
 
+    c.header('RateLimit-Limit', String(limit));
+    c.header('RateLimit-Remaining', String(remaining));
+    c.header('RateLimit-Reset', String(ttlSec));
+    // Legacy headers, kept for existing clients. X-RateLimit-Reset is a unix timestamp.
     c.header('X-RateLimit-Limit', String(limit));
     c.header('X-RateLimit-Remaining', String(remaining));
     c.header('X-RateLimit-Reset', String(resetAt));
 
     if (current > limit) {
+      c.header('Retry-After', String(ttlSec));
       throw new ApiError(429, 'RATE_LIMIT_EXCEEDED', 'Rate limit exceeded. Try again shortly.');
     }
 

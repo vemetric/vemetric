@@ -1,10 +1,6 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import { createRoute } from '@hono/zod-openapi';
-import {
-  authorizationHeaderSchema,
-  commonOpenApiErrorResponses,
-  planLimitExceededOpenApiResponse,
-} from '../schemas/common';
+import { commonErrorResponses, errorResponses, rateLimitResponseHeaders } from '../openapi';
 import { filterValuesRequestSchema, filterValuesResponseSchema } from '../schemas/filter-values';
 import { getFilterValues } from '../services/filter-values';
 import type { PublicApiHonoEnv } from '../types';
@@ -12,10 +8,11 @@ import type { PublicApiHonoEnv } from '../types';
 const filterValuesRoute = createRoute({
   method: 'post',
   path: '/v1/filters/values',
+  operationId: 'getFilterValues',
+  tags: ['Filters'],
   summary: 'Get filter values',
   description: 'Returns available filter values for one or more fields with pagination.',
   request: {
-    headers: authorizationHeaderSchema,
     body: {
       required: true,
       content: {
@@ -28,14 +25,15 @@ const filterValuesRoute = createRoute({
   responses: {
     200: {
       description: 'Success',
+      headers: rateLimitResponseHeaders,
       content: {
         'application/json': {
           schema: filterValuesResponseSchema,
         },
       },
     },
-    403: planLimitExceededOpenApiResponse,
-    ...commonOpenApiErrorResponses,
+    403: errorResponses.forbidden,
+    ...commonErrorResponses,
   },
 });
 

@@ -1,21 +1,18 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import { createRoute } from '@hono/zod-openapi';
+import { commonErrorResponses, errorResponses, rateLimitResponseHeaders } from '../openapi';
 import { analyticsQueryRequestSchema, analyticsQueryResponseSchema } from '../schemas/analytics';
-import {
-  authorizationHeaderSchema,
-  commonOpenApiErrorResponses,
-  planLimitExceededOpenApiResponse,
-} from '../schemas/common';
 import { queryAnalytics } from '../services/analytics';
 import type { PublicApiHonoEnv } from '../types';
 
 const analyticsRoute = createRoute({
   method: 'post',
   path: '/v1/analytics/query',
+  operationId: 'queryAnalytics',
+  tags: ['Analytics'],
   summary: 'Query analytics',
   description: 'Query analytics metrics with optional grouping, sorting and filters.',
   request: {
-    headers: authorizationHeaderSchema,
     body: {
       required: true,
       content: {
@@ -28,14 +25,15 @@ const analyticsRoute = createRoute({
   responses: {
     200: {
       description: 'Success',
+      headers: rateLimitResponseHeaders,
       content: {
         'application/json': {
           schema: analyticsQueryResponseSchema,
         },
       },
     },
-    403: planLimitExceededOpenApiResponse,
-    ...commonOpenApiErrorResponses,
+    403: errorResponses.forbidden,
+    ...commonErrorResponses,
   },
 });
 

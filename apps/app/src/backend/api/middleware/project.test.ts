@@ -272,6 +272,28 @@ describe('public API project selection', () => {
       );
     });
 
+    it('count requests for a project the key does not cover against the bucket of the key', async () => {
+      findByKeyHash.mockResolvedValue(organizationKey({ projectIds: [shop.id] }));
+
+      const response = await request('/v1/project', blog.id);
+
+      expect(response.status).toBe(404);
+      expect(response.headers.get('RateLimit-Remaining')).not.toBeNull();
+      expect(evalMock).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ keys: ['ratelimit:api:key:key_org'] }),
+      );
+    });
+
+    it('reject requests for a project the key does not cover once the key bucket is exhausted', async () => {
+      findByKeyHash.mockResolvedValue(organizationKey({ projectIds: [shop.id] }));
+      evalMock.mockResolvedValue([101, 30]);
+
+      const response = await request('/v1/project', blog.id);
+
+      expect(response.status).toBe(429);
+    });
+
     it('count requests without a project against the bucket of the key', async () => {
       findByKeyHash.mockResolvedValue(organizationKey({ allProjects: true }));
       findByOrganizationId.mockResolvedValue([]);

@@ -35,7 +35,27 @@ The MCP authorization spec is OAuth 2.1. Clients like Claude.ai and ChatGPT only
 
 ### API keys (fallback)
 
-Not part of the MCP spec, but static bearer tokens are common practice (GitHub, Stripe and others accept personal tokens on their remote MCP servers), and the developer clients (Claude Code, Cursor, VS Code, Codex, …) support custom headers. Useful for headless agents, CI scripts and clients without OAuth. The existing API keys are project-scoped and reuse the key lookup of the REST `authMiddleware`.
+Not part of the MCP spec, but static bearer tokens are common practice (GitHub, Stripe and others accept personal tokens on their remote MCP servers), and the developer clients (Claude Code, Cursor, VS Code, Codex, …) support custom headers. Useful for headless agents, CI scripts and clients without OAuth. MCP and REST use the same keys and the same key lookup (the REST `authMiddleware`).
+
+### API key scopes
+
+Today every key belongs to one project. Organization keys are added next to them (Phase 2), so a key can cover several projects in REST and MCP alike. Both kinds stay:
+
+- **Project key:** belongs to one project, as today. Managed in the project settings and deleted together with the project.
+- **Organization key:** managed in the organization settings and covers either
+  1. **all current and future projects** of the organization, or
+  2. **chosen projects** of the organization. Projects created later are not added automatically; deleted projects drop out of the selection.
+
+Unlike OAuth tokens, a key acts for the organization, not for a user: it keeps working when the admin who created it leaves (as today, `createdByUserId` → `SetNull`). That is also why there is no "all organizations" level for keys. A key never spans organizations, so the subscription status (and with it the retention) always comes from that one organization. Only organization admins can create or revoke keys, as today (`projectAdminProcedure`, an organization-level procedure for organization keys).
+
+- **Database:** `ApiKey` gets a required `organizationId` and an `allProjects` flag. `projectId` becomes optional and is set only for project keys (keeps the cascade on project deletion). The chosen projects of an organization key live in a new `api_key_project` table (cascades on project deletion too). The migration fills `organizationId` from each key's project, so existing keys stay project keys and keep working unchanged.
+- **REST: choosing the project.** A request names the project in the `X-Vemetric-Project` header (documented once in the OpenAPI spec and the same on every endpoint, so no route or schema changes):
+  - **Project keys** don't need it. If it is sent, it must match the key's project.
+  - **Organization keys** always need it, even if the key currently covers only one project. Otherwise an integration would break as soon as a second project is created. A missing header returns `400 PROJECT_REQUIRED`.
+  - A project the key doesn't cover returns `404 PROJECT_NOT_FOUND` (no hint that it exists).
+  - New `GET /v1/projects` lists the projects the key covers (id, name, domain). With a project key, it returns that one project.
+- **Rate limit:** still per project (`ratelimit:api:<projectId>`), so an organization key spread over several projects uses each project's bucket.
+- **UI:** the organization settings get an API keys section for organization keys (name, scope, created by/at, revoke). The project settings keep the project keys and mention the organization keys that also cover the project, with a link.
 
 ## Project access
 
@@ -53,7 +73,7 @@ The services never look at auth. The MCP layer turns the credentials into a list
   - **When creating a project** in an organization where a connected client only has individual projects, the create dialog offers "Also give access to: Claude, Cursor, …" (unchecked by default).
   - **In the assistant:** `list_projects` and the `PROJECT_NOT_FOUND` error include the link to connected apps, so the model can tell the user where to grant more access. It never reveals projects that are not shared.
   - Connecting the client again works too, but many clients skip the consent screen when a valid token exists, so it is not the path we point users to.
-- **API key:** the key's project only.
+- **API key:** the projects the key covers (see [API key scopes](#api-key-scopes)). In MCP, `projectId` may be omitted whenever the key covers exactly one project, also for organization keys: unlike a REST integration, the model recovers from the missing-`projectId` error by calling `list_projects`.
 - **Read vs. write:** all tools are read-only for now, so there is no choice on the consent page; a permission choice with nothing behind it would only confuse. When write tools come (e.g. managing funnels), they get their own scope (`analytics:write`). The consent page then shows it as a separate permission, and existing connections are asked for it only when a write tool is first used (step-up authorization: `403 insufficient_scope`, supported by the SDK's `scopeChallenge`). API keys stay read-only.
 - **Tools:** every project-bound tool takes an optional `projectId`. If the credentials allow exactly one project, it may be omitted. Otherwise a missing `projectId` returns an error that tells the model to call `list_projects`. A project outside the allowed list returns `PROJECT_NOT_FOUND` (no hint that it exists).
 
@@ -72,7 +92,7 @@ The inputs are derived from the REST request schemas (same defaults and the same
 | `get_user_events`       | `getUserEvents`            | `id` or `identifier` + `dateRange`, `filters`, `limit` (MCP default 50).                                                                                                                                                                                        |
 | `list_funnels`          | `listFunnels`              | Funnel ids, names, step definitions.                                                                                                                                                                                                                            |
 | `get_funnel_results`    | `getFunnelResults`         | `funnelId` + `dateRange` + `filters`.                                                                                                                                                                                                                           |
-| `list_projects`         | new                        | Projects the credentials allow (id, name, domain). With an API key, the key's project.                                                                                                                                                                          |
+| `list_projects`         | new                        | Projects the credentials allow (id, name, domain). With an API key, the projects the key covers.                                                                                                                                                                |
 
 Possible later additions: `compare` flag on `query_analytics` (current vs previous period in one call), tools for the dashboard's "live" view.
 
@@ -157,6 +177,7 @@ Real questions an assistant should be able to answer, with the expected tool cal
 
 0. **Design** (this document). ✅
 1. **Refactor:** move the logic of the public API route handlers into `apps/app/src/backend/api/services/*`. Existing unit and integration tests pass unchanged. ✅
-2. **MCP server:** `/mcp` endpoint, the MCP auth middleware with API keys, project access, all tools above (incl. `list_projects` and `list_event_properties` + its REST endpoint), prompts, rate limiting, logging, tests via the SDK in-memory client, MCP Inspector. Can be deployed, but isn't announced or documented yet.
-3. **OAuth:** `@better-auth/oauth-provider` + `@better-auth/cimd`, discovery endpoints, per-IP rate limits on the OAuth endpoints, consent page with organization/project selection, connected apps settings, "Also give access to" in the create-project dialog, client clean-up, tests with real clients (Claude.ai, ChatGPT, Claude Code, Cursor, VS Code) against a public URL.
-4. **Launch (GA for all users):** docs page, "Connect your AI assistant" in the app, MCP Registry, Anthropic connectors directory, Cursor/VS Code listings, blog post + changelog.
+2. **Organization API keys:** see [API key scopes](#api-key-scopes). Migration, the credential → allowed projects resolver that MCP and OAuth reuse later, the `X-Vemetric-Project` header in the REST `authMiddleware` (`PROJECT_REQUIRED`, `PROJECT_NOT_FOUND` in `API_ERROR_CODES`), `GET /v1/projects`, organization settings UI, API docs. Its own PR, shipped before the MCP server.
+3. **MCP server:** `/mcp` endpoint, the MCP auth middleware with API keys, project access, all tools above (incl. `list_projects` and `list_event_properties` + its REST endpoint), prompts, rate limiting, logging, tests via the SDK in-memory client, MCP Inspector. Can be deployed, but isn't announced or documented yet.
+4. **OAuth:** `@better-auth/oauth-provider` + `@better-auth/cimd`, discovery endpoints, per-IP rate limits on the OAuth endpoints, consent page with organization/project selection, connected apps settings, "Also give access to" in the create-project dialog, client clean-up, tests with real clients (Claude.ai, ChatGPT, Claude Code, Cursor, VS Code) against a public URL.
+5. **Launch (GA for all users):** docs page, "Connect your AI assistant" in the app, MCP Registry, Anthropic connectors directory, Cursor/VS Code listings, blog post + changelog.

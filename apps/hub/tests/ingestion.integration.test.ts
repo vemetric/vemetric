@@ -914,7 +914,10 @@ describe.sequential('hub ingestion integration', () => {
         return user !== null;
       });
 
-      const identifiedUser = await clickhouseUser.findByIdentifier(BigInt(project.projectId), 'cookieless-identify-user');
+      const identifiedUser = await clickhouseUser.findByIdentifier(
+        BigInt(project.projectId),
+        'cookieless-identify-user',
+      );
       expect(identifiedUser!.id).toBe(anonymousUser.id);
       const users = await queryProjectUsers(project);
       expect(users).toHaveLength(1);
@@ -942,10 +945,7 @@ describe.sequential('hub ingestion integration', () => {
       expect(cookieNames.every((name) => name.startsWith('__Host-vuid_'))).toBe(true);
 
       await waitForStable('cookie events of both projects', async () => {
-        const [countsA, countsB] = await Promise.all([
-          getEventCountsByUser(projectA),
-          getEventCountsByUser(projectB),
-        ]);
+        const [countsA, countsB] = await Promise.all([getEventCountsByUser(projectA), getEventCountsByUser(projectB)]);
         return [...countsA.values()].join() === '2' && [...countsB.values()].join() === '2';
       });
 

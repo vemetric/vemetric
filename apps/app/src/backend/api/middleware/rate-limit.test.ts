@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createRateLimitMiddleware } from './rate-limit';
+import { createRateLimitMiddleware, createRateLimitPolicyMiddleware } from './rate-limit';
 import type { PublicApiHonoEnv } from '../types';
 import { errorHandler } from '../utils/errors';
 
@@ -32,6 +32,8 @@ function createTestApp(options?: Parameters<typeof createRateLimitMiddleware>[0]
   const app = new Hono<PublicApiHonoEnv>();
   app.onError(errorHandler);
 
+  app.use('/v1/*', createRateLimitPolicyMiddleware(options));
+  app.get('/v1/unauthenticated', (c) => c.json({ status: 'ok' }));
   app.use('/v1/*', async (c, next) => {
     c.set('project', {
       id: 'project_1',
@@ -59,9 +61,35 @@ describe('public API rate limit middleware', () => {
     const response = await app.request('/v1/project');
 
     expect(response.status).toBe(200);
+    expect(response.headers.get('RateLimit-Limit')).toBe('100');
+    expect(response.headers.get('RateLimit-Remaining')).toBe('99');
+    expect(response.headers.get('RateLimit-Reset')).toBe('60');
+    expect(response.headers.get('RateLimit-Policy')).toBe('100;w=60');
+    expect(response.headers.get('Retry-After')).toBeNull();
+  });
+
+  it('keeps sending the legacy X-RateLimit headers', async () => {
+    getRedisClientMock.mockResolvedValue(new FakeRedis());
+    const app = createTestApp();
+    const now = Math.ceil(Date.now() / 1000);
+
+    const response = await app.request('/v1/project');
+
     expect(response.headers.get('X-RateLimit-Limit')).toBe('100');
     expect(response.headers.get('X-RateLimit-Remaining')).toBe('99');
-    expect(response.headers.get('X-RateLimit-Reset')).toBeTruthy();
+    const resetAt = Number(response.headers.get('X-RateLimit-Reset'));
+    expect(resetAt).toBeGreaterThanOrEqual(now + 60);
+    expect(resetAt).toBeLessThanOrEqual(now + 61);
+  });
+
+  it('sends the rate limit policy on requests without a project', async () => {
+    const app = createTestApp({ limit: 10, windowSec: 30 });
+
+    const response = await app.request('/v1/unauthenticated');
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('RateLimit-Policy')).toBe('10;w=30');
+    expect(getRedisClientMock).not.toHaveBeenCalled();
   });
 
   it('returns 429 when over limit', async () => {
@@ -76,6 +104,10 @@ describe('public API rate limit middleware', () => {
     const body = await response!.json();
 
     expect(response!.status).toBe(429);
+    expect(response!.headers.get('RateLimit-Limit')).toBe('2');
+    expect(response!.headers.get('RateLimit-Remaining')).toBe('0');
+    expect(response!.headers.get('RateLimit-Reset')).toBe('60');
+    expect(response!.headers.get('Retry-After')).toBe('60');
     expect(response!.headers.get('X-RateLimit-Limit')).toBe('2');
     expect(response!.headers.get('X-RateLimit-Remaining')).toBe('0');
     expect(body).toEqual({

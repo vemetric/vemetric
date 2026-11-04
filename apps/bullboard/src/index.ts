@@ -11,9 +11,9 @@ import { sessionFlushQueue } from '@vemetric/queues/session-flush-queue';
 import { sessionQueue } from '@vemetric/queues/session-queue';
 import { updateUserQueue } from '@vemetric/queues/update-user-queue';
 import { Hono } from 'hono';
-import { basicAuth } from 'hono/basic-auth';
 import { serveStatic } from 'hono/bun';
 import { pinoLogger as honoPino } from 'hono-pino';
+import { createAuthMiddleware } from './auth';
 import { logger } from './logger';
 
 const app = new Hono();
@@ -39,38 +39,30 @@ app.use(
   }),
 );
 
+// Protect every path, including the /api routes that can retry, remove or clean jobs
+app.use('*', createAuthMiddleware());
+
 const serverAdapter = new HonoAdapter(serveStatic);
+
+// BULLBOARD_READ_ONLY=true hides all actions that modify queues or jobs
+const readOnlyMode = process.env.BULLBOARD_READ_ONLY === 'true';
 
 createBullBoard({
   queues: [
-    new BullMQAdapter(createUserQueue),
-    new BullMQAdapter(updateUserQueue),
-    new BullMQAdapter(mergeUserQueue),
-    new BullMQAdapter(enrichUserQueue),
-    new BullMQAdapter(createDeviceQueue),
-    new BullMQAdapter(eventQueue),
-    new BullMQAdapter(sessionQueue),
-    new BullMQAdapter(sessionFlushQueue),
-    new BullMQAdapter(emailDripQueue),
-  ],
+    createUserQueue,
+    updateUserQueue,
+    mergeUserQueue,
+    enrichUserQueue,
+    createDeviceQueue,
+    eventQueue,
+    sessionQueue,
+    sessionFlushQueue,
+    emailDripQueue,
+  ].map((queue) => new BullMQAdapter(queue, { readOnlyMode })),
   serverAdapter,
 });
 
-const username = process.env.BULLBOARD_USERNAME;
-const password = process.env.BULLBOARD_PASSWORD;
-
-if (!username || !password) {
-  throw new Error('BULLBOARD_USERNAME and BULLBOARD_PASSWORD must be set');
-}
-
 const basePath = '/';
-app.use(
-  basePath,
-  basicAuth({
-    username,
-    password,
-  }),
-);
 serverAdapter.setBasePath(basePath);
 app.route(basePath, serverAdapter.registerPlugin());
 

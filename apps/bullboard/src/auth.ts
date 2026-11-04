@@ -1,6 +1,7 @@
 import type { MiddlewareHandler } from 'hono';
 import { basicAuth } from 'hono/basic-auth';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { logger } from './logger';
 
 /**
  * Bullboard can be protected in two ways (checked in this order):
@@ -17,6 +18,11 @@ export function createAuthMiddleware(): MiddlewareHandler {
   const teamDomain = process.env.CF_ACCESS_TEAM_DOMAIN?.replace(/\/+$/, '');
   const audience = process.env.CF_ACCESS_AUD;
 
+  // Fail closed on a partial Cloudflare Access config instead of silently falling back to basic auth
+  if (Boolean(teamDomain) !== Boolean(audience)) {
+    throw new Error('Cloudflare Access auth is misconfigured: set both CF_ACCESS_TEAM_DOMAIN and CF_ACCESS_AUD');
+  }
+
   if (teamDomain && audience) {
     const jwks = createRemoteJWKSet(new URL(`${teamDomain}/cdn-cgi/access/certs`));
 
@@ -28,7 +34,10 @@ export function createAuthMiddleware(): MiddlewareHandler {
 
       try {
         await jwtVerify(token, jwks, { issuer: teamDomain, audience, algorithms: ['RS256'] });
-      } catch {
+      } catch (err) {
+        // Logged so misconfiguration (wrong team domain, unreachable JWKS) is diagnosable.
+        // Requests without a token above stay quiet to avoid log noise from scanners.
+        logger.warn({ err }, 'Cloudflare Access token verification failed');
         return c.text('Forbidden', 403);
       }
 

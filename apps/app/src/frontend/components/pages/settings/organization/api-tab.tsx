@@ -1,4 +1,4 @@
-import { Badge, Box, Button, Flex, Text } from '@chakra-ui/react';
+import { Badge, Box, Button, Code, Flex, Text } from '@chakra-ui/react';
 import { useState } from 'react';
 import { TbPlus, TbShieldLock } from 'react-icons/tb';
 import { DocsButton } from '@/components/docs-button';
@@ -81,11 +81,10 @@ export const OrganizationApiTab = ({ organizationId }: Props) => {
 
   return (
     <Flex flexDir="column" gap={4} p={{ base: 3, md: 4 }}>
-      <Flex align="flex-start" gap={3}>
+      <Flex align="center" gap={3}>
         <Text fontSize="sm" color="fg.muted" flex={1}>
-          Organization API keys can access all current and future projects of the organization, or only the projects you
-          choose. Requests name the project in the <code>X-Vemetric-Project</code> header. For a single project, you can
-          also create a project API key in the project settings.
+          One key for all current and future projects, or just the ones you choose. Requests pick the project with the{' '}
+          <Code size="sm">X-Vemetric-Project</Code> header.
         </Text>
         <DocsButton href="https://vemetric.com/docs/api" text="API Docs" />
       </Flex>

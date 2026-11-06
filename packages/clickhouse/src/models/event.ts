@@ -1015,7 +1015,7 @@ export const clickhouseEvent = {
             ${eventFilterQueries ? `AND (${eventFilterQueries})` : ''}
             ${filterQueries || ''}
           GROUP BY property
-          ORDER BY count DESC
+          ORDER BY count DESC, property
         `,
         format: 'JSONEachRow',
       });

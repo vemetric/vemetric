@@ -147,7 +147,7 @@ export function registerTools(server: McpServer, caller: McpCaller) {
             'At most one dimension to group by, e.g. ["page:path"]. Empty for totals.',
           ),
           orderBy: analyticsQueryRequestFields.shape.orderBy.describe(
-            'At most one [field, direction] pair, e.g. [["pageviews","desc"]]. The field is a metric, the groupBy field or "date". Default: by date ascending for "interval:auto", otherwise by the first metric descending.',
+            'At most one [field, direction] pair, e.g. [["pageviews","desc"]]. The field is a metric, the groupBy field or "date". Default: by date ascending for "interval:auto", otherwise by the first metric that applies to the grouping, descending.',
           ),
           limit: z
             .number()

@@ -1,10 +1,15 @@
 import type { MetricsQueryGrouping } from 'clickhouse';
+import { isMetricApplicableForGrouping } from './metrics';
+import type { Metric } from '../../consts/analytics';
 
 type Row = { group: Record<string, string>; metrics: Record<string, number | null> };
 type OrderBy = Array<[string, string]>;
 
-/** Without `orderBy`, time series are sorted by date (oldest first), other groupings by the first metric (highest first). */
-export function getDefaultOrderBy(grouping: MetricsQueryGrouping, metrics: string[]): OrderBy {
+/**
+ * Without `orderBy`, time series are sorted by date (oldest first), other groupings by the first metric that applies to
+ * the grouping (highest first): e.g. bounceRate is `null` for every page, so it can't rank pages.
+ */
+export function getDefaultOrderBy(grouping: MetricsQueryGrouping, metrics: Metric[]): OrderBy {
   if (grouping.kind === 'none') {
     return [];
   }
@@ -13,7 +18,8 @@ export function getDefaultOrderBy(grouping: MetricsQueryGrouping, metrics: strin
     return [['date', 'asc']];
   }
 
-  return [[metrics[0], 'desc']];
+  const rankingMetric = metrics.find((metric) => isMetricApplicableForGrouping(metric, grouping)) ?? metrics[0];
+  return [[rankingMetric, 'desc']];
 }
 
 function getGroupValue(row: Row): string {

@@ -16,6 +16,12 @@ describe('getDefaultOrderBy', () => {
     ]);
   });
 
+  it('skips metrics that are null for the grouping', () => {
+    expect(getDefaultOrderBy({ kind: 'field', token: 'page:path' } as never, ['bounceRate', 'pageviews'])).toEqual([
+      ['pageviews', 'desc'],
+    ]);
+  });
+
   it("doesn't order totals", () => {
     expect(getDefaultOrderBy({ kind: 'none' } as never, ['users'])).toEqual([]);
   });

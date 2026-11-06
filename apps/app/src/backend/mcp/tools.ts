@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { listCallerProjects, type McpCaller } from './caller';
 import { runCallerTool, runProjectTool } from './run-tool';
 import { analyticsQueryRequestFields, validateAnalyticsQuery } from '../api/schemas/analytics';
+import { apiEventFilterSchema, apiFilterSchema } from '../api/schemas/api-filters';
 import { eventPropertiesRequestSchema } from '../api/schemas/event-properties';
 import { filterValuesRequestSchema } from '../api/schemas/filter-values';
 import { funnelIdSchema, funnelResultsRequestSchema } from '../api/schemas/funnels';
@@ -27,6 +28,37 @@ const dateRange = analyticsQueryRequestFields.shape.dateRange.describe(
 
 const filters = analyticsQueryRequestFields.shape.filters.describe(
   'Optional filters. Each one has a "type" (page, event, user, location, referrer, referrerUrl, referrerType, utmTags, browser, device, os, funnel). Examples: {"type":"page","path":{"operator":"startsWith","value":"/blog"}}, {"type":"event","name":{"operator":"eq","value":"signup"},"properties":[{"property":"plan","operator":"eq","value":"pro"}]}, {"type":"location","country":{"operator":"oneOf","value":["US","DE"]}}, {"type":"referrer","operator":"eq","value":"Google"}, {"type":"utmTags","utmCampaign":{"operator":"eq","value":"newsletter"}}, {"type":"device","operator":"oneOf","value":["mobile"]}. Look up exact values with list_filter_values first.',
+);
+
+/**
+ * The filter schema is ~5 KB of JSON Schema. Only query_analytics advertises it in full, the other tools describe
+ * filters as objects with a `type` and validate them against the same schema, so tools/list stays small.
+ * It's typed like the full filter list, so it can replace the filters of the REST request schemas.
+ */
+function filtersLikeQueryAnalytics<S extends z.ZodType>(filterSchema: S, description: string) {
+  const schema = z
+    .array(z.looseObject({ type: z.string() }))
+    .optional()
+    .describe(description)
+    .transform((value, ctx): z.output<S>[] | undefined => {
+      if (value === undefined) {
+        return undefined;
+      }
+      const result = z.array(filterSchema).safeParse(value);
+      if (!result.success) {
+        for (const issue of result.error.issues) {
+          ctx.addIssue({ code: 'custom', message: issue.message, path: issue.path });
+        }
+        return z.NEVER;
+      }
+      return result.data;
+    });
+  return schema as unknown as z.ZodType<z.output<S>[] | undefined, z.input<S>[] | undefined>;
+}
+
+const filtersReference = filtersLikeQueryAnalytics(
+  apiFilterSchema,
+  'Optional filters, in the same format as the filters of query_analytics, e.g. {"type":"page","path":{"operator":"startsWith","value":"/blog"}}.',
 );
 
 const filtersOperator = analyticsQueryRequestFields.shape.filtersOperator.describe(
@@ -182,7 +214,7 @@ export function registerTools(server: McpServer, caller: McpCaller) {
         projectId,
         eventName: eventPropertiesRequestSchema.shape.eventName.describe('Exact name of the custom event.'),
         dateRange,
-        filters,
+        filters: filtersReference,
         filtersOperator,
         limit: limit(50, 'properties'),
         offset,
@@ -205,7 +237,7 @@ export function registerTools(server: McpServer, caller: McpCaller) {
       inputSchema: usersListRequestSchema.safeExtend({
         projectId,
         dateRange,
-        filters,
+        filters: filtersReference,
         filtersOperator,
         orderBy: usersListRequestSchema.shape.orderBy.describe(
           'Optional sorting, e.g. [["lastSeenAt","desc"]], or by when users last fired an event: [["lastEventFired","desc",{"name":{"operator":"eq","value":"signup"}}]].',
@@ -249,8 +281,9 @@ export function registerTools(server: McpServer, caller: McpCaller) {
           projectId,
           ...userReference,
           dateRange,
-          filters: userEventsRequestSchema.shape.filters.describe(
-            'Optional filters of type event, page, browser, device or os, e.g. {"type":"event","name":{"operator":"eq","value":"signup"}}.',
+          filters: filtersLikeQueryAnalytics(
+            apiEventFilterSchema,
+            'Optional filters of type event, page, browser, device or os, in the same format as the filters of query_analytics, e.g. {"type":"event","name":{"operator":"eq","value":"signup"}}.',
           ),
           filtersOperator,
           limit: limit(50, 'events'),
@@ -291,7 +324,7 @@ export function registerTools(server: McpServer, caller: McpCaller) {
         projectId,
         funnelId: funnelIdSchema.describe('Funnel id (from list_funnels).'),
         dateRange,
-        filters,
+        filters: filtersReference,
         filtersOperator,
       }),
       annotations,

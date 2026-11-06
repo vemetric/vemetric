@@ -275,6 +275,29 @@ describe('MCP server', () => {
       expect(result.isError).toBe(true);
       expect(textOf(result)).toContain('groupBy can include max one item');
     });
+
+    it('validates filters of tools that only reference the filter format of query_analytics', async () => {
+      const client = await connect();
+
+      const result = await client.callTool({
+        name: 'list_users',
+        arguments: { dateRange: '7days', filters: [{ type: 'page', path: { operator: 'like', value: '/blog' } }] },
+      });
+
+      expect(result.isError).toBe(true);
+      expect(textOf(result)).toContain('filters.0.path.operator');
+    });
+
+    it('keeps the tool definitions compact', async () => {
+      const client = await connect();
+
+      const { tools } = await client.listTools();
+
+      // Only query_analytics carries the full filter schema (~5 KB), see filtersLikeQueryAnalytics.
+      expect(JSON.stringify(tools).length).toBeLessThan(25_000);
+      const listUsers = tools.find((tool) => tool.name === 'list_users');
+      expect(JSON.stringify(listUsers?.inputSchema.properties?.filters)).not.toContain('referrerUrl');
+    });
   });
 
   describe('project access', () => {

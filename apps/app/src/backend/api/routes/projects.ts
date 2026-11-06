@@ -1,18 +1,42 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import { createRoute, z } from '@hono/zod-openapi';
-import { commonErrorResponses, rateLimitResponseHeaders } from '../openapi';
+import { requireProject } from '../middleware/project';
+import { commonErrorResponses, errorResponses, projectRequestHeaders, rateLimitResponseHeaders } from '../openapi';
+import { getProject, listProjects } from '../services/project';
 import type { PublicApiHonoEnv } from '../types';
+import { listApiKeyProjects } from '../utils/api-key-access';
 
-function splitCsv(value: string | null): string[] {
-  if (!value) {
-    return [];
-  }
-
-  return value
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean);
-}
+const projectsListRoute = createRoute({
+  method: 'get',
+  path: '/v1/projects',
+  operationId: 'listProjects',
+  tags: ['Project'],
+  summary: 'List projects',
+  description:
+    "Returns the projects the API key covers: the key's own project for a project key, the covered projects of the organization for an organization key. Use their IDs in the `X-Vemetric-Project` header.",
+  responses: {
+    200: {
+      description: 'Success',
+      headers: rateLimitResponseHeaders,
+      content: {
+        'application/json': {
+          schema: z.object({
+            projects: z
+              .array(
+                z.object({
+                  id: z.string().openapi({ description: 'Project ID', example: '1234567890123456' }),
+                  name: z.string().openapi({ description: 'Project name', example: 'My Website' }),
+                  domain: z.string().openapi({ description: 'Project domain', example: 'example.com' }),
+                }),
+              )
+              .openapi({ description: 'Projects the API key covers, sorted by name.' }),
+          }),
+        },
+      },
+    },
+    ...commonErrorResponses,
+  },
+});
 
 const projectRoute = createRoute({
   method: 'get',
@@ -20,7 +44,12 @@ const projectRoute = createRoute({
   operationId: 'getProject',
   tags: ['Project'],
   summary: 'Get project',
-  description: 'Returns the data of the project associated with the provided API key.',
+  description:
+    "Returns the data of the project: the key's own project for a project key, the project in the `X-Vemetric-Project` header for an organization key.",
+  middleware: requireProject,
+  request: {
+    headers: projectRequestHeaders,
+  },
   responses: {
     200: {
       description: 'Success',
@@ -74,27 +103,17 @@ const projectRoute = createRoute({
         },
       },
     },
+    404: errorResponses.projectNotFound,
     ...commonErrorResponses,
   },
 });
 
 export function registerProjectRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
-  api.openapi(projectRoute, ({ json, var: { project } }) => {
-    return json(
-      {
-        project: {
-          id: project.id,
-          name: project.name,
-          domain: project.domain,
-          token: project.token,
-          createdAt: project.createdAt.toISOString(),
-          firstEventAt: project.firstEventAt ? project.firstEventAt.toISOString() : null,
-          hasPublicDashboard: project.publicDashboard,
-          excludedIps: splitCsv(project.excludedIps),
-          excludedCountries: splitCsv(project.excludedCountries),
-        },
-      },
-      200,
-    );
+  api.openapi(projectsListRoute, async ({ json, var: { apiKey } }) => {
+    return json(listProjects(await listApiKeyProjects(apiKey)), 200);
+  });
+
+  api.openapi(projectRoute, ({ json, var: vars }) => {
+    return json(getProject(vars), 200);
   });
 }

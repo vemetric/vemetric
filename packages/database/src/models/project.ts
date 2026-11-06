@@ -39,6 +39,18 @@ export const dbProject = {
     client.project.findMany({
       where: { organizationId },
     }),
+  findByIds: ({
+    ids,
+    organizationId,
+    client = prismaClient,
+  }: {
+    ids: string[];
+    organizationId: string;
+    client?: DbClient;
+  }) =>
+    client.project.findMany({
+      where: { id: { in: ids }, organizationId },
+    }),
   findByOrganizationAndUserId: (organizationId: string, userId: string) =>
     prismaClient.project.findMany({
       where: {

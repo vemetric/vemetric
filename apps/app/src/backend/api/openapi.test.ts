@@ -15,7 +15,7 @@ vi.mock('../utils/redis', () => ({
 type Operation = {
   operationId?: string;
   tags?: string[];
-  parameters?: { name: string; in: string }[];
+  parameters?: { name?: string; in?: string; $ref?: string }[];
   responses: Record<string, { $ref?: string; headers?: Record<string, unknown> }>;
 };
 
@@ -53,6 +53,7 @@ describe('public API OpenAPI spec', () => {
     expect(
       Object.fromEntries(operations.map(({ path, method, operation }) => [`${method} ${path}`, operation.operationId])),
     ).toEqual({
+      'get /v1/projects': 'listProjects',
       'get /v1/project': 'getProject',
       'post /v1/analytics/query': 'queryAnalytics',
       'post /v1/filters/values': 'getFilterValues',
@@ -75,8 +76,24 @@ describe('public API OpenAPI spec', () => {
     expect(spec.servers).toEqual([{ url: 'https://api.vemetric.com' }]);
     for (const { operation } of getOperations(spec)) {
       expect(
-        operation.parameters?.some((param) => param.in === 'header' && param.name.toLowerCase() === 'authorization'),
+        operation.parameters?.some((param) => param.in === 'header' && param.name?.toLowerCase() === 'authorization'),
       ).not.toBe(true);
+    }
+  });
+
+  it('documents the project header once and uses it on every endpoint that is about one project', async () => {
+    const spec = await getSpec();
+
+    expect(spec.components.parameters.ProjectHeader).toMatchObject({
+      name: 'X-Vemetric-Project',
+      in: 'header',
+      required: false,
+    });
+    for (const { operation } of getOperations(spec)) {
+      const usesProjectHeader = operation.parameters?.some(
+        (param) => param.$ref === '#/components/parameters/ProjectHeader',
+      );
+      expect(usesProjectHeader ?? false, operation.operationId).toBe(operation.operationId !== 'listProjects');
     }
   });
 
@@ -109,6 +126,7 @@ describe('public API OpenAPI spec', () => {
       BadRequest: 'VALIDATION_ERROR',
       Unauthorized: 'UNAUTHORIZED',
       Forbidden: 'PLAN_LIMIT_EXCEEDED',
+      ProjectNotFound: 'PROJECT_NOT_FOUND',
       UserNotFound: 'USER_NOT_FOUND',
       FunnelNotFound: 'FUNNEL_NOT_FOUND',
       RateLimited: 'RATE_LIMIT_EXCEEDED',
@@ -131,11 +149,12 @@ describe('public API OpenAPI spec', () => {
     );
 
     expect(narrowed).toEqual({
-      BadRequest: { codes: ['VALIDATION_ERROR', 'HTTP_ERROR'], hasDetails: true },
+      BadRequest: { codes: ['VALIDATION_ERROR', 'HTTP_ERROR', 'PROJECT_REQUIRED'], hasDetails: true },
       Unauthorized: { codes: ['UNAUTHORIZED'], hasDetails: false },
       Forbidden: { codes: ['PLAN_LIMIT_EXCEEDED'], hasDetails: false },
-      UserNotFound: { codes: ['USER_NOT_FOUND'], hasDetails: false },
-      FunnelNotFound: { codes: ['FUNNEL_NOT_FOUND'], hasDetails: false },
+      ProjectNotFound: { codes: ['PROJECT_NOT_FOUND'], hasDetails: false },
+      UserNotFound: { codes: ['USER_NOT_FOUND', 'PROJECT_NOT_FOUND'], hasDetails: false },
+      FunnelNotFound: { codes: ['FUNNEL_NOT_FOUND', 'PROJECT_NOT_FOUND'], hasDetails: false },
       RateLimited: { codes: ['RATE_LIMIT_EXCEEDED'], hasDetails: false },
       InternalError: { codes: ['INTERNAL_ERROR'], hasDetails: false },
     });
@@ -151,6 +170,11 @@ describe('public API OpenAPI spec', () => {
           .map(({ operation }) => [operation.operationId, operation.responses['404'].$ref]),
       ),
     ).toEqual({
+      getProject: '#/components/responses/ProjectNotFound',
+      queryAnalytics: '#/components/responses/ProjectNotFound',
+      getFilterValues: '#/components/responses/ProjectNotFound',
+      listUsers: '#/components/responses/ProjectNotFound',
+      listFunnels: '#/components/responses/ProjectNotFound',
       getUser: '#/components/responses/UserNotFound',
       listUserEvents: '#/components/responses/UserNotFound',
       getFunnelResults: '#/components/responses/FunnelNotFound',

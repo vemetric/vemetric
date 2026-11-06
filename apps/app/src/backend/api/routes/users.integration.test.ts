@@ -196,9 +196,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
       'Zulu',
     ]);
     expect(body.users.map((user: { id: string }) => user.id)).toEqual(['3', '4', '2', '1']);
-    expect(body.users.every((user: { lastEventFiredAt: string | null }) => user.lastEventFiredAt === null)).toBe(
-      true,
-    );
+    expect(body.users.every((user: { lastEventFiredAt: string | null }) => user.lastEventFiredAt === null)).toBe(true);
   });
 
   it('supports sorting by last time a user fired a specific event', async () => {

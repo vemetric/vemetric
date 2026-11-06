@@ -1,7 +1,8 @@
 import { Flex, Tabs, Text, Span } from '@chakra-ui/react';
 import { useEffect } from 'react';
-import { TbCreditCard, TbSettings, TbUsers } from 'react-icons/tb';
+import { TbApi, TbCreditCard, TbSettings, TbUsers } from 'react-icons/tb';
 import { useOrgSettingsDialog } from '@/hooks/use-org-settings-dialog';
+import { OrganizationApiTab } from './api-tab';
 import { BillingTab } from './billing/billing-tab';
 import { OrganizationGeneralTab } from './general-tab';
 import { OrganizationMembersTab } from './members/members-tab';
@@ -90,7 +91,7 @@ export const OrganizationSettingsDialog = () => {
         <DialogBody p={0} pt={2} m="1px" bg="gray.subtle" rounded="md" overflow="hidden">
           <Tabs.Root
             value={tab}
-            onValueChange={({ value }) => setTab(value as 'general' | 'billing' | 'members')}
+            onValueChange={({ value }) => setTab(value as 'general' | 'billing' | 'members' | 'api')}
             variant="outline"
             css={{
               '& > [data-part="content"]': {
@@ -116,6 +117,10 @@ export const OrganizationSettingsDialog = () => {
                 <TbUsers />
                 Members
               </Tabs.Trigger>
+              <Tabs.Trigger value="api">
+                <TbApi />
+                API
+              </Tabs.Trigger>
             </Tabs.List>
             <Tabs.Content value="general">
               <OrganizationGeneralTab organizationId={organizationId} />
@@ -125,6 +130,9 @@ export const OrganizationSettingsDialog = () => {
             </Tabs.Content>
             <Tabs.Content value="members">
               <OrganizationMembersTab organizationId={organizationId} />
+            </Tabs.Content>
+            <Tabs.Content value="api">
+              <OrganizationApiTab organizationId={organizationId} />
             </Tabs.Content>
           </Tabs.Root>
         </DialogBody>

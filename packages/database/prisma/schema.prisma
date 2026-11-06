@@ -24,8 +24,8 @@ model User {
   emailDripSequences EmailDripSequence[]
   projectAccess      UserProjectAccess[]
   createdInvitations Invitation[]
-  createdApiKeys     ApiKey[]  @relation("ApiKeyCreatedBy")
-  revokedApiKeys     ApiKey[]  @relation("ApiKeyRevokedBy")
+  createdApiKeys     ApiKey[]            @relation("ApiKeyCreatedBy")
+  revokedApiKeys     ApiKey[]            @relation("ApiKeyRevokedBy")
 
   @@map("user")
 }
@@ -90,6 +90,7 @@ model Organization {
   userProjectAccess       UserProjectAccess[]
   invitations             Invitation[]
   invitationProjectAccess InvitationProjectAccess[]
+  apiKeys                 ApiKey[]
 
   @@map("organization")
 }
@@ -176,6 +177,7 @@ model Project {
   dripSequences           EmailDripSequence[]
   emailDripHistory        EmailDripHistory[]
   apiKeys                 ApiKey[]
+  apiKeyProjects          ApiKeyProject[]
   funnels                 Funnel[]
   savedFilters            SavedFilter[]
   userProjectAccess       UserProjectAccess[]
@@ -186,9 +188,13 @@ model Project {
   @@map("project")
 }
 
+/// A key either belongs to one project (project key, `projectId` set) or to an organization
+/// (organization key, `projectId` null), covering all its projects (`allProjects`) or the chosen ones (`projects`).
 model ApiKey {
   id              String    @id
-  projectId       String
+  organizationId  String
+  projectId       String?
+  allProjects     Boolean   @default(false)
   name            String    @db.VarChar
   keyHash         String    @unique
   keyPrefix       String    @db.VarChar
@@ -197,15 +203,31 @@ model ApiKey {
   createdByUserId String?
   revokedByUserId String?
 
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  createdBy User?   @relation("ApiKeyCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  revokedBy User?   @relation("ApiKeyRevokedBy", fields: [revokedByUserId], references: [id], onDelete: SetNull)
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      Project?        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projects     ApiKeyProject[]
+  createdBy    User?           @relation("ApiKeyCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  revokedBy    User?           @relation("ApiKeyRevokedBy", fields: [revokedByUserId], references: [id], onDelete: SetNull)
 
+  @@index([organizationId])
   @@index([projectId])
   @@index([keyHash, revokedAt])
   @@index([createdByUserId])
   @@index([revokedByUserId])
   @@map("api_key")
+}
+
+/// The chosen projects of an organization key.
+model ApiKeyProject {
+  apiKeyId  String
+  projectId String
+
+  apiKey  ApiKey  @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@id([apiKeyId, projectId])
+  @@index([projectId])
+  @@map("api_key_project")
 }
 
 model UserProjectAccess {

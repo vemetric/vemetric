@@ -1,6 +1,7 @@
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { authMiddleware } from './middleware/auth';
 import { loggingMiddleware } from './middleware/logging';
+import { projectErrorMiddleware, projectMiddleware } from './middleware/project';
 import { createRateLimitMiddleware, createRateLimitPolicyMiddleware } from './middleware/rate-limit';
 import { API_DOCS_URL, registerOpenApiDocs } from './openapi';
 import { registerAnalyticsRoutes } from './routes/analytics';
@@ -34,7 +35,9 @@ export function createPublicApi() {
   }
   api.use('/v1/*', createRateLimitPolicyMiddleware());
   api.use('/v1/*', authMiddleware);
+  api.use('/v1/*', projectMiddleware);
   api.use('/v1/*', rateLimitMiddleware);
+  api.use('/v1/*', projectErrorMiddleware);
 
   registerProjectRoutes(api);
   registerAnalyticsRoutes(api);

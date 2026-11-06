@@ -2,6 +2,7 @@ import type { OpenAPIHono } from '@hono/zod-openapi';
 import { z } from '@hono/zod-openapi';
 import type { PublicApiHonoEnv } from './types';
 import { RETENTION_UPGRADE_MESSAGE } from '../utils/retention';
+import { PROJECT_HEADER } from './utils/api-key-access';
 import { API_ERROR_CODES, type ApiErrorCode, createErrorBody } from './utils/errors';
 
 export const API_DOCS_URL = 'https://vemetric.com/docs/api/getting-started';
@@ -11,8 +12,16 @@ const API_DESCRIPTION = `Privacy-first analytics API. Query the analytics, users
 
 ## Authentication
 
-Authenticate every request with a project API key as a bearer token: \`Authorization: Bearer vem_...\`.
-API keys are created in the project settings, on the API tab. A key only grants access to its own project.
+Authenticate every request with an API key as a bearer token: \`Authorization: Bearer vem_...\`. There are two kinds of keys:
+
+- **Project keys** are created in the project settings, on the API tab, and only grant access to their own project.
+- **Organization keys** are created in the organization settings, on the API tab, and grant access to all current
+  and future projects of the organization, or to the projects chosen when the key was created.
+
+Organization keys must name the project of every request in the \`${PROJECT_HEADER}\` header (the project ID, see
+\`GET /v1/projects\`), even if they currently cover only one project. Without it the API responds with \`400\`
+(\`PROJECT_REQUIRED\`). Project keys don't need the header; if it is sent, it must be the key's project.
+A project the key doesn't cover returns \`404\` (\`PROJECT_NOT_FOUND\`).
 
 ## Errors
 
@@ -22,7 +31,8 @@ Validation errors (\`VALIDATION_ERROR\`) additionally contain a \`details\` arra
 
 ## Rate limits
 
-Each project can make 100 requests per 60 seconds. Every authenticated response carries
+Each project can make 100 requests per 60 seconds, shared by all keys that access it.
+Requests that don't name a project (\`GET /v1/projects\` with an organization key) or name one the key doesn't cover count against a separate quota of the key. Every authenticated response carries
 \`RateLimit-Limit\`, \`RateLimit-Remaining\` and \`RateLimit-Reset\` (seconds until the window resets) headers.
 When the limit is exceeded the API responds with \`429\` and a \`Retry-After\` header (in seconds).
 Every response, including \`401\`, carries a \`RateLimit-Policy\` header describing the quota (e.g. \`100;w=60\`).
@@ -96,10 +106,10 @@ const ref = (type: 'responses' | 'headers', name: string) => ({ $ref: `#/compone
 // so docs show the exact code of each status instead of every possible code.
 const ERROR_RESPONSES = {
   BadRequest: {
-    description: 'Bad request - invalid request payload or parameters',
+    description: `Bad request - invalid request payload or parameters, or an organization key without the ${PROJECT_HEADER} header`,
     schemaName: 'ValidationError',
-    schema: narrowedErrorResponseSchema(['VALIDATION_ERROR', 'HTTP_ERROR'], {
-      codeDescription: 'Machine-readable error code. `HTTP_ERROR` is returned for a malformed JSON body.',
+    schema: narrowedErrorResponseSchema(['VALIDATION_ERROR', 'HTTP_ERROR', 'PROJECT_REQUIRED'], {
+      codeDescription: `Machine-readable error code. \`HTTP_ERROR\` is returned for a malformed JSON body, \`PROJECT_REQUIRED\` for an organization key without the ${PROJECT_HEADER} header.`,
       withDetails: true,
     }),
     example: {
@@ -122,16 +132,22 @@ const ERROR_RESPONSES = {
     schema: narrowedErrorResponseSchema(['PLAN_LIMIT_EXCEEDED']),
     example: createErrorBody('PLAN_LIMIT_EXCEEDED', RETENTION_UPGRADE_MESSAGE),
   },
+  ProjectNotFound: {
+    description: 'Project was not found or is not covered by the API key',
+    schemaName: 'ProjectNotFoundError',
+    schema: narrowedErrorResponseSchema(['PROJECT_NOT_FOUND']),
+    example: createErrorBody('PROJECT_NOT_FOUND', 'Project not found or not covered by this API key'),
+  },
   UserNotFound: {
-    description: 'User was not found',
+    description: 'User or project was not found',
     schemaName: 'UserNotFoundError',
-    schema: narrowedErrorResponseSchema(['USER_NOT_FOUND']),
+    schema: narrowedErrorResponseSchema(['USER_NOT_FOUND', 'PROJECT_NOT_FOUND']),
     example: createErrorBody('USER_NOT_FOUND', 'User not found'),
   },
   FunnelNotFound: {
-    description: 'Funnel was not found',
+    description: 'Funnel or project was not found',
     schemaName: 'FunnelNotFoundError',
-    schema: narrowedErrorResponseSchema(['FUNNEL_NOT_FOUND']),
+    schema: narrowedErrorResponseSchema(['FUNNEL_NOT_FOUND', 'PROJECT_NOT_FOUND']),
     example: createErrorBody('FUNNEL_NOT_FOUND', 'Funnel not found'),
   },
   RateLimited: {
@@ -165,11 +181,29 @@ export const errorResponses = {
   badRequest: ref('responses', 'BadRequest'),
   unauthorized: ref('responses', 'Unauthorized'),
   forbidden: ref('responses', 'Forbidden'),
+  projectNotFound: ref('responses', 'ProjectNotFound'),
   userNotFound: ref('responses', 'UserNotFound'),
   funnelNotFound: ref('responses', 'FunnelNotFound'),
   rateLimited: ref('responses', 'RateLimited'),
   internalError: ref('responses', 'InternalError'),
 } as const;
+
+const projectHeaderSchema = z
+  .string()
+  .optional()
+  .openapi('ProjectHeader', {
+    param: { name: PROJECT_HEADER, in: 'header' },
+    description:
+      "ID of the project the request is about. Required for organization keys; optional for project keys (must be the key's project if sent).",
+    example: '1234567890123456',
+  });
+
+/** The `X-Vemetric-Project` header of every endpoint that is about one project. */
+export const projectRequestHeaders = z.object({
+  // Documentation only: `projectMiddleware` reads and checks the header (Hono passes header keys in lower case
+  // to the validator, so this optional field never sees the value).
+  [PROJECT_HEADER]: projectHeaderSchema,
+});
 
 /** Error responses every authenticated endpoint can return. */
 export const commonErrorResponses = {
@@ -183,12 +217,13 @@ export function registerOpenApiDocs(api: OpenAPIHono<PublicApiHonoEnv>) {
   const registry = api.openAPIRegistry;
 
   registry.register('ErrorResponse', apiErrorResponseSchema);
+  registry.registerParameter('ProjectHeader', projectHeaderSchema);
 
   registry.registerComponent('securitySchemes', 'bearerAuth', {
     type: 'http',
     scheme: 'bearer',
     description:
-      "Project API key (starts with `vem_`), created in the project settings on the API tab. Requests only return data of that key's project.",
+      'Project or organization API key (starts with `vem_`), created in the project or organization settings on the API tab. Organization keys name the project of each request in the `X-Vemetric-Project` header.',
   });
 
   for (const [name, description] of Object.entries(RATE_LIMIT_HEADERS)) {
@@ -244,7 +279,7 @@ export function registerOpenApiDocs(api: OpenAPIHono<PublicApiHonoEnv>) {
     servers: [{ url: 'https://api.vemetric.com' }],
     security: [{ bearerAuth: [] }],
     tags: [
-      { name: 'Project', description: 'The project the API key belongs to.' },
+      { name: 'Project', description: 'The projects the API key covers.' },
       { name: 'Analytics', description: 'Aggregated analytics metrics.' },
       { name: 'Filters', description: 'Values available for filtering.' },
       { name: 'Users', description: 'Tracked users and their events.' },

@@ -35,9 +35,8 @@ export const authMiddleware = createMiddleware<PublicApiHonoEnv>(async (c, next)
   }
 
   c.set('apiKey', apiKey);
-  c.set('project', apiKey.project);
-  const subscriptionStatus = apiKey.project.organization
-    ? await getSubscriptionStatus(apiKey.project.organization)
+  const subscriptionStatus = apiKey.organization
+    ? await getSubscriptionStatus(apiKey.organization)
     : {
         isActive: false,
         isPastDue: false,

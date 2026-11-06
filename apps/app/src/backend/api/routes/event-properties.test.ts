@@ -88,7 +88,11 @@ describe('POST /api/v1/events/properties (contract)', () => {
       { name: 'plan', events: 40, users: 30 },
       { name: 'source', events: 12, users: 10 },
     ]);
-    expect(getEventProperties).toHaveBeenCalledWith(123n, 'signup', expect.objectContaining({ filterQueries: '' }));
+    expect(getEventProperties).toHaveBeenCalledWith(
+      BigInt(123),
+      'signup',
+      expect.objectContaining({ filterQueries: '' }),
+    );
   });
 
   it('rejects a missing event name', async () => {

@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/bun';
 import { Hono } from 'hono';
 import { API_DOCS_URL, createPublicApi } from './api';
 import { createBackendApp } from './backend-app';
+import { createMcpApp } from './mcp';
 import { createStaticApp } from './static-app';
 import { logger } from './utils/backend-logger';
 import { isMemoryReportEnabled, memoryTelemetryMiddleware, startMemoryReportSchedule } from './utils/memory-report';
@@ -27,6 +28,8 @@ const publicApi = createPublicApi();
 app.get('/api', (c) => c.redirect(API_DOCS_URL, 302));
 app.get('/api/', (c) => c.redirect(API_DOCS_URL, 302));
 app.route('/api', publicApi);
+
+app.route('/mcp', createMcpApp());
 
 if (process.env.NODE_ENV === 'production') {
   const staticApp = createStaticApp();

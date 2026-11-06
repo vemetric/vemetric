@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
-import { dbApiKey } from 'database';
+import { dbApiKey, type AuthenticatedApiKey } from 'database';
 import { createMiddleware } from 'hono/factory';
-import { getSubscriptionStatus } from '../../utils/billing';
+import { getSubscriptionStatus, type SubscriptionStatus } from '../../utils/billing';
 import type { PublicApiHonoEnv } from '../types';
 import { ApiError } from '../utils/errors';
 
@@ -12,8 +12,13 @@ function sha256(input: string): string {
 const API_KEY_LENGTH = 36;
 const API_KEY_PREFIX = 'vem_';
 
-export const authMiddleware = createMiddleware<PublicApiHonoEnv>(async (c, next) => {
-  const authHeader = c.req.header('Authorization');
+export type ApiKeyAuthentication = {
+  apiKey: AuthenticatedApiKey;
+  subscriptionStatus: SubscriptionStatus;
+};
+
+/** Looks up the API key of an `Authorization: Bearer <key>` header. Shared by the REST API and the MCP server. */
+export async function authenticateApiKey(authHeader: string | undefined): Promise<ApiKeyAuthentication> {
   if (!authHeader) {
     throw new ApiError(401, 'UNAUTHORIZED', 'Missing API key. Use Authorization: Bearer <key>');
   }
@@ -34,7 +39,6 @@ export const authMiddleware = createMiddleware<PublicApiHonoEnv>(async (c, next)
     throw new ApiError(401, 'UNAUTHORIZED', 'Invalid or revoked API key');
   }
 
-  c.set('apiKey', apiKey);
   const subscriptionStatus = apiKey.organization
     ? await getSubscriptionStatus(apiKey.organization)
     : {
@@ -43,6 +47,13 @@ export const authMiddleware = createMiddleware<PublicApiHonoEnv>(async (c, next)
         priceId: undefined,
         customPlanEvents: null,
       };
+
+  return { apiKey, subscriptionStatus };
+}
+
+export const authMiddleware = createMiddleware<PublicApiHonoEnv>(async (c, next) => {
+  const { apiKey, subscriptionStatus } = await authenticateApiKey(c.req.header('Authorization'));
+  c.set('apiKey', apiKey);
   c.set('subscriptionStatus', subscriptionStatus);
 
   await next();

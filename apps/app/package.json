@@ -30,6 +30,7 @@
     "@emotion/react": "^11.14.0",
     "@hono/trpc-server": "^0.3.4",
     "@hono/zod-openapi": "^1.6.3",
+    "@modelcontextprotocol/server": "^2.4.0",
     "@paddle/paddle-js": "^1.6.5",
     "@paddle/paddle-node-sdk": "^2.5.1",
     "@sentry/bun": "^9.47.2",
@@ -85,6 +86,7 @@
   "devDependencies": {
     "@chakra-ui/cli": "^3.37.0",
     "@hono/vite-dev-server": "^0.26.1",
+    "@modelcontextprotocol/client": "^2.4.0",
     "@tanstack/router-cli": "^1.167.39",
     "@tanstack/router-plugin": "^1.168.41",
     "@testing-library/react": "^16.3.3",

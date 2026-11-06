@@ -6,7 +6,7 @@ import { DEFAULT_METRICS } from '../consts/analytics';
 import type { analyticsQueryRequestSchema, analyticsQueryResponseSchema } from '../schemas/analytics';
 import { buildGroupObject, resolveAutoIntervalGrouping } from '../utils/analytics/grouping';
 import { getEmptyMetricValue, normalizeMetricValue } from '../utils/analytics/metrics';
-import { applyOrdering } from '../utils/analytics/ordering';
+import { applyOrdering, getDefaultOrderBy } from '../utils/analytics/ordering';
 import { queryMetricRows } from '../utils/analytics/queries';
 import { mapApiFilterConfig } from '../utils/api-to-internal-filter-mapper';
 import { formatApiDate, resolveApiDateRange } from '../utils/date';
@@ -75,7 +75,8 @@ export async function queryAnalytics(
     }, {}),
   }));
 
-  const sortedRows = applyOrdering(rows, payload.orderBy);
+  const orderBy = payload.orderBy.length > 0 ? payload.orderBy : getDefaultOrderBy(grouping, selectedMetrics);
+  const sortedRows = applyOrdering(rows, orderBy);
   const effectiveLimit = grouping.kind === 'none' ? 1 : payload.limit;
   const effectiveOffset = grouping.kind === 'none' ? 0 : payload.offset;
   const paginatedRows = sortedRows.slice(effectiveOffset, effectiveOffset + effectiveLimit);

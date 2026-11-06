@@ -92,98 +92,106 @@ const responseMetricsSchema = z
     description: 'Calculated metric values for the row. Only requested metrics are returned.',
   });
 
-export const analyticsQueryRequestSchema = z
-  .object({
-    dateRange: apiDateRangeSchema,
-    metrics: z.array(z.enum(METRICS)).optional().openapi({
-      description: `Metrics to calculate and include in the response.`,
-      default: DEFAULT_METRICS,
-    }),
-    groupBy: z
-      .array(groupByTokenSchema)
-      .default([])
-      .openapi({
-        description:
-          'Allowed values: "interval:auto", "country", "city", "page:origin", "page:path", "browser", "deviceType", "os", "referrer", "referrerType", "utm*", "event:name", or "event:prop:<property_name>". At the moment it\'s only possible to group by one field, please tell us if you need more.',
-        example: ['country'],
-      }),
-    orderBy: orderBySchema.default([]).openapi({
+/** The request fields without the cross-field checks, so the MCP tool can change single fields. */
+export const analyticsQueryRequestFields = z.object({
+  dateRange: apiDateRangeSchema,
+  metrics: z.array(z.enum(METRICS)).optional().openapi({
+    description: `Metrics to calculate and include in the response.`,
+    default: DEFAULT_METRICS,
+  }),
+  groupBy: z
+    .array(groupByTokenSchema)
+    .default([])
+    .openapi({
       description:
-        "Gives you the ability to order by a specific field and direction. At the moment it's only possible to order by one field.",
-      example: [['users', 'desc']],
-      'x-vemetric-docs': {
-        hideTupleVariantChildren: true,
-      },
+        'Allowed values: "interval:auto", "country", "city", "page:origin", "page:path", "browser", "deviceType", "os", "referrer", "referrerType", "utm*", "event:name", or "event:prop:<property_name>". At the moment it\'s only possible to group by one field, please tell us if you need more.',
+      example: ['country'],
     }),
-    limit: z
-      .number()
-      .int()
-      .min(1)
-      .max(1000)
-      .default(100)
-      .openapi({ description: 'Limits the number of returned rows. Max value is 1000.' }),
-    offset: z
-      .number()
-      .int()
-      .min(0)
-      .default(0)
-      .openapi({ description: 'Number of rows to skip from the start of the result set, to implement pagination.' }),
-    filters: z
-      .array(apiFilterSchema)
-      .optional()
-      .openapi({
-        description: 'Ability to filter the results based on multiple criteria.',
-        'x-vemetric-docs': { collapseByDefault: true },
-      }),
-    filtersOperator: apiFiltersOperatorSchema.default('and').openapi({
-      description: 'Operator to apply between multiple filters. Can be either "and" or "or".',
+  orderBy: orderBySchema.default([]).openapi({
+    description:
+      "Gives you the ability to order by a specific field and direction. At the moment it's only possible to order by one field. Without it, rows are ordered by `date` ascending when grouping by `interval:auto`, and by the first metric descending for other groupings (skipping metrics that don't apply to the grouping, like `bounceRate` per page). Rows with equal values are ordered by their group value.",
+    example: [['users', 'desc']],
+    'x-vemetric-docs': {
+      hideTupleVariantChildren: true,
+    },
+  }),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(1000)
+    .default(100)
+    .openapi({ description: 'Limits the number of returned rows. Max value is 1000.' }),
+  offset: z
+    .number()
+    .int()
+    .min(0)
+    .default(0)
+    .openapi({ description: 'Number of rows to skip from the start of the result set, to implement pagination.' }),
+  filters: z
+    .array(apiFilterSchema)
+    .optional()
+    .openapi({
+      description: 'Ability to filter the results based on multiple criteria.',
+      'x-vemetric-docs': { collapseByDefault: true },
     }),
-  })
-  .superRefine((data, ctx) => {
-    if (data.groupBy.length > 1) {
+  filtersOperator: apiFiltersOperatorSchema.default('and').openapi({
+    description: 'Operator to apply between multiple filters. Can be either "and" or "or".',
+  }),
+});
+
+type AnalyticsQueryRequestFields = z.output<typeof analyticsQueryRequestFields>;
+
+export function validateAnalyticsQuery(
+  data: Pick<AnalyticsQueryRequestFields, 'dateRange' | 'metrics' | 'groupBy' | 'orderBy'>,
+  ctx: z.RefinementCtx,
+) {
+  if (data.groupBy.length > 1) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['groupBy'],
+      message: 'groupBy can include max one item',
+    });
+  }
+
+  if (Array.isArray(data.dateRange)) {
+    const [rawStart, rawEnd] = data.dateRange;
+    const start = new Date(rawStart);
+    const end = new Date(rawEnd);
+
+    if (start.getTime() > end.getTime()) {
       ctx.addIssue({
         code: 'custom',
-        path: ['groupBy'],
-        message: 'groupBy can include max one item',
+        path: ['dateRange'],
+        message: 'Start date must be before or equal to end date',
+      });
+    }
+  }
+
+  const selectedMetrics = data.metrics && data.metrics.length > 0 ? data.metrics : DEFAULT_METRICS;
+  const grouping = parseMetricsQueryGroupingToken(data.groupBy[0] ?? null);
+
+  data.orderBy.forEach(([field], index) => {
+    const isMetric = METRICS_SET.has(field as Metric);
+    if (isMetric && !selectedMetrics.includes(field as Metric)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['orderBy', index, 0],
+        message: 'Sort metric must be included in metrics',
       });
     }
 
-    if (Array.isArray(data.dateRange)) {
-      const [rawStart, rawEnd] = data.dateRange;
-      const start = new Date(rawStart);
-      const end = new Date(rawEnd);
-
-      if (start.getTime() > end.getTime()) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['dateRange'],
-          message: 'Start date must be before or equal to end date',
-        });
-      }
+    if (!isMetric && !isSortingGroupField(field, grouping)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['orderBy', index, 0],
+        message: 'Invalid sort field',
+      });
     }
-
-    const selectedMetrics = data.metrics && data.metrics.length > 0 ? data.metrics : DEFAULT_METRICS;
-    const grouping = parseMetricsQueryGroupingToken(data.groupBy[0] ?? null);
-
-    data.orderBy.forEach(([field], index) => {
-      const isMetric = METRICS_SET.has(field as Metric);
-      if (isMetric && !selectedMetrics.includes(field as Metric)) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['orderBy', index, 0],
-          message: 'Sort metric must be included in metrics',
-        });
-      }
-
-      if (!isMetric && !isSortingGroupField(field, grouping)) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['orderBy', index, 0],
-          message: 'Invalid sort field',
-        });
-      }
-    });
   });
+}
+
+export const analyticsQueryRequestSchema = analyticsQueryRequestFields.superRefine(validateAnalyticsQuery);
 
 export type AnalyticsRequest = z.infer<typeof analyticsQueryRequestSchema>;
 

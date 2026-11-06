@@ -2,7 +2,7 @@ import type { McpServer, ToolAnnotations } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { listCallerProjects, type McpCaller } from './caller';
 import { runCallerTool, runProjectTool } from './run-tool';
-import { analyticsQueryRequestSchema } from '../api/schemas/analytics';
+import { analyticsQueryRequestFields, validateAnalyticsQuery } from '../api/schemas/analytics';
 import { eventPropertiesRequestSchema } from '../api/schemas/event-properties';
 import { filterValuesRequestSchema } from '../api/schemas/filter-values';
 import { funnelIdSchema, funnelResultsRequestSchema } from '../api/schemas/funnels';
@@ -21,15 +21,15 @@ const projectId = z
   .optional()
   .describe('ID of the project (from list_projects). Can be omitted if you only have access to one project.');
 
-const dateRange = analyticsQueryRequestSchema.shape.dateRange.describe(
+const dateRange = analyticsQueryRequestFields.shape.dateRange.describe(
   'Period in UTC. Either a preset ("live" = last 5 minutes, "1hr", "24hrs", "7days" and "30days" include today, "3months", "6months", "1year"), or [start, end] with YYYY-MM-DD dates (the end date includes the whole day) or UTC timestamps like 2026-01-31T12:00:00Z. get_project returns today\'s date.',
 );
 
-const filters = analyticsQueryRequestSchema.shape.filters.describe(
+const filters = analyticsQueryRequestFields.shape.filters.describe(
   'Optional filters. Each one has a "type" (page, event, user, location, referrer, referrerUrl, referrerType, utmTags, browser, device, os, funnel). Examples: {"type":"page","path":{"operator":"startsWith","value":"/blog"}}, {"type":"event","name":{"operator":"eq","value":"signup"},"properties":[{"property":"plan","operator":"eq","value":"pro"}]}, {"type":"location","country":{"operator":"oneOf","value":["US","DE"]}}, {"type":"referrer","operator":"eq","value":"Google"}, {"type":"utmTags","utmCampaign":{"operator":"eq","value":"newsletter"}}, {"type":"device","operator":"oneOf","value":["mobile"]}. Look up exact values with list_filter_values first.',
 );
 
-const filtersOperator = analyticsQueryRequestSchema.shape.filtersOperator.describe(
+const filtersOperator = analyticsQueryRequestFields.shape.filtersOperator.describe(
   'How to combine several filters: "and" (default) or "or".',
 );
 
@@ -104,28 +104,47 @@ export function registerTools(server: McpServer, caller: McpCaller) {
       title: 'Query analytics',
       description:
         'Query aggregated web and product analytics: users (unique visitors), pageviews, events (custom events), bounceRate (%) and visitDuration (seconds). Without groupBy it returns the totals of the period. Group by one dimension: "interval:auto" for a time series, a field like "page:path", "referrer", "referrerType", "country", "deviceType", "utmCampaign" or "event:name", or "event:prop:<name>" for a custom event property (find names with list_event_properties). bounceRate and visitDuration are null where they don\'t apply to the grouping (e.g. per page or per event). Sort with orderBy, page with limit and offset (hasMore tells if there are more rows).',
-      inputSchema: analyticsQueryRequestSchema.safeExtend({
-        projectId,
-        dateRange,
-        metrics: analyticsQueryRequestSchema.shape.metrics.describe(
-          'Metrics to return. Default: users, pageviews, events, bounceRate and visitDuration.',
-        ),
-        groupBy: analyticsQueryRequestSchema.shape.groupBy.describe(
-          'At most one dimension to group by, e.g. ["page:path"]. Empty for totals.',
-        ),
-        orderBy: analyticsQueryRequestSchema.shape.orderBy.describe(
-          'At most one [field, direction] pair, e.g. [["pageviews","desc"]]. The field is a metric, the groupBy field or "date".',
-        ),
-        limit: limit(20, 'rows'),
-        offset,
-        filters,
-        filtersOperator,
-      }),
+      inputSchema: analyticsQueryRequestFields
+        .extend({
+          projectId,
+          dateRange,
+          metrics: analyticsQueryRequestFields.shape.metrics.describe(
+            'Metrics to return. Default: users, pageviews, events, bounceRate and visitDuration.',
+          ),
+          groupBy: analyticsQueryRequestFields.shape.groupBy.describe(
+            'At most one dimension to group by, e.g. ["page:path"]. Empty for totals.',
+          ),
+          orderBy: analyticsQueryRequestFields.shape.orderBy.describe(
+            'At most one [field, direction] pair, e.g. [["pageviews","desc"]]. The field is a metric, the groupBy field or "date". Default: by date ascending for "interval:auto", otherwise by the first metric descending.',
+          ),
+          limit: z
+            .number()
+            .int()
+            .min(1)
+            .max(1000)
+            .optional()
+            .describe('Maximum number of rows to return. Default: 100 for "interval:auto", otherwise 20.'),
+          offset,
+          filters,
+          filtersOperator,
+        })
+        .superRefine(validateAnalyticsQuery),
       annotations,
     },
     (input) =>
       runProjectTool({ tool: 'query_analytics', caller, input }, async (ctx) => {
-        const { period, pagination, data } = await queryAnalytics(ctx, input);
+        // Unlike REST, rows are always sorted (REST keeps the database order without orderBy) and time series get a
+        // limit that fits a whole period.
+        const isTimeSeries = input.groupBy[0] === 'interval:auto';
+        const firstMetric = input.metrics?.[0] ?? 'users';
+        const { period, pagination, data } = await queryAnalytics(ctx, {
+          ...input,
+          orderBy:
+            input.orderBy.length > 0
+              ? input.orderBy
+              : [[isTimeSeries ? 'date' : firstMetric, isTimeSeries ? 'asc' : 'desc']],
+          limit: input.limit ?? (isTimeSeries ? 100 : 20),
+        });
         return {
           period,
           pagination: { ...pagination, hasMore: input.groupBy.length > 0 && pagination.returned === pagination.limit },

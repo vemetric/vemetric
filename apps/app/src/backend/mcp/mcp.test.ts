@@ -206,7 +206,7 @@ describe('MCP server', () => {
       const queryAnalytics = tools.find((tool) => tool.name === 'query_analytics');
       expect(queryAnalytics?.inputSchema.properties).toMatchObject({
         projectId: { type: 'string' },
-        limit: { default: 20 },
+        limit: { type: 'integer', minimum: 1, maximum: 1000 },
       });
       expect(queryAnalytics?.inputSchema.required).toEqual(['dateRange']);
     });

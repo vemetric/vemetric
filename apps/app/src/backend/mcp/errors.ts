@@ -31,24 +31,17 @@ export function getToolErrorMessage(error: ApiError, { organizationId, input }: 
 function getPlanLimitMessage(organizationId: string, input: unknown): string {
   const earliestDate = formatDate(addDays(new Date(), -FREE_PLAN_RETENTION_DAYS));
   const billingUrl = `${getVemetricUrl('app')}/o/${organizationId}?orgSettings=billing&pricingDialog=true`;
-  const requested = describeRequestedPeriod(input);
+  const plan = `the project's Vemetric plan (Free) only includes data from the last ${FREE_PLAN_RETENTION_DAYS} days (since ${earliestDate})`;
+  const dateRange = (input as { dateRange?: PresetTimeSpan | [string, string] } | undefined)?.dateRange;
+  const requested = Array.isArray(dateRange)
+    ? `The requested period starts ${dateRange[0].slice(0, 10)}, but ${plan}.`
+    : `The requested period${dateRange ? ` "${dateRange}"` : ''} isn't available: ${plan}.`;
 
   return [
-    `${requested}, but the project's Vemetric plan (Free) only includes data from the last ${FREE_PLAN_RETENTION_DAYS} days (since ${earliestDate}).`,
+    requested,
     `Tell the user that this period isn't included in their plan and that they can upgrade to the Professional plan for longer data retention: ${billingUrl}`,
     `Don't retry with other periods that start before ${earliestDate}. You can offer to answer for the last ${FREE_PLAN_RETENTION_DAYS} days instead.`,
   ].join(' ');
-}
-
-function describeRequestedPeriod(input: unknown): string {
-  const dateRange = (input as { dateRange?: PresetTimeSpan | [string, string] } | undefined)?.dateRange;
-  if (Array.isArray(dateRange)) {
-    return `The requested period starts ${dateRange[0].slice(0, 10)}`;
-  }
-  if (dateRange) {
-    return `The requested period "${dateRange}" goes back further than the plan allows`;
-  }
-  return 'The requested period goes back further than the plan allows';
 }
 
 export function getRateLimitMessage(resetSec: number): string {

@@ -117,7 +117,13 @@ export const ProjectApiTab = ({ projectId }: Props) => {
           <Text fontSize="sm" color="fg.muted" mt={3}>
             API keys are scoped to this project and can only be managed by organization admins. Need one key for several
             projects?{' '}
-            <Link as="button" color="purple.fg" fontWeight="medium" onClick={() => openOrgSettings('api')}>
+            <Link
+              as="button"
+              type="button"
+              color="purple.fg"
+              fontWeight="medium"
+              onClick={() => openOrgSettings('api')}
+            >
               Create an organization API key
             </Link>
             .
@@ -147,7 +153,13 @@ export const ProjectApiTab = ({ projectId }: Props) => {
                   {organizationKeyNames.join(', ')}
                 </Text>{' '}
                 {organizationKeyNames.length === 1 ? 'also has' : 'also have'} access to this project.{' '}
-                <Link as="button" color="purple.fg" fontWeight="medium" onClick={() => openOrgSettings('api')}>
+                <Link
+                  as="button"
+                  type="button"
+                  color="purple.fg"
+                  fontWeight="medium"
+                  onClick={() => openOrgSettings('api')}
+                >
                   Manage them in the organization settings
                 </Link>
                 .

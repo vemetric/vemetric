@@ -133,16 +133,10 @@ export function registerTools(server: McpServer, caller: McpCaller) {
     },
     (input) =>
       runProjectTool({ tool: 'query_analytics', caller, input }, async (ctx) => {
-        // Unlike REST, rows are always sorted (REST keeps the database order without orderBy) and time series get a
-        // limit that fits a whole period.
+        // Time series get a limit that fits a whole period.
         const isTimeSeries = input.groupBy[0] === 'interval:auto';
-        const firstMetric = input.metrics?.[0] ?? 'users';
         const { period, pagination, data } = await queryAnalytics(ctx, {
           ...input,
-          orderBy:
-            input.orderBy.length > 0
-              ? input.orderBy
-              : [[isTimeSeries ? 'date' : firstMetric, isTimeSeries ? 'asc' : 'desc']],
           limit: input.limit ?? (isTimeSeries ? 100 : 20),
         });
         return {

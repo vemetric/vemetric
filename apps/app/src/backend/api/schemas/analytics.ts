@@ -109,7 +109,7 @@ export const analyticsQueryRequestFields = z.object({
     }),
   orderBy: orderBySchema.default([]).openapi({
     description:
-      "Gives you the ability to order by a specific field and direction. At the moment it's only possible to order by one field.",
+      "Gives you the ability to order by a specific field and direction. At the moment it's only possible to order by one field. Without it, rows are ordered by `date` ascending when grouping by `interval:auto`, and by the first metric descending for other groupings. Rows with equal values are ordered by their group value.",
     example: [['users', 'desc']],
     'x-vemetric-docs': {
       hideTupleVariantChildren: true,

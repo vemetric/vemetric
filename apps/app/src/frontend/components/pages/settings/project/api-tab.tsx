@@ -82,7 +82,7 @@ export const ProjectApiTab = ({ projectId }: Props) => {
     });
   };
 
-  const organizationKeyNames = (organizationKeys ?? []).map((key) => key.name);
+  const organizationKeyCount = organizationKeys?.length ?? 0;
 
   return (
     <Flex flexDir="column" gap={6} maxW="900px">
@@ -138,21 +138,17 @@ export const ProjectApiTab = ({ projectId }: Props) => {
         onRevoke={setKeyToRevoke}
       />
 
-      {organizationKeyNames.length > 0 && (
+      {organizationKeyCount > 0 && (
         <Card.Root>
           <Card.Body>
-            <Flex align="flex-start" gap={3}>
+            <Flex align="center" gap={3}>
               <CardIcon>
                 <TbBuilding />
               </CardIcon>
               <Text fontSize="sm" color="fg.muted">
-                {organizationKeyNames.length === 1
-                  ? 'The organization API key '
-                  : `${organizationKeyNames.length} organization API keys `}
-                <Text as="span" fontWeight="medium" color="fg">
-                  {organizationKeyNames.join(', ')}
-                </Text>{' '}
-                {organizationKeyNames.length === 1 ? 'also has' : 'also have'} access to this project.{' '}
+                {organizationKeyCount === 1
+                  ? 'There is 1 organization API key that also has access to this project. '
+                  : `There are ${organizationKeyCount} organization API keys that also have access to this project. `}
                 <Link
                   as="button"
                   type="button"
@@ -160,7 +156,7 @@ export const ProjectApiTab = ({ projectId }: Props) => {
                   fontWeight="medium"
                   onClick={() => openOrgSettings('api')}
                 >
-                  Manage them in the organization settings
+                  {organizationKeyCount === 1 ? 'Manage it' : 'Manage them'} in the organization settings
                 </Link>
                 .
               </Text>

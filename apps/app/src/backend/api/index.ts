@@ -5,6 +5,7 @@ import { projectErrorMiddleware, projectMiddleware } from './middleware/project'
 import { createRateLimitMiddleware, createRateLimitPolicyMiddleware } from './middleware/rate-limit';
 import { API_DOCS_URL, registerOpenApiDocs } from './openapi';
 import { registerAnalyticsRoutes } from './routes/analytics';
+import { registerEventPropertyRoutes } from './routes/event-properties';
 import { registerFilterValueRoutes } from './routes/filter-values';
 import { registerFunnelRoutes } from './routes/funnels';
 import { registerProjectRoutes } from './routes/projects';
@@ -42,6 +43,7 @@ export function createPublicApi() {
   registerProjectRoutes(api);
   registerAnalyticsRoutes(api);
   registerFilterValueRoutes(api);
+  registerEventPropertyRoutes(api);
   registerUserRoutes(api);
   registerFunnelRoutes(api);
 

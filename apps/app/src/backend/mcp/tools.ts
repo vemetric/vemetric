@@ -109,7 +109,7 @@ export function registerTools(server: McpServer, caller: McpCaller) {
           projectId,
           dateRange,
           metrics: analyticsQueryRequestFields.shape.metrics.describe(
-            'Metrics to return. Default: users, pageviews, events, bounceRate and visitDuration.',
+            'Metrics to return. Default: users, pageviews and events. bounceRate and visitDuration only when asked for.',
           ),
           groupBy: analyticsQueryRequestFields.shape.groupBy.describe(
             'At most one dimension to group by, e.g. ["page:path"]. Empty for totals.',

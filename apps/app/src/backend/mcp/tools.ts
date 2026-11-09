@@ -37,7 +37,7 @@ const filters = analyticsQueryRequestSchema.shape.filters.describe(
  * filters as objects with a `type` and validate them against the same schema, so tools/list stays small.
  * It's typed like the full filter list, so it can replace the filters of the REST request schemas.
  */
-function filtersLikeQueryAnalytics<S extends z.ZodType>(filterSchema: S, description: string) {
+function createCompactFilters<S extends z.ZodType>(filterSchema: S, description: string) {
   const schema = z
     .array(z.looseObject({ type: z.string() }))
     .optional()
@@ -58,7 +58,7 @@ function filtersLikeQueryAnalytics<S extends z.ZodType>(filterSchema: S, descrip
   return schema as unknown as z.ZodType<z.output<S>[] | undefined, z.input<S>[] | undefined>;
 }
 
-const filtersReference = filtersLikeQueryAnalytics(
+const compactFilters = createCompactFilters(
   apiFilterSchema,
   'Optional filters, in the same format as the filters of query_analytics, e.g. {"type":"page","path":{"operator":"startsWith","value":"/blog"}}.',
 );
@@ -207,7 +207,7 @@ export function registerTools(server: McpServer, caller: McpCaller) {
           'Exact names of the custom events (1 to 25), e.g. ["signup","purchase"].',
         ),
         dateRange,
-        filters: filtersReference,
+        filters: compactFilters,
         filtersOperator,
         limit: limit(50, 'properties per event'),
         offset,
@@ -237,7 +237,7 @@ export function registerTools(server: McpServer, caller: McpCaller) {
       inputSchema: usersListRequestSchema.safeExtend({
         projectId,
         dateRange,
-        filters: filtersReference,
+        filters: compactFilters,
         filtersOperator,
         orderBy: usersListRequestSchema.shape.orderBy.describe(
           'Optional sorting, e.g. [["lastSeenAt","desc"]], or by when users last fired an event: [["lastEventFired","desc",{"name":{"operator":"eq","value":"signup"}}]].',
@@ -281,7 +281,7 @@ export function registerTools(server: McpServer, caller: McpCaller) {
           projectId,
           ...userReference,
           dateRange,
-          filters: filtersLikeQueryAnalytics(
+          filters: createCompactFilters(
             apiEventFilterSchema,
             'Optional filters of type event, page, browser, device or os, in the same format as the filters of query_analytics, e.g. {"type":"event","name":{"operator":"eq","value":"signup"}}.',
           ),
@@ -324,7 +324,7 @@ export function registerTools(server: McpServer, caller: McpCaller) {
         projectId,
         funnelId: funnelIdSchema.describe('Funnel id (from list_funnels).'),
         dateRange,
-        filters: filtersReference,
+        filters: compactFilters,
         filtersOperator,
       }),
       annotations,

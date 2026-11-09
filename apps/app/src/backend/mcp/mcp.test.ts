@@ -325,7 +325,7 @@ describe('MCP server', () => {
 
       const { tools } = await client.listTools();
 
-      // Only query_analytics carries the full filter schema (~5 KB), see filtersLikeQueryAnalytics.
+      // Only query_analytics carries the full filter schema (~5 KB), see createCompactFilters.
       expect(JSON.stringify(tools).length).toBeLessThan(25_000);
       const listUsers = tools.find((tool) => tool.name === 'list_users');
       expect(JSON.stringify(listUsers?.inputSchema.properties?.filters)).not.toContain('referrerUrl');

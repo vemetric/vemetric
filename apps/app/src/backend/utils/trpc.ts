@@ -262,7 +262,10 @@ const timespanInputSchema = z.object({
   endDate: z.string().optional(),
 });
 
-const resolveTimespanContext = (input: z.infer<typeof timespanInputSchema>, isSubscriptionActive: boolean) => {
+const resolveTimespanContext = (
+  input: z.infer<typeof timespanInputSchema>,
+  isSubscriptionActive: boolean,
+) => {
   if (input.timespan === 'custom' && !input.startDate) {
     throw new TRPCError({ code: 'BAD_REQUEST', message: 'Start date is required for custom time span' });
   }

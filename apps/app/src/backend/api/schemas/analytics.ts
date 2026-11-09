@@ -2,7 +2,7 @@ import { z } from '@hono/zod-openapi';
 import { sortDirectionSchema } from '@vemetric/common/sort';
 import { eventPropertyTokenRegex, metricsGroupFieldTokens, parseMetricsQueryGroupingToken } from 'clickhouse';
 import { apiFiltersOperatorSchema, apiFilterSchema } from './api-filters';
-import { apiDateRangeSchema, apiTimestampSchema } from './common';
+import { apiDateRangeSchema, apiTimestampSchema, checkDateRangeOrder } from './common';
 import type { Metric } from '../consts/analytics';
 import { DEFAULT_METRICS, METRICS, METRICS_SET } from '../consts/analytics';
 import { isSortingGroupField } from '../utils/analytics/grouping';
@@ -147,6 +147,8 @@ export const analyticsQueryRequestSchema = z
         message: 'groupBy can include max one item',
       });
     }
+
+    checkDateRangeOrder(data.dateRange, ctx);
 
     const selectedMetrics = data.metrics && data.metrics.length > 0 ? data.metrics : DEFAULT_METRICS;
     const grouping = parseMetricsQueryGroupingToken(data.groupBy[0] ?? null);

@@ -1,6 +1,6 @@
 import { z } from '@hono/zod-openapi';
 import { metricsGroupFieldTokens } from 'clickhouse';
-import { apiDateRangeSchema, apiTimestampSchema } from './common';
+import { apiDateRangeSchema, apiTimestampSchema, checkDateRangeOrder } from './common';
 
 export const filterValuesFieldSchema = z.enum(metricsGroupFieldTokens).openapi({
   description: 'Field token to retrieve filter values for.',
@@ -33,6 +33,8 @@ export const filterValuesRequestSchema = z
         message: 'fields must not contain duplicates',
       });
     }
+
+    checkDateRangeOrder(data.dateRange, ctx);
   })
   .openapi({
     description: 'Request payload for retrieving available filter values per field.',

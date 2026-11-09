@@ -1,7 +1,7 @@
 import { z } from '@hono/zod-openapi';
 import { sortDirectionSchema } from '@vemetric/common/sort';
 import { apiFilterSchema, apiEventFilterSchema, apiFiltersOperatorSchema, eventApiFilterSchema } from './api-filters';
-import { apiDateRangeSchema, apiTimestampSchema } from './common';
+import { apiDateRangeSchema, apiTimestampSchema, checkDateRangeOrder } from './common';
 import { apiEventItemSchema } from './event';
 
 const usersOrderByFieldSchema = z.enum(['lastSeenAt', 'displayName', 'identifier', 'country']).openapi({
@@ -154,6 +154,9 @@ export const usersListRequestSchema = z
       .default(0)
       .openapi({ description: 'Number of users to skip from the start of the result set.' }),
   })
+  .superRefine((data, ctx) => {
+    checkDateRangeOrder(data.dateRange, ctx);
+  })
   .openapi({
     description: 'Request payload for querying a paginated list of users.',
   });
@@ -237,6 +240,9 @@ export const userEventsRequestSchema = z
       .min(0)
       .default(0)
       .openapi({ description: 'Number of events to skip from the start of the result set.' }),
+  })
+  .superRefine((data, ctx) => {
+    checkDateRangeOrder(data.dateRange, ctx);
   })
   .openapi({
     description: 'Request payload for querying one user’s events.',

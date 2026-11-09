@@ -1,6 +1,6 @@
 import { z } from '@hono/zod-openapi';
 import { apiFiltersOperatorSchema, apiFilterSchema } from './api-filters';
-import { apiDateRangeSchema, apiTimestampSchema } from './common';
+import { apiDateRangeSchema, apiTimestampSchema, checkDateRangeOrder } from './common';
 
 export const eventPropertiesRequestSchema = z
   .object({
@@ -38,6 +38,8 @@ export const eventPropertiesRequestSchema = z
         message: 'eventNames must not contain duplicates',
       });
     }
+
+    checkDateRangeOrder(data.dateRange, ctx);
   })
   .openapi({
     description: 'Request payload for listing the properties of custom events.',

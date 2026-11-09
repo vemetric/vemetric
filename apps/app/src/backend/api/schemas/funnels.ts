@@ -1,6 +1,6 @@
 import { z } from '@hono/zod-openapi';
 import { eventApiFilterSchema, pageApiFilterSchema, apiFilterSchema, apiFiltersOperatorSchema } from './api-filters';
-import { apiDateRangeSchema, apiTimestampSchema } from './common';
+import { apiDateRangeSchema, apiTimestampSchema, checkDateRangeOrder } from './common';
 
 export const funnelIdSchema = z.string().openapi({
   description: 'Unique funnel id.',
@@ -55,19 +55,23 @@ export const funnelsListResponseSchema = z.object({
   }),
 });
 
-export const funnelResultsRequestSchema = z.object({
-  dateRange: apiDateRangeSchema,
-  filters: z
-    .array(apiFilterSchema)
-    .optional()
-    .openapi({
-      description: 'Optional filters applied before funnel step evaluation.',
-      'x-vemetric-docs': { collapseByDefault: true },
+export const funnelResultsRequestSchema = z
+  .object({
+    dateRange: apiDateRangeSchema,
+    filters: z
+      .array(apiFilterSchema)
+      .optional()
+      .openapi({
+        description: 'Optional filters applied before funnel step evaluation.',
+        'x-vemetric-docs': { collapseByDefault: true },
+      }),
+    filtersOperator: apiFiltersOperatorSchema.default('and').openapi({
+      description: 'Operator to apply between multiple filters.',
     }),
-  filtersOperator: apiFiltersOperatorSchema.default('and').openapi({
-    description: 'Operator to apply between multiple filters.',
-  }),
-});
+  })
+  .superRefine((data, ctx) => {
+    checkDateRangeOrder(data.dateRange, ctx);
+  });
 
 const funnelResultStepSchema = z.object({
   id: funnelStepIdSchema,

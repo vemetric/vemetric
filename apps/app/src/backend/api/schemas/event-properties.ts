@@ -4,10 +4,14 @@ import { apiDateRangeSchema, apiTimestampSchema } from './common';
 
 export const eventPropertiesRequestSchema = z
   .object({
-    eventName: z.string().trim().min(1, 'eventName must not be empty').openapi({
-      description: 'Name of the custom event to list the properties of.',
-      example: 'signup',
-    }),
+    eventNames: z
+      .array(z.string().trim().min(1, 'event names must not be empty'))
+      .min(1, 'eventNames must include at least one item')
+      .max(25, 'eventNames can include max 25 items')
+      .openapi({
+        description: 'Names of the custom events to list the properties of.',
+        example: ['signup', 'purchase'],
+      }),
     dateRange: apiDateRangeSchema,
     filters: z
       .array(apiFilterSchema)
@@ -20,13 +24,21 @@ export const eventPropertiesRequestSchema = z
       description: 'Operator to apply between multiple filters.',
     }),
     limit: z.number().int().min(1).max(1000).default(100).openapi({
-      description: 'Limits the number of returned properties. Max value is 1000.',
+      description: 'Limits the number of returned properties per event. Max value is 1000.',
     }),
     offset: z.number().int().min(0).default(0).openapi({
-      description: 'Number of properties to skip from the start of the result set, to implement pagination.',
+      description: 'Number of properties to skip per event from the start of the result set, to implement pagination.',
     }),
   })
   .superRefine((data, ctx) => {
+    if (new Set(data.eventNames).size !== data.eventNames.length) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['eventNames'],
+        message: 'eventNames must not contain duplicates',
+      });
+    }
+
     if (Array.isArray(data.dateRange)) {
       const [rawStart, rawEnd] = data.dateRange;
       const start = new Date(rawStart);
@@ -42,7 +54,7 @@ export const eventPropertiesRequestSchema = z
     }
   })
   .openapi({
-    description: 'Request payload for listing the properties of a custom event.',
+    description: 'Request payload for listing the properties of custom events.',
   });
 
 const eventPropertySchema = z.object({
@@ -60,6 +72,28 @@ const eventPropertySchema = z.object({
   }),
 });
 
+const eventPropertiesResultSchema = z.object({
+  eventName: z.string().openapi({
+    description: 'Event name this property list belongs to.',
+    example: 'signup',
+  }),
+  pagination: z.object({
+    limit: z.number().int().min(1).openapi({
+      description: 'Applied page size for this event.',
+    }),
+    offset: z.number().int().min(0).openapi({
+      description: 'Applied page offset for this event.',
+    }),
+    returned: z.number().int().min(0).openapi({
+      description: 'Number of properties returned for this event.',
+    }),
+  }),
+  properties: z.array(eventPropertySchema).openapi({
+    description:
+      'Properties of the event, sorted by the number of events that have them (descending). Empty if the event has no properties in the period.',
+  }),
+});
+
 export const eventPropertiesResponseSchema = z
   .object({
     period: z.object({
@@ -71,8 +105,8 @@ export const eventPropertiesResponseSchema = z
       }),
     }),
     query: z.object({
-      eventName: z.string().openapi({
-        description: 'Echo of the incoming `eventName` request field.',
+      eventNames: z.array(z.string()).openapi({
+        description: 'Echo of the incoming `eventNames` request field.',
       }),
       dateRange: apiDateRangeSchema.openapi({
         description: 'Echo of the incoming `dateRange` request field.',
@@ -90,19 +124,8 @@ export const eventPropertiesResponseSchema = z
         description: 'Echo of the incoming `offset` request field.',
       }),
     }),
-    pagination: z.object({
-      limit: z.number().int().min(1).openapi({
-        description: 'Applied page size.',
-      }),
-      offset: z.number().int().min(0).openapi({
-        description: 'Applied page offset.',
-      }),
-      returned: z.number().int().min(0).openapi({
-        description: 'Number of properties returned.',
-      }),
-    }),
-    properties: z.array(eventPropertySchema).openapi({
-      description: 'Properties of the event, sorted by the number of events that have them (descending).',
+    data: z.array(eventPropertiesResultSchema).openapi({
+      description: 'One property list per requested event, in the order of `eventNames`.',
     }),
   })
   .openapi({

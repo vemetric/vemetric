@@ -3,10 +3,10 @@ import type { Mock } from 'vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPublicApi } from '../index';
 
-const { findByKeyHashMock, getRedisClientMock, getEventPropertiesMock } = vi.hoisted(() => ({
+const { findByKeyHashMock, getRedisClientMock, getPropertiesOfEventsMock } = vi.hoisted(() => ({
   findByKeyHashMock: vi.fn(),
   getRedisClientMock: vi.fn(),
-  getEventPropertiesMock: vi.fn(),
+  getPropertiesOfEventsMock: vi.fn(),
 }));
 
 vi.mock('database', () => ({
@@ -22,7 +22,7 @@ vi.mock('../../utils/redis', () => ({
 vi.mock('clickhouse', async (importOriginal) => ({
   ...(await importOriginal<typeof clickhouse>()),
   clickhouseEvent: {
-    getEventProperties: getEventPropertiesMock,
+    getPropertiesOfEvents: getPropertiesOfEventsMock,
   },
 }));
 
@@ -64,50 +64,80 @@ function request(body: unknown) {
 describe('POST /api/v1/events/properties (contract)', () => {
   const findByKeyHash = findByKeyHashMock as Mock;
   const getRedisClient = getRedisClientMock as Mock;
-  const getEventProperties = getEventPropertiesMock as Mock;
+  const getPropertiesOfEvents = getPropertiesOfEventsMock as Mock;
 
   beforeEach(() => {
     vi.clearAllMocks();
     findByKeyHash.mockResolvedValue(createMockApiKey());
     getRedisClient.mockResolvedValue({ eval: vi.fn().mockResolvedValue([1, 60]) });
-    getEventProperties.mockResolvedValue([
-      { name: 'plan', count: 40, users: 30 },
-      { name: 'source', count: 12, users: 10 },
-      { name: 'coupon', count: 3, users: 3 },
+    getPropertiesOfEvents.mockResolvedValue([
+      { eventName: 'purchase', name: 'amount', count: 8, users: 6 },
+      { eventName: 'signup', name: 'plan', count: 40, users: 30 },
+      { eventName: 'signup', name: 'source', count: 12, users: 10 },
+      { eventName: 'signup', name: 'coupon', count: 3, users: 3 },
     ]);
   });
 
-  it('returns the properties of the event with pagination', async () => {
-    const response = await request({ eventName: 'signup', dateRange: '30days', limit: 2 });
+  it('returns one paginated property list per event, in the requested order', async () => {
+    const response = await request({ eventNames: ['signup', 'purchase', 'click'], dateRange: '30days', limit: 2 });
 
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.query).toEqual({ eventName: 'signup', dateRange: '30days', limit: 2, offset: 0 });
-    expect(body.pagination).toEqual({ limit: 2, offset: 0, returned: 2 });
-    expect(body.properties).toEqual([
-      { name: 'plan', events: 40, users: 30 },
-      { name: 'source', events: 12, users: 10 },
+    expect(body.query).toEqual({
+      eventNames: ['signup', 'purchase', 'click'],
+      dateRange: '30days',
+      limit: 2,
+      offset: 0,
+    });
+    expect(body.data).toEqual([
+      {
+        eventName: 'signup',
+        pagination: { limit: 2, offset: 0, returned: 2 },
+        properties: [
+          { name: 'plan', events: 40, users: 30 },
+          { name: 'source', events: 12, users: 10 },
+        ],
+      },
+      {
+        eventName: 'purchase',
+        pagination: { limit: 2, offset: 0, returned: 1 },
+        properties: [{ name: 'amount', events: 8, users: 6 }],
+      },
+      { eventName: 'click', pagination: { limit: 2, offset: 0, returned: 0 }, properties: [] },
     ]);
-    expect(getEventProperties).toHaveBeenCalledWith(
+    expect(getPropertiesOfEvents).toHaveBeenCalledTimes(1);
+    expect(getPropertiesOfEvents).toHaveBeenCalledWith(
       BigInt(123),
-      'signup',
+      ['signup', 'purchase', 'click'],
       expect.objectContaining({ filterQueries: '' }),
     );
   });
 
-  it('rejects a missing event name', async () => {
-    const response = await request({ dateRange: '30days' });
+  it('pages through the properties of each event', async () => {
+    const response = await request({ eventNames: ['signup'], dateRange: '30days', limit: 2, offset: 2 });
 
-    expect(response.status).toBe(400);
     const body = await response.json();
-    expect(body.error.code).toBe('VALIDATION_ERROR');
-    expect(body.error.details).toEqual(
-      expect.arrayContaining([{ field: 'eventName', message: 'Invalid input: expected string, received undefined' }]),
-    );
+    expect(body.data[0].properties).toEqual([{ name: 'coupon', events: 3, users: 3 }]);
+  });
+
+  it('rejects missing, empty and duplicate event names', async () => {
+    for (const [eventNames, field, message] of [
+      [undefined, 'eventNames', 'Invalid input: expected array, received undefined'],
+      [[], 'eventNames', 'eventNames must include at least one item'],
+      [['signup', 'signup'], 'eventNames', 'eventNames must not contain duplicates'],
+      [['signup', ' '], 'eventNames.1', 'event names must not be empty'],
+    ] as const) {
+      const response = await request({ eventNames, dateRange: '30days' });
+
+      expect(response.status).toBe(400);
+      const body = await response.json();
+      expect(body.error.code).toBe('VALIDATION_ERROR');
+      expect(body.error.details).toEqual(expect.arrayContaining([{ field, message }]));
+    }
   });
 
   it('rejects a reversed custom dateRange', async () => {
-    const response = await request({ eventName: 'signup', dateRange: ['2026-02-18', '2026-02-17'] });
+    const response = await request({ eventNames: ['signup'], dateRange: ['2026-02-18', '2026-02-17'] });
 
     expect(response.status).toBe(400);
     const body = await response.json();
@@ -117,10 +147,10 @@ describe('POST /api/v1/events/properties (contract)', () => {
   });
 
   it('applies the plan limits', async () => {
-    const response = await request({ eventName: 'signup', dateRange: '1year' });
+    const response = await request({ eventNames: ['signup'], dateRange: '1year' });
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toMatchObject({ error: { code: 'PLAN_LIMIT_EXCEEDED' } });
-    expect(getEventProperties).not.toHaveBeenCalled();
+    expect(getPropertiesOfEvents).not.toHaveBeenCalled();
   });
 });

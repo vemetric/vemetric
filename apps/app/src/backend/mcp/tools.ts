@@ -198,22 +198,31 @@ export function registerTools(server: McpServer, caller: McpCaller) {
     {
       title: 'List event properties',
       description:
-        'List the property names of a custom event (e.g. "plan" of a "signup" event) with how many events and users have them. Use the names in query_analytics with groupBy "event:prop:<name>", or in event filters. Find event names with list_filter_values (field "event:name").',
+        'List the property names of one or more custom events (e.g. "plan" of a "signup" event) with how many events and users have them. Use the names in query_analytics with groupBy "event:prop:<name>" plus an event filter to get the values, or in event filters. Find event names with list_filter_values (field "event:name"), then pass all events you are interested in at once.',
       inputSchema: eventPropertiesRequestSchema.safeExtend({
         projectId,
-        eventName: eventPropertiesRequestSchema.shape.eventName.describe('Exact name of the custom event.'),
+        eventNames: eventPropertiesRequestSchema.shape.eventNames.describe(
+          'Exact names of the custom events (1 to 25), e.g. ["signup","purchase"].',
+        ),
         dateRange,
         filters: filtersReference,
         filtersOperator,
-        limit: limit(50, 'properties'),
+        limit: limit(50, 'properties per event'),
         offset,
       }),
       annotations,
     },
     (input) =>
       runProjectTool({ tool: 'list_event_properties', caller, input }, async (ctx) => {
-        const { period, pagination, properties } = await listEventProperties(ctx, input);
-        return { period, pagination: withHasMore(pagination), properties };
+        const { period, data } = await listEventProperties(ctx, input);
+        return {
+          period,
+          data: data.map(({ eventName, pagination, properties }) => ({
+            eventName,
+            properties,
+            pagination: withHasMore(pagination),
+          })),
+        };
       }),
   );
 

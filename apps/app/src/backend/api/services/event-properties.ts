@@ -29,13 +29,12 @@ export async function listEventProperties(
     funnelsData: funnelsData ?? new Map(),
   });
 
-  const properties = await clickhouseEvent.getEventProperties(projectId, payload.eventName, {
+  const properties = await clickhouseEvent.getPropertiesOfEvents(projectId, payload.eventNames, {
     startDate,
     endDate,
     filterQueries,
     filterConfig,
   });
-  const pagedProperties = properties.slice(payload.offset, payload.offset + payload.limit);
 
   return {
     period: {
@@ -43,21 +42,29 @@ export async function listEventProperties(
       to: formatApiDate(endDate ?? new Date()),
     },
     query: {
-      eventName: payload.eventName,
+      eventNames: payload.eventNames,
       dateRange: payload.dateRange,
       ...(payload.filters ? { filters: payload.filters, filtersOperator: payload.filtersOperator } : {}),
       limit: payload.limit,
       offset: payload.offset,
     },
-    pagination: {
-      limit: payload.limit,
-      offset: payload.offset,
-      returned: pagedProperties.length,
-    },
-    properties: pagedProperties.map((property) => ({
-      name: property.name,
-      events: property.count,
-      users: property.users,
-    })),
+    data: payload.eventNames.map((eventName) => {
+      const pagedProperties = properties
+        .filter((property) => property.eventName === eventName)
+        .slice(payload.offset, payload.offset + payload.limit);
+      return {
+        eventName,
+        pagination: {
+          limit: payload.limit,
+          offset: payload.offset,
+          returned: pagedProperties.length,
+        },
+        properties: pagedProperties.map((property) => ({
+          name: property.name,
+          events: property.count,
+          users: property.users,
+        })),
+      };
+    }),
   };
 }

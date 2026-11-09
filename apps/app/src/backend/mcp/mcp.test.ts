@@ -12,6 +12,7 @@ const {
   findByIdsMock,
   getRedisClientMock,
   getFilterableDataMock,
+  getPropertiesOfEventsMock,
 } = vi.hoisted(() => ({
   findByKeyHashMock: vi.fn(),
   findByIdMock: vi.fn(),
@@ -19,6 +20,7 @@ const {
   findByIdsMock: vi.fn(),
   getRedisClientMock: vi.fn(),
   getFilterableDataMock: vi.fn(),
+  getPropertiesOfEventsMock: vi.fn(),
 }));
 
 vi.mock('database', () => ({
@@ -40,6 +42,7 @@ vi.mock('clickhouse', async (importOriginal) => ({
   ...(await importOriginal<typeof clickhouse>()),
   clickhouseEvent: {
     getFilterableData: getFilterableDataMock,
+    getPropertiesOfEvents: getPropertiesOfEventsMock,
   },
 }));
 
@@ -260,6 +263,35 @@ describe('MCP server', () => {
             values: ['/', '/blog'],
             pagination: { limit: 2, offset: 0, returned: 2, hasMore: true },
           },
+        ],
+      });
+    });
+
+    it('returns the properties of several events at once', async () => {
+      (getPropertiesOfEventsMock as Mock).mockResolvedValue([
+        { eventName: 'signup', name: 'plan', count: 40, users: 30 },
+        { eventName: 'signup', name: 'source', count: 12, users: 10 },
+      ]);
+      const client = await connect();
+
+      const result = await client.callTool({
+        name: 'list_event_properties',
+        arguments: { eventNames: ['signup', 'purchase'], dateRange: '30days', limit: 2 },
+      });
+
+      expect(result.isError).toBeFalsy();
+      expect(result.structuredContent).toEqual({
+        period: expect.any(Object),
+        data: [
+          {
+            eventName: 'signup',
+            properties: [
+              { name: 'plan', events: 40, users: 30 },
+              { name: 'source', events: 12, users: 10 },
+            ],
+            pagination: { limit: 2, offset: 0, returned: 2, hasMore: true },
+          },
+          { eventName: 'purchase', properties: [], pagination: { limit: 2, offset: 0, returned: 0, hasMore: false } },
         ],
       });
     });

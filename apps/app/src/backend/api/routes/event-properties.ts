@@ -13,7 +13,7 @@ const eventPropertiesRoute = createRoute({
   tags: ['Events'],
   summary: 'List event properties',
   description:
-    'Returns the property names of a custom event, e.g. to group or filter by them with the `event:prop:<name>` token.',
+    'Returns the property names of one or more custom events, e.g. to group or filter by them with the `event:prop:<name>` token.',
   middleware: requireProject,
   request: {
     headers: projectRequestHeaders,

@@ -64,9 +64,9 @@ describe('POST /api/v1/events/properties (integration, seeded fixtures)', () => 
     });
   });
 
-  it('returns the properties of an event with event and user counts', async () => {
+  it('returns the properties of each event with event and user counts', async () => {
     const response = await postEventProperties({
-      eventName: 'signup',
+      eventNames: ['signup', 'click'],
       dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
     });
 
@@ -77,40 +77,34 @@ describe('POST /api/v1/events/properties (integration, seeded fixtures)', () => 
         to: '2026-01-19T23:59:59Z',
       },
       query: {
-        eventName: 'signup',
+        eventNames: ['signup', 'click'],
         dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
         limit: 100,
         offset: 0,
       },
-      pagination: {
-        limit: 100,
-        offset: 0,
-        returned: 1,
-      },
-      properties: [{ name: 'plan', events: 3, users: 2 }],
+      data: [
+        {
+          eventName: 'signup',
+          pagination: { limit: 100, offset: 0, returned: 1 },
+          properties: [{ name: 'plan', events: 3, users: 2 }],
+        },
+        {
+          eventName: 'click',
+          pagination: { limit: 100, offset: 0, returned: 0 },
+          properties: [],
+        },
+      ],
     });
   });
 
   it('only counts events in the date range', async () => {
     const response = await postEventProperties({
-      eventName: 'signup',
+      eventNames: ['signup'],
       dateRange: ['2026-01-19', '2026-01-19'],
     });
 
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.properties).toEqual([{ name: 'plan', events: 2, users: 1 }]);
-  });
-
-  it('returns no properties for events without data', async () => {
-    const response = await postEventProperties({
-      eventName: 'click',
-      dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
-    });
-
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.properties).toEqual([]);
-    expect(body.pagination.returned).toBe(0);
+    expect(body.data[0].properties).toEqual([{ name: 'plan', events: 2, users: 1 }]);
   });
 });

@@ -51,13 +51,22 @@ export function createValidationErrorResponse(issues: z.core.$ZodIssue[]) {
   };
 }
 
-export function errorHandler(err: Error, c: Context<PublicApiHonoEnv>) {
-  if (err instanceof ApiError) {
-    return c.json(createErrorBody(err.code, err.message), err.status);
+/** The `error.code` an error is reported with, by the REST API and the MCP server. */
+export function getErrorCode(error: unknown): ApiErrorCode {
+  if (error instanceof ApiError) {
+    return error.code;
   }
 
+  if (error instanceof HTTPException) {
+    return 'HTTP_ERROR';
+  }
+
+  return 'INTERNAL_ERROR';
+}
+
+export function errorHandler(err: Error, c: Context<PublicApiHonoEnv>) {
   if (err instanceof HTTPException) {
-    return c.json(createErrorBody('HTTP_ERROR', err.message), err.status);
+    return c.json(createErrorBody(getErrorCode(err), err.message), err.status);
   }
 
   const apiKey = c.var.apiKey;

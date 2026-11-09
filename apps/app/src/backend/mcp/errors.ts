@@ -2,7 +2,7 @@ import type { PresetTimeSpan } from '@vemetric/common/charts/timespans';
 import { getVemetricUrl } from '@vemetric/common/env';
 import { addDays } from 'date-fns';
 import { formatApiDay } from '../api/utils/date';
-import { ApiError, type ApiErrorCode } from '../api/utils/errors';
+import type { ApiError } from '../api/utils/errors';
 import { FREE_PLAN_RETENTION_DAYS } from '../utils/retention';
 
 type ToolErrorContext = {
@@ -50,7 +50,3 @@ export function getRateLimitMessage(resetSec: number): string {
 
 export const UNEXPECTED_ERROR_MESSAGE =
   'An unexpected error occurred in Vemetric. Try again later. If it keeps failing, tell the user to contact Vemetric support.';
-
-export function getErrorCode(error: unknown): ApiErrorCode {
-  return error instanceof ApiError ? error.code : 'INTERNAL_ERROR';
-}

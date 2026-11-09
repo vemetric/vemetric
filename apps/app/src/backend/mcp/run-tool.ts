@@ -1,10 +1,10 @@
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import { resolveCallerContext, type McpCaller } from './caller';
-import { getErrorCode, getRateLimitMessage, getToolErrorMessage, UNEXPECTED_ERROR_MESSAGE } from './errors';
+import { getRateLimitMessage, getToolErrorMessage, UNEXPECTED_ERROR_MESSAGE } from './errors';
 import { consumeRateLimit } from '../api/middleware/rate-limit';
 import type { ApiServiceContext } from '../api/services/context';
 import { logger } from '../api/utils/api-logger';
-import { ApiError } from '../api/utils/errors';
+import { ApiError, getErrorCode } from '../api/utils/errors';
 
 type ToolData = Record<string, unknown>;
 

@@ -2,8 +2,7 @@ import type { PresetTimeSpan } from '@vemetric/common/charts/timespans';
 import { getVemetricUrl } from '@vemetric/common/env';
 import { addDays } from 'date-fns';
 import { ApiError, type ApiErrorCode } from '../api/utils/errors';
-
-const FREE_PLAN_RETENTION_DAYS = 30;
+import { FREE_PLAN_RETENTION_DAYS } from '../utils/retention';
 
 type ToolErrorContext = {
   organizationId: string;

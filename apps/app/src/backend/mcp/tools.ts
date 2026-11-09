@@ -14,6 +14,7 @@ import { getFilterValues } from '../api/services/filter-values';
 import { getFunnelResults, listFunnels } from '../api/services/funnels';
 import { getProject, listProjects } from '../api/services/project';
 import { getUser, getUserEvents, listUsers } from '../api/services/users';
+import { FREE_PLAN_RETENTION_DAYS } from '../utils/retention';
 
 const annotations: ToolAnnotations = { readOnlyHint: true, openWorldHint: false };
 
@@ -123,7 +124,7 @@ export function registerTools(server: McpServer, caller: McpCaller) {
             name: isPaid ? 'Professional' : 'Free',
             dataRetention: isPaid
               ? 'All data'
-              : 'Last 30 days (the 3months, 6months and 1year presets are not available)',
+              : `Last ${FREE_PLAN_RETENTION_DAYS} days (the 3months, 6months and 1year presets are not available)`,
           },
           today: new Date().toISOString().slice(0, 10),
         };

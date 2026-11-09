@@ -1,11 +1,11 @@
 import type { GetPromptResult, McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
+import { FREE_PLAN_RETENTION_DAYS } from '../utils/retention';
 
 const projectHint =
   'If the user has several projects and it is unclear which one they mean, call list_projects and ask them first.';
 
-const planHint =
-  "Start with get_project to learn today's date and the project's plan. If the plan doesn't include the data needed for a comparison (the Free plan only covers the last 30 days), work with what it includes and say what's missing instead of running into errors.";
+const planHint = `Start with get_project to learn today's date and the project's plan. If the plan doesn't include the data needed for a comparison (the Free plan only covers the last ${FREE_PLAN_RETENTION_DAYS} days), work with what it includes and say what's missing instead of running into errors.`;
 
 function prompt(text: string): GetPromptResult {
   return {

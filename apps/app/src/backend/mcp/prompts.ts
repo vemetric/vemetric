@@ -81,7 +81,11 @@ export function registerPrompts(server: McpServer) {
       title: 'User journey',
       description: "Summarize one user's activity, e.g. for support or sales.",
       argsSchema: z.object({
-        user: z.string().describe("The user's identifier (e.g. an email address) or Vemetric user id."),
+        user: z
+          .string()
+          .describe(
+            "The user's identifier, i.e. the id your website or app uses for the user (e.g. their id in your database), or their Vemetric user id.",
+          ),
       }),
     },
     ({ user }) =>

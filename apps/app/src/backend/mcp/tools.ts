@@ -76,7 +76,7 @@ const offset = z.number().int().min(0).default(0).describe('Number of items to s
 const userReference = {
   id: userSingleQuerySchema.shape.id.describe("Vemetric's internal user id (from list_users)."),
   identifier: userSingleQuerySchema.shape.identifier.describe(
-    'The identifier the website uses for the user, e.g. an email address or its own user id.',
+    'The identifier the website or app sent to Vemetric for the user, usually its own user id (e.g. the primary key of the user in its database).',
   ),
 };
 
@@ -259,7 +259,7 @@ export function registerTools(server: McpServer, caller: McpCaller) {
     {
       title: 'Get user',
       description:
-        "Get one user by Vemetric's user id or by the website's identifier for them (e.g. an email address): location, when they were last seen and their custom data.",
+        "Get one user by Vemetric's user id or by the identifier the website or app sent for them (usually its own user id): location, when they were last seen and their custom data.",
       inputSchema: userSingleQuerySchema.safeExtend({ projectId, ...userReference }),
       annotations,
     },

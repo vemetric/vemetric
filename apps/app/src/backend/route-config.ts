@@ -1,4 +1,4 @@
-export const API_PREFIXES = ['_api', 'api'] as const;
+export const API_PREFIXES = ['_api', 'api', 'mcp'] as const;
 
 export const NO_CACHE_PATHS = new Set<string>(['/manifest.webmanifest', '/sw.js', '/registerSW.js']);
 

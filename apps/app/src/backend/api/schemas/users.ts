@@ -1,7 +1,7 @@
 import { z } from '@hono/zod-openapi';
 import { sortDirectionSchema } from '@vemetric/common/sort';
 import { apiFilterSchema, apiEventFilterSchema, apiFiltersOperatorSchema, eventApiFilterSchema } from './api-filters';
-import { apiDateRangeSchema, apiTimestampSchema } from './common';
+import { apiDateRangeSchema, apiTimestampSchema, checkDateRangeOrder } from './common';
 import { apiEventItemSchema } from './event';
 
 const usersOrderByFieldSchema = z.enum(['lastSeenAt', 'displayName', 'identifier', 'country']).openapi({
@@ -155,19 +155,7 @@ export const usersListRequestSchema = z
       .openapi({ description: 'Number of users to skip from the start of the result set.' }),
   })
   .superRefine((data, ctx) => {
-    if (Array.isArray(data.dateRange)) {
-      const [rawStart, rawEnd] = data.dateRange;
-      const start = new Date(rawStart);
-      const end = new Date(rawEnd);
-
-      if (start.getTime() > end.getTime()) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['dateRange'],
-          message: 'Start date must be before or equal to end date',
-        });
-      }
-    }
+    checkDateRangeOrder(data.dateRange, ctx);
   })
   .openapi({
     description: 'Request payload for querying a paginated list of users.',
@@ -254,19 +242,7 @@ export const userEventsRequestSchema = z
       .openapi({ description: 'Number of events to skip from the start of the result set.' }),
   })
   .superRefine((data, ctx) => {
-    if (Array.isArray(data.dateRange)) {
-      const [rawStart, rawEnd] = data.dateRange;
-      const start = new Date(rawStart);
-      const end = new Date(rawEnd);
-
-      if (start.getTime() > end.getTime()) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['dateRange'],
-          message: 'Start date must be before or equal to end date',
-        });
-      }
-    }
+    checkDateRangeOrder(data.dateRange, ctx);
   })
   .openapi({
     description: 'Request payload for querying one user’s events.',

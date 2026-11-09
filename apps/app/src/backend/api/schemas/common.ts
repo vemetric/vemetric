@@ -31,3 +31,23 @@ export const apiDateRangeSchema = z
       'Can be either one of the preset strings below, or an array with two date strings [start, end]. Date strings can be either in YYYY-MM-DD format or UTC ISO-8601 format with second precision.',
     example: ['2026-01-01T12:00:00Z', '2026-01-31T12:00:00Z'],
   });
+
+/**
+ * Checks that a custom `dateRange` doesn't end before it starts. Called from the `superRefine` of each request schema,
+ * which only runs once all fields are valid, so it never reports invalid dates twice.
+ */
+export function checkDateRangeOrder(dateRange: z.output<typeof apiDateRangeSchema>, ctx: z.RefinementCtx) {
+  if (Array.isArray(dateRange)) {
+    const [rawStart, rawEnd] = dateRange;
+    const start = new Date(rawStart);
+    const end = new Date(rawEnd);
+
+    if (start.getTime() > end.getTime()) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['dateRange'],
+        message: 'Start date must be before or equal to end date',
+      });
+    }
+  }
+}

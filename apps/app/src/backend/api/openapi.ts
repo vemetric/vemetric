@@ -282,6 +282,7 @@ export function registerOpenApiDocs(api: OpenAPIHono<PublicApiHonoEnv>) {
       { name: 'Project', description: 'The projects the API key covers.' },
       { name: 'Analytics', description: 'Aggregated analytics metrics.' },
       { name: 'Filters', description: 'Values available for filtering.' },
+      { name: 'Events', description: 'Custom events and their properties.' },
       { name: 'Users', description: 'Tracked users and their events.' },
       { name: 'Funnels', description: 'Funnels and their results.' },
     ],

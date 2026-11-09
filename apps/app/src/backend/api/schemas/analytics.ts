@@ -2,7 +2,7 @@ import { z } from '@hono/zod-openapi';
 import { sortDirectionSchema } from '@vemetric/common/sort';
 import { eventPropertyTokenRegex, metricsGroupFieldTokens, parseMetricsQueryGroupingToken } from 'clickhouse';
 import { apiFiltersOperatorSchema, apiFilterSchema } from './api-filters';
-import { apiDateRangeSchema, apiTimestampSchema } from './common';
+import { apiDateRangeSchema, apiTimestampSchema, checkDateRangeOrder } from './common';
 import type { Metric } from '../consts/analytics';
 import { DEFAULT_METRICS, METRICS, METRICS_SET } from '../consts/analytics';
 import { isSortingGroupField } from '../utils/analytics/grouping';
@@ -109,7 +109,7 @@ export const analyticsQueryRequestSchema = z
       }),
     orderBy: orderBySchema.default([]).openapi({
       description:
-        "Gives you the ability to order by a specific field and direction. At the moment it's only possible to order by one field.",
+        "Gives you the ability to order by a specific field and direction. At the moment it's only possible to order by one field. Without it, rows are ordered by `date` ascending when grouping by `interval:auto`, and by the first metric descending for other groupings (skipping metrics that don't apply to the grouping, like `bounceRate` per page). Rows with equal values are ordered by their group value.",
       example: [['users', 'desc']],
       'x-vemetric-docs': {
         hideTupleVariantChildren: true,
@@ -148,19 +148,7 @@ export const analyticsQueryRequestSchema = z
       });
     }
 
-    if (Array.isArray(data.dateRange)) {
-      const [rawStart, rawEnd] = data.dateRange;
-      const start = new Date(rawStart);
-      const end = new Date(rawEnd);
-
-      if (start.getTime() > end.getTime()) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['dateRange'],
-          message: 'Start date must be before or equal to end date',
-        });
-      }
-    }
+    checkDateRangeOrder(data.dateRange, ctx);
 
     const selectedMetrics = data.metrics && data.metrics.length > 0 ? data.metrics : DEFAULT_METRICS;
     const grouping = parseMetricsQueryGroupingToken(data.groupBy[0] ?? null);

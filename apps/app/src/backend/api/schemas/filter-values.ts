@@ -1,6 +1,6 @@
 import { z } from '@hono/zod-openapi';
 import { metricsGroupFieldTokens } from 'clickhouse';
-import { apiDateRangeSchema, apiTimestampSchema } from './common';
+import { apiDateRangeSchema, apiTimestampSchema, checkDateRangeOrder } from './common';
 
 export const filterValuesFieldSchema = z.enum(metricsGroupFieldTokens).openapi({
   description: 'Field token to retrieve filter values for.',
@@ -34,19 +34,7 @@ export const filterValuesRequestSchema = z
       });
     }
 
-    if (Array.isArray(data.dateRange)) {
-      const [rawStart, rawEnd] = data.dateRange;
-      const start = new Date(rawStart);
-      const end = new Date(rawEnd);
-
-      if (start.getTime() > end.getTime()) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['dateRange'],
-          message: 'Start date must be before or equal to end date',
-        });
-      }
-    }
+    checkDateRangeOrder(data.dateRange, ctx);
   })
   .openapi({
     description: 'Request payload for retrieving available filter values per field.',

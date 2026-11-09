@@ -148,6 +148,28 @@ describe('POST /api/v1/filters/values (contract)', () => {
     expectValidationDetail(body, 'dateRange', 'Start date must be before or equal to end date');
   });
 
+  it('only reports the format error for an invalid date, not the date order', async () => {
+    const app = createPublicApi();
+
+    const response = await app.request('/v1/filters/values', {
+      method: 'POST',
+      headers: AUTH_HEADERS,
+      body: JSON.stringify({
+        dateRange: ['2026-02-18', 'nope'],
+        fields: ['country'],
+      }),
+    });
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error.details).toEqual([
+      {
+        field: 'dateRange.1',
+        message: 'UTC date input must be either YYYY-MM-DD or UTC ISO-8601 with second precision',
+      },
+    ]);
+  });
+
   it('rejects disallowed preset dateRange', async () => {
     const app = createPublicApi();
 

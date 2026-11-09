@@ -29,7 +29,7 @@ export async function listEventProperties(
     funnelsData: funnelsData ?? new Map(),
   });
 
-  const properties = await clickhouseEvent.getPropertiesOfEvents(projectId, payload.eventNames, {
+  const properties = await clickhouseEvent.getEventProperties(projectId, payload.eventNames, {
     startDate,
     endDate,
     filterQueries,

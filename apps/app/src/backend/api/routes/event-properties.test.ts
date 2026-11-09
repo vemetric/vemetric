@@ -3,10 +3,10 @@ import type { Mock } from 'vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPublicApi } from '../index';
 
-const { findByKeyHashMock, getRedisClientMock, getPropertiesOfEventsMock } = vi.hoisted(() => ({
+const { findByKeyHashMock, getRedisClientMock, getEventPropertiesMock } = vi.hoisted(() => ({
   findByKeyHashMock: vi.fn(),
   getRedisClientMock: vi.fn(),
-  getPropertiesOfEventsMock: vi.fn(),
+  getEventPropertiesMock: vi.fn(),
 }));
 
 vi.mock('database', () => ({
@@ -22,7 +22,7 @@ vi.mock('../../utils/redis', () => ({
 vi.mock('clickhouse', async (importOriginal) => ({
   ...(await importOriginal<typeof clickhouse>()),
   clickhouseEvent: {
-    getPropertiesOfEvents: getPropertiesOfEventsMock,
+    getEventProperties: getEventPropertiesMock,
   },
 }));
 
@@ -64,13 +64,13 @@ function request(body: unknown) {
 describe('POST /api/v1/events/properties (contract)', () => {
   const findByKeyHash = findByKeyHashMock as Mock;
   const getRedisClient = getRedisClientMock as Mock;
-  const getPropertiesOfEvents = getPropertiesOfEventsMock as Mock;
+  const getEventProperties = getEventPropertiesMock as Mock;
 
   beforeEach(() => {
     vi.clearAllMocks();
     findByKeyHash.mockResolvedValue(createMockApiKey());
     getRedisClient.mockResolvedValue({ eval: vi.fn().mockResolvedValue([1, 60]) });
-    getPropertiesOfEvents.mockResolvedValue([
+    getEventProperties.mockResolvedValue([
       { eventName: 'purchase', name: 'amount', count: 8, users: 6 },
       { eventName: 'signup', name: 'plan', count: 40, users: 30 },
       { eventName: 'signup', name: 'source', count: 12, users: 10 },
@@ -105,8 +105,8 @@ describe('POST /api/v1/events/properties (contract)', () => {
       },
       { eventName: 'click', pagination: { limit: 2, offset: 0, returned: 0 }, properties: [] },
     ]);
-    expect(getPropertiesOfEvents).toHaveBeenCalledTimes(1);
-    expect(getPropertiesOfEvents).toHaveBeenCalledWith(
+    expect(getEventProperties).toHaveBeenCalledTimes(1);
+    expect(getEventProperties).toHaveBeenCalledWith(
       BigInt(123),
       ['signup', 'purchase', 'click'],
       expect.objectContaining({ filterQueries: '' }),
@@ -151,6 +151,6 @@ describe('POST /api/v1/events/properties (contract)', () => {
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toMatchObject({ error: { code: 'PLAN_LIMIT_EXCEEDED' } });
-    expect(getPropertiesOfEvents).not.toHaveBeenCalled();
+    expect(getEventProperties).not.toHaveBeenCalled();
   });
 });

@@ -12,7 +12,7 @@ const {
   findByIdsMock,
   getRedisClientMock,
   getFilterableDataMock,
-  getPropertiesOfEventsMock,
+  getEventPropertiesMock,
 } = vi.hoisted(() => ({
   findByKeyHashMock: vi.fn(),
   findByIdMock: vi.fn(),
@@ -20,7 +20,7 @@ const {
   findByIdsMock: vi.fn(),
   getRedisClientMock: vi.fn(),
   getFilterableDataMock: vi.fn(),
-  getPropertiesOfEventsMock: vi.fn(),
+  getEventPropertiesMock: vi.fn(),
 }));
 
 vi.mock('database', () => ({
@@ -42,7 +42,7 @@ vi.mock('clickhouse', async (importOriginal) => ({
   ...(await importOriginal<typeof clickhouse>()),
   clickhouseEvent: {
     getFilterableData: getFilterableDataMock,
-    getPropertiesOfEvents: getPropertiesOfEventsMock,
+    getEventProperties: getEventPropertiesMock,
   },
 }));
 
@@ -268,7 +268,7 @@ describe('MCP server', () => {
     });
 
     it('returns the properties of several events at once', async () => {
-      (getPropertiesOfEventsMock as Mock).mockResolvedValue([
+      (getEventPropertiesMock as Mock).mockResolvedValue([
         { eventName: 'signup', name: 'plan', count: 40, users: 30 },
         { eventName: 'signup', name: 'source', count: 12, users: 10 },
       ]);

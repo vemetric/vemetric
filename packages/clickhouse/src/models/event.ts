@@ -996,40 +996,6 @@ export const clickhouseEvent = {
   },
   getEventProperties: withSpan(
     'getEventProperties',
-    async (projectId: bigint, eventName: string, filterOptions: Omit<FilterOptions, 'timeSpan'>) => {
-      const { startDate, endDate, filterQueries, filterConfig } = filterOptions;
-      const eventFilterQueries = buildEventFilterQueries(filterConfig);
-
-      const resultSet = await clickhouseClient.query({
-        query: `
-          SELECT 
-            arrayJoin(JSONExtractKeys(customData)) as property,
-            count() as count,
-            count(distinct userId) as users
-          FROM ${TABLE_NAME}
-          WHERE projectId = ${escape(projectId)}
-            AND name = ${escape(eventName)}
-            AND createdAt >= '${formatClickhouseDate(startDate)}'
-            ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
-            AND isPageView <> 1
-            ${eventFilterQueries ? `AND (${eventFilterQueries})` : ''}
-            ${filterQueries || ''}
-          GROUP BY property
-          ORDER BY count DESC, property
-        `,
-        format: 'JSONEachRow',
-      });
-
-      const result = (await resultSet.json()) as Array<any>;
-      return result.map((row) => ({
-        name: row.property as string,
-        count: Number(row.count),
-        users: Number(row.users),
-      }));
-    },
-  ),
-  getPropertiesOfEvents: withSpan(
-    'getPropertiesOfEvents',
     async (projectId: bigint, eventNames: string[], filterOptions: Omit<FilterOptions, 'timeSpan'>) => {
       const { startDate, endDate, filterQueries, filterConfig } = filterOptions;
       const eventFilterQueries = buildEventFilterQueries(filterConfig);

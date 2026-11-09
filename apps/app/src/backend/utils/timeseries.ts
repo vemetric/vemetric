@@ -122,10 +122,7 @@ export function getTimeSpanEndDate(timespan: TimeSpan, customEndDate?: string) {
  * For example, if the current period is "Last 7 days", the previous period would be
  * the 7 days before that.
  */
-export function getPreviousPeriodDates(
-  startDate: Date,
-  endDate: Date,
-): { prevStartDate: Date; prevEndDate: Date } {
+export function getPreviousPeriodDates(startDate: Date, endDate: Date): { prevStartDate: Date; prevEndDate: Date } {
   const periodDurationMs = endDate.getTime() - startDate.getTime();
 
   // Previous period ends exactly when current period starts

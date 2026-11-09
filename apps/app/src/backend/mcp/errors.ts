@@ -1,6 +1,7 @@
 import type { PresetTimeSpan } from '@vemetric/common/charts/timespans';
 import { getVemetricUrl } from '@vemetric/common/env';
 import { addDays } from 'date-fns';
+import { formatApiDay } from '../api/utils/date';
 import { ApiError, type ApiErrorCode } from '../api/utils/errors';
 import { FREE_PLAN_RETENTION_DAYS } from '../utils/retention';
 
@@ -28,7 +29,7 @@ export function getToolErrorMessage(error: ApiError, { organizationId, input }: 
 }
 
 function getPlanLimitMessage(organizationId: string, input: unknown): string {
-  const earliestDate = formatDate(addDays(new Date(), -FREE_PLAN_RETENTION_DAYS));
+  const earliestDate = formatApiDay(addDays(new Date(), -FREE_PLAN_RETENTION_DAYS));
   const billingUrl = `${getVemetricUrl('app')}/o/${organizationId}?orgSettings=billing&pricingDialog=true`;
   const plan = `the project's Vemetric plan (Free) only includes data from the last ${FREE_PLAN_RETENTION_DAYS} days (since ${earliestDate})`;
   const dateRange = (input as { dateRange?: PresetTimeSpan | [string, string] } | undefined)?.dateRange;
@@ -52,8 +53,4 @@ export const UNEXPECTED_ERROR_MESSAGE =
 
 export function getErrorCode(error: unknown): ApiErrorCode {
   return error instanceof ApiError ? error.code : 'INTERNAL_ERROR';
-}
-
-function formatDate(date: Date): string {
-  return date.toISOString().slice(0, 10);
 }

@@ -26,6 +26,10 @@ export const apiDateInputSchema = z
 
 export const apiDateRangeSchema = z
   .union([z.enum(TIME_SPAN_PRESETS), z.tuple([apiDateInputSchema, apiDateInputSchema])])
+  .refine(
+    (dateRange) => !Array.isArray(dateRange) || new Date(dateRange[0]).getTime() <= new Date(dateRange[1]).getTime(),
+    'Start date must be before or equal to end date',
+  )
   .openapi({
     description:
       'Can be either one of the preset strings below, or an array with two date strings [start, end]. Date strings can be either in YYYY-MM-DD format or UTC ISO-8601 format with second precision.',

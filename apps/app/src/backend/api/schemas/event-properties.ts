@@ -38,20 +38,6 @@ export const eventPropertiesRequestSchema = z
         message: 'eventNames must not contain duplicates',
       });
     }
-
-    if (Array.isArray(data.dateRange)) {
-      const [rawStart, rawEnd] = data.dateRange;
-      const start = new Date(rawStart);
-      const end = new Date(rawEnd);
-
-      if (start.getTime() > end.getTime()) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['dateRange'],
-          message: 'Start date must be before or equal to end date',
-        });
-      }
-    }
   })
   .openapi({
     description: 'Request payload for listing the properties of custom events.',

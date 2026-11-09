@@ -148,20 +148,6 @@ export const analyticsQueryRequestSchema = z
       });
     }
 
-    if (Array.isArray(data.dateRange)) {
-      const [rawStart, rawEnd] = data.dateRange;
-      const start = new Date(rawStart);
-      const end = new Date(rawEnd);
-
-      if (start.getTime() > end.getTime()) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['dateRange'],
-          message: 'Start date must be before or equal to end date',
-        });
-      }
-    }
-
     const selectedMetrics = data.metrics && data.metrics.length > 0 ? data.metrics : DEFAULT_METRICS;
     const grouping = parseMetricsQueryGroupingToken(data.groupBy[0] ?? null);
 

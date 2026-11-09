@@ -154,21 +154,6 @@ export const usersListRequestSchema = z
       .default(0)
       .openapi({ description: 'Number of users to skip from the start of the result set.' }),
   })
-  .superRefine((data, ctx) => {
-    if (Array.isArray(data.dateRange)) {
-      const [rawStart, rawEnd] = data.dateRange;
-      const start = new Date(rawStart);
-      const end = new Date(rawEnd);
-
-      if (start.getTime() > end.getTime()) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['dateRange'],
-          message: 'Start date must be before or equal to end date',
-        });
-      }
-    }
-  })
   .openapi({
     description: 'Request payload for querying a paginated list of users.',
   });
@@ -252,21 +237,6 @@ export const userEventsRequestSchema = z
       .min(0)
       .default(0)
       .openapi({ description: 'Number of events to skip from the start of the result set.' }),
-  })
-  .superRefine((data, ctx) => {
-    if (Array.isArray(data.dateRange)) {
-      const [rawStart, rawEnd] = data.dateRange;
-      const start = new Date(rawStart);
-      const end = new Date(rawEnd);
-
-      if (start.getTime() > end.getTime()) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['dateRange'],
-          message: 'Start date must be before or equal to end date',
-        });
-      }
-    }
   })
   .openapi({
     description: 'Request payload for querying one user’s events.',

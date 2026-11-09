@@ -55,35 +55,19 @@ export const funnelsListResponseSchema = z.object({
   }),
 });
 
-export const funnelResultsRequestSchema = z
-  .object({
-    dateRange: apiDateRangeSchema,
-    filters: z
-      .array(apiFilterSchema)
-      .optional()
-      .openapi({
-        description: 'Optional filters applied before funnel step evaluation.',
-        'x-vemetric-docs': { collapseByDefault: true },
-      }),
-    filtersOperator: apiFiltersOperatorSchema.default('and').openapi({
-      description: 'Operator to apply between multiple filters.',
+export const funnelResultsRequestSchema = z.object({
+  dateRange: apiDateRangeSchema,
+  filters: z
+    .array(apiFilterSchema)
+    .optional()
+    .openapi({
+      description: 'Optional filters applied before funnel step evaluation.',
+      'x-vemetric-docs': { collapseByDefault: true },
     }),
-  })
-  .superRefine((data, ctx) => {
-    if (Array.isArray(data.dateRange)) {
-      const [rawStart, rawEnd] = data.dateRange;
-      const start = new Date(rawStart);
-      const end = new Date(rawEnd);
-
-      if (start.getTime() > end.getTime()) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['dateRange'],
-          message: 'Start date must be before or equal to end date',
-        });
-      }
-    }
-  });
+  filtersOperator: apiFiltersOperatorSchema.default('and').openapi({
+    description: 'Operator to apply between multiple filters.',
+  }),
+});
 
 const funnelResultStepSchema = z.object({
   id: funnelStepIdSchema,

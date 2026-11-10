@@ -125,7 +125,7 @@ const referrerApiFilterSchema = z
     }),
     value: apiStringFilterSchema.shape.value.openapi({
       description:
-        'Referrer value to match, as returned when grouping by `referrer` (e.g. "Google"). An empty string matches visits without a referrer.',
+        'Referrer value to match, as returned when grouping by `referrer` (e.g. "Google"). An empty string matches visits without a referrer and visits from the project\'s own domain (referrer type `direct`).',
       example: 'Google',
     }),
     operator: apiStringFilterSchema.shape.operator.openapi({

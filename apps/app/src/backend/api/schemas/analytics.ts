@@ -49,7 +49,7 @@ const fieldGroupSchema = z
   })
   .openapi({
     description:
-      'Grouping object for predefined dimensions (e.g. country, city, browser, referrer). An empty string stands for rows without a value, e.g. visits without a referrer.',
+      "Grouping object for predefined dimensions (e.g. country, city, browser, referrer). An empty string stands for rows without a value, e.g. for `referrer` visits without a referrer and visits from the project's own domain.",
     example: { country: 'US' },
   });
 const eventPropertyGroupSchema = z

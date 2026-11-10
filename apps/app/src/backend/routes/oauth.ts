@@ -87,8 +87,8 @@ function toAccess(connection: OauthConnectionWithAccess): OauthConnectionAccess 
 /** Saves what the user shares with the app. Only organizations and projects the user can access themselves. */
 async function saveAccess(userId: string, clientId: string, input: z.infer<typeof accessSchema>) {
   const { allOrganizations } = input;
-  const organizationIds = [...new Set(input.organizationIds)];
-  const projectIds = [...new Set(input.projectIds)];
+  const organizationIds = Array.from(new Set(input.organizationIds));
+  const projectIds = Array.from(new Set(input.projectIds));
 
   if (!allOrganizations && organizationIds.length === 0 && projectIds.length === 0) {
     throw new TRPCError({ code: 'BAD_REQUEST', message: 'Please choose at least one organization or project.' });

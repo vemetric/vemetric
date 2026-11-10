@@ -143,7 +143,7 @@ export function registerTools(server: McpServer, caller: McpCaller) {
     {
       title: 'Query analytics',
       description:
-        'Query aggregated web and product analytics: users (unique visitors), pageviews, events (custom events), bounceRate (%) and visitDuration (seconds). Without groupBy it returns the totals of the period. Group by one dimension: "interval:auto" for a time series, a field like "page:path", "referrer", "referrerType", "country", "deviceType", "utmCampaign" or "event:name", or "event:prop:<name>" for a custom event property (find names with list_event_properties). bounceRate and visitDuration are null where they don\'t apply to the grouping (e.g. per page or per event). referrerType values: search, social, llm, email, paid, direct (a page on the project\'s own domain, i.e. internal navigation, not visits without a referrer) and unknown (no referrer, or a website that isn\'t in Vemetric\'s list of known sources). Sort with orderBy, page with limit and offset (hasMore tells if there are more rows).',
+        'Query aggregated web and product analytics: users (unique visitors), pageviews, events (custom events), bounceRate (%) and visitDuration (seconds). Without groupBy it returns the totals of the period. Group by one dimension: "interval:auto" (or "interval:hour", "interval:day", "interval:week", "interval:month") for a time series, a field like "page:path", "referrer", "referrerType", "country", "deviceType", "utmCampaign" or "event:name", or "event:prop:<name>" for a custom event property (find names with list_event_properties). bounceRate and visitDuration are null where they don\'t apply to the grouping (e.g. per page or per event). referrerType values: search, social, llm, email, paid, direct (a page on the project\'s own domain, i.e. internal navigation, not visits without a referrer) and unknown (no referrer, or a website that isn\'t in Vemetric\'s list of known sources). Sort with orderBy, page with limit and offset (hasMore tells if there are more rows).',
       inputSchema: analyticsQueryRequestSchema.safeExtend({
         projectId,
         dateRange,
@@ -151,10 +151,10 @@ export function registerTools(server: McpServer, caller: McpCaller) {
           'Metrics to return. Default: users, pageviews and events. bounceRate and visitDuration only when asked for.',
         ),
         groupBy: analyticsQueryRequestSchema.shape.groupBy.describe(
-          'At most one dimension to group by, e.g. ["page:path"]. Empty for totals. "interval:auto" is hourly up to 2 days, daily up to 31 days, weekly up to 90 days and monthly beyond (presets: 24hrs hourly, 7days and 30days daily, 3months weekly, 6months and 1year monthly); for daily values over a longer period, split it into ranges of at most 31 days. Rows without a value (e.g. no referrer, or a visit from the project\'s own domain when grouping by referrer) are grouped under "", which also works as a filter value.',
+          'At most one dimension to group by, e.g. ["page:path"]. Empty for totals. "interval:auto" is hourly up to 2 days, daily up to 31 days, weekly up to 90 days and monthly beyond (presets: 24hrs hourly, 7days and 30days daily, 3months weekly, 6months and 1year monthly); for a fixed interval use "interval:hour", "interval:day", "interval:week" (weeks start on Sunday) or "interval:month". Rows without a value (e.g. no referrer, or a visit from the project\'s own domain when grouping by referrer) are grouped under "", which also works as a filter value.',
         ),
         orderBy: analyticsQueryRequestSchema.shape.orderBy.describe(
-          'At most one [field, direction] pair, e.g. [["pageviews","desc"]]. The field is a metric, the groupBy field or "date". Default: by date ascending for "interval:auto", otherwise by the first metric that applies to the grouping, descending.',
+          'At most one [field, direction] pair, e.g. [["pageviews","desc"]]. The field is a metric, the groupBy field or "date". Default: by date ascending for intervals, otherwise by the first metric that applies to the grouping, descending.',
         ),
         limit: limit(100, 'rows').describe(
           'Maximum number of rows to return. Default: 100, enough for any time series. Set a lower limit for top-N questions, e.g. 10.',

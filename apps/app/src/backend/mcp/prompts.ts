@@ -38,7 +38,7 @@ export function registerPrompts(server: McpServer) {
     },
     ({ metric, date }) =>
       prompt(
-        `${metric} changed noticeably on ${date}. Find out what explains it. First compare the day with the days before (daily values with groupBy "interval:auto" from 4 weeks before the day to a few days after it, at most 31 days so the values stay daily) to confirm the change and its size. Then break the day down by referrer, country, page and device type, compare each breakdown with normal days and find the segments that account for the change. End with a short explanation of the most likely cause and the numbers that support it.`,
+        `${metric} changed noticeably on ${date}. Find out what explains it. First compare the day with the days before (daily values with groupBy "interval:day" from 4 weeks before the day to a few days after it) to confirm the change and its size. Then break the day down by referrer, country, page and device type, compare each breakdown with normal days and find the segments that account for the change. End with a short explanation of the most likely cause and the numbers that support it.`,
       ),
   );
 

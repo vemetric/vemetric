@@ -3,22 +3,9 @@ import { clickhouseDateToISO, type MetricsQueryGrouping } from 'clickhouse';
 import type { MetricRow } from '../../consts/analytics';
 import { formatApiDate } from '../date';
 
-function formatGroupedFieldValue(token: string, groupKey: string): string {
-  const normalizedGroupKey = groupKey.replace(/\0/g, '').trim();
-  if (normalizedGroupKey !== '') {
-    return normalizedGroupKey;
-  }
-
-  switch (token) {
-    case 'referrer':
-      return 'Direct / None';
-    case 'referrerType':
-      return 'unknown';
-    case 'deviceType':
-      return 'unknown';
-    default:
-      return 'Unknown';
-  }
+/** Empty values stay `""`, so a group value can always be used as a filter value. */
+function formatGroupedFieldValue(groupKey: string): string {
+  return groupKey.replace(/\0/g, '').trim();
 }
 
 export function buildGroupObject(grouping: MetricsQueryGrouping, groupKey: string): Record<string, string> {
@@ -30,7 +17,7 @@ export function buildGroupObject(grouping: MetricsQueryGrouping, groupKey: strin
     return { date: groupKey };
   }
 
-  return { [grouping.token]: formatGroupedFieldValue(grouping.token, groupKey) };
+  return { [grouping.token]: formatGroupedFieldValue(groupKey) };
 }
 
 export function isSortingGroupField(field: string, grouping: MetricsQueryGrouping): boolean {

@@ -48,7 +48,8 @@ const fieldGroupSchema = z
     message: 'Grouping object must contain exactly one key',
   })
   .openapi({
-    description: 'Grouping object for predefined dimensions (e.g. country, city, browser, referrer).',
+    description:
+      "Grouping object for predefined dimensions (e.g. country, city, browser, referrer). An empty string stands for rows without a value, e.g. for `referrer` visits without a referrer and visits from the project's own domain.",
     example: { country: 'US' },
   });
 const eventPropertyGroupSchema = z
@@ -104,7 +105,7 @@ export const analyticsQueryRequestSchema = z
       .default([])
       .openapi({
         description:
-          'Allowed values: "interval:auto", "country", "city", "page:origin", "page:path", "browser", "deviceType", "os", "referrer", "referrerType", "utm*", "event:name", or "event:prop:<property_name>". At the moment it\'s only possible to group by one field, please tell us if you need more.',
+          'Allowed values: "interval:auto", "country", "city", "page:origin", "page:path", "browser", "deviceType", "os", "referrer", "referrerType", "utm*", "event:name", or "event:prop:<property_name>". At the moment it\'s only possible to group by one field, please tell us if you need more.\n\n"interval:auto" picks the interval from the length of the period: hourly up to 2 days, daily up to 31 days, weekly up to 90 days and monthly beyond (for presets: `live` every 30 seconds, `1hr` every 10 minutes, `24hrs` hourly, `7days` and `30days` daily, `3months` weekly, `6months` and `1year` monthly). For daily values over a longer period, split it into ranges of at most 31 days.\n\nRows without a value for the field (e.g. visits without a UTM campaign, or for `referrer` visits without a referrer and visits from the project\'s own domain) are grouped under an empty string `""`, which you can also use as a filter value.',
         example: ['country'],
       }),
     orderBy: orderBySchema.default([]).openapi({
@@ -132,7 +133,8 @@ export const analyticsQueryRequestSchema = z
       .array(apiFilterSchema)
       .optional()
       .openapi({
-        description: 'Ability to filter the results based on multiple criteria.',
+        description:
+          'Ability to filter the results based on multiple criteria. Filters select users: the results include all data of the users who match the filters in the period. For example, a page filter for `/blog` also counts the other pages and sessions of the users who visited the blog. Only the `pageviews` and `events` metrics apply page and event filters to the counted pageviews and events themselves. Use an empty string to match a missing value, e.g. `{"type":"referrer","operator":"eq","value":""}` for visits without a referrer and visits from the project\'s own domain.',
         'x-vemetric-docs': { collapseByDefault: true },
       }),
     filtersOperator: apiFiltersOperatorSchema.default('and').openapi({

@@ -28,8 +28,14 @@ const dateRange = analyticsQueryRequestSchema.shape.dateRange.describe(
   'Period in UTC. Either a preset ("live" = last 5 minutes, "1hr", "24hrs", "7days" and "30days" include today, "3months", "6months", "1year"), or [start, end] with YYYY-MM-DD dates (the end date includes the whole day) or UTC timestamps like 2026-01-31T12:00:00Z. get_project returns today\'s date.',
 );
 
+const filterShapes =
+  'Fields with their own {"operator","value"}: page (origin, path, hash), event (name; properties list), location (country, city), utmTags (utmSource, utmMedium, utmCampaign, utmContent, utmTerm). "operator" and "value" directly on the filter: referrer, referrerUrl, referrerType, browser, device, os. user: {"anonymous":true|false}; funnel: {"id","step","operator":"completed"|"notCompleted"}.';
+
+const filterMeaning =
+  'Filters select users: the results include all data of the users who match in the period (a page filter for /blog also counts the other pages and sessions of those users). Only the pageviews and events metrics apply page and event filters to the counted pageviews and events themselves. Text operators: "eq", "notEq", "contains", "notContains", "startsWith", "endsWith"; list operators: "oneOf", "noneOf". "any" means no restriction and also matches users without a value, so for "has a value" use "notEq" with "" (list fields: "noneOf" with [""]). An empty string matches a missing value, e.g. {"type":"referrer","operator":"eq","value":""} for visits without a referrer or from the project\'s own domain.';
+
 const filters = analyticsQueryRequestSchema.shape.filters.describe(
-  'Optional filters. Each one has a "type" (page, event, user, location, referrer, referrerUrl, referrerType, utmTags, browser, device, os, funnel). Examples: {"type":"page","path":{"operator":"startsWith","value":"/blog"}}, {"type":"event","name":{"operator":"eq","value":"signup"},"properties":[{"property":"plan","operator":"eq","value":"pro"}]}, {"type":"location","country":{"operator":"oneOf","value":["US","DE"]}}, {"type":"referrer","operator":"eq","value":"Google"}, {"type":"utmTags","utmCampaign":{"operator":"eq","value":"newsletter"}}, {"type":"device","operator":"oneOf","value":["mobile"]}. Look up exact values with list_filter_values first.',
+  `Optional filters, each with a "type". Examples: {"type":"page","path":{"operator":"startsWith","value":"/blog"}}, {"type":"event","name":{"operator":"eq","value":"signup"},"properties":[{"property":"plan","operator":"eq","value":"pro"}]}, {"type":"location","country":{"operator":"oneOf","value":["US","DE"]}}, {"type":"referrer","operator":"eq","value":"Google"}, {"type":"utmTags","utmCampaign":{"operator":"eq","value":"newsletter"}}, {"type":"device","operator":"oneOf","value":["mobile"]}. ${filterMeaning} Look up exact values with list_filter_values first.`,
 );
 
 /**
@@ -60,7 +66,7 @@ function createCompactFilters<S extends z.ZodType>(filterSchema: S, description:
 
 const compactFilters = createCompactFilters(
   apiFilterSchema,
-  'Optional filters, in the same format as the filters of query_analytics, e.g. {"type":"page","path":{"operator":"startsWith","value":"/blog"}}.',
+  `Optional filters, with the same format and meaning as in query_analytics (they select users). Each one has a "type": ${filterShapes} Examples: {"type":"page","path":{"operator":"startsWith","value":"/blog"}}, {"type":"referrer","operator":"eq","value":"Google"}.`,
 );
 
 const filtersOperator = analyticsQueryRequestSchema.shape.filtersOperator.describe(
@@ -137,7 +143,7 @@ export function registerTools(server: McpServer, caller: McpCaller) {
     {
       title: 'Query analytics',
       description:
-        'Query aggregated web and product analytics: users (unique visitors), pageviews, events (custom events), bounceRate (%) and visitDuration (seconds). Without groupBy it returns the totals of the period. Group by one dimension: "interval:auto" for a time series, a field like "page:path", "referrer", "referrerType", "country", "deviceType", "utmCampaign" or "event:name", or "event:prop:<name>" for a custom event property (find names with list_event_properties). bounceRate and visitDuration are null where they don\'t apply to the grouping (e.g. per page or per event). Sort with orderBy, page with limit and offset (hasMore tells if there are more rows).',
+        'Query aggregated web and product analytics: users (unique visitors), pageviews, events (custom events), bounceRate (%) and visitDuration (seconds). Without groupBy it returns the totals of the period. Group by one dimension: "interval:auto" for a time series, a field like "page:path", "referrer", "referrerType", "country", "deviceType", "utmCampaign" or "event:name", or "event:prop:<name>" for a custom event property (find names with list_event_properties). bounceRate and visitDuration are null where they don\'t apply to the grouping (e.g. per page or per event). referrerType values: search, social, llm, email, paid, direct (a page on the project\'s own domain, i.e. internal navigation, not visits without a referrer) and unknown (no referrer, or a website that isn\'t in Vemetric\'s list of known sources). Sort with orderBy, page with limit and offset (hasMore tells if there are more rows).',
       inputSchema: analyticsQueryRequestSchema.safeExtend({
         projectId,
         dateRange,
@@ -145,7 +151,7 @@ export function registerTools(server: McpServer, caller: McpCaller) {
           'Metrics to return. Default: users, pageviews and events. bounceRate and visitDuration only when asked for.',
         ),
         groupBy: analyticsQueryRequestSchema.shape.groupBy.describe(
-          'At most one dimension to group by, e.g. ["page:path"]. Empty for totals.',
+          'At most one dimension to group by, e.g. ["page:path"]. Empty for totals. "interval:auto" is hourly up to 2 days, daily up to 31 days, weekly up to 90 days and monthly beyond (presets: 24hrs hourly, 7days and 30days daily, 3months weekly, 6months and 1year monthly); for daily values over a longer period, split it into ranges of at most 31 days. Rows without a value (e.g. no referrer, or a visit from the project\'s own domain when grouping by referrer) are grouped under "", which also works as a filter value.',
         ),
         orderBy: analyticsQueryRequestSchema.shape.orderBy.describe(
           'At most one [field, direction] pair, e.g. [["pageviews","desc"]]. The field is a metric, the groupBy field or "date". Default: by date ascending for "interval:auto", otherwise by the first metric that applies to the grouping, descending.',
@@ -175,7 +181,7 @@ export function registerTools(server: McpServer, caller: McpCaller) {
     {
       title: 'List filter values',
       description:
-        'List the values that occur for fields in a period, e.g. event names, page paths, referrers, countries (ISO codes), UTM values or browsers. Use it to find exact values before filtering, or to answer which values exist. Values are sorted alphabetically, not by traffic: use query_analytics with groupBy for rankings.',
+        'List the values that occur for fields in a period, e.g. event names, page paths, referrers, countries (ISO codes), UTM values or browsers. Use it to find exact values before filtering, or to answer which values exist. Values are sorted alphabetically, not by traffic: use query_analytics with groupBy for rankings. Empty values aren\'t listed; filter for them with "".',
       inputSchema: filterValuesRequestSchema.safeExtend({
         projectId,
         dateRange,
@@ -283,7 +289,7 @@ export function registerTools(server: McpServer, caller: McpCaller) {
           dateRange,
           filters: createCompactFilters(
             apiEventFilterSchema,
-            'Optional filters of type event, page, browser, device or os, in the same format as the filters of query_analytics, e.g. {"type":"event","name":{"operator":"eq","value":"signup"}}.',
+            'Optional filters of type event, page, browser, device or os, in the same format as in query_analytics: page and event filters have one {"operator","value"} object per field (page: origin, path, hash; event: name), browser, device and os filters have "operator" and "value" directly. E.g. {"type":"event","name":{"operator":"eq","value":"signup"}}, {"type":"device","operator":"oneOf","value":["mobile"]}.',
           ),
           filtersOperator,
           limit: limit(50, 'events'),

@@ -26,6 +26,11 @@ model User {
   createdInvitations Invitation[]
   createdApiKeys     ApiKey[]            @relation("ApiKeyCreatedBy")
   revokedApiKeys     ApiKey[]            @relation("ApiKeyRevokedBy")
+  oauthClients       OauthClient[]
+  oauthRefreshTokens OauthRefreshToken[]
+  oauthAccessTokens  OauthAccessToken[]
+  oauthConsents      OauthConsent[]
+  oauthConnections   OauthConnection[]
 
   @@map("user")
 }
@@ -40,7 +45,9 @@ model Session {
   userAgent String?
   userId    String
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  oauthRefreshTokens OauthRefreshToken[]
+  oauthAccessTokens  OauthAccessToken[]
 
   @@map("session")
 }
@@ -76,6 +83,182 @@ model Verification {
   @@map("verification")
 }
 
+// OAuth provider (`@better-auth/mcp` / `@better-auth/oauth-provider`), generated with `bunx auth@1.7.16 generate`.
+// Model and field names must stay as generated, the plugin addresses them by name.
+
+model OauthClient {
+  id                               String                @id
+  clientId                         String
+  clientSecret                     String?
+  clientDiscoveryId                String?
+  disabled                         Boolean?              @default(false)
+  skipConsent                      Boolean?
+  enableEndSession                 Boolean?
+  subjectType                      String?
+  scopes                           String[]
+  clientCredentialsScopes          String[]              @default([])
+  userId                           String?
+  user                             User?                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt                        DateTime?
+  updatedAt                        DateTime?
+  name                             String?
+  uri                              String?
+  icon                             String?
+  contacts                         String[]
+  tos                              String?
+  policy                           String?
+  softwareId                       String?
+  softwareVersion                  String?
+  softwareStatement                String?
+  redirectUris                     String[]
+  postLogoutRedirectUris           String[]
+  backchannelLogoutUri             String?
+  backchannelLogoutSessionRequired Boolean?
+  tokenEndpointAuthMethod          String?
+  applicationType                  String?
+  jwks                             String?
+  jwksUri                          String?
+  grantTypes                       String[]
+  responseTypes                    String[]
+  requirePKCE                      Boolean?
+  dpopBoundAccessTokens            Boolean?              @default(false)
+  referenceId                      String?
+  metadata                         Json?
+  oauthclientresources             OauthClientResource[]
+  oauthrefreshtokens               OauthRefreshToken[]
+  oauthaccesstokens                OauthAccessToken[]
+  oauthconsents                    OauthConsent[]
+  connections                      OauthConnection[]
+
+  @@unique([clientId])
+  @@index([userId])
+  @@map("oauth_client")
+}
+
+model OauthResource {
+  id                            String                @id
+  identifier                    String
+  name                          String
+  accessTokenTtl                Int?
+  refreshTokenTtl               Int?
+  signingAlgorithm              String?
+  signingKeyId                  String?
+  allowedScopes                 String[]
+  customClaims                  Json?
+  dpopBoundAccessTokensRequired Boolean?              @default(false)
+  disabled                      Boolean?              @default(false)
+  createdAt                     DateTime?
+  updatedAt                     DateTime?
+  policyVersion                 Int?                  @default(1)
+  metadata                      Json?
+  oauthclientresources          OauthClientResource[]
+
+  @@unique([identifier])
+  @@map("oauth_resource")
+}
+
+model OauthClientResource {
+  id            String        @id
+  clientId      String
+  oauthclient   OauthClient   @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  resourceId    String
+  oauthresource OauthResource @relation(fields: [resourceId], references: [identifier], onDelete: Cascade)
+  metadata      Json?
+  createdAt     DateTime?
+
+  @@unique([clientId, resourceId], map: "oauth_client_resource_clientId_resourceId_key")
+  @@index([clientId])
+  @@index([resourceId])
+  @@map("oauth_client_resource")
+}
+
+model OauthRefreshToken {
+  id                      String             @id
+  token                   String
+  clientId                String
+  oauthclient             OauthClient        @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  sessionId               String?
+  session                 Session?           @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  userId                  String
+  user                    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?
+  authorizationCodeId     String?
+  resources               String[]
+  requestedUserInfoClaims String[]
+  expiresAt               DateTime
+  createdAt               DateTime
+  revoked                 DateTime?
+  rotatedAt               DateTime?
+  rotationReplayResponse  String?
+  rotationReplayExpiresAt DateTime?
+  authTime                DateTime?
+  confirmation            Json?
+  scopes                  String[]
+  oauthaccesstokens       OauthAccessToken[]
+
+  @@unique([token])
+  @@index([clientId])
+  @@index([sessionId])
+  @@index([userId])
+  @@index([authorizationCodeId])
+  @@map("oauth_refresh_token")
+}
+
+model OauthAccessToken {
+  id                      String             @id
+  token                   String
+  clientId                String
+  oauthclient             OauthClient        @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  sessionId               String?
+  session                 Session?           @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  userId                  String?
+  user                    User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?
+  authorizationCodeId     String?
+  resources               String[]
+  requestedUserInfoClaims String[]
+  refreshId               String?
+  oauthrefreshtoken       OauthRefreshToken? @relation(fields: [refreshId], references: [id], onDelete: Cascade)
+  expiresAt               DateTime
+  createdAt               DateTime
+  revoked                 DateTime?
+  confirmation            Json?
+  scopes                  String[]
+
+  @@unique([token])
+  @@index([clientId])
+  @@index([sessionId])
+  @@index([userId])
+  @@index([authorizationCodeId])
+  @@index([refreshId])
+  @@map("oauth_access_token")
+}
+
+model OauthConsent {
+  id                      String      @id
+  clientId                String
+  oauthclient             OauthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  userId                  String?
+  user                    User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?
+  resources               String[]
+  requestedUserInfoClaims String[]
+  scopes                  String[]
+  createdAt               DateTime
+  updatedAt               DateTime
+
+  @@index([clientId])
+  @@index([userId])
+  @@map("oauth_consent")
+}
+
+model OauthClientAssertion {
+  id        String   @id
+  expiresAt DateTime
+
+  @@map("oauth_client_assertion")
+}
+
 model Organization {
   id               String   @id
   name             String   @db.VarChar
@@ -91,6 +274,7 @@ model Organization {
   invitations             Invitation[]
   invitationProjectAccess InvitationProjectAccess[]
   apiKeys                 ApiKey[]
+  oauthConnections        OauthConnectionOrganization[]
 
   @@map("organization")
 }
@@ -183,6 +367,7 @@ model Project {
   userProjectAccess       UserProjectAccess[]
   invitationProjectAccess InvitationProjectAccess[]
   userIdentificationMaps  UserIdentificationMap[]
+  oauthConnections        OauthConnectionProject[]
 
   @@unique([id, organizationId])
   @@map("project")
@@ -228,6 +413,52 @@ model ApiKeyProject {
   @@id([apiKeyId, projectId])
   @@index([projectId])
   @@map("api_key_project")
+}
+
+/// The organizations and projects a user gave an OAuth client (e.g. an AI assistant) access to.
+/// `allOrganizations` covers all current and future organizations of the user. Otherwise
+/// `organizations` lists organizations with all their current and future projects, and
+/// `projects` individual projects. Access never exceeds the user's own project access.
+model OauthConnection {
+  id               String   @id
+  userId           String
+  clientId         String
+  allOrganizations Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user          User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client        OauthClient                   @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  organizations OauthConnectionOrganization[]
+  projects      OauthConnectionProject[]
+
+  @@unique([userId, clientId])
+  @@index([clientId])
+  @@map("oauth_connection")
+}
+
+model OauthConnectionOrganization {
+  connectionId   String
+  organizationId String
+
+  connection   OauthConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@id([connectionId, organizationId])
+  @@index([organizationId])
+  @@map("oauth_connection_organization")
+}
+
+model OauthConnectionProject {
+  connectionId String
+  projectId    String
+
+  connection OauthConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  project    Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@id([connectionId, projectId])
+  @@index([projectId])
+  @@map("oauth_connection_project")
 }
 
 model UserProjectAccess {

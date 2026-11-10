@@ -6,7 +6,8 @@ import type { ApiError } from '../api/utils/errors';
 import { FREE_PLAN_RETENTION_DAYS } from '../utils/retention';
 
 type ToolErrorContext = {
-  organizationId: string;
+  /** The organization of the project, if known, for the billing link. */
+  organizationId: string | undefined;
   input: unknown;
 };
 
@@ -28,9 +29,11 @@ export function getToolErrorMessage(error: ApiError, { organizationId, input }: 
   }
 }
 
-function getPlanLimitMessage(organizationId: string, input: unknown): string {
+function getPlanLimitMessage(organizationId: string | undefined, input: unknown): string {
   const earliestDate = formatApiDay(addDays(new Date(), -FREE_PLAN_RETENTION_DAYS));
-  const billingUrl = `${getVemetricUrl('app')}/o/${organizationId}?orgSettings=billing&pricingDialog=true`;
+  const billingUrl = organizationId
+    ? `${getVemetricUrl('app')}/o/${organizationId}?orgSettings=billing&pricingDialog=true`
+    : getVemetricUrl('app');
   const plan = `the project's Vemetric plan (Free) only includes data from the last ${FREE_PLAN_RETENTION_DAYS} days (since ${earliestDate})`;
   const dateRange = (input as { dateRange?: PresetTimeSpan | [string, string] } | undefined)?.dateRange;
   const requested = Array.isArray(dateRange)

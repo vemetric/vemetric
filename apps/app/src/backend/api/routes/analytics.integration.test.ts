@@ -374,13 +374,13 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
     });
 
     it.each([
-      ['city', { Berlin: 1, 'New York': 1, 'San Francisco': 1, Unknown: 1 }],
+      ['city', { Berlin: 1, 'New York': 1, 'San Francisco': 1, '': 1 }],
       ['page:origin', { 'https://example.com': 4 }],
       ['page:path', { '/': 4, '/features': 1, '/pricing': 2, '/signup': 1 }],
       ['browser', { Chrome: 2, Firefox: 1, Safari: 1 }],
       ['deviceType', { desktop: 2, mobile: 1, tablet: 1 }],
       ['os', { Linux: 1, Windows: 1, macOS: 2 }],
-      ['referrer', { Bing: 1, Google: 1, Newsletter: 1, 'Direct / None': 1 }],
+      ['referrer', { Bing: 1, Google: 1, Newsletter: 1, '': 1 }],
       ['referrerType', { email: 1, search: 2, social: 1 }],
       ['utmCampaign', { jan_push: 2, winter_launch: 2 }],
       ['utmContent', { ad_1: 1, button: 1, hero_cta: 1, text_link: 1 }],
@@ -412,6 +412,27 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
         ]),
       );
       expect(actual).toEqual(expectedUsersByGroup);
+    });
+
+    it('returns empty group values that work as filter values', async () => {
+      const query = {
+        dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+        metrics: ['users'],
+        limit: 100,
+        offset: 0,
+      };
+      const grouped = await postAnalyticsQuery({ ...query, groupBy: ['referrer'] }, isolated.authHeaders);
+      const groupedBody = await grouped.json();
+      const emptyRow = groupedBody.data.find((row: { group: Record<string, string> }) => row.group.referrer === '');
+      expect(emptyRow?.metrics.users).toBe(1);
+
+      const filtered = await postAnalyticsQuery(
+        { ...query, filters: [{ type: 'referrer', operator: 'eq', value: '' }] },
+        isolated.authHeaders,
+      );
+      expect(filtered.status).toBe(200);
+      const filteredBody = await filtered.json();
+      expect(filteredBody.data[0].metrics.users).toBe(1);
     });
 
     it('supports grouping by event:name for events metric values', async () => {

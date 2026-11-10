@@ -1,6 +1,7 @@
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import { getMcpUrl } from '@vemetric/common/env';
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { getCaller, toAuthInfo, type McpCaller } from './caller';
 import { authenticateOauthToken, isOauthAccessToken, McpAuthError } from './oauth';
 import { createVemetricMcpServer } from './server';
@@ -56,6 +57,23 @@ export function createMcpApp() {
   });
 
   const app = new Hono();
+
+  // Bearer tokens instead of cookies, so browser-based clients (e.g. the MCP Inspector) may call it from any origin.
+  app.use(
+    '*',
+    cors({
+      origin: '*',
+      allowHeaders: [
+        'Authorization',
+        'Content-Type',
+        'Accept',
+        'Mcp-Session-Id',
+        'MCP-Protocol-Version',
+        'Last-Event-ID',
+      ],
+      exposeHeaders: ['WWW-Authenticate', 'Mcp-Session-Id'],
+    }),
+  );
 
   app.all('/', async (c) => {
     const authorization = c.req.header('Authorization');

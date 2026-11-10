@@ -1,5 +1,6 @@
 import { oauthProviderAuthServerMetadata } from '@better-auth/oauth-provider';
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { auth } from '../utils/auth';
 
 /**
@@ -12,6 +13,7 @@ import { auth } from '../utils/auth';
  */
 export function createOauthDiscoveryApp() {
   const app = new Hono();
+  app.use('*', cors({ origin: '*' }));
 
   const authServerMetadata = oauthProviderAuthServerMetadata(auth);
   app.on(['GET', 'HEAD'], '/oauth-authorization-server', (c) => authServerMetadata(c.req.raw));

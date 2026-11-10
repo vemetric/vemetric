@@ -22,6 +22,7 @@ import { Route as EmailConfirmProjectDeletionRouteImport } from './pages/email/c
 import { Route as EmailUnsubscribeRouteImport } from './pages/email/unsubscribe'
 import { Route as InviteTokenRouteImport } from './pages/invite/$token'
 import { Route as OOrganizationIdRouteImport } from './pages/o/$organizationId'
+import { Route as OauthConsentRouteImport } from './pages/oauth/consent'
 import { Route as OnboardingOrganizationRouteImport } from './pages/onboarding/organization'
 import { Route as OnboardingPricingRouteImport } from './pages/onboarding/pricing'
 import { Route as OnboardingProjectRouteImport } from './pages/onboarding/project'
@@ -100,6 +101,11 @@ const InviteTokenRoute = InviteTokenRouteImport.update({
 const OOrganizationIdRoute = OOrganizationIdRouteImport.update({
   id: '/o/$organizationId',
   path: '/o/$organizationId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OauthConsentRoute = OauthConsentRouteImport.update({
+  id: '/oauth/consent',
+  path: '/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardingOrganizationRoute = OnboardingOrganizationRouteImport.update({
@@ -197,6 +203,7 @@ export interface FileRoutesByFullPath {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/invite/$token': typeof InviteTokenRoute
   '/o/$organizationId': typeof OOrganizationIdRoute
+  '/oauth/consent': typeof OauthConsentRoute
   '/onboarding/organization': typeof OnboardingOrganizationRoute
   '/onboarding/pricing': typeof OnboardingPricingRoute
   '/onboarding/project': typeof OnboardingProjectRoute
@@ -225,6 +232,7 @@ export interface FileRoutesByTo {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/invite/$token': typeof InviteTokenRoute
   '/o/$organizationId': typeof OOrganizationIdRoute
+  '/oauth/consent': typeof OauthConsentRoute
   '/onboarding/organization': typeof OnboardingOrganizationRoute
   '/onboarding/pricing': typeof OnboardingPricingRoute
   '/onboarding/project': typeof OnboardingProjectRoute
@@ -255,6 +263,7 @@ export interface FileRoutesById {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/invite/$token': typeof InviteTokenRoute
   '/o/$organizationId': typeof OOrganizationIdRoute
+  '/oauth/consent': typeof OauthConsentRoute
   '/onboarding/organization': typeof OnboardingOrganizationRoute
   '/onboarding/pricing': typeof OnboardingPricingRoute
   '/onboarding/project': typeof OnboardingProjectRoute
@@ -285,6 +294,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/invite/$token'
     | '/o/$organizationId'
+    | '/oauth/consent'
     | '/onboarding/organization'
     | '/onboarding/pricing'
     | '/onboarding/project'
@@ -313,6 +323,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/invite/$token'
     | '/o/$organizationId'
+    | '/oauth/consent'
     | '/onboarding/organization'
     | '/onboarding/pricing'
     | '/onboarding/project'
@@ -342,6 +353,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/invite/$token'
     | '/o/$organizationId'
+    | '/oauth/consent'
     | '/onboarding/organization'
     | '/onboarding/pricing'
     | '/onboarding/project'
@@ -370,6 +382,7 @@ export interface RootRouteChildren {
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   InviteTokenRoute: typeof InviteTokenRoute
   OOrganizationIdRoute: typeof OOrganizationIdRoute
+  OauthConsentRoute: typeof OauthConsentRoute
   OnboardingOrganizationRoute: typeof OnboardingOrganizationRoute
   OnboardingPricingRoute: typeof OnboardingPricingRoute
   OnboardingProjectRoute: typeof OnboardingProjectRoute
@@ -468,6 +481,13 @@ declare module '@tanstack/react-router' {
       path: '/o/$organizationId'
       fullPath: '/o/$organizationId'
       preLoaderRoute: typeof OOrganizationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/oauth/consent': {
+      id: '/oauth/consent'
+      path: '/oauth/consent'
+      fullPath: '/oauth/consent'
+      preLoaderRoute: typeof OauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboarding/organization': {
@@ -641,6 +661,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   InviteTokenRoute: InviteTokenRoute,
   OOrganizationIdRoute: OOrganizationIdRoute,
+  OauthConsentRoute: OauthConsentRoute,
   OnboardingOrganizationRoute: OnboardingOrganizationRoute,
   OnboardingPricingRoute: OnboardingPricingRoute,
   OnboardingProjectRoute: OnboardingProjectRoute,

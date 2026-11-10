@@ -8,6 +8,7 @@ import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
 import { authClient, loginWithProvider } from '@/utils/auth';
 import { redirectPath } from '@/utils/local-storage';
+import { resumePendingOauthAuthorize } from '@/utils/oauth-flow';
 import { getAppUrl } from '@/utils/url';
 
 export const Route = createFileRoute('/_auth/login')({
@@ -24,6 +25,10 @@ function Page() {
   const [sentResetPasswordLink, setSentResetPasswordLink] = useState(false);
 
   const handleLoginSuccess = async () => {
+    if (resumePendingOauthAuthorize()) {
+      return;
+    }
+
     // Check for pending redirect
     const redirect = redirectPath.get();
     if (redirect) {

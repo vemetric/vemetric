@@ -15,6 +15,7 @@ import { filtersRouter } from './routes/filters';
 import { funnelsRouter } from './routes/funnels';
 import { globeRouter } from './routes/globe';
 import { useLandingPageMetrics } from './routes/landing-page';
+import { oauthRouter } from './routes/oauth';
 import { organizationRouter } from './routes/organization';
 import { paddleWebhookHandler } from './routes/paddle';
 import { projectsRouter } from './routes/projects';
@@ -33,6 +34,7 @@ export const trpcRouter = router({
   filters: filtersRouter,
   funnels: funnelsRouter,
   globe: globeRouter,
+  oauth: oauthRouter,
   projects: projectsRouter,
   savedFilters: savedFiltersRouter,
   organization: organizationRouter,
@@ -117,13 +119,16 @@ export function createBackendApp() {
     return next();
   });
 
-  backendApp.use('*', cors({ credentials: true, origin: TRUSTED_ORIGINS }));
-  backendApp.use(
-    '*',
-    csrf({
-      origin: TRUSTED_ORIGINS,
-    }),
-  );
+  const appCors = cors({ credentials: true, origin: TRUSTED_ORIGINS });
+  const appCsrf = csrf({ origin: TRUSTED_ORIGINS });
+  // OAuth endpoints that MCP clients call directly, also from browsers (e.g. the MCP Inspector). They don't use cookies
+  // (PKCE or client authentication instead), so they're open to every origin and CSRF protection doesn't apply.
+  const oauthClientCors = cors({ origin: '*' });
+  const isOauthClientEndpoint = (path: string) =>
+    /\/auth\/oauth2\/(token|register|revoke|introspect|userinfo)$/.test(path);
+
+  backendApp.use('*', (c, next) => (isOauthClientEndpoint(c.req.path) ? oauthClientCors(c, next) : appCors(c, next)));
+  backendApp.use('*', (c, next) => (isOauthClientEndpoint(c.req.path) ? next() : appCsrf(c, next)));
 
   backendApp.use('*', async (c, next) => {
     await next();

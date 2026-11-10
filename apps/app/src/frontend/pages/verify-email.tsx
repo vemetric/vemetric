@@ -8,6 +8,7 @@ import { toaster } from '@/components/ui/toaster';
 import { authClient } from '@/utils/auth';
 import { requireAnonymous } from '@/utils/auth-guards';
 import { redirectPath } from '@/utils/local-storage';
+import { resumePendingOauthAuthorize } from '@/utils/oauth-flow';
 import { getAppUrl, getLandingPageUrl } from '@/utils/url';
 
 const searchSchema = z.object({
@@ -54,6 +55,10 @@ function VerifyEmailPage() {
         title: result.error.message,
         type: 'error',
       });
+      return;
+    }
+
+    if (resumePendingOauthAuthorize()) {
       return;
     }
 

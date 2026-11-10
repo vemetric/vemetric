@@ -87,8 +87,19 @@ describe('authenticateOauthToken', () => {
     expect((await rejection()).error).toBe('invalid_token');
   });
 
-  it('accepts tokens without a resource and tokens of sessions that ended with offline access', async () => {
+  it('accepts tokens without a resource and tokens whose session was deleted (signed out)', async () => {
     findAccessToken.mockResolvedValue(accessToken({ resources: [], session: null }));
+
+    await expect(authenticateOauthToken(TOKEN)).resolves.toMatchObject({ userId: 'user_1' });
+  });
+
+  it('accepts offline_access tokens after the browser session expired', async () => {
+    findAccessToken.mockResolvedValue(
+      accessToken({
+        scopes: ['analytics:read', 'offline_access'],
+        session: { expiresAt: new Date(Date.now() - 1000) },
+      }),
+    );
 
     await expect(authenticateOauthToken(TOKEN)).resolves.toMatchObject({ userId: 'user_1' });
   });

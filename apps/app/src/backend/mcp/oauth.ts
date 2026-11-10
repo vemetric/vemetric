@@ -35,9 +35,9 @@ export function isOauthAccessToken(token: string): boolean {
 }
 
 /**
- * Checks an OAuth access token like the provider's introspection does: unexpired, not revoked, the client not
- * disabled, its session (if any) still active, issued for the MCP server with the MCP scope. The connection must still
- * exist, so disconnecting an app in the settings revokes its access right away.
+ * Checks an OAuth access token: unexpired, not revoked, the client not disabled, issued for the MCP server with the
+ * MCP scope, and without `offline_access` its browser session still active. The connection must still exist, so
+ * disconnecting an app in the settings revokes its access right away.
  */
 export async function authenticateOauthToken(token: string): Promise<OauthAuthentication> {
   if (!isOauthAccessToken(token)) {
@@ -46,12 +46,17 @@ export async function authenticateOauthToken(token: string): Promise<OauthAuthen
 
   const accessToken = await dbOauth.findAccessToken(hashToken(token.slice(OAUTH_ACCESS_TOKEN_PREFIX.length)));
   const now = new Date();
+  // `offline_access` grants outlive the browser session (it expires after a week without using the dashboard), but the
+  // refresh grant copies the session id onto every new access token. Unlike the provider's introspection, only tokens
+  // without `offline_access` depend on the session. Signing out deletes the session and revokes those tokens anyway.
+  const sessionEnded =
+    !!accessToken?.session && accessToken.session.expiresAt < now && !accessToken.scopes.includes('offline_access');
   if (
     !accessToken?.userId ||
     accessToken.revoked ||
     accessToken.expiresAt < now ||
     accessToken.oauthclient.disabled ||
-    (accessToken.session && accessToken.session.expiresAt < now)
+    sessionEnded
   ) {
     throw invalidToken('Invalid, expired or revoked access token');
   }

@@ -1,4 +1,5 @@
 import type { IFilterConfig, IReferrerFilter, IReferrerTypeFilter, IReferrerUrlFilter } from '@vemetric/common/filters';
+import { normalizeReferrerType } from '@vemetric/common/sources';
 import { buildListFilterQuery, buildStringFilterQuery } from './base-filters';
 
 export const buildReferrerFilterQuery = (filter: IReferrerFilter) => {
@@ -82,7 +83,11 @@ export const buildReferrerTypeFilterQuery = (filter: IReferrerTypeFilter) => {
     return '';
   }
 
-  const referrerTypeQuery = buildListFilterQuery('referrerType', filter.referrerTypeFilter);
+  // Accept the old name `direct` for `internal` (dashboard links, saved filters, API clients).
+  const referrerTypeQuery = buildListFilterQuery('referrerType', {
+    ...filter.referrerTypeFilter,
+    value: Array.from(new Set(filter.referrerTypeFilter.value.map(normalizeReferrerType))),
+  });
 
   const query = [referrerTypeQuery]
     .map((s) => s.trim())

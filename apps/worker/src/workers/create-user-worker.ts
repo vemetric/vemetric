@@ -1,4 +1,5 @@
 import { EMPTY_GEO_DATA, getGeoDataFromIp } from '@vemetric/common/geo';
+import { NO_REFERRER } from '@vemetric/common/sources';
 import { createUserQueue, type CreateUserQueueProps } from '@vemetric/queues/create-user-queue';
 import { createUserQueueName } from '@vemetric/queues/queue-names';
 import { addToQueue } from '@vemetric/queues/queue-utils';
@@ -69,6 +70,8 @@ export async function initCreateUserWorker() {
         createdAt,
         firstSeenAt: createdAt,
         updatedAt: createdAt,
+        // Users without a pageview have no referrer; a first pageview below overrides it.
+        ...NO_REFERRER,
         customData: data,
         ...(geoData || (ipAddress ? await getGeoDataFromIp(ipAddress, logger, 5000) : EMPTY_GEO_DATA)),
         ...getUserFirstPageViewData(firstPageView),

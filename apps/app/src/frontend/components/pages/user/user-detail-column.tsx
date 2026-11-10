@@ -13,7 +13,7 @@ import {
   Link as ChakraLink,
 } from '@chakra-ui/react';
 import { Fragment, useEffect, useRef, useState } from 'react';
-import { TbEye, TbDirectionSign, TbUserQuestion, TbDatabaseSearch, TbActivity } from 'react-icons/tb';
+import { TbEye, TbUserQuestion, TbDatabaseSearch, TbActivity } from 'react-icons/tb';
 import SimpleBar from 'simplebar-react';
 import { BrowserIcon } from '@/components/browser-icon';
 import { CardIcon } from '@/components/card-icon';
@@ -21,11 +21,13 @@ import { DeviceIcon } from '@/components/device-icon';
 import { LoadingImage } from '@/components/loading-image';
 import { LocationLabel } from '@/components/location-label';
 import { OsIcon } from '@/components/os-icon';
+import { ReferrerTypeIcon } from '@/components/referrer-icon';
 import { Status } from '@/components/ui/status';
 import { Tooltip } from '@/components/ui/tooltip';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import { observeResize } from '@/utils/dom';
 import { getFaviconUrl } from '@/utils/favicon';
+import { getReferrerLabel, getReferrerTooltip } from '@/utils/referrer';
 import { trpc } from '@/utils/trpc';
 import { formatQueryParams } from '@/utils/url';
 import { ActivityHeatmap } from './activity-heatmap';
@@ -226,15 +228,13 @@ export const UserDetailColumn = (props: Props) => {
                             {user.urlHash}
                           </Box>
                         </Tooltip>
-                        {user.referrer && (
+                        {(user.origin || user.referrer) && (
                           <>
                             <Box fontWeight="semibold" opacity={0.6}>
                               Referrer
                             </Box>
                             <Flex justify="flex-end">
-                              <Tooltip
-                                content={user.referrer ? `Referred via ${user.referrerUrl}` : `Direct page visit.`}
-                              >
+                              <Tooltip content={getReferrerTooltip(user)}>
                                 <Flex align="center" gap={1} truncate>
                                   <Flex
                                     align="center"
@@ -253,10 +253,10 @@ export const UserDetailColumn = (props: Props) => {
                                         boxSize="16px"
                                       />
                                     ) : (
-                                      <TbDirectionSign />
+                                      <ReferrerTypeIcon referrerType={user.referrerType || 'none'} />
                                     )}
                                   </Flex>
-                                  {user.referrer || 'Direct'}
+                                  {getReferrerLabel(user)}
                                 </Flex>
                               </Tooltip>
                             </Flex>

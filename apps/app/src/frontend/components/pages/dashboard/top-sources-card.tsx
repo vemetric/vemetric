@@ -3,7 +3,12 @@ import { useSearch, useParams, useNavigate, Link } from '@tanstack/react-router'
 import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import type { IFilter, IFilterConfig } from '@vemetric/common/filters';
 import { formatNumber } from '@vemetric/common/math';
-import { getSourceValue, SOURCE_VALUES } from '@vemetric/common/sources';
+import {
+  getReferrerTypeLabel,
+  getSourceValue,
+  REFERRER_TYPE_DESCRIPTIONS,
+  SOURCE_VALUES,
+} from '@vemetric/common/sources';
 import React, { useMemo, useState } from 'react';
 import { TbDirectionSign, TbExternalLink, TbFilter, TbFilterOff, TbUsers } from 'react-icons/tb';
 import { isDeepEqual } from 'remeda';
@@ -145,7 +150,7 @@ export const TopSourcesCard = ({ filterConfig, publicDashboard }: Props) => {
                 case 'referrerType':
                   newFilter = {
                     type: 'referrerType',
-                    referrerTypeFilter: { operator: 'oneOf', value: [topSource[sourceType] ?? 'direct'] },
+                    referrerTypeFilter: { operator: 'oneOf', value: [topSource[sourceType] ?? ''] },
                   };
                   break;
                 case 'utmCampaign':
@@ -202,7 +207,22 @@ export const TopSourcesCard = ({ filterConfig, publicDashboard }: Props) => {
                           <ReferrerIcon source={dataSource} {...topSource} />
                         </Flex>
                         {sourceValue.referrer === 'referrerType' ? (
-                          <Box>{topSource.referrerType}</Box>
+                          <Tooltip
+                            content={REFERRER_TYPE_DESCRIPTIONS[topSource.referrerType ?? '']}
+                            disabled={!REFERRER_TYPE_DESCRIPTIONS[topSource.referrerType ?? '']}
+                            positioning={{ placement: 'bottom-start' }}
+                          >
+                            <Box>{getReferrerTypeLabel(topSource.referrerType ?? '')}</Box>
+                          </Tooltip>
+                        ) : isDirect && sourceValue.referrer === 'referrer' ? (
+                          <Tooltip
+                            content="Visits without a referrer (type None) and visits from your own domain (type Internal)"
+                            positioning={{ placement: 'bottom-start' }}
+                          >
+                            <Flex align="center" gap={1.5}>
+                              Direct / None
+                            </Flex>
+                          </Tooltip>
                         ) : (
                           <Flex align="center" gap={1.5}>
                             {isDirect ? 'Direct / None' : topSource[sourceValue.referrer]}{' '}
@@ -226,6 +246,9 @@ export const TopSourcesCard = ({ filterConfig, publicDashboard }: Props) => {
                       opacity="0"
                       _groupHover={{ opacity: '1' }}
                       gap="2"
+                      // Only the buttons catch the mouse, so the label's tooltip still opens under the overlay.
+                      pointerEvents="none"
+                      css={{ '& > *': { pointerEvents: 'auto' } }}
                     >
                       {'projectId' in params && (
                         <Tooltip content="View users that have come from this source">

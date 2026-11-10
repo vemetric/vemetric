@@ -8,8 +8,10 @@ import { clickhouseEvent } from 'clickhouse/src/models/event';
 import type { ClickhouseSession } from 'clickhouse/src/models/session';
 import { getDeviceId } from 'clickhouse/src/utils/id';
 import csv from 'csv-parser';
+import { dbProject } from 'database';
 import { nanoid } from 'nanoid';
 import { closeStateRedis, persistSessionUpdates } from '../ingestion';
+import { resolvePirschReferrer } from './pirsch-referrer';
 import { logger } from '../utils/logger';
 
 const BATCH_SIZE = 1000;
@@ -113,6 +115,10 @@ async function importRawData() {
   }
   const projectId = BigInt(process.env.IMPORT_PROJECT_ID!);
   const importSource = 'pirsch';
+  const projectDomain = (await dbProject.findById(String(projectId)))?.domain;
+  if (!projectDomain) {
+    throw new Error(`Project ${projectId} not found`);
+  }
 
   if (!process.env.IMPORT_CUTOFF_DATE) {
     throw new Error('IMPORT_CUTOFF_DATE must be set');
@@ -198,9 +204,7 @@ async function importRawData() {
           utmTerm: row.utm_term || '',
 
           // Referrer data
-          referrer: row.referrer_name || '',
-          referrerUrl: row.referrer || '',
-          referrerType: row.channel || '',
+          ...resolvePirschReferrer(row, projectDomain),
 
           // User data
           userAgent: '',
@@ -301,9 +305,7 @@ async function importRawData() {
             utmTerm: row.utm_term || '',
 
             // Referrer data
-            referrer: row.referrer_name || '',
-            referrerUrl: row.referrer || '',
-            referrerType: row.channel || '',
+            ...resolvePirschReferrer(row, projectDomain),
 
             // User data
             userAgent: '',
@@ -375,9 +377,7 @@ async function importRawData() {
           utmTerm: row.utm_term || '',
 
           // Referrer data
-          referrer: row.referrer_name || '',
-          referrerUrl: row.referrer || '',
-          referrerType: row.channel || '',
+          ...resolvePirschReferrer(row, projectDomain),
 
           userAgent: '',
           importSource,

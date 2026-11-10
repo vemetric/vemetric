@@ -1,6 +1,6 @@
 # Referrer type: separate "no referrer" from "unknown"
 
-Status: plan for review (2026-11-10). Nothing implemented; no production mutations run.
+Status: PR 1 implemented on `claude/referrer-type-none` (2026-11-10), incl. the backfill script `apps/worker/src/migrations/backfill-referrer-types.ts` (tested on the local database). No production mutations run; website docs (PR 2) not started.
 
 Decided (2026-11-10):
 - Visits without a referrer get the new stored type **`none`**, not an empty type (see alternative 3).
@@ -317,7 +317,7 @@ UNION ALL SELECT 'user', count() FROM user
   | | `Paid Search`, `Paid Social`, `Display` (none in production yet) | `paid` |
   | | `Direct` with a referrer, `Referral`, anything else | `unknown` |
 
-  Steps 2–3 are what the worker's `getReferrer(projectDomain, url, paramValue)` does, so the helper calls it (the importer has the project domain) and uses the channel mapping when `getReferrer` finds no list entry. Pirsch's `referrer_name` stays the `referrer` when the list has no entry. Imported rows then get the same type and name as natively tracked ones.
+  Steps 2–3 follow the worker's `getReferrer` (same list, same `www.` handling, same own-domain rule); the helper (`apps/worker/src/migrations/pirsch-referrer.ts`) looks the list up directly, because it has to know whether the list has an entry before falling back to the channel. Pirsch's `referrer_name` stays the `referrer` when the list has no entry. Imported rows then get the same type and name as natively tracked ones.
 - **Backfill (existing imported rows): one fixed statement per table**, a simplified version of the importer mapping:
   - empty `referrer` and `referrerUrl` → `none`;
   - Pirsch's `Direct` with a referrer → the list type of the URL host, for the hosts found by query K (the list types of those hosts); other hosts → `unknown`;

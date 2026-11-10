@@ -61,7 +61,7 @@ export const listFilterSchema = z.object({
     description: 'List of values to filter by',
   }),
   operator: listOperatorsSchema.openapi({
-    description: `Operator to apply for the list filter. The "any" operator means that any value is accepted and effectively disables the filter.`,
+    description: `Operator to apply for the list filter. The "any" operator means that any value is accepted and effectively disables the filter. To require a value, use "noneOf" with [""].`,
   }),
 });
 export type IListFilter = z.infer<typeof listFilterSchema>;

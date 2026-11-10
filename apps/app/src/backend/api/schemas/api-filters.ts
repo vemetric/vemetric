@@ -176,7 +176,7 @@ const referrerTypeApiFilterSchema = z
       example: ['search', 'social'],
     }),
     operator: listFilterSchema.shape.operator.openapi({
-      description: 'List matching operator for `value`.',
+      description: 'List matching operator for `value`. To require a value, use "noneOf" with `[""]`.',
       example: 'oneOf',
     }),
   })
@@ -229,7 +229,7 @@ const browserApiFilterSchema = z
       example: ['Chrome', 'Safari'],
     }),
     operator: listFilterSchema.shape.operator.openapi({
-      description: 'List matching operator for `value`.',
+      description: 'List matching operator for `value`. To require a value, use "noneOf" with `[""]`.',
       example: 'oneOf',
     }),
   })
@@ -252,7 +252,7 @@ const deviceApiFilterSchema = z
       example: ['desktop', 'mobile'],
     }),
     operator: listFilterSchema.shape.operator.openapi({
-      description: 'List matching operator for `value`.',
+      description: 'List matching operator for `value`. To require a value, use "noneOf" with `[""]`.',
       example: 'oneOf',
     }),
   })
@@ -275,7 +275,7 @@ const osApiFilterSchema = z
       example: ['macOS', 'Windows'],
     }),
     operator: listFilterSchema.shape.operator.openapi({
-      description: 'List matching operator for `value`.',
+      description: 'List matching operator for `value`. To require a value, use "noneOf" with `[""]`.',
       example: 'oneOf',
     }),
   })

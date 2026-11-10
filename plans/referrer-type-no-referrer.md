@@ -302,28 +302,47 @@ UNION ALL SELECT 'user', count() FROM user
 
 - **Channels in production (query G):** `Direct`, `Organic Search`, `Organic Social`, `Organic Video`, `Referral`, `AI`, `Email`. No paid channel.
 - **Pirsch's `Direct` is unreliable** (query K, 2026-11-10): 16,363 imported sessions are `Direct` although they have a referrer, and they are real sources: Google search (`www.google.com`, 4,387), `accounts.google.com` (2,713), Twitter via `t.co` (2,400), Threads (about 4,500 over `l.threads.net`, `www.threads.net`, `l.threads.com`, `www.threads.com`), Gmail (275), Bing (259), DuckDuckGo (252), Hacker News, GitHub, Outlook, Reddit, Ecosia, Bluesky, plus websites and directories. Nearly all of these hosts are in Vemetric's list.
-- **Mapping (decided after query K): Vemetric's list first, Pirsch's channel only as a fallback.** That gives imported rows the same type as natively tracked ones:
+- **Scope:** in production, only one project has a Pirsch import so far (about 48,000 sessions and 106,000 events). So the backfill is one fixed SQL statement per table, not a per-project script.
+- **Importer (future imports): Vemetric's list first, Pirsch's channel only as a fallback.** One `resolvePirschReferrer(row, projectDomain)` helper, used in all three places (events, pageviews, sessions):
 
   | Order | Condition | Type (and name) |
   |---|---|---|
   | 1 | empty `referrer` and `referrerUrl` | `none` |
   | 2 | the host of `referrerUrl` is the project's own domain | `internal` |
-  | 3 | the host of `referrerUrl` (without `www.`) is a list key, or (no URL) `referrer` is a list key (e.g. the param `bskyinfo` isn't, `bsky.app` is) | the list type, and the list name as `referrer` (so `l.threads.com` becomes `Threads`, like native rows) |
+  | 3 | the host of `referrerUrl` (without `www.`) is a list key, or (no URL) `referrer` is a list key | the list type, and the list name as `referrer` |
   | 4 | channel `Organic Search` | `search` |
   | | `Organic Social`, `Organic Video` (YouTube is `social` in the list) | `social` |
   | | `AI` | `llm` |
   | | `Email` | `email` |
-  | | `Paid Search`, `Paid Social`, `Display` (none in production; for future imports) | `paid` |
+  | | `Paid Search`, `Paid Social`, `Display` (none in production yet) | `paid` |
   | | `Direct` with a referrer, `Referral`, anything else | `unknown` |
 
-  Steps 2–3 are what the worker's `getReferrer(projectDomain, url, paramValue)` does, so the importer reuses it.
-- **Importer:** one `resolvePirschReferrer(row, projectDomain)` helper with this order, used in all three places (events, pageviews, sessions). It calls `getReferrer` for steps 2–3 and uses the channel mapping when `getReferrer` finds no list entry. Pirsch's `referrer_name` stays the `referrer` when the list has no entry.
-- **Backfill:** a script, like the 3.9 backfill. Only a few projects have imports, so it runs per project (that gives the project domain for step 2):
-  1. read the distinct `(referrer, host of referrerUrl, referrerType)` combinations of the project's imported rows (`importSource = 'pirsch'`),
-  2. resolve each with the helper above,
-  3. write one `ALTER TABLE … UPDATE referrerType = …, referrer = … WHERE projectId = … AND importSource = 'pirsch'` per table, with `transform` arrays keyed by host and referrer, and print it for review.
+  Steps 2–3 are what the worker's `getReferrer(projectDomain, url, paramValue)` does, so the helper calls it (the importer has the project domain) and uses the channel mapping when `getReferrer` finds no list entry. Pirsch's `referrer_name` stays the `referrer` when the list has no entry. Imported rows then get the same type and name as natively tracked ones.
+- **Backfill (existing imported rows): one fixed statement per table**, a simplified version of the importer mapping:
+  - empty `referrer` and `referrerUrl` → `none`;
+  - Pirsch's `Direct` with a referrer → the list type of the URL host, for the hosts found by query K (the list types of those hosts); other hosts → `unknown`;
+  - all other channels by name.
+  - Left out compared to the importer: the own-domain step (no own-domain host among the top 30 of query K, so it would hardly change anything) and renaming `referrer` to the list name (Pirsch's names mostly match already: "Google", "Twitter", "Threads").
 
-  Imported rows are few (about 48,000 sessions and 106,000 events), so it runs fast. The script only touches rows whose `referrerType` is still a Pirsch channel (`NOT IN` the Vemetric types), so a second run changes nothing.
+  ```sql
+  ALTER TABLE session_v3 UPDATE referrerType = multiIf(
+      referrer = '' AND referrerUrl = '', 'none',
+      referrerType = 'Direct', transform(replaceRegexpOne(domain(referrerUrl), '^www\\.', ''),
+        ['google.com', 'google.co.uk', 'accounts.google.com', 't.co', 'l.threads.net', 'threads.net', 'l.threads.com',
+         'threads.com', 'com.google.android.gm', 'bing.com', 'duckduckgo.com', 'bsky.app', 'news.ycombinator.com',
+         'github.com', 'outlook.live.com', 'reddit.com', 'ecosia.org'],
+        ['search', 'search', 'unknown', 'social', 'social', 'social', 'social',
+         'social', 'email', 'search', 'search', 'social', 'social',
+         'social', 'email', 'social', 'search'], 'unknown'),
+      transform(referrerType,
+        ['Organic Search', 'Organic Social', 'Organic Video', 'AI', 'Email', 'Referral'],
+        ['search', 'social', 'social', 'llm', 'email', 'unknown'], 'unknown'))
+    WHERE importSource = 'pirsch'
+      AND referrerType NOT IN ('none', 'search', 'social', 'email', 'paid', 'llm', 'unknown', 'internal');
+  -- same for event
+  ```
+
+  It runs after the main backfill (3.2), which leaves imported rows out. The `NOT IN` condition skips rows that already have a Vemetric type, so a second run changes nothing. Checked on a throwaway local table (2026-11-10): an empty referrer gives `none`, `Direct` + `www.google.com` gives `search`, `Direct` + `android-app://com.google.android.gm/` gives `email` (`domain()` handles the app scheme), `Direct` + an unlisted host gives `unknown`, `Organic Search` / `AI` / `Referral` give `search` / `llm` / `unknown`, and rows that aren't imported or are already mapped stay unchanged.
 - Test: unit tests for `resolvePirschReferrer`: an empty referrer gives `none`; `Direct` with `https://www.google.com/` gives Google/search; `Direct` with `https://t.co/…` gives Twitter/social; `Referral` with an unlisted host gives `unknown`; `AI` with an unlisted host gives `llm`; the project's own domain gives `internal`.
 
 ### 3.4 Saved filters (PostgreSQL)
@@ -472,7 +491,7 @@ Production results (queries I and I2, 2026-11-10; sessions across all projects, 
 3. Deploy. Wait until the old worker containers are gone and the queues have drained.
 4. Backfill: `session_v3` → `event` → `user` (`user` only after `event` is done): one small test partition, then one statement per table (minutes in total, see 3.2). Watch `system.mutations` and the ingestion metrics.
 5. About one hour later: straggler check (incl. `user`) and a re-run on the current partition and on `user` if needed. Then query J again.
-6. Pirsch backfill script (3.3) on `session_v3` and `event`, per imported project.
+6. Pirsch backfill (3.3): one statement each on `session_v3` and `event`.
 7. PR 2 (website): docs section and API docs. Publish after step 4.
 8. Re-run the MCP real-world question ("how much traffic has no referrer") against production.
 

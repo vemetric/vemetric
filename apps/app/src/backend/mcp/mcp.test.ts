@@ -325,10 +325,13 @@ describe('MCP server', () => {
 
       const { tools } = await client.listTools();
 
-      // Only query_analytics carries the full filter schema (~5 KB), see createCompactFilters.
-      expect(JSON.stringify(tools).length).toBeLessThan(25_000);
+      // Only query_analytics carries the full filter schema (~5 KB), see createCompactFilters. The other tools describe
+      // the filter shapes in text (~1 KB more), because clients like Claude.ai load tool definitions on demand.
+      expect(JSON.stringify(tools).length).toBeLessThan(27_500);
       const listUsers = tools.find((tool) => tool.name === 'list_users');
-      expect(JSON.stringify(listUsers?.inputSchema.properties?.filters)).not.toContain('referrerUrl');
+      expect(listUsers?.inputSchema.properties?.filters).toMatchObject({
+        items: { type: 'object', properties: { type: { type: 'string' } } },
+      });
     });
   });
 

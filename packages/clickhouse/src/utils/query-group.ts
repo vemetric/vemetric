@@ -20,6 +20,15 @@ export const metricsGroupFieldTokens = [
 ] as const;
 
 type MetricsGroupFieldToken = (typeof metricsGroupFieldTokens)[number];
+
+/** Fixed time series intervals, next to `interval:auto` which picks one from the length of the period. */
+export const metricsGroupIntervalTokens = {
+  'interval:hour': 'hourly',
+  'interval:day': 'daily',
+  'interval:week': 'weekly',
+  'interval:month': 'monthly',
+} as const;
+type MetricsGroupIntervalToken = keyof typeof metricsGroupIntervalTokens;
 type MetricsGroupScope = 'event' | 'session';
 
 export type MetricsQueryGrouping =
@@ -46,6 +55,10 @@ export function parseMetricsQueryGroupingToken(token: string | null): MetricsQue
 
   if (token === 'interval:auto') {
     return { kind: 'interval', interval: 'auto' };
+  }
+
+  if (token in metricsGroupIntervalTokens) {
+    return { kind: 'interval', interval: metricsGroupIntervalTokens[token as MetricsGroupIntervalToken] };
   }
 
   const match = token.match(eventPropertyTokenRegex);

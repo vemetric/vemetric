@@ -329,6 +329,68 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
       await expect(response.json()).resolves.toEqual(expected);
     });
 
+    it.each([
+      [
+        'interval:hour',
+        [
+          ['2026-01-18T09:00:00Z', 1, 1],
+          ['2026-01-18T10:00:00Z', 3, 1],
+          ['2026-01-19T09:00:00Z', 3, 2],
+          ['2026-01-19T11:00:00Z', 1, 1],
+        ],
+      ],
+      [
+        'interval:day',
+        [
+          ['2026-01-18T00:00:00Z', 4, 2],
+          ['2026-01-19T00:00:00Z', 4, 3],
+        ],
+      ],
+      // 2026-01-18 is a Sunday, weeks start on Sunday
+      ['interval:week', [['2026-01-18T00:00:00Z', 8, 5]]],
+      ['interval:month', [['2026-01-01T00:00:00Z', 8, 5]]],
+    ] as const)('returns a time series for %s', async (groupBy, expectedRows) => {
+      const response = await postAnalyticsQuery(
+        {
+          dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+          metrics: ['pageviews', 'events'],
+          groupBy: [groupBy],
+        },
+        isolated.authHeaders,
+      );
+
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as {
+        data: Array<{ group: { date: string }; metrics: { pageviews: number; events: number } }>;
+      };
+      expect(body.data.map((row) => [row.group.date, row.metrics.pageviews, row.metrics.events])).toEqual(expectedRows);
+    });
+
+    it('keeps a fixed interval where interval:auto would pick a coarser one', async () => {
+      const query = async (groupBy: string) => {
+        const response = await postAnalyticsQuery(
+          {
+            // 4 days: interval:auto is daily here; longer periods exceed the free plan in this test
+            dateRange: ['2026-01-18T00:00:00Z', '2026-01-21T23:59:59Z'],
+            metrics: ['pageviews'],
+            groupBy: [groupBy],
+          },
+          isolated.authHeaders,
+        );
+        expect(response.status).toBe(200);
+        const body = (await response.json()) as { data: Array<{ group: { date: string } }> };
+        return body.data.map((row) => row.group.date);
+      };
+
+      await expect(query('interval:auto')).resolves.toEqual(['2026-01-18T00:00:00Z', '2026-01-19T00:00:00Z']);
+      await expect(query('interval:hour')).resolves.toEqual([
+        '2026-01-18T09:00:00Z',
+        '2026-01-18T10:00:00Z',
+        '2026-01-19T09:00:00Z',
+        '2026-01-19T11:00:00Z',
+      ]);
+    });
+
     it('returns exact country breakdown sorted by group field', async () => {
       const request = {
         dateRange: '30days',

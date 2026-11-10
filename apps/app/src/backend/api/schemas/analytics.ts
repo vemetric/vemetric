@@ -16,7 +16,7 @@ const eventPropertyGroupByTokenSchema = z.string().regex(eventPropertyTokenRegex
 const fieldGroupByTokenSchema = z.enum(metricsGroupFieldTokens);
 const groupByTokenSchema = z.union([
   fieldGroupByTokenSchema,
-  z.literal('interval:auto'),
+  z.enum(['interval:auto', 'interval:hour', 'interval:day', 'interval:week', 'interval:month']),
   eventPropertyGroupByTokenSchema,
 ]);
 
@@ -48,7 +48,8 @@ const fieldGroupSchema = z
     message: 'Grouping object must contain exactly one key',
   })
   .openapi({
-    description: 'Grouping object for predefined dimensions (e.g. country, city, browser, referrer).',
+    description:
+      "Grouping object for predefined dimensions (e.g. country, city, browser, referrer). An empty string stands for rows without a value, e.g. for `referrer` visits without a referrer and visits from the project's own domain.",
     example: { country: 'US' },
   });
 const eventPropertyGroupSchema = z
@@ -104,12 +105,12 @@ export const analyticsQueryRequestSchema = z
       .default([])
       .openapi({
         description:
-          'Allowed values: "interval:auto", "country", "city", "page:origin", "page:path", "browser", "deviceType", "os", "referrer", "referrerType", "utm*", "event:name", or "event:prop:<property_name>". At the moment it\'s only possible to group by one field, please tell us if you need more.',
+          'Allowed values: "interval:auto", "interval:hour", "interval:day", "interval:week", "interval:month", "country", "city", "page:origin", "page:path", "browser", "deviceType", "os", "referrer", "referrerType", "utm*", "event:name", or "event:prop:<property_name>". At the moment it\'s only possible to group by one field, please tell us if you need more.\n\nThe interval values return a time series with one row per hour, day, week (starting on Sunday) or month. "interval:auto" picks the interval from the length of the period: hourly up to 2 days, daily up to 31 days, weekly up to 90 days and monthly beyond (for presets: `live` every 30 seconds, `1hr` every 10 minutes, `24hrs` hourly, `7days` and `30days` daily, `3months` weekly, `6months` and `1year` monthly).\n\nRows without a value for the field (e.g. visits without a UTM campaign, or for `referrer` visits without a referrer and visits from the project\'s own domain) are grouped under an empty string `""`, which you can also use as a filter value.',
         example: ['country'],
       }),
     orderBy: orderBySchema.default([]).openapi({
       description:
-        "Gives you the ability to order by a specific field and direction. At the moment it's only possible to order by one field. Without it, rows are ordered by `date` ascending when grouping by `interval:auto`, and by the first metric descending for other groupings (skipping metrics that don't apply to the grouping, like `bounceRate` per page). Rows with equal values are ordered by their group value.",
+        "Gives you the ability to order by a specific field and direction. At the moment it's only possible to order by one field. Without it, rows are ordered by `date` ascending when grouping by an interval, and by the first metric descending for other groupings (skipping metrics that don't apply to the grouping, like `bounceRate` per page). Rows with equal values are ordered by their group value.",
       example: [['users', 'desc']],
       'x-vemetric-docs': {
         hideTupleVariantChildren: true,
@@ -132,7 +133,8 @@ export const analyticsQueryRequestSchema = z
       .array(apiFilterSchema)
       .optional()
       .openapi({
-        description: 'Ability to filter the results based on multiple criteria.',
+        description:
+          'Ability to filter the results based on multiple criteria. Filters select users: the results include all data of the users who match the filters in the period. For example, a page filter for `/blog` also counts the other pages and sessions of the users who visited the blog. Only the `pageviews` and `events` metrics apply page and event filters to the counted pageviews and events themselves. Use an empty string to match a missing value, e.g. `{"type":"referrer","operator":"eq","value":""}` for visits without a referrer and visits from the project\'s own domain.',
         'x-vemetric-docs': { collapseByDefault: true },
       }),
     filtersOperator: apiFiltersOperatorSchema.default('and').openapi({

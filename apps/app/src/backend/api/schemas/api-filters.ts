@@ -7,7 +7,8 @@ export type ApiStringOperator = z.infer<typeof apiStringOperatorsSchema>;
 const apiStringFilterSchema = z.object({
   value: stringFilterSchema.shape.value,
   operator: apiStringOperatorsSchema.openapi({
-    description: 'Operator to apply for the string filter. "eq" means equals, "notEq" means not equals.',
+    description:
+      'Operator to apply for the string filter. "eq" means equals, "notEq" means not equals. "any" means no restriction and also matches users without a value; to require a value, use "notEq" with an empty string.',
   }),
 });
 
@@ -123,7 +124,8 @@ const referrerApiFilterSchema = z
       description: 'Filter type identifier for referrer filters.',
     }),
     value: apiStringFilterSchema.shape.value.openapi({
-      description: 'Referrer value to match. Empty string represents direct/none referrer.',
+      description:
+        'Referrer value to match, as returned when grouping by `referrer` (e.g. "Google"). An empty string matches visits without a referrer and visits from the project\'s own domain (referrer type `direct`).',
       example: 'Google',
     }),
     operator: apiStringFilterSchema.shape.operator.openapi({
@@ -169,11 +171,12 @@ const referrerTypeApiFilterSchema = z
       description: 'Filter type identifier for referrer type filters.',
     }),
     value: listFilterSchema.shape.value.openapi({
-      description: 'List of referrer types to match (for example: `search`, `social`, `email`, `direct`).',
+      description:
+        "List of referrer types to match: `search`, `social`, `llm`, `email`, `paid`, `direct` (a page on the project's own domain, e.g. a link from your app to your website; not visits without a referrer) or `unknown` (no referrer, or a website that isn't in Vemetric's list of known sources).",
       example: ['search', 'social'],
     }),
     operator: listFilterSchema.shape.operator.openapi({
-      description: 'List matching operator for `value`.',
+      description: 'List matching operator for `value`. To require a value, use "noneOf" with `[""]`.',
       example: 'oneOf',
     }),
   })
@@ -226,7 +229,7 @@ const browserApiFilterSchema = z
       example: ['Chrome', 'Safari'],
     }),
     operator: listFilterSchema.shape.operator.openapi({
-      description: 'List matching operator for `value`.',
+      description: 'List matching operator for `value`. To require a value, use "noneOf" with `[""]`.',
       example: 'oneOf',
     }),
   })
@@ -249,7 +252,7 @@ const deviceApiFilterSchema = z
       example: ['desktop', 'mobile'],
     }),
     operator: listFilterSchema.shape.operator.openapi({
-      description: 'List matching operator for `value`.',
+      description: 'List matching operator for `value`. To require a value, use "noneOf" with `[""]`.',
       example: 'oneOf',
     }),
   })
@@ -272,7 +275,7 @@ const osApiFilterSchema = z
       example: ['macOS', 'Windows'],
     }),
     operator: listFilterSchema.shape.operator.openapi({
-      description: 'List matching operator for `value`.',
+      description: 'List matching operator for `value`. To require a value, use "noneOf" with `[""]`.',
       example: 'oneOf',
     }),
   })

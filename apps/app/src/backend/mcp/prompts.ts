@@ -2,14 +2,11 @@ import type { GetPromptResult, McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { FREE_PLAN_RETENTION_DAYS } from '../utils/retention';
 
-const projectHint =
-  'If the user has several projects and it is unclear which one they mean, call list_projects and ask them first.';
-
-const planHint = `Start with get_project to learn today's date and the project's plan. If the plan doesn't include the data needed for a comparison (the Free plan only covers the last ${FREE_PLAN_RETENTION_DAYS} days), work with what it includes and say what's missing instead of running into errors.`;
+const setupHint = `First find out which project the user means: if they have several projects and it's unclear, call list_projects and ask them. Then call get_project with its projectId to learn today's date and the project's plan. If the plan doesn't include the data needed for a comparison (the Free plan only covers the last ${FREE_PLAN_RETENTION_DAYS} days), work with what it includes and say what's missing instead of running into errors.`;
 
 function prompt(text: string): GetPromptResult {
   return {
-    messages: [{ role: 'user', content: { type: 'text', text: `${text}\n\n${planHint} ${projectHint}` } }],
+    messages: [{ role: 'user', content: { type: 'text', text: `${text}\n\n${setupHint}` } }],
   };
 }
 
@@ -41,7 +38,7 @@ export function registerPrompts(server: McpServer) {
     },
     ({ metric, date }) =>
       prompt(
-        `${metric} changed noticeably on ${date}. Find out what explains it. First compare the day with the days before (daily values with groupBy "interval:auto" over a few weeks around it) to confirm the change and its size. Then break the day down by referrer, country, page and device type, compare each breakdown with normal days and find the segments that account for the change. End with a short explanation of the most likely cause and the numbers that support it.`,
+        `${metric} changed noticeably on ${date}. Find out what explains it. First compare the day with the days before (daily values with groupBy "interval:day" from 4 weeks before the day to a few days after it) to confirm the change and its size. Then break the day down by referrer, country, page and device type, compare each breakdown with normal days and find the segments that account for the change. End with a short explanation of the most likely cause and the numbers that support it.`,
       ),
   );
 
@@ -71,7 +68,7 @@ export function registerPrompts(server: McpServer) {
     },
     ({ event }) =>
       prompt(
-        `Find out which sources bring the most "${event}" conversions over the last 30 days, not just the most traffic. Check the exact event name with list_filter_values (field "event:name") first. Then use query_analytics with the metric "events" and an event filter for "${event}", grouped by referrer, utmCampaign and utmSource, and compare with the users each source brings to get a conversion rate per source. Also find the landing pages with the most conversions. Show the results in small tables and point out sources with many visitors but few conversions, and the other way around.`,
+        `Find out which sources bring the most "${event}" conversions over the last 30 days, not just the most traffic. Check the exact event name with list_filter_values (field "event:name") first. Then count the converting users per source: query_analytics with the metric "users" and an event filter for "${event}", grouped by referrer, utmCampaign and utmSource (filters select users, so this counts the users who came from a source at some point in the period and fired the event; one user can count for several sources). Don't count the events per source: events are credited to the source of the visit they happen in, which is often a later direct visit. Compare with all users per source to get a conversion rate per source. Also find the pages whose visitors convert most (users grouped by page:path with and without the event filter). Show the results in small tables and point out sources with many visitors but few conversions, and the other way around.`,
       ),
   );
 

@@ -100,7 +100,7 @@ async function runTool(
     if (error instanceof ApiError) {
       const organizationId =
         log.organizationId ?? (caller.kind === 'apiKey' ? caller.apiKey.organizationId : undefined);
-      return toolError(getToolErrorMessage(error, { organizationId, input }));
+      return toolError(getToolErrorMessage(error, { organizationId, input, isOauth: caller.kind === 'oauth' }));
     }
 
     logger.error(

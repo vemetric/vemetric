@@ -45,6 +45,7 @@ export type UserData = RouterOutput['users']['single'];
 export type ApiKeyItem = RouterOutput['apiKeys']['list'][number];
 export type OrganizationApiKeyItem = RouterOutput['apiKeys']['listOrganizationKeys'][number];
 export type OauthConsentInfo = RouterOutput['oauth']['consentInfo'];
+export type OauthConnectionItem = RouterOutput['oauth']['listConnections']['connections'][number];
 export type GlobeUserBucket = RouterOutput['globe']['getMarkers']['buckets'][number];
 export type GlobeMarkerUser = RouterOutput['globe']['getMarkers']['buckets'][number]['users'][number];
 export type GlobeBucketUser = RouterOutput['globe']['getBucketUsers']['users'][number];

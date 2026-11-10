@@ -1,6 +1,6 @@
 import { verifyOAuthQueryParams } from '@better-auth/oauth-provider';
 import { TRPCError } from '@trpc/server';
-import { dbOauth, dbOrganization } from 'database';
+import { dbOauth, dbOrganization, type OauthConnectionAccess, type OauthConnectionWithAccess } from 'database';
 import { z } from 'zod';
 import { auth } from '../utils/auth';
 import { loggedInProcedure, router } from '../utils/trpc';
@@ -61,6 +61,72 @@ const accessSchema = z.object({
   projectIds: z.array(z.string()).max(1000),
 });
 
+type Memberships = Awaited<ReturnType<typeof dbOrganization.getUserOrganizationsWithProjects>>;
+
+/** The organizations and projects a user can share, for the consent page and the connected apps settings. */
+function toShareableOrganizations(memberships: Memberships) {
+  return memberships
+    .map(({ organization }) => ({
+      id: organization.id,
+      name: organization.name,
+      projects: organization.project
+        .map((project) => ({ id: project.id, name: project.name, domain: project.domain }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function toAccess(connection: OauthConnectionWithAccess): OauthConnectionAccess {
+  return {
+    allOrganizations: connection.allOrganizations,
+    organizationIds: connection.organizations.map(({ organizationId }) => organizationId),
+    projectIds: connection.projects.map(({ projectId }) => projectId),
+  };
+}
+
+/** Saves what the user shares with the app. Only organizations and projects the user can access themselves. */
+async function saveAccess(userId: string, clientId: string, input: z.infer<typeof accessSchema>) {
+  const { allOrganizations } = input;
+  const organizationIds = [...new Set(input.organizationIds)];
+  const projectIds = [...new Set(input.projectIds)];
+
+  if (!allOrganizations && organizationIds.length === 0 && projectIds.length === 0) {
+    throw new TRPCError({ code: 'BAD_REQUEST', message: 'Please choose at least one organization or project.' });
+  }
+
+  const memberships = await dbOrganization.getUserOrganizationsWithProjects(userId);
+  const ownOrganizationIds = new Set(memberships.map(({ organization }) => organization.id));
+  const ownProjectIds = new Set(memberships.flatMap(({ organization }) => organization.project.map(({ id }) => id)));
+  if (!organizationIds.every((id) => ownOrganizationIds.has(id)) || !projectIds.every((id) => ownProjectIds.has(id))) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'You can only share organizations and projects you can access.',
+    });
+  }
+
+  await dbOauth.saveConnection({ userId, clientId, access: { allOrganizations, organizationIds, projectIds } });
+}
+
+/** How the settings and the consent page show an app. Clients register themselves, so name and logo are theirs. */
+function toClientInfo(client: {
+  clientId: string;
+  name: string | null;
+  uri: string | null;
+  icon: string | null;
+  clientDiscoveryId: string | null;
+}) {
+  return {
+    clientId: client.clientId,
+    name: client.name || 'Unknown app',
+    uri: httpsUrlOrNull(client.uri),
+    icon: httpsUrlOrNull(client.icon),
+    // For Client ID Metadata Documents, the domain that hosts the metadata vouches for the app.
+    metadataHost: client.clientDiscoveryId === 'cimd' ? describeUrl(client.clientId) : null,
+  };
+}
+
+const clientIdSchema = z.object({ clientId: z.string().min(1).max(2000) });
+
 export const oauthRouter = router({
   /** What the consent page shows: the app asking for access, and the organizations and projects the user can share. */
   consentInfo: loggedInProcedure.input(z.object({ oauthQuery: oauthQuerySchema })).query(async ({ ctx, input }) => {
@@ -71,69 +137,51 @@ export const oauthRouter = router({
     ]);
 
     return {
-      client: {
-        // Clients register themselves, so the name alone can't be trusted: the page also shows where users return to,
-        // and for Client ID Metadata Documents the domain that hosts the metadata.
-        name: client.name || 'Unknown app',
-        uri: httpsUrlOrNull(client.uri),
-        icon: httpsUrlOrNull(client.icon),
-        metadataHost: client.clientDiscoveryId === 'cimd' ? describeUrl(client.clientId) : null,
-        redirectTo: describeUrl(redirectUri),
-      },
-      organizations: memberships
-        .map(({ organization }) => ({
-          id: organization.id,
-          name: organization.name,
-          projects: organization.project
-            .map((project) => ({ id: project.id, name: project.name, domain: project.domain }))
-            .sort((a, b) => a.name.localeCompare(b.name)),
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name)),
-      currentAccess: connection
-        ? {
-            allOrganizations: connection.allOrganizations,
-            organizationIds: connection.organizations.map(({ organizationId }) => organizationId),
-            projectIds: connection.projects.map(({ projectId }) => projectId),
-          }
-        : null,
+      // The name alone can't be trusted, so the page also shows where users return to.
+      client: { ...toClientInfo(client), redirectTo: describeUrl(redirectUri) },
+      organizations: toShareableOrganizations(memberships),
+      currentAccess: connection ? toAccess(connection) : null,
     };
   }),
 
-  /**
-   * Saves what the user shares with the app, right before the consent is accepted. Only organizations and projects
-   * the user can access themselves are allowed.
-   */
+  /** Saves what the user shares with the app, right before the consent is accepted. */
   saveAccess: loggedInProcedure
     .input(z.object({ oauthQuery: oauthQuerySchema, access: accessSchema }))
     .mutation(async ({ ctx, input }) => {
       const { client } = await resolveAuthorizationRequest(input.oauthQuery);
-      const { allOrganizations } = input.access;
-      const organizationIds = [...new Set(input.access.organizationIds)];
-      const projectIds = [...new Set(input.access.projectIds)];
-
-      if (!allOrganizations && organizationIds.length === 0 && projectIds.length === 0) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Please choose at least one organization or project.' });
-      }
-
-      const memberships = await dbOrganization.getUserOrganizationsWithProjects(ctx.user.id);
-      const ownOrganizationIds = new Set(memberships.map(({ organization }) => organization.id));
-      const ownProjectIds = new Set(
-        memberships.flatMap(({ organization }) => organization.project.map(({ id }) => id)),
-      );
-      if (
-        !organizationIds.every((id) => ownOrganizationIds.has(id)) ||
-        !projectIds.every((id) => ownProjectIds.has(id))
-      ) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'You can only share organizations and projects you can access.',
-        });
-      }
-
-      await dbOauth.saveConnection({
-        userId: ctx.user.id,
-        clientId: client.clientId,
-        access: { allOrganizations, organizationIds, projectIds },
-      });
+      await saveAccess(ctx.user.id, client.clientId, input.access);
     }),
+
+  /** The connected apps in the account settings, with what each one can access. */
+  listConnections: loggedInProcedure.query(async ({ ctx }) => {
+    const [connections, memberships] = await Promise.all([
+      dbOauth.listConnections(ctx.user.id),
+      dbOrganization.getUserOrganizationsWithProjects(ctx.user.id),
+    ]);
+
+    return {
+      connections: connections.map((connection) => ({
+        client: toClientInfo(connection.client),
+        connectedAt: connection.createdAt,
+        lastUsedAt: connection.lastUsedAt,
+        access: toAccess(connection),
+      })),
+      organizations: toShareableOrganizations(memberships),
+    };
+  }),
+
+  /** Changes what a connected app can access. It applies to its next request. */
+  updateAccess: loggedInProcedure
+    .input(clientIdSchema.extend({ access: accessSchema }))
+    .mutation(async ({ ctx, input }) => {
+      if (!(await dbOauth.findConnection(ctx.user.id, input.clientId))) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'This app is not connected.' });
+      }
+      await saveAccess(ctx.user.id, input.clientId, input.access);
+    }),
+
+  /** Disconnects an app: its tokens stop working right away, and it has to ask for access again. */
+  disconnect: loggedInProcedure.input(clientIdSchema).mutation(async ({ ctx, input }) => {
+    await dbOauth.deleteConnection(ctx.user.id, input.clientId);
+  }),
 });

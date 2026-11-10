@@ -1,23 +1,9 @@
-import {
-  Box,
-  Button,
-  Card,
-  Checkbox,
-  Container,
-  Flex,
-  Heading,
-  Image,
-  Link,
-  Spinner,
-  Stack,
-  Switch,
-  Text,
-} from '@chakra-ui/react';
+import { Box, Button, Card, Container, Flex, Heading, Image, Link, Spinner, Stack, Text } from '@chakra-ui/react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
 import { TbArrowBackUp, TbEye, TbPlugConnected, TbWorld } from 'react-icons/tb';
 import { Logo } from '@/components/logo';
-import { ProjectAccessSelector } from '@/components/pages/settings/organization/members/project-access-selector';
+import { OauthAccessChoice, useOauthAccessChoice } from '@/components/oauth-access-choice';
 import { ErrorState } from '@/components/ui/empty-state';
 import { toaster } from '@/components/ui/toaster';
 import { UserIdentity } from '@/components/user-identity';
@@ -33,27 +19,6 @@ export const Route = createFileRoute('/oauth/consent')({
 });
 
 type ConsentInfo = OauthConsentInfo;
-type Organization = ConsentInfo['organizations'][number];
-
-/** Per organization: shared at all, and if so all its projects (also future ones) or only the chosen ones. */
-type OrganizationChoice = { shared: boolean; restricted: boolean; projectIds: string[] };
-
-function getInitialChoices(info: ConsentInfo) {
-  const access = info.currentAccess;
-  const choices: Record<string, OrganizationChoice> = {};
-  for (const organization of info.organizations) {
-    const chosenProjectIds = organization.projects.map(({ id }) => id).filter((id) => access?.projectIds.includes(id));
-    const sharedFully = !access || access.allOrganizations || access.organizationIds.includes(organization.id);
-    choices[organization.id] = {
-      shared: sharedFully || chosenProjectIds.length > 0,
-      restricted: !sharedFully && chosenProjectIds.length > 0,
-      projectIds: sharedFully ? [] : chosenProjectIds,
-    };
-  }
-  // Users with several organizations share all of them by default, like "All repositories" on GitHub.
-  const allOrganizations = info.organizations.length > 1 && (!access || access.allOrganizations);
-  return { allOrganizations, choices };
-}
 
 async function sendConsent(accept: boolean, oauthQuery: string) {
   const { data, error } = await authClient.$fetch<{ redirect?: boolean; url?: string }>('/oauth2/consent', {
@@ -139,30 +104,12 @@ function PageFrame({ children }: { children: React.ReactNode }) {
 }
 
 function ConsentForm({ info, oauthQuery }: { info: ConsentInfo; oauthQuery: string }) {
-  const initial = useMemo(() => getInitialChoices(info), [info]);
-  const [allOrganizations, setAllOrganizations] = useState(initial.allOrganizations);
-  const [choices, setChoices] = useState(initial.choices);
+  const accessChoice = useOauthAccessChoice(info.organizations, info.currentAccess);
+  const { access, sharesNothing } = accessChoice;
   const [pendingAction, setPendingAction] = useState<'allow' | 'deny' | null>(null);
-  const { client, organizations } = info;
+  const { client } = info;
 
   const { mutateAsync: saveAccess } = trpc.oauth.saveAccess.useMutation();
-
-  const access = {
-    allOrganizations,
-    organizationIds: allOrganizations
-      ? []
-      : organizations.filter(({ id }) => choices[id]?.shared && !choices[id].restricted).map(({ id }) => id),
-    projectIds: allOrganizations
-      ? []
-      : organizations.flatMap(({ id }) =>
-          choices[id]?.shared && choices[id].restricted ? choices[id].projectIds : [],
-        ),
-  };
-  const sharesNothing =
-    !access.allOrganizations && access.organizationIds.length === 0 && access.projectIds.length === 0;
-
-  const updateChoice = (organizationId: string, update: Partial<OrganizationChoice>) =>
-    setChoices((current) => ({ ...current, [organizationId]: { ...current[organizationId], ...update } }));
 
   const onAllow = async () => {
     setPendingAction('allow');
@@ -234,14 +181,7 @@ function ConsentForm({ info, oauthQuery }: { info: ConsentInfo; oauthQuery: stri
         )}
       </Stack>
 
-      <AccessChoice
-        organizations={organizations}
-        allOrganizations={allOrganizations}
-        onAllOrganizationsChange={setAllOrganizations}
-        choices={choices}
-        onChoiceChange={updateChoice}
-        disabled={pendingAction !== null}
-      />
+      <OauthAccessChoice state={accessChoice} disabled={pendingAction !== null} />
 
       <Stack gap={3}>
         <Text fontSize="xs" color="fg.muted" textAlign="center">
@@ -269,95 +209,6 @@ function ConsentForm({ info, oauthQuery }: { info: ConsentInfo; oauthQuery: stri
           </Button>
         </Flex>
       </Stack>
-    </Stack>
-  );
-}
-
-interface AccessChoiceProps {
-  organizations: Organization[];
-  allOrganizations: boolean;
-  onAllOrganizationsChange: (value: boolean) => void;
-  choices: Record<string, OrganizationChoice>;
-  onChoiceChange: (organizationId: string, update: Partial<OrganizationChoice>) => void;
-  disabled: boolean;
-}
-
-function AccessChoice(props: AccessChoiceProps) {
-  const { organizations, allOrganizations, onAllOrganizationsChange, choices, onChoiceChange, disabled } = props;
-
-  if (organizations.length === 0) {
-    return (
-      <Text fontSize="sm" color="fg.muted" textAlign="center">
-        You don&apos;t have any projects yet. Create a project in Vemetric first, then connect again.
-      </Text>
-    );
-  }
-
-  const renderProjects = (organization: Organization) => {
-    const choice = choices[organization.id];
-    return (
-      <ProjectAccessSelector
-        projects={organization.projects}
-        selectedProjectIds={choice.projectIds}
-        onSelectionChange={(projectIds) => onChoiceChange(organization.id, { projectIds })}
-        hasRestrictions={choice.restricted}
-        onRestrictionsChange={(restricted) => onChoiceChange(organization.id, { restricted, projectIds: [] })}
-        disabled={disabled}
-        fullAccessText="Access to all current and future projects of this organization."
-        restrictTooltip="When enabled, only the selected projects are shared. Projects created later won't be added."
-      />
-    );
-  };
-
-  if (organizations.length === 1) {
-    return renderProjects(organizations[0]);
-  }
-
-  return (
-    <Stack gap={4}>
-      <Flex justify="space-between" align="center" gap={3}>
-        <Text fontSize="sm" fontWeight="medium">
-          Share all organizations
-        </Text>
-        <Switch.Root
-          colorPalette="purple"
-          size="sm"
-          checked={allOrganizations}
-          onCheckedChange={(e) => onAllOrganizationsChange(e.checked)}
-          disabled={disabled}
-        >
-          <Switch.HiddenInput />
-          <Switch.Control>
-            <Switch.Thumb />
-          </Switch.Control>
-        </Switch.Root>
-      </Flex>
-      {allOrganizations ? (
-        <Text fontSize="sm" color="fg.muted">
-          Access to all projects of all your organizations, also ones you create or join later.
-        </Text>
-      ) : (
-        <Stack gap={3}>
-          {organizations.map((organization) => {
-            const choice = choices[organization.id];
-            return (
-              <Box key={organization.id} borderWidth="1px" rounded="md" p={3}>
-                <Checkbox.Root
-                  colorPalette="purple"
-                  checked={choice.shared}
-                  onCheckedChange={(e) => onChoiceChange(organization.id, { shared: !!e.checked })}
-                  disabled={disabled}
-                >
-                  <Checkbox.HiddenInput />
-                  <Checkbox.Control />
-                  <Checkbox.Label fontWeight="medium">{organization.name}</Checkbox.Label>
-                </Checkbox.Root>
-                {choice.shared && <Box mt={3}>{renderProjects(organization)}</Box>}
-              </Box>
-            );
-          })}
-        </Stack>
-      )}
     </Stack>
   );
 }

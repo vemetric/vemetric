@@ -35,6 +35,28 @@ export const dbOauth = {
 
   findClient: (clientId: string) => prismaClient.oauthClient.findUnique({ where: { clientId } }),
 
+  /** The user's connected apps, newest first, with when each last got an access token (i.e. was last used). */
+  listConnections: async (userId: string) => {
+    const connections = await prismaClient.oauthConnection.findMany({
+      where: { userId },
+      include: {
+        ...connectionInclude,
+        client: { select: { clientId: true, name: true, icon: true, uri: true, clientDiscoveryId: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    const lastTokens = await prismaClient.oauthAccessToken.groupBy({
+      by: ['clientId'],
+      where: { userId, clientId: { in: connections.map(({ clientId }) => clientId) } },
+      _max: { createdAt: true },
+    });
+    const lastUsedAt = new Map(lastTokens.map(({ clientId, _max }) => [clientId, _max.createdAt]));
+    return connections.map((connection) => ({
+      ...connection,
+      lastUsedAt: lastUsedAt.get(connection.clientId) ?? null,
+    }));
+  },
+
   findConnection: (userId: string, clientId: string): Promise<OauthConnectionWithAccess | null> =>
     prismaClient.oauthConnection.findUnique({
       where: { userId_clientId: { userId, clientId } },

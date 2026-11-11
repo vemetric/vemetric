@@ -26,8 +26,8 @@ type Table = (typeof TABLES)[number];
 
 const VEMETRIC_TYPES = ['none', 'search', 'social', 'email', 'paid', 'llm', 'unknown', 'internal'];
 
-// Names that changed in the referrer list (`renamedReferrers` in fetch-referrers.ts). Rows typed `unknown` are
-// skipped: there the name is a raw ref/utm_source value, not the list name.
+// Names that changed in the referrer list (`renamedReferrers` in fetch-referrers.ts). Rows typed `unknown`,
+// `internal` or `direct` are skipped: there the name is a raw ref/utm_source value, not the list name.
 const RENAMED_REFERRERS: Record<string, string> = { Twitter: 'X' };
 
 const quote = (value: string) => `'${value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
@@ -50,7 +50,7 @@ async function findListKeysStoredAsUnknown(client: ClickHouseClient) {
   return Array.from(found).sort();
 }
 
-const renamedCondition = `(referrer IN (${Object.keys(RENAMED_REFERRERS).map(quote).join(', ')}) AND referrerType <> 'unknown')`;
+const renamedCondition = `(referrer IN (${Object.keys(RENAMED_REFERRERS).map(quote).join(', ')}) AND referrerType NOT IN ('unknown', 'direct', 'internal'))`;
 
 function getCondition(table: Table, keys: string[]) {
   const listed = keys.length ? ` OR referrer IN (${keys.map(quote).join(', ')})` : '';

@@ -1,6 +1,6 @@
 import { AbsoluteCenter, Box, Button, Card, Flex, Image, Spinner, Stack, Text } from '@chakra-ui/react';
 import { format, formatDistanceToNow } from 'date-fns';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { TbAlertTriangle, TbPlugConnected } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import {
@@ -142,6 +142,8 @@ interface EditAccessDialogProps {
 const EditAccessDialog = ({ connection, organizations, onClose }: EditAccessDialogProps) => {
   const utils = trpc.useUtils();
   const accessChoice = useOauthAccessChoice(organizations, connection.access);
+  // Focus "Save" instead of the first switch, so the dialog doesn't open with a focus ring on the access choice.
+  const saveButtonRef = useRef<HTMLButtonElement>(null);
   const { mutate: updateAccess, isPending } = trpc.oauth.updateAccess.useMutation({
     onSuccess: () => {
       utils.oauth.listConnections.invalidate();
@@ -154,7 +156,7 @@ const EditAccessDialog = ({ connection, organizations, onClose }: EditAccessDial
   });
 
   return (
-    <DialogRoot open onOpenChange={onClose}>
+    <DialogRoot open onOpenChange={onClose} initialFocusEl={() => saveButtonRef.current}>
       <DialogContent mt={20}>
         <DialogHeader>
           <DialogTitle>Change access of {connection.client.name}</DialogTitle>
@@ -167,6 +169,7 @@ const EditAccessDialog = ({ connection, organizations, onClose }: EditAccessDial
             Cancel
           </Button>
           <Button
+            ref={saveButtonRef}
             colorPalette="purple"
             loading={isPending}
             disabled={accessChoice.sharesNothing}

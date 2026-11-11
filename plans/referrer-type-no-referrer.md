@@ -317,7 +317,7 @@ UNION ALL SELECT 'user', count() FROM user
   | | `Paid Search`, `Paid Social`, `Display` (none in production yet) | `paid` |
   | | `Direct` with a referrer, `Referral`, anything else | `unknown` |
 
-  Steps 2–3 follow the worker's `getReferrer` (same list, same `www.` handling, same own-domain rule); the helper (`apps/worker/src/migrations/pirsch-referrer.ts`) looks the list up directly, because it has to know whether the list has an entry before falling back to the channel. Pirsch's `referrer_name` stays the `referrer` when the list has no entry. Imported rows then get the same type and name as natively tracked ones.
+  Steps 2–3 follow the worker's `getReferrer` (same list, same `www.` handling, same own-domain rule); the helper (`resolvePirschReferrer` in `apps/worker/src/migrations/pirsch-data-import.ts`) looks the list up directly, because it has to know whether the list has an entry before falling back to the channel. Pirsch's `referrer_name` stays the `referrer` when the list has no entry. Imported rows then get the same type and name as natively tracked ones.
 - **Backfill (existing imported rows): one fixed statement per table**, a simplified version of the importer mapping:
   - empty `referrer` and `referrerUrl` → `none`;
   - Pirsch's `Direct` with a referrer → the list type of the URL host, for the hosts found by query K (the list types of those hosts); other hosts → `unknown`;

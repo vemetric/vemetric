@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolvePirschReferrer } from '../../src/migrations/pirsch-referrer';
+import { resolvePirschReferrer } from '../../src/migrations/pirsch-data-import';
 
 describe('resolvePirschReferrer', () => {
   it('maps an empty referrer to none, whatever the channel', () => {

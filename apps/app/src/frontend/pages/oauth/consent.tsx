@@ -1,7 +1,7 @@
 import { Box, Button, Card, Container, Flex, Heading, Image, Link, Spinner, Stack, Text } from '@chakra-ui/react';
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, Link as RouterLink } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
-import { TbArrowBackUp, TbEye, TbPlugConnected, TbWorld } from 'react-icons/tb';
+import { TbArrowBackUp, TbEye, TbFolderPlus, TbPlugConnected, TbWorld } from 'react-icons/tb';
 import { Logo } from '@/components/logo';
 import { OauthAccessChoice, useOauthAccessChoice } from '@/components/oauth-access-choice';
 import { ErrorState } from '@/components/ui/empty-state';
@@ -131,6 +131,33 @@ function ConsentForm({ info, oauthQuery }: { info: ConsentInfo; oauthQuery: stri
       toaster.create({ title: 'Error', description: (err as Error).message, type: 'error' });
     }
   };
+
+  // Without any project there's nothing to share, so the page only says what to do instead.
+  if (!info.organizations.some(({ projects }) => projects.length > 0)) {
+    return (
+      <Stack gap={6} pt={2} align="center" textAlign="center">
+        <Box p={4} bg="purple.subtle" color="purple.fg" borderRadius="full">
+          <TbFolderPlus size={28} />
+        </Box>
+        <Stack gap={2}>
+          <Heading size="lg">Create a project first</Heading>
+          <Text color="fg.muted">
+            <strong>{client.name}</strong> wants to access your analytics data, but you don&apos;t have a project in
+            Vemetric yet.
+          </Text>
+          <Text color="fg.muted">Create your first project, then connect {client.name} again.</Text>
+        </Stack>
+        <Flex gap={3} w="full">
+          <Button flex="1" variant="outline" onClick={onDeny} loading={pendingAction === 'deny'}>
+            Cancel
+          </Button>
+          <Button flex="1" colorPalette="purple" asChild disabled={!!pendingAction}>
+            <RouterLink to="/">Create a project</RouterLink>
+          </Button>
+        </Flex>
+      </Stack>
+    );
+  }
 
   return (
     <Stack gap={6} pt={2}>

@@ -130,7 +130,7 @@ function InvitePage() {
                       <TbCheck />
                       Accept Invitation
                     </Button>
-                    <Button asChild variant="outline">
+                    <Button asChild variant="surface">
                       <RouterLink to="/">Go to Dashboard</RouterLink>
                     </Button>
                     <Flex align="center" gap={2} justify="center" flexWrap="wrap" mt={2} color="fg.muted">

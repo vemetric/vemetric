@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { TbArrowBackUp, TbEye, TbFolderPlus, TbPlugConnected, TbWorld } from 'react-icons/tb';
 import { Logo } from '@/components/logo';
 import { OauthAccessChoice, useOauthAccessChoice } from '@/components/oauth-access-choice';
+import { SignedInAs } from '@/components/signed-in-as';
 import { ErrorState } from '@/components/ui/empty-state';
 import { toaster } from '@/components/ui/toaster';
-import { UserIdentity } from '@/components/user-identity';
 import { authClient } from '@/utils/auth';
 import { requireAuthentication } from '@/utils/auth-guards';
 import { clearPendingOauthAuthorize, getSignedOauthQuery } from '@/utils/oauth-flow';
@@ -70,18 +70,7 @@ function ConsentPage() {
   return (
     <PageFrame>
       <ConsentForm info={info} oauthQuery={oauthQuery} />
-      {session?.user && (
-        <Flex align="center" gap={2} justify="center" flexWrap="wrap" mt={5} color="fg.muted">
-          <Text fontSize="sm" flexShrink="0">
-            Signed in as
-          </Text>
-          <UserIdentity
-            displayName={session.user.name || session.user.email || 'Unnamed'}
-            image={session.user.image}
-            avatarSize="2xs"
-          />
-        </Flex>
-      )}
+      {session?.user && <SignedInAs user={session.user} mt={5} />}
     </PageFrame>
   );
 }

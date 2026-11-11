@@ -216,7 +216,7 @@ export const TopSourcesCard = ({ filterConfig, publicDashboard }: Props) => {
                           </Tooltip>
                         ) : isDirect && sourceValue.referrer === 'referrer' ? (
                           <Tooltip
-                            content="Visits without a referrer (type None) and visits from your own domain (type Internal)"
+                            content="Visits without a referrer and visits from your own domain"
                             positioning={{ placement: 'bottom-start' }}
                           >
                             <Flex align="center" gap={1.5}>

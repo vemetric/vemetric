@@ -25,6 +25,9 @@ type ReferrerData = Record<
 // worker, not by the list.
 const REFERRER_TYPES = ['none', 'search', 'social', 'llm', 'email', 'paid', 'unknown', 'internal'];
 
+// Names that differ from the source list. Existing rows are renamed by src/migrations/backfill-referrer-types.ts.
+const renamedReferrers: Record<string, string> = { Twitter: 'X' };
+
 const customReferrers = {
   'bsky.app': { name: 'Bluesky', type: 'social' },
   'chatgpt.com': { name: 'ChatGPT', type: 'llm' },
@@ -90,16 +93,18 @@ function transformReferrerData(originalData: OriginalReferrerData): {
   for (const [type, sources] of Object.entries(originalData)) {
     // Iterate through each source and its domains
     for (const [sourceName, sourceData] of Object.entries(sources)) {
+      const name = renamedReferrers[sourceName] ?? sourceName;
       // Add each domain as a key in the transformed data
       for (const originalDomain of sourceData.domains) {
         const domain = originalDomain.startsWith('www.') ? originalDomain.slice(4) : originalDomain;
 
-        if (!referrerUrlMap[sourceName]) {
-          referrerUrlMap[sourceName] = domain;
+        // Renamed sources take their icon domain from the custom entries (e.g. X → x.com).
+        if (!referrerUrlMap[name] && !renamedReferrers[sourceName]) {
+          referrerUrlMap[name] = domain;
         }
 
         transformedData[domain] = {
-          name: sourceName,
+          name,
           type: type,
         };
       }

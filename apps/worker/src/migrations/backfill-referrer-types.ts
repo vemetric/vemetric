@@ -5,6 +5,7 @@
 // - `direct` (a page on the project's own domain) → `internal`
 // - `unknown` rows whose referrer is a key of the referrer list (entries added after the rows were stored) →
 //   the list's type and name
+// - renamed list entries (`RENAMED_REFERRERS`, e.g. Twitter → X), imported rows included
 // - Pirsch imports: channel names → Vemetric types (`--table=pirsch`)
 //
 // Run it after the deploy, when the new workers are live. All statements are idempotent.
@@ -24,6 +25,10 @@ const TABLES = ['session_v3', 'event', 'user'] as const;
 type Table = (typeof TABLES)[number];
 
 const VEMETRIC_TYPES = ['none', 'search', 'social', 'email', 'paid', 'llm', 'unknown', 'internal'];
+
+// Names that changed in the referrer list (`renamedReferrers` in fetch-referrers.ts). Rows typed `unknown` are
+// skipped: there the name is a raw ref/utm_source value, not the list name.
+const RENAMED_REFERRERS: Record<string, string> = { Twitter: 'X' };
 
 const quote = (value: string) => `'${value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
 const list = (values: string[]) => `[${values.map(quote).join(', ')}]`;
@@ -45,11 +50,16 @@ async function findListKeysStoredAsUnknown(client: ClickHouseClient) {
   return Array.from(found).sort();
 }
 
+const renamedCondition = `(referrer IN (${Object.keys(RENAMED_REFERRERS).map(quote).join(', ')}) AND referrerType <> 'unknown')`;
+
 function getCondition(table: Table, keys: string[]) {
   const listed = keys.length ? ` OR referrer IN (${keys.map(quote).join(', ')})` : '';
   const condition = `(referrerType = 'direct' OR (referrerType = 'unknown' AND ((referrer = '' AND referrerUrl = '')${listed})))`;
-  // The importer writes Pirsch's channel names; those rows are handled by the Pirsch statement.
-  return table === 'user' ? condition : `importSource = '' AND ${condition}`;
+  // The importer writes Pirsch's channel names; their types are handled by the Pirsch statement. Renames apply to
+  // imported rows too.
+  return table === 'user'
+    ? `${condition} OR ${renamedCondition}`
+    : `(importSource = '' AND ${condition}) OR ${renamedCondition}`;
 }
 
 function buildStatement(table: Table, keys: string[], partition?: string) {
@@ -58,10 +68,11 @@ function buildStatement(table: Table, keys: string[], partition?: string) {
   const names = list(entries.map((entry) => entry.name));
   const keyList = list(keys);
 
-  // transform() doesn't accept empty arrays.
+  // transform() doesn't accept empty arrays. A renamed name is never a list key, so the type stays as it is.
   const listedType = keys.length ? `transform(referrer, ${keyList}, ${types}, referrerType)` : 'referrerType';
+  const renamed = `${renamedCondition}, transform(referrer, ${list(Object.keys(RENAMED_REFERRERS))}, ${list(Object.values(RENAMED_REFERRERS))}, referrer)`;
   const listedName = keys.length
-    ? `,\n    referrer = if(referrerType = 'unknown', transform(referrer, ${keyList}, ${names}, referrer), referrer)`
+    ? `,\n      referrerType = 'unknown', transform(referrer, ${keyList}, ${names}, referrer)`
     : '';
 
   // `referrerUrl = referrerUrl` writes the column in old parts where it isn't materialized yet: there its value
@@ -70,7 +81,10 @@ function buildStatement(table: Table, keys: string[], partition?: string) {
     referrerType = multiIf(
       referrerType = 'direct', 'internal',
       referrer = '' AND referrerUrl = '', 'none',
-      ${listedType})${listedName},
+      ${listedType}),
+    referrer = multiIf(
+      ${renamed}${listedName},
+      referrer),
     referrerUrl = referrerUrl${partition ? `\n  IN PARTITION ${quote(partition)}` : ''}
   WHERE ${getCondition(table, keys)}`;
 }

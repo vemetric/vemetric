@@ -17,7 +17,7 @@ describe('resolvePirschReferrer', () => {
     expect(
       resolvePirschReferrer({ channel: 'Direct', referrer_name: 'Twitter', referrer: 'https://t.co/abc' }),
     ).toEqual({
-      referrer: 'Twitter',
+      referrer: 'X',
       referrerUrl: 'https://t.co/abc',
       referrerType: 'social',
     });

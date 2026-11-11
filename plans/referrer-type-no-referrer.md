@@ -451,6 +451,7 @@ Production results (queries I and I2, 2026-11-10; sessions across all projects, 
   2. keeps those that are keys of `referrers` in `apps/worker/src/consts/referrers.ts`,
   3. writes the `transform` arrays (name and type per key) and the `IN (…)` list from them.
   This keeps the statement short (the full list has about 2,100 keys, close to ClickHouse's 256 KiB `max_query_size`), and the script prints the statement for review before running it. Imported Pirsch rows are left out (3.3 maps them by channel).
+- **Twitter → X** (decided 2026-11-11): the Snowplow list names `twitter.com`, `t.co` and `com.twitter.android` "Twitter", while `x.com` was already "X" in `customReferrers`, so the referrer tab split one source into two rows. `fetch-referrers.ts` renames list sources via `renamedReferrers` (`Twitter` → `X`, icon domain stays `api.x.com`). The backfill renames stored `Twitter` rows to `X` in the same mutation (`RENAMED_REFERRERS`), imported Pirsch rows included; rows typed `unknown` are skipped, there `Twitter` is a raw `ref`/`utm_source` value. Saved filters or bookmarked URLs with the referrer `Twitter` stop matching after the backfill.
 - **Tests:** `referrer.test.ts`: `https://kagi.com/search?q=…` gives `{ referrer: 'Kagi', referrerType: 'search' }`, `https://cn.bing.com/` gives Bing, `https://www.kimi.com/` gives Kimi (`www.` removed), `?ref=kagi.com` gives Kagi.
 
 ### 3.10 First visit on the `user` table

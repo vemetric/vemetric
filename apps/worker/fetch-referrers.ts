@@ -21,6 +21,13 @@ type ReferrerData = Record<
   }
 >;
 
+// Order of the referrer type filter. `none` (no referrer) and `internal` (the project's own domain) are set by the
+// worker, not by the list.
+const REFERRER_TYPES = ['none', 'search', 'social', 'llm', 'email', 'paid', 'unknown', 'internal'];
+
+// Names that differ from the source list. Existing rows are renamed by src/migrations/backfill-referrer-types.ts.
+const renamedReferrers: Record<string, string> = { Twitter: 'X' };
+
 const customReferrers = {
   'bsky.app': { name: 'Bluesky', type: 'social' },
   'chatgpt.com': { name: 'ChatGPT', type: 'llm' },
@@ -47,6 +54,32 @@ const customReferrers = {
   'l.threads.com': { name: 'Threads', type: 'social' },
   'copilot.microsoft.com': { name: 'Microsoft Copilot', type: 'llm' },
   'discord.com': { name: 'Discord', type: 'social' },
+  'kagi.com': { name: 'Kagi', type: 'search' },
+  'cn.bing.com': { name: 'Bing', type: 'search' },
+  'noai.duckduckgo.com': { name: 'DuckDuckGo', type: 'search' },
+  'html.duckduckgo.com': { name: 'DuckDuckGo', type: 'search' },
+  'start.duckduckgo.com': { name: 'DuckDuckGo', type: 'search' },
+  'r.search.yahoo.com': { name: 'Yahoo!', type: 'search' },
+  'ph.search.yahoo.com': { name: 'Yahoo!', type: 'search' },
+  'startpage.com': { name: 'Startpage', type: 'search' },
+  'safe.search.brave.com': { name: 'Brave', type: 'search' },
+  'yandex.uz': { name: 'Yandex', type: 'search' },
+  'search.nortonsafesearch.com': { name: 'Norton Safe Search', type: 'search' },
+  'doubao.com': { name: 'Doubao', type: 'llm' },
+  'kimi.com': { name: 'Kimi', type: 'llm' },
+  'copilot.com': { name: 'Microsoft Copilot', type: 'llm' },
+  'edgeservices.bing.com': { name: 'Microsoft Copilot', type: 'llm' },
+  'grok.com': { name: 'Grok', type: 'llm' },
+  'notebooklm.google.com': { name: 'NotebookLM', type: 'llm' },
+  'aistudio.google.com': { name: 'Google AI Studio', type: 'llm' },
+  'vertexaisearch.cloud.google.com': { name: 'Google Gemini', type: 'llm' },
+  gemini: { name: 'Google Gemini', type: 'llm' },
+  openai: { name: 'ChatGPT', type: 'llm' },
+  'm.youtube.com': { name: 'Youtube', type: 'social' },
+  'go.bsky.app': { name: 'Bluesky', type: 'social' },
+  'teams.public.onecdn.static.microsoft': { name: 'Microsoft Teams', type: 'social' },
+  'l.wl.co': { name: 'WhatsApp', type: 'social' },
+  threads: { name: 'Threads', type: 'social' },
 };
 
 function transformReferrerData(originalData: OriginalReferrerData): {
@@ -60,16 +93,18 @@ function transformReferrerData(originalData: OriginalReferrerData): {
   for (const [type, sources] of Object.entries(originalData)) {
     // Iterate through each source and its domains
     for (const [sourceName, sourceData] of Object.entries(sources)) {
+      const name = renamedReferrers[sourceName] ?? sourceName;
       // Add each domain as a key in the transformed data
       for (const originalDomain of sourceData.domains) {
         const domain = originalDomain.startsWith('www.') ? originalDomain.slice(4) : originalDomain;
 
-        if (!referrerUrlMap[sourceName]) {
-          referrerUrlMap[sourceName] = domain;
+        // Renamed sources take their icon domain from the custom entries (e.g. X → x.com).
+        if (!referrerUrlMap[name] && !renamedReferrers[sourceName]) {
+          referrerUrlMap[name] = domain;
         }
 
         transformedData[domain] = {
-          name: sourceName,
+          name,
           type: type,
         };
       }
@@ -116,11 +151,15 @@ export const referrers = ${JSON.stringify({ ...transformedData, ...customReferre
     const referrerTypes = new Set(
       Object.values({ ...transformedData, ...customReferrers }).map((referrer) => referrer.type),
     );
+    const missingTypes = Array.from(referrerTypes).filter((type) => !REFERRER_TYPES.includes(type));
+    if (missingTypes.length) {
+      throw new Error(`New referrer types in the source list, add them to REFERRER_TYPES: ${missingTypes.join(', ')}`);
+    }
 
     const tsContentTypes = `// Auto-generated file from fetch-referrers.ts
     
 export const REFERRER_URL_MAP = ${JSON.stringify(referrerUrlMap)};
-export const REFERRER_TYPES = ${JSON.stringify([...Array.from(referrerTypes), 'direct'])};`;
+export const REFERRER_TYPES = ${JSON.stringify(REFERRER_TYPES)};`;
 
     const outputPathTypes = join(process.cwd(), '..', 'app', 'src', 'frontend', 'consts', 'referrer-types.ts');
     writeFileSync(outputPathTypes, tsContentTypes, 'utf-8');

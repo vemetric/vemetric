@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hasMultipleSubfiltersActive, type IFilter } from '../src/filters';
+import { filterConfigSchema, hasMultipleSubfiltersActive, type IFilter } from '../src/filters';
 
 describe('hasMultipleSubfiltersActive', () => {
   it('should return false for a filter with no active subfilters', () => {
@@ -27,5 +27,20 @@ describe('hasMultipleSubfiltersActive', () => {
       pathFilter: { operator: 'startsWith', value: '/blog' },
     };
     expect(hasMultipleSubfiltersActive(filter)).toBe(true);
+  });
+});
+
+describe('referrer type filter', () => {
+  it('reads the old name direct as internal', () => {
+    const parsed = filterConfigSchema.parse({
+      operator: 'and',
+      filters: [
+        { type: 'referrerType', referrerTypeFilter: { operator: 'oneOf', value: ['direct', 'internal', 'none'] } },
+      ],
+    });
+    expect(parsed?.filters[0]).toEqual({
+      type: 'referrerType',
+      referrerTypeFilter: { operator: 'oneOf', value: ['internal', 'none'] },
+    });
   });
 });

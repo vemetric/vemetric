@@ -125,7 +125,7 @@ const referrerApiFilterSchema = z
     }),
     value: apiStringFilterSchema.shape.value.openapi({
       description:
-        'Referrer value to match, as returned when grouping by `referrer` (e.g. "Google"). An empty string matches visits without a referrer and visits from the project\'s own domain (referrer type `direct`).',
+        'Referrer value to match, as returned when grouping by `referrer` (e.g. "Google"). An empty string matches visits without a referrer and visits from the project\'s own domain (referrer type `internal`). For visits without a referrer only, filter by the referrer type `none`.',
       example: 'Google',
     }),
     operator: apiStringFilterSchema.shape.operator.openapi({
@@ -172,7 +172,7 @@ const referrerTypeApiFilterSchema = z
     }),
     value: listFilterSchema.shape.value.openapi({
       description:
-        "List of referrer types to match: `search`, `social`, `llm`, `email`, `paid`, `direct` (a page on the project's own domain, e.g. a link from your app to your website; not visits without a referrer) or `unknown` (no referrer, or a website that isn't in Vemetric's list of known sources).",
+        "List of referrer types to match: `none` (no referrer: typed in, bookmarks, apps), `search`, `social`, `llm`, `email`, `paid`, `internal` (came from a page on the project's own domain, e.g. a link from your app to your website; `direct` is accepted as an old name) or `unknown` (a website or source that isn't in Vemetric's list of known sources; visits without a referrer are `none`).",
       example: ['search', 'social'],
     }),
     operator: listFilterSchema.shape.operator.openapi({

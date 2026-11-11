@@ -1,5 +1,6 @@
 import { Button, createListCollection, Flex, Grid, Tag, Text } from '@chakra-ui/react';
 import type { IReferrerTypeFilter } from '@vemetric/common/filters';
+import { getReferrerTypeLabel, REFERRER_TYPE_DESCRIPTIONS } from '@vemetric/common/sources';
 import { produce } from 'immer';
 import { useState } from 'react';
 import { TbDirectionSign } from 'react-icons/tb';
@@ -46,10 +47,10 @@ export const ReferrerTypeFilterForm = ({ filter: _filter, onSubmit, buttonText }
           values={createListCollection({
             items: REFERRER_TYPES.map((type) => ({
               label: (
-                <Tag.Root>
+                <Tag.Root title={REFERRER_TYPE_DESCRIPTIONS[type]}>
                   <Tag.Label display="flex" gap={1} alignItems="center">
                     <ReferrerTypeIcon referrerType={type} />
-                    <Text>{type}</Text>
+                    <Text>{getReferrerTypeLabel(type)}</Text>
                   </Tag.Label>
                 </Tag.Root>
               ),

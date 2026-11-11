@@ -1,4 +1,5 @@
 import { z } from '@hono/zod-openapi';
+import { normalizeReferrerType } from './sources';
 
 const anyOperator = z.literal('any');
 const andOperator = z.literal('and');
@@ -115,7 +116,10 @@ export type IReferrerUrlFilter = z.infer<typeof referrerUrlFilterSchema>;
 
 const referrerTypeFilterSchema = z.object({
   type: z.literal('referrerType'),
-  referrerTypeFilter: listFilterSchema.optional(),
+  // `direct` is the old name of `internal`: old links and saved filters show and keep working as `internal`.
+  referrerTypeFilter: listFilterSchema
+    .transform((filter) => ({ ...filter, value: Array.from(new Set(filter.value.map(normalizeReferrerType))) }))
+    .optional(),
 });
 export type IReferrerTypeFilter = z.infer<typeof referrerTypeFilterSchema>;
 

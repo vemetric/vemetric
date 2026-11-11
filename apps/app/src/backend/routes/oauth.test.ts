@@ -45,7 +45,7 @@ const client = {
   clientId: 'client_1',
   name: 'Claude',
   uri: 'https://claude.ai',
-  icon: 'http://insecure.example.com/logo.png',
+  icon: 'https://example.com/logo.png',
   clientDiscoveryId: null,
   disabled: false,
 };
@@ -95,8 +95,8 @@ describe('oauth router', () => {
       expect(info.client).toEqual({
         clientId: 'client_1',
         name: 'Claude',
-        uri: 'https://claude.ai',
-        // Only https logos, since clients choose them themselves.
+        // Dynamically registered apps choose their website and logo themselves, so they aren't shown.
+        uri: null,
         icon: null,
         metadataHost: null,
         redirectTo: 'claude.ai',
@@ -106,7 +106,7 @@ describe('oauth router', () => {
       expect(info.currentAccess).toBeNull();
     });
 
-    it('names the domain of a client metadata document', async () => {
+    it('names the domain of a client metadata document and shows its website and logo', async () => {
       (findClientMock as Mock).mockResolvedValue({
         ...client,
         clientId: 'https://cursor.com/oauth/client.json',
@@ -116,6 +116,21 @@ describe('oauth router', () => {
       const info = await caller.consentInfo({ oauthQuery: OAUTH_QUERY });
 
       expect(info.client.metadataHost).toBe('cursor.com');
+      expect(info.client.uri).toBe('https://claude.ai');
+      expect(info.client.icon).toBe('https://example.com/logo.png');
+    });
+
+    it('shows logos of client metadata documents only over https', async () => {
+      (findClientMock as Mock).mockResolvedValue({
+        ...client,
+        icon: 'http://insecure.example.com/logo.png',
+        clientId: 'https://cursor.com/oauth/client.json',
+        clientDiscoveryId: 'cimd',
+      });
+
+      const info = await caller.consentInfo({ oauthQuery: OAUTH_QUERY });
+
+      expect(info.client.icon).toBeNull();
     });
   });
 

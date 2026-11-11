@@ -147,14 +147,14 @@ function ConsentForm({ info, oauthQuery }: { info: ConsentInfo; oauthQuery: stri
           </Text>
           <Text color="fg.muted">Create your first project, then connect {client.name} again.</Text>
         </Stack>
-        <Flex gap={3} w="full">
-          <Button flex="1" variant="outline" onClick={onDeny} loading={pendingAction === 'deny'}>
-            Cancel
-          </Button>
-          <Button flex="1" colorPalette="purple" asChild disabled={!!pendingAction}>
+        <Stack gap={3} w="full">
+          <Button colorPalette="purple" size="lg" asChild disabled={!!pendingAction}>
             <RouterLink to="/">Create a project</RouterLink>
           </Button>
-        </Flex>
+          <Button variant="surface" onClick={onDeny} loading={pendingAction === 'deny'}>
+            Cancel
+          </Button>
+        </Stack>
       </Stack>
     );
   }
@@ -215,26 +215,21 @@ function ConsentForm({ info, oauthQuery }: { info: ConsentInfo; oauthQuery: stri
           Only allow apps you trust. You can change or remove the access anytime in your account settings under
           Connected apps.
         </Text>
-        <Flex gap={3}>
+        {/* Like the team invitation page: the main action on top, the alternative below. */}
+        <Stack gap={3}>
           <Button
-            flex="1"
-            variant="outline"
-            onClick={onDeny}
-            loading={pendingAction === 'deny'}
-            disabled={!!pendingAction}
-          >
-            Cancel
-          </Button>
-          <Button
-            flex="1"
             colorPalette="purple"
+            size="lg"
             onClick={onAllow}
             loading={pendingAction === 'allow'}
             disabled={!!pendingAction || sharesNothing}
           >
             Allow access
           </Button>
-        </Flex>
+          <Button variant="surface" onClick={onDeny} loading={pendingAction === 'deny'} disabled={!!pendingAction}>
+            Cancel
+          </Button>
+        </Stack>
       </Stack>
     </Stack>
   );

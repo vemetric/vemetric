@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { TbAlertTriangle, TbPlugConnected } from 'react-icons/tb';
 import { CardIcon } from '@/components/card-icon';
 import {
-  describeOauthAccess,
+  summarizeOauthAccess,
   OauthAccessChoice,
   useOauthAccessChoice,
   type ShareableOrganization,
@@ -110,9 +110,7 @@ const ConnectedAppCard = ({ connection, organizations, onEdit, onDisconnect }: C
                 Registered by {client.metadataHost}
               </Text>
             )}
-            <Text fontSize="sm" color="fg.muted">
-              Access: {describeOauthAccess(connection.access, organizations)}
-            </Text>
+            <AccessSummary connection={connection} organizations={organizations} />
             <Text fontSize="xs" color="fg.muted">
               Connected on {format(new Date(connection.connectedAt), 'PP')}
               {connection.lastUsedAt &&
@@ -130,6 +128,40 @@ const ConnectedAppCard = ({ connection, organizations, onEdit, onDisconnect }: C
         </Flex>
       </Card.Body>
     </Card.Root>
+  );
+};
+
+/** One line per organization: "Acme: all projects" or "Acme: Shop, Blog". */
+const AccessSummary = ({ connection, organizations }: Omit<ConnectedAppCardProps, 'onEdit' | 'onDisconnect'>) => {
+  const summary = summarizeOauthAccess(connection.access, organizations);
+
+  if (summary.allOrganizations) {
+    return (
+      <Text fontSize="sm" color="fg.muted">
+        All organizations and projects, also future ones
+      </Text>
+    );
+  }
+
+  if (summary.organizations.length === 0) {
+    return (
+      <Text fontSize="sm" color="fg.muted">
+        No projects (the shared ones were deleted or you lost access to them)
+      </Text>
+    );
+  }
+
+  return (
+    <Stack gap={0.5} fontSize="sm" color="fg.muted">
+      {summary.organizations.map((organization) => (
+        <Text key={organization.id}>
+          <Text as="span" fontWeight="medium" color="fg">
+            {organization.name}:
+          </Text>{' '}
+          {organization.projects === 'all' ? 'all projects' : organization.projects.join(', ')}
+        </Text>
+      ))}
+    </Stack>
   );
 };
 

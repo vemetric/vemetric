@@ -141,17 +141,26 @@ export function OauthAccessChoice({ state, disabled }: { state: AccessChoiceStat
   );
 }
 
-/** A short summary of what an app can access, e.g. "All organizations" or "Acme (all projects), 2 projects". */
-export function describeOauthAccess(access: OauthAccess, organizations: ShareableOrganization[]): string {
+/** What an app can access per organization: all its projects (also future ones) or the chosen ones. */
+type OrganizationAccess = { id: string; name: string; projects: 'all' | string[] };
+export type OauthAccessSummary =
+  { allOrganizations: true } | { allOrganizations: false; organizations: OrganizationAccess[] };
+
+/** Groups an app's access by organization, so organization-wide and individual access read the same way. */
+export function summarizeOauthAccess(access: OauthAccess, organizations: ShareableOrganization[]): OauthAccessSummary {
   if (access.allOrganizations) {
-    return 'All organizations and projects';
+    return { allOrganizations: true };
   }
-  const organizationNames = organizations
-    .filter(({ id }) => access.organizationIds.includes(id))
-    .map(({ name }) => `${name} (all projects)`);
-  const projectNames = organizations
-    .flatMap(({ projects }) => projects)
-    .filter(({ id }) => access.projectIds.includes(id))
-    .map(({ name }) => name);
-  return [...organizationNames, ...projectNames].join(', ') || 'No projects';
+  return {
+    allOrganizations: false,
+    organizations: organizations.flatMap<OrganizationAccess>(({ id, name, projects }) => {
+      if (access.organizationIds.includes(id)) {
+        return [{ id, name, projects: 'all' }];
+      }
+      const chosen = projects
+        .filter((project) => access.projectIds.includes(project.id))
+        .map((project) => project.name);
+      return chosen.length > 0 ? [{ id, name, projects: chosen }] : [];
+    }),
+  };
 }

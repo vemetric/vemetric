@@ -18,7 +18,8 @@ interface Props {
 export const OauthAppIcon = ({ client, boxSize, rounded, fallback }: Props) => {
   const [failed, setFailed] = useState(false);
   const src =
-    client.icon ?? (client.metadataHost ? getFaviconUrl(client.metadataHost, 128, { defaultImage: 'none' }) : null);
+    client.icon ??
+    (client.metadataHost ? getFaviconUrl(`https://${client.metadataHost}`, 128, { defaultImage: 'none' }) : null);
 
   if (!src || failed) {
     return <>{fallback}</>;

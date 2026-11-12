@@ -1,3 +1,4 @@
+import { getAffiliateCodeFromCookieHeader } from '@vemetric/common/affiliate';
 import { getBaseDomain, getVemetricUrl } from '@vemetric/common/env';
 import { getDripSequence, getStepDelay } from '@vemetric/email/email-drip-sequences';
 import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
@@ -28,6 +29,11 @@ const options = {
     additionalFields: {
       receiveEmailTips: {
         type: 'boolean',
+        input: false,
+      },
+      affiliateCode: {
+        type: 'string',
+        required: false,
         input: false,
       },
     },
@@ -80,6 +86,14 @@ const options = {
   databaseHooks: {
     user: {
       create: {
+        before: async (user, ctx) => {
+          // Covers email and social signups: the affiliate cookie is on the base domain, so it reaches the API
+          const affiliateCode = getAffiliateCodeFromCookieHeader(ctx?.headers?.get('cookie'));
+          if (!affiliateCode) {
+            return;
+          }
+          return { data: { ...user, affiliateCode } };
+        },
         after: async (user) => {
           if (!user.emailVerified) {
             return;

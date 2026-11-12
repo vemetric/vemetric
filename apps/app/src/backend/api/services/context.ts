@@ -6,7 +6,7 @@ import { ApiError } from '../utils/errors';
 
 /**
  * Everything a service function needs to know about the caller. The REST API builds it from the API key,
- * the MCP server (and later OAuth) can build it for any project the caller has access to.
+ * the MCP server for any project the caller (an API key or an app connected via OAuth) has access to.
  */
 export type ApiServiceContext = {
   project: Project;

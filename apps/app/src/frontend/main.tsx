@@ -10,6 +10,7 @@ import { Provider } from './components/ui/provider';
 import { Toaster } from './components/ui/toaster';
 import { routeTree } from './routeTree.gen';
 import 'simplebar-react/dist/simplebar.min.css';
+import { captureAffiliateCodeFromUrl } from './utils/affiliate';
 import { reloadForNewBuild } from './utils/new-build-reload';
 import { getHubUrl } from './utils/url';
 
@@ -33,6 +34,8 @@ declare module '@tanstack/react-router' {
 window.addEventListener('vite:preloadError', () => {
   reloadForNewBuild();
 });
+
+captureAffiliateCodeFromUrl();
 
 const isMobile =
   (navigator as any)?.userAgentData?.mobile === true ||

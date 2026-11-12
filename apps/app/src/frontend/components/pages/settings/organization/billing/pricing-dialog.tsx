@@ -91,6 +91,7 @@ export const PricingDialog = ({
       openPaddleCheckout({
         organizationId,
         email: session.user.email,
+        affiliateCode: session.user.affiliateCode,
         pricingPlan,
         isYearly,
       });

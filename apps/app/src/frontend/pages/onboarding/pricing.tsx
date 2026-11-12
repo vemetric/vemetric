@@ -160,6 +160,7 @@ function Page() {
                     openPaddleCheckout({
                       organizationId: orgId,
                       email: session?.user.email ?? '',
+                      affiliateCode: session?.user.affiliateCode,
                       pricingPlan,
                       isYearly,
                     });

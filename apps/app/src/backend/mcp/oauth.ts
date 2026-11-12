@@ -38,6 +38,12 @@ export function isOauthAccessToken(token: string): boolean {
  * Checks an OAuth access token: unexpired, not revoked, the client not disabled, issued for the MCP server with the
  * MCP scope, and without `offline_access` its browser session still active. The connection must still exist, so
  * disconnecting an app in the settings revokes its access right away.
+ *
+ * The same checks as the provider's own `validateOpaqueAccessToken` (behind `/oauth2/introspect` and
+ * `getOAuthProviderApi(ctx, opts).requireActiveAccessToken`), with one difference: the provider (1.7.16) rejects every
+ * token whose browser session expired, also `offline_access` ones, which would disconnect apps after a week without
+ * using the dashboard. Its check also needs a Better Auth endpoint context. On Better Auth upgrades, check whether it
+ * handles `offline_access` now and whether the token storage (hash, prefix) changed.
  */
 export async function authenticateOauthToken(token: string): Promise<OauthAuthentication> {
   if (!isOauthAccessToken(token)) {

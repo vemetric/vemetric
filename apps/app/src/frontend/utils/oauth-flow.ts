@@ -37,7 +37,10 @@ export function getSignedOauthQuery(search = window.location.search): string | n
   return signed.toString();
 }
 
-/** Remembers the authorize request when the login or signup page is part of an OAuth flow. */
+/**
+ * Remembers the authorize request when the login or signup page is part of an OAuth flow. Every sign-in ends on
+ * /redirect, which continues it with `resumePendingOauthAuthorize`.
+ */
 export function rememberPendingOauthAuthorize(search = window.location.search) {
   if (!hasSignedOauthQuery(search)) {
     return;

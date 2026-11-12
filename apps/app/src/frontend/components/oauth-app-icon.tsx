@@ -12,12 +12,13 @@ interface Props {
 
 /**
  * The logo of an app connected via OAuth (e.g. Claude). Many client metadata documents don't name one (Claude's
- * doesn't), so their verified domain's favicon is shown instead. Dynamically registered apps have neither, since
- * they could pretend to be another app.
+ * doesn't), so their verified domain's favicon is shown instead, or the fallback if the domain has none. Dynamically
+ * registered apps have neither, since they could pretend to be another app.
  */
 export const OauthAppIcon = ({ client, boxSize, rounded, fallback }: Props) => {
   const [failed, setFailed] = useState(false);
-  const src = client.icon ?? (client.metadataHost ? getFaviconUrl(client.metadataHost, 128) : null);
+  const src =
+    client.icon ?? (client.metadataHost ? getFaviconUrl(client.metadataHost, 128, { defaultImage: 'none' }) : null);
 
   if (!src || failed) {
     return <>{fallback}</>;

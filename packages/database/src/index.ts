@@ -7,6 +7,7 @@ export * from './models/email-drip-sequence';
 export * from './models/funnel';
 export * from './models/invitation';
 export * from './models/invitation-project-access';
+export * from './models/oauth';
 export * from './models/organization';
 export * from './models/project';
 export * from './models/salt';

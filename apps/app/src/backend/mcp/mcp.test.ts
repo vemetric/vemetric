@@ -1,4 +1,6 @@
+import { createHash } from 'node:crypto';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
+import { getMcpUrl } from '@vemetric/common/env';
 import type * as clickhouse from 'clickhouse';
 import { Hono } from 'hono';
 import type { Mock } from 'vitest';
@@ -13,6 +15,10 @@ const {
   getRedisClientMock,
   getFilterableDataMock,
   getEventPropertiesMock,
+  findAccessTokenMock,
+  findConnectionMock,
+  getUserOrganizationsWithProjectsMock,
+  findOrganizationByIdMock,
 } = vi.hoisted(() => ({
   findByKeyHashMock: vi.fn(),
   findByIdMock: vi.fn(),
@@ -21,6 +27,10 @@ const {
   getRedisClientMock: vi.fn(),
   getFilterableDataMock: vi.fn(),
   getEventPropertiesMock: vi.fn(),
+  findAccessTokenMock: vi.fn(),
+  findConnectionMock: vi.fn(),
+  getUserOrganizationsWithProjectsMock: vi.fn(),
+  findOrganizationByIdMock: vi.fn(),
 }));
 
 vi.mock('database', () => ({
@@ -31,6 +41,14 @@ vi.mock('database', () => ({
     findById: findByIdMock,
     findByOrganizationId: findByOrganizationIdMock,
     findByIds: findByIdsMock,
+  },
+  dbOauth: {
+    findAccessToken: findAccessTokenMock,
+    findConnection: findConnectionMock,
+  },
+  dbOrganization: {
+    getUserOrganizationsWithProjects: getUserOrganizationsWithProjectsMock,
+    findById: findOrganizationByIdMock,
   },
 }));
 
@@ -104,14 +122,14 @@ const fetchFromApp = async (url: string | URL, init?: RequestInit) => {
 
 const clients: Client[] = [];
 
-async function connect({ modern = false } = {}) {
+async function connect({ modern = false, token = API_KEY } = {}) {
   const client = new Client(
     { name: 'vemetric-test', version: '1.0.0' },
     modern ? { versionNegotiation: { mode: 'auto' } } : undefined,
   );
   const transport = new StreamableHTTPClientTransport(new URL(MCP_URL), {
     fetch: fetchFromApp,
-    requestInit: { headers: { Authorization: `Bearer ${API_KEY}` } },
+    requestInit: { headers: { Authorization: `Bearer ${token}` } },
   });
   await client.connect(transport);
   clients.push(client);
@@ -461,6 +479,167 @@ describe('MCP server', () => {
       await client.listPrompts();
 
       expect(evalMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('OAuth', () => {
+    const OAUTH_TOKEN = 'vmat_abcdefghijklmnopqrstuvwxyz0123456789';
+    const news = project('300', 'News', 'org_2');
+    const findAccessToken = findAccessTokenMock as Mock;
+    const findConnection = findConnectionMock as Mock;
+    const getUserOrganizationsWithProjects = getUserOrganizationsWithProjectsMock as Mock;
+    const findOrganizationById = findOrganizationByIdMock as Mock;
+
+    function accessToken(overrides: Record<string, unknown> = {}) {
+      return {
+        userId: 'user_1',
+        clientId: 'client_1',
+        revoked: null,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        resources: [getMcpUrl()],
+        scopes: ['analytics:read', 'offline_access'],
+        oauthclient: { clientId: 'client_1', name: 'Claude', disabled: false },
+        session: null,
+        ...overrides,
+      };
+    }
+
+    function connection(overrides: Record<string, unknown> = {}) {
+      return {
+        id: 'conn_1',
+        userId: 'user_1',
+        clientId: 'client_1',
+        allOrganizations: false,
+        organizations: [] as Array<{ organizationId: string }>,
+        projects: [] as Array<{ projectId: string }>,
+        ...overrides,
+      };
+    }
+
+    function postWithoutClient(authorization?: string) {
+      return app.request('/mcp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/event-stream',
+          ...(authorization ? { Authorization: authorization } : {}),
+        },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+      });
+    }
+
+    beforeEach(() => {
+      findAccessToken.mockResolvedValue(accessToken());
+      findConnection.mockResolvedValue(
+        connection({ projects: [{ projectId: blog.id }], organizations: [{ organizationId: 'org_2' }] }),
+      );
+      // The user can access Shop and Blog in org_1 and News in org_2.
+      getUserOrganizationsWithProjects.mockResolvedValue([
+        { organization: { id: 'org_1', project: [shop, blog] } },
+        { organization: { id: 'org_2', project: [news] } },
+      ]);
+      findOrganizationById.mockImplementation(async (id: string) => ({
+        id,
+        customPlanEvents: null,
+        billingInfo: null,
+      }));
+    });
+
+    it('points requests without credentials to the OAuth discovery, without an error', async () => {
+      const response = await postWithoutClient();
+
+      expect(response.status).toBe(401);
+      const challenge = response.headers.get('WWW-Authenticate');
+      expect(challenge).toContain(
+        `resource_metadata="${new URL(getMcpUrl()).origin}/.well-known/oauth-protected-resource/mcp"`,
+      );
+      expect(challenge).toContain('scope="analytics:read"');
+      expect(challenge).not.toContain('error=');
+    });
+
+    it('rejects unknown access tokens with invalid_token', async () => {
+      findAccessToken.mockResolvedValue(null);
+
+      const response = await postWithoutClient(`Bearer ${OAUTH_TOKEN}`);
+
+      expect(response.status).toBe(401);
+      expect(response.headers.get('WWW-Authenticate')).toContain('error="invalid_token"');
+      expect(findByKeyHash).not.toHaveBeenCalled();
+    });
+
+    it('looks the token up by the hash the OAuth provider stores', async () => {
+      await connect({ token: OAUTH_TOKEN });
+
+      const hash = createHash('sha256').update(OAUTH_TOKEN.slice('vmat_'.length)).digest('base64url');
+      expect(findAccessToken).toHaveBeenCalledWith(hash);
+    });
+
+    it('rejects tokens without the analytics scope with 403 insufficient_scope', async () => {
+      findAccessToken.mockResolvedValue(accessToken({ scopes: ['offline_access'] }));
+
+      const response = await postWithoutClient(`Bearer ${OAUTH_TOKEN}`);
+
+      expect(response.status).toBe(403);
+      expect(response.headers.get('WWW-Authenticate')).toContain('error="insufficient_scope"');
+    });
+
+    it('lists only the shared projects the user can access, with a hint where to share more', async () => {
+      const client = await connect({ token: OAUTH_TOKEN });
+
+      const result = await client.callTool({ name: 'list_projects', arguments: {} });
+
+      expect(result.structuredContent).toEqual({
+        projects: [
+          { id: blog.id, name: 'Blog', domain: 'blog.example.com' },
+          { id: news.id, name: 'News', domain: 'news.example.com' },
+        ],
+        sharing: expect.stringContaining('/?settings=apps'),
+      });
+    });
+
+    it("doesn't share projects the user can no longer access", async () => {
+      findConnection.mockResolvedValue(connection({ allOrganizations: true }));
+      getUserOrganizationsWithProjects.mockResolvedValue([{ organization: { id: 'org_1', project: [shop] } }]);
+      const client = await connect({ token: OAUTH_TOKEN });
+
+      const result = await client.callTool({ name: 'list_projects', arguments: {} });
+
+      expect(result.structuredContent).toMatchObject({ projects: [{ id: shop.id }] });
+    });
+
+    it('rejects projects that are not shared and links to the connected apps settings', async () => {
+      const client = await connect({ token: OAUTH_TOKEN });
+
+      const result = await client.callTool({ name: 'get_project', arguments: { projectId: shop.id } });
+
+      expect(result.isError).toBe(true);
+      expect(textOf(result)).toContain('No project with this projectId is shared with this app');
+      expect(textOf(result)).toContain('/?settings=apps');
+      expect(evalMock).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ keys: ['ratelimit:mcp:oauth:conn_1'] }),
+      );
+    });
+
+    it("applies the plan of the project's organization", async () => {
+      const client = await connect({ token: OAUTH_TOKEN });
+
+      const result = await client.callTool({
+        name: 'list_filter_values',
+        arguments: { projectId: news.id, dateRange: '1year', fields: ['country'] },
+      });
+
+      expect(findOrganizationById).toHaveBeenCalledWith('org_2');
+      expect(textOf(result)).toContain('/o/org_2?orgSettings=billing&pricingDialog=true');
+    });
+
+    it('rejects tokens of a connection the user removed', async () => {
+      findConnection.mockResolvedValue(null);
+
+      const response = await postWithoutClient(`Bearer ${OAUTH_TOKEN}`);
+
+      expect(response.status).toBe(401);
+      expect(response.headers.get('WWW-Authenticate')).toContain('error="invalid_token"');
     });
   });
 

@@ -1,5 +1,5 @@
 import type { CallToolResult } from '@modelcontextprotocol/server';
-import { resolveCallerContext, type McpCaller } from './caller';
+import { getCallerKey, getCallerLogFields, resolveCallerContext, type McpCaller } from './caller';
 import { getRateLimitMessage, getToolErrorMessage, UNEXPECTED_ERROR_MESSAGE } from './errors';
 import { consumeRateLimit } from '../api/middleware/rate-limit';
 import type { ApiServiceContext } from '../api/services/context';
@@ -36,6 +36,8 @@ async function countToolCall(redisKey: string) {
   }
 }
 
+type ToolLog = { projectId?: string; organizationId?: string; errorCode?: string };
+
 type RunToolOptions = {
   tool: string;
   caller: McpCaller;
@@ -55,34 +57,36 @@ export async function runProjectTool<Input extends { projectId?: string }>(
     try {
       ctx = await resolveCallerContext(caller, input.projectId);
     } catch (error) {
-      // Failed lookups count against the key, so guessing project ids is rate limited too.
-      await countToolCall(`ratelimit:mcp:key:${caller.apiKey.id}`);
+      // Failed lookups count against the caller, so guessing project ids is rate limited too.
+      await countToolCall(`ratelimit:mcp:${getCallerKey(caller)}`);
       throw error;
     }
     log.projectId = ctx.project.id;
+    log.organizationId = ctx.project.organizationId;
 
     await countToolCall(`ratelimit:mcp:${ctx.project.id}`);
     return execute(ctx);
   });
 }
 
-/** Runs a tool that isn't about one project (e.g. `list_projects`), counted against the key's MCP rate limit. */
+/** Runs a tool that isn't about one project (e.g. `list_projects`), counted against the caller's MCP rate limit. */
 export async function runCallerTool(
   { tool, caller }: RunToolOptions,
   execute: () => Promise<ToolData>,
 ): Promise<CallToolResult> {
   return runTool({ tool, caller }, async () => {
-    await countToolCall(`ratelimit:mcp:key:${caller.apiKey.id}`);
+    await countToolCall(`ratelimit:mcp:${getCallerKey(caller)}`);
     return execute();
   });
 }
 
 async function runTool(
   { tool, caller, input }: RunToolOptions,
-  execute: (log: { projectId?: string }) => Promise<ToolData>,
+  execute: (log: ToolLog) => Promise<ToolData>,
 ): Promise<CallToolResult> {
   const start = Date.now();
-  const log: { projectId?: string; errorCode?: string } = {};
+  const log: ToolLog = {};
+  const callerLogFields = getCallerLogFields(caller);
 
   try {
     return toolResult(await execute(log));
@@ -94,15 +98,17 @@ async function runTool(
 
     log.errorCode = getErrorCode(error);
     if (error instanceof ApiError) {
-      return toolError(getToolErrorMessage(error, { organizationId: caller.apiKey.organizationId, input }));
+      const organizationId =
+        log.organizationId ?? (caller.kind === 'apiKey' ? caller.apiKey.organizationId : undefined);
+      return toolError(getToolErrorMessage(error, { organizationId, input, isOauth: caller.kind === 'oauth' }));
     }
 
     logger.error(
       {
         err: error,
         tool,
-        apiKeyId: caller.apiKey.id,
-        organizationId: caller.apiKey.organizationId,
+        ...callerLogFields,
+        organizationId: log.organizationId ?? callerLogFields.organizationId,
         projectId: log.projectId,
       },
       'Unhandled MCP tool error',
@@ -113,8 +119,8 @@ async function runTool(
       type: 'mcp.tool',
       tool,
       latencyMs: Date.now() - start,
-      apiKeyId: caller.apiKey.id,
-      organizationId: caller.apiKey.organizationId,
+      ...callerLogFields,
+      organizationId: log.organizationId ?? callerLogFields.organizationId,
       projectId: log.projectId,
       errorCode: log.errorCode,
     });

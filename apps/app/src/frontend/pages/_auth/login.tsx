@@ -7,7 +7,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
 import { authClient, loginWithProvider } from '@/utils/auth';
-import { redirectPath } from '@/utils/local-storage';
 import { getAppUrl } from '@/utils/url';
 
 export const Route = createFileRoute('/_auth/login')({
@@ -23,22 +22,8 @@ function Page() {
   const [password, setPassword] = useState('');
   const [sentResetPasswordLink, setSentResetPasswordLink] = useState(false);
 
-  const handleLoginSuccess = async () => {
-    // Check for pending redirect
-    const redirect = redirectPath.get();
-    if (redirect) {
-      redirectPath.clear();
-      navigate({ to: redirect });
-      return;
-    }
-
-    const session = await authClient.getSession();
-    if (session?.data?.projects.length === 1) {
-      navigate({ to: `/p/${session.data.projects[0].id}` });
-    } else {
-      navigate({ to: '/' });
-    }
-  };
+  // Like every sign-in, /redirect continues where the user came from (an app asking for access, an invitation).
+  const handleLoginSuccess = () => navigate({ to: '/redirect' });
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();

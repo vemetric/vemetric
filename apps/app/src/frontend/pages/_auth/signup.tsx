@@ -35,8 +35,9 @@ function Page() {
         email,
         password,
         name: '',
-        // callback url for email verification
-        callbackURL: getAppUrl() + '/',
+        // Where the verification link in the email leads. It signs the user in, so it ends on /redirect like every
+        // other sign-in, which continues where the user came from (an app asking for access, an invitation).
+        callbackURL: getAppUrl() + '/redirect',
       },
       {
         onRequest: () => {

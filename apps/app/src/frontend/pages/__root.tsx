@@ -31,7 +31,7 @@ initializePaddle({
 const rootSearchSchema = z.object({
   orgSettings: z.enum(['general', 'billing', 'members', 'api']).optional(),
   pricingDialog: z.boolean().optional(),
-  settings: z.enum(['general', 'auth', 'notifications']).optional(),
+  settings: z.enum(['general', 'auth', 'notifications', 'apps']).optional(),
   changeEmail: z.boolean().optional(),
   error: z.string().optional(),
 });

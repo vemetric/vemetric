@@ -1,4 +1,5 @@
-export const API_PREFIXES = ['_api', 'api', 'mcp'] as const;
+/** Paths served by Hono instead of the SPA (`.well-known` for the OAuth discovery of MCP clients). */
+export const API_PREFIXES = ['_api', 'api', 'mcp', '.well-known'] as const;
 
 export const NO_CACHE_PATHS = new Set<string>(['/manifest.webmanifest', '/sw.js', '/registerSW.js']);
 

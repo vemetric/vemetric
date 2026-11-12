@@ -1,19 +1,25 @@
 import type { AuthInfo } from '@modelcontextprotocol/server';
-import type { Project } from 'database';
+import { dbOrganization, type Project } from 'database';
+import { listOauthProjects, type OauthAuthentication } from './oauth';
 import type { ApiKeyAuthentication } from '../api/middleware/auth';
 import type { ApiServiceContext } from '../api/services/context';
 import { listApiKeyProjects, resolveApiKeyProject } from '../api/utils/api-key-access';
 import { ApiError } from '../api/utils/errors';
+import { getSubscriptionStatus } from '../utils/billing';
+import { MCP_SCOPE } from '../utils/oauth-consts';
 
-/** Who calls the MCP server. API keys for now, OAuth adds user-based callers later. */
-export type McpCaller = ApiKeyAuthentication;
+/**
+ * Who calls the MCP server: an API key (project or organization key), or a user who connected an OAuth client and
+ * shared some of their organizations and projects with it.
+ */
+export type McpCaller = ({ kind: 'apiKey' } & ApiKeyAuthentication) | ({ kind: 'oauth' } & OauthAuthentication);
 
 /** The SDK passes `authInfo` through to the server factory, so the caller rides along in `extra`. */
 export function toAuthInfo(caller: McpCaller): AuthInfo {
   return {
-    token: caller.apiKey.keyPrefix,
-    clientId: caller.apiKey.id,
-    scopes: ['analytics:read'],
+    token: caller.kind === 'apiKey' ? caller.apiKey.keyPrefix : caller.clientId,
+    clientId: caller.kind === 'apiKey' ? caller.apiKey.id : caller.clientId,
+    scopes: [MCP_SCOPE],
     extra: { caller },
   };
 }
@@ -26,8 +32,23 @@ export function getCaller(authInfo: AuthInfo | undefined): McpCaller {
   return caller;
 }
 
+/** Identifies the caller in rate limit keys and logs: the API key, or the user's connection to an OAuth client. */
+export function getCallerKey(caller: McpCaller): string {
+  return caller.kind === 'apiKey' ? `key:${caller.apiKey.id}` : `oauth:${caller.connection.id}`;
+}
+
+export function getCallerLogFields(caller: McpCaller) {
+  return caller.kind === 'apiKey'
+    ? { apiKeyId: caller.apiKey.id, organizationId: caller.apiKey.organizationId }
+    : { oauthClientId: caller.clientId, userId: caller.userId };
+}
+
 export function listCallerProjects(caller: McpCaller): Promise<Project[]> {
-  return listApiKeyProjects(caller.apiKey);
+  return caller.kind === 'apiKey' ? listApiKeyProjects(caller.apiKey) : listOauthProjects(caller);
+}
+
+function projectNotFound() {
+  return new ApiError(404, 'PROJECT_NOT_FOUND', 'Project not found or not shared with this app');
 }
 
 /**
@@ -38,12 +59,30 @@ export async function resolveCallerContext(
   caller: McpCaller,
   projectId: string | undefined,
 ): Promise<ApiServiceContext> {
-  const project = (await resolveApiKeyProject(caller.apiKey, projectId)) ?? (await resolveOnlyProject(caller));
-  return { project, subscriptionStatus: caller.subscriptionStatus };
+  if (caller.kind === 'apiKey') {
+    const project = (await resolveApiKeyProject(caller.apiKey, projectId)) ?? (await resolveOnlyProject(caller));
+    return { project, subscriptionStatus: caller.subscriptionStatus };
+  }
+
+  const projects = await listCallerProjects(caller);
+  const project = projectId === undefined ? onlyProject(projects) : projects.find(({ id }) => id === projectId);
+  if (!project) {
+    throw projectNotFound();
+  }
+
+  // An OAuth connection can span organizations, so the plan (and with it the retention) is the project's.
+  const organization = await dbOrganization.findById(project.organizationId);
+  if (!organization) {
+    throw projectNotFound();
+  }
+  return { project, subscriptionStatus: await getSubscriptionStatus(organization) };
 }
 
 async function resolveOnlyProject(caller: McpCaller): Promise<Project> {
-  const projects = await listCallerProjects(caller);
+  return onlyProject(await listCallerProjects(caller));
+}
+
+function onlyProject(projects: Project[]): Project {
   if (projects.length === 1) {
     return projects[0];
   }

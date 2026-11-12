@@ -1,6 +1,7 @@
 import type { McpServer, ToolAnnotations } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { listCallerProjects, type McpCaller } from './caller';
+import { getConnectedAppsUrl } from './errors';
 import { runCallerTool, runProjectTool } from './run-tool';
 import { analyticsQueryRequestSchema } from '../api/schemas/analytics';
 import { apiEventFilterSchema, apiFilterSchema } from '../api/schemas/api-filters';
@@ -103,7 +104,17 @@ export function registerTools(server: McpServer, caller: McpCaller) {
         "List the Vemetric projects (websites or apps) you can access, with id, name and domain. Call it first when the user has several projects or doesn't say which one they mean.",
       annotations,
     },
-    () => runCallerTool({ tool: 'list_projects', caller }, async () => listProjects(await listCallerProjects(caller))),
+    () =>
+      runCallerTool({ tool: 'list_projects', caller }, async () => {
+        const result = listProjects(await listCallerProjects(caller));
+        // Apps connected via OAuth only see what the user shared, so tell the model where more can be shared.
+        return caller.kind === 'oauth'
+          ? {
+              ...result,
+              sharing: `These are the projects the user shared with this app. They can share more in Vemetric under Account settings > Connected apps: ${getConnectedAppsUrl()}`,
+            }
+          : result;
+      }),
   );
 
   server.registerTool(

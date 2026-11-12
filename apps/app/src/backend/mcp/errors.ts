@@ -40,9 +40,10 @@ export function getToolErrorMessage(error: ApiError, { organizationId, input, is
 
 function getPlanLimitMessage(organizationId: string | undefined, input: unknown): string {
   const earliestDate = formatApiDay(addDays(new Date(), -FREE_PLAN_RETENTION_DAYS));
+  // Without a known organization, /billing opens the pricing of the user's first organization.
   const billingUrl = organizationId
     ? `${getVemetricUrl('app')}/o/${organizationId}?orgSettings=billing&pricingDialog=true`
-    : getVemetricUrl('app');
+    : `${getVemetricUrl('app')}/billing`;
   const plan = `the project's Vemetric plan (Free) only includes data from the last ${FREE_PLAN_RETENTION_DAYS} days (since ${earliestDate})`;
   const dateRange = (input as { dateRange?: PresetTimeSpan | [string, string] } | undefined)?.dateRange;
   const requested = Array.isArray(dateRange)

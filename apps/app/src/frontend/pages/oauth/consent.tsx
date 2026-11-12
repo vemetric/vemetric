@@ -1,9 +1,10 @@
-import { Box, Button, Card, Container, Flex, Heading, Image, Link, Spinner, Stack, Text } from '@chakra-ui/react';
+import { Box, Button, Card, Container, Flex, Heading, Link, Spinner, Stack, Text } from '@chakra-ui/react';
 import { createFileRoute, Link as RouterLink } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
 import { TbArrowBackUp, TbEye, TbFolderPlus, TbPlugConnected, TbWorld } from 'react-icons/tb';
 import { Logo } from '@/components/logo';
 import { OauthAccessChoice, useOauthAccessChoice } from '@/components/oauth-access-choice';
+import { OauthAppIcon } from '@/components/oauth-app-icon';
 import { SignedInAs } from '@/components/signed-in-as';
 import { ErrorState } from '@/components/ui/empty-state';
 import { toaster } from '@/components/ui/toaster';
@@ -151,13 +152,16 @@ function ConsentForm({ info, oauthQuery }: { info: ConsentInfo; oauthQuery: stri
   return (
     <Stack gap={6} pt={2}>
       <Stack gap={4} align="center" textAlign="center">
-        {client.icon ? (
-          <Image src={client.icon} alt="" boxSize="56px" rounded="lg" />
-        ) : (
-          <Box p={4} bg="purple.subtle" color="purple.fg" borderRadius="full">
-            <TbPlugConnected size={28} />
-          </Box>
-        )}
+        <OauthAppIcon
+          client={client}
+          boxSize="56px"
+          rounded="lg"
+          fallback={
+            <Box p={4} bg="purple.subtle" color="purple.fg" borderRadius="full">
+              <TbPlugConnected size={28} />
+            </Box>
+          }
+        />
         <Stack gap={2}>
           <Heading size="lg">Connect {client.name} to Vemetric</Heading>
           <Text color="fg.muted">

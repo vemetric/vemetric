@@ -1,4 +1,4 @@
-import { AbsoluteCenter, Box, Button, Card, Flex, Image, Spinner, Stack, Text } from '@chakra-ui/react';
+import { AbsoluteCenter, Box, Button, Card, Flex, Spinner, Stack, Text } from '@chakra-ui/react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useRef, useState } from 'react';
 import { TbAlertTriangle, TbPlugConnected } from 'react-icons/tb';
@@ -9,6 +9,7 @@ import {
   useOauthAccessChoice,
   type ShareableOrganization,
 } from '@/components/oauth-access-choice';
+import { OauthAppIcon } from '@/components/oauth-app-icon';
 import {
   DialogBody,
   DialogCloseTrigger,
@@ -96,13 +97,16 @@ const ConnectedAppCard = ({ connection, organizations, onEdit, onDisconnect }: C
     <Card.Root>
       <Card.Body p={4}>
         <Flex gap={3} align="flex-start">
-          {client.icon ? (
-            <Image src={client.icon} alt="" boxSize="36px" rounded="md" flexShrink={0} />
-          ) : (
-            <CardIcon>
-              <TbPlugConnected />
-            </CardIcon>
-          )}
+          <OauthAppIcon
+            client={client}
+            boxSize="36px"
+            rounded="md"
+            fallback={
+              <CardIcon>
+                <TbPlugConnected />
+              </CardIcon>
+            }
+          />
           <Stack gap={1} flex="1" minW={0}>
             <Text fontWeight="medium">{client.name}</Text>
             {client.metadataHost && (

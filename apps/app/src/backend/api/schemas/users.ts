@@ -139,6 +139,17 @@ export const usersListRequestSchema = z
     filtersOperator: apiFiltersOperatorSchema.default('and').openapi({
       description: 'Operator to apply between multiple filters.',
     }),
+    search: z
+      .string()
+      .trim()
+      .min(1, 'search must not be empty')
+      .max(200, 'search can be at most 200 characters')
+      .optional()
+      .openapi({
+        description:
+          'Only users whose display name or identifier contains this text (case-insensitive), e.g. a name or an email address.',
+        example: 'john',
+      }),
     orderBy: usersOrderBySchema.optional(),
     limit: z
       .number()

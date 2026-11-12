@@ -374,7 +374,11 @@ export const clickhouseEvent = {
       startDate,
       endDate,
     );
-    const searchQuery = search ? `AND displayName ILIKE ${escape('%' + search + '%')}` : '';
+    // Case-insensitive "contains" on the name and the identifier (e.g. an email address); unlike ILIKE, % and _ in
+    // the search text match themselves.
+    const searchQuery = search
+      ? `AND (positionCaseInsensitiveUTF8(u.displayName, ${escape(search)}) > 0 OR positionCaseInsensitiveUTF8(u.identifier, ${escape(search)}) > 0)`
+      : '';
     const cursor = pagination.type === 'lastSeenCursor' ? pagination.cursor : undefined;
     const cursorQuery = cursor
       ? `AND (u.maxCreatedAt < '${formatClickhouseDate(cursor.lastSeenAt)}' OR (u.maxCreatedAt = '${formatClickhouseDate(cursor.lastSeenAt)}' AND u.userId > ${escape(cursor.userId)}))`

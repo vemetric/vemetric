@@ -75,6 +75,7 @@ export async function listUsers(ctx: ApiServiceContext, payload: UsersListInput)
     },
     filterQueries,
     filterConfig,
+    search: payload.search,
     startDate,
     endDate,
     sortConfig: orderByConfig,

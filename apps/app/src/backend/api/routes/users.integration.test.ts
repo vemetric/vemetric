@@ -327,6 +327,26 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
     ]);
   });
 
+  it.each([
+    ['part of the display name, case-insensitively', 'RAV', ['3']],
+    ['part of the identifier', 'user-4', ['4']],
+    ['what several identifiers share, in the usual order', 'user-', ['4', '3', '2', '1']],
+    ['nothing', 'nobody', []],
+    ['LIKE wildcards literally', '%', []],
+  ])('searches users by %s', async (_, search, expectedIds) => {
+    const response = await postUsersQuery(
+      {
+        dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+        search,
+      },
+      isolated.authHeaders,
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.users.map((user: { id: string }) => user.id)).toEqual(expectedIds);
+  });
+
   it('supports limit and offset pagination', async () => {
     const response = await postUsersQuery(
       {

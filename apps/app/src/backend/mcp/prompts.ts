@@ -81,13 +81,13 @@ export function registerPrompts(server: McpServer) {
         user: z
           .string()
           .describe(
-            "The user's identifier, i.e. the id your website or app uses for the user (e.g. their id in your database), or their Vemetric user id.",
+            "The user's identifier, i.e. the id your website or app uses for the user (e.g. their id in your database), their Vemetric user id, or their name.",
           ),
       }),
     },
     ({ user }) =>
       prompt(
-        `Summarize the journey of the user "${user}". Look them up with get_user by identifier, and if that finds nobody and it's a number, by id. Then get their events with get_user_events over the longest period the plan includes. Tell me where they are from, when they were first and last seen, how often they visited, which pages they viewed most and which key custom events they triggered and when. Keep it short and factual.`,
+        `Summarize the journey of the user "${user}". Look them up with get_user by identifier, and if that finds nobody and it's a number, by id. If that finds nobody either, search for them with list_users (search "${user}") over the longest period the plan includes, and ask me which one I mean if several users match. Then get their events with get_user_events over the longest period the plan includes. Tell me where they are from, when they were first and last seen, how often they visited, which pages they viewed most and which key custom events they triggered and when. Keep it short and factual.`,
       ),
   );
 }

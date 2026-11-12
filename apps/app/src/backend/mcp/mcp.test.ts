@@ -15,6 +15,7 @@ const {
   getRedisClientMock,
   getFilterableDataMock,
   getEventPropertiesMock,
+  queryUsersMock,
   findAccessTokenMock,
   findConnectionMock,
   getUserOrganizationsWithProjectsMock,
@@ -27,6 +28,7 @@ const {
   getRedisClientMock: vi.fn(),
   getFilterableDataMock: vi.fn(),
   getEventPropertiesMock: vi.fn(),
+  queryUsersMock: vi.fn(),
   findAccessTokenMock: vi.fn(),
   findConnectionMock: vi.fn(),
   getUserOrganizationsWithProjectsMock: vi.fn(),
@@ -61,6 +63,7 @@ vi.mock('clickhouse', async (importOriginal) => ({
   clickhouseEvent: {
     getFilterableData: getFilterableDataMock,
     getEventProperties: getEventPropertiesMock,
+    queryUsers: queryUsersMock,
   },
 }));
 
@@ -324,6 +327,28 @@ describe('MCP server', () => {
 
       expect(result.isError).toBe(true);
       expect(textOf(result)).toContain('groupBy can include max one item');
+    });
+
+    it('finds users by name or identifier', async () => {
+      (queryUsersMock as Mock).mockResolvedValue([
+        {
+          id: BigInt(7),
+          identifier: 'u-7',
+          displayName: 'octocat',
+          countryCode: 'DE',
+          lastSeenAt: '2026-02-09 10:00:00',
+        },
+      ]);
+      const client = await connect();
+
+      const result = await client.callTool({
+        name: 'list_users',
+        arguments: { projectId: shop.id, dateRange: '30days', search: '  Octo ' },
+      });
+
+      expect(result.isError).toBeFalsy();
+      expect(queryUsersMock).toHaveBeenCalledWith(expect.objectContaining({ projectId: BigInt(100), search: 'Octo' }));
+      expect(result.structuredContent).toMatchObject({ users: [{ id: '7', displayName: 'octocat' }] });
     });
 
     it('validates filters of tools that only reference the filter format of query_analytics', async () => {

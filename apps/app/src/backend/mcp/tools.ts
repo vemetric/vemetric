@@ -250,12 +250,15 @@ export function registerTools(server: McpServer, caller: McpCaller) {
     {
       title: 'List users',
       description:
-        'List the tracked users (identified and anonymous) that were active in the period, most recently seen first by default. Filter them, e.g. users from a country who visited a page, and sort them, e.g. by when they last fired a custom event.',
+        'List the tracked users (identified and anonymous) that were active in the period, most recently seen first by default. Find users by name or identifier with search, filter them, e.g. users from a country who visited a page, and sort them, e.g. by when they last fired a custom event.',
       inputSchema: usersListRequestSchema.safeExtend({
         projectId,
         dateRange,
         filters: compactFilters,
         filtersOperator,
+        search: usersListRequestSchema.shape.search.describe(
+          "Find users by name: only users whose display name or identifier contains this text (case-insensitive), e.g. a name, username or email address. Use it to look someone up instead of paging through all users; to find them, use a period they were active in (the longest one the plan includes if you don't know).",
+        ),
         orderBy: usersListRequestSchema.shape.orderBy.describe(
           'Optional sorting, e.g. [["lastSeenAt","desc"]], or by when users last fired an event: [["lastEventFired","desc",{"name":{"operator":"eq","value":"signup"}}]].',
         ),

@@ -23,7 +23,7 @@ import { buildOsFilterQueries } from '../utils/filters/os-filter';
 import { buildPageFilterQueries } from '../utils/filters/page-filter';
 import { buildUserFilterQueries } from '../utils/filters/user-filter';
 import { buildFunnelStepConditions, buildWindowFunnelSubquery } from '../utils/funnel';
-import { getMetricsGroupExpression, type MetricsQueryGrouping } from '../utils/query-group';
+import { getMetricsGroupExpression, getMetricsGroupJoin, type MetricsQueryGrouping } from '../utils/query-group';
 import { buildUserSortQueries } from '../utils/sort/user-sort';
 import { withSpan } from '../utils/with-span';
 
@@ -746,6 +746,7 @@ export const clickhouseEvent = {
         query: `
       SELECT ${groupExpression} as groupKey, ${metricExpression} as metricValue
       FROM event
+      ${getMetricsGroupJoin(grouping, projectId)}
       WHERE projectId = ${escape(projectId)}
         AND createdAt >= '${formatClickhouseDate(startDate)}'
         ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
@@ -788,6 +789,7 @@ export const clickhouseEvent = {
           ${groupExpression} as groupKey,
           count() as pageViews
         FROM event
+        ${getMetricsGroupJoin(grouping, projectId)}
         WHERE projectId = ${escape(projectId)}
           AND isPageView = 1
           AND createdAt >= '${formatClickhouseDate(startDate)}'

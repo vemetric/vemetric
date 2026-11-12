@@ -369,8 +369,9 @@ describe('MCP server', () => {
       const { tools } = await client.listTools();
 
       // Only query_analytics carries the full filter schema (~5 KB), see createCompactFilters. The other tools describe
-      // the filter shapes in text (~1 KB more), because clients like Claude.ai load tool definitions on demand.
-      expect(JSON.stringify(tools).length).toBeLessThan(27_500);
+      // the filter shapes in text (~1 KB more), because clients like Claude.ai load tool definitions on demand. Raised
+      // from 27,500 for the firstVisit:* grouping tokens, which appear in both the groupBy and the orderBy enum.
+      expect(JSON.stringify(tools).length).toBeLessThan(28_000);
       const listUsers = tools.find((tool) => tool.name === 'list_users');
       expect(listUsers?.inputSchema.properties?.filters).toMatchObject({
         items: { type: 'object', properties: { type: { type: 'string' } } },

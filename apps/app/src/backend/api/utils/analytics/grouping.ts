@@ -25,7 +25,7 @@ export function isSortingGroupField(field: string, grouping: MetricsQueryGroupin
     return false;
   }
 
-  if (grouping.kind === 'field') {
+  if (grouping.kind === 'field' || grouping.kind === 'first_visit') {
     return field === grouping.token;
   }
 

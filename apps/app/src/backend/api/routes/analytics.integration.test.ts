@@ -370,6 +370,72 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
       });
     });
 
+    it('groups users by their first visit', async () => {
+      const response = await postAnalyticsQuery(
+        {
+          dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+          metrics: ['users'],
+          groupBy: ['firstVisit:referrer'],
+        },
+        isolated.authHeaders,
+      );
+
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as { data: Array<{ group: object; metrics: object }> };
+      // User 2 came without a named referrer (anonymous users, without a stored first visit, are grouped there too)
+      expect(body.data).toEqual([
+        { group: { 'firstVisit:referrer': '' }, metrics: { users: 1 } },
+        { group: { 'firstVisit:referrer': 'Bing' }, metrics: { users: 1 } },
+        { group: { 'firstVisit:referrer': 'Google' }, metrics: { users: 1 } },
+        { group: { 'firstVisit:referrer': 'Newsletter' }, metrics: { users: 1 } },
+      ]);
+    });
+
+    it('counts conversions by first-touch source', async () => {
+      const response = await postAnalyticsQuery(
+        {
+          dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+          metrics: ['users'],
+          groupBy: ['firstVisit:utmCampaign'],
+          filters: [{ type: 'event', name: { operator: 'eq', value: 'signup' } }],
+          orderBy: [['firstVisit:utmCampaign', 'asc']],
+        },
+        isolated.authHeaders,
+      );
+
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as { data: Array<{ group: object; metrics: object }> };
+      expect(body.data).toEqual([
+        { group: { 'firstVisit:utmCampaign': 'jan_push' }, metrics: { users: 1 } },
+        { group: { 'firstVisit:utmCampaign': 'winter_launch' }, metrics: { users: 1 } },
+      ]);
+    });
+
+    it('calculates bounce rate and visit duration per first-touch source', async () => {
+      const response = await postAnalyticsQuery(
+        {
+          dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+          metrics: ['users', 'pageviews', 'bounceRate', 'visitDuration'],
+          groupBy: ['firstVisit:page:path'],
+        },
+        isolated.authHeaders,
+      );
+
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as {
+        data: Array<{ group: Record<string, string>; metrics: Record<string, number | null> }>;
+      };
+      // All four identified users entered on the home page
+      expect(body.data).toHaveLength(1);
+      expect(body.data[0].group).toEqual({ 'firstVisit:page:path': '/' });
+      expect(body.data[0].metrics).toMatchObject({
+        users: 4,
+        pageviews: 8,
+        bounceRate: expect.any(Number),
+        visitDuration: expect.any(Number),
+      });
+    });
+
     it('keeps a fixed interval where interval:auto would pick a coarser one', async () => {
       const query = async (groupBy: string) => {
         const response = await postAnalyticsQuery(

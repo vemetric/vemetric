@@ -154,7 +154,7 @@ export function registerTools(server: McpServer, caller: McpCaller) {
     {
       title: 'Query analytics',
       description:
-        'Query aggregated web and product analytics: users (unique visitors), pageviews, events (custom events), bounceRate (%) and visitDuration (seconds). Without groupBy it returns the totals of the period. Group by one dimension: "interval:auto" (or "interval:hour", "interval:day", "interval:week", "interval:month") for a time series, a field like "page:path", "referrer", "referrerType", "country", "deviceType", "utmCampaign" or "event:name", or "event:prop:<name>" for a custom event property (find names with list_event_properties). bounceRate and visitDuration are null where they don\'t apply to the grouping (e.g. per page or per event). referrerType values: none (no referrer: typed in, bookmarks, apps), search, social, llm, email, paid, internal (came from a page on the project\'s own domain; "direct" is accepted as an old name) and unknown (a website or source that isn\'t in Vemetric\'s list of known sources; visits without a referrer are none). Sort with orderBy, page with limit and offset (hasMore tells if there are more rows).',
+        'Query aggregated web and product analytics: users (unique visitors), pageviews, events (custom events), bounceRate (%) and visitDuration (seconds). Without groupBy it returns the totals of the period. Group by one dimension: "interval:auto" (or "interval:hour", "interval:day", "interval:week", "interval:month") for a time series, a field like "page:path", "referrer", "referrerType", "country", "deviceType", "utmCampaign" or "event:name", "event:prop:<name>" for a custom event property (find names with list_event_properties), or "firstVisit:<field>" for first-touch attribution. bounceRate and visitDuration are null where they don\'t apply to the grouping (e.g. per page or per event). referrerType values: none (no referrer: typed in, bookmarks, apps), search, social, llm, email, paid, internal (came from a page on the project\'s own domain; "direct" is accepted as an old name) and unknown (a website or source that isn\'t in Vemetric\'s list of known sources; visits without a referrer are none). Sort with orderBy, page with limit and offset (hasMore tells if there are more rows).',
       inputSchema: analyticsQueryRequestSchema.safeExtend({
         projectId,
         dateRange,
@@ -162,7 +162,7 @@ export function registerTools(server: McpServer, caller: McpCaller) {
           'Metrics to return. Default: users, pageviews and events. bounceRate and visitDuration only when asked for.',
         ),
         groupBy: analyticsQueryRequestSchema.shape.groupBy.describe(
-          'At most one dimension to group by, e.g. ["page:path"]. Empty for totals. "interval:auto" is hourly up to 2 days, daily up to 31 days, weekly up to 90 days and monthly beyond (presets: 24hrs hourly, 7days and 30days daily, 3months weekly, 6months and 1year monthly); for a fixed interval use "interval:hour", "interval:day", "interval:week" (weeks start on Sunday) or "interval:month". Time series have a row for every interval of the period, also without data (counts 0, bounceRate and visitDuration null). Rows without a value (e.g. no referrer, or a visit from the project\'s own domain when grouping by referrer) are grouped under "", which also works as a filter value.',
+          'At most one dimension to group by, e.g. ["page:path"]. Empty for totals. "interval:auto" is hourly up to 2 days, daily up to 31 days, weekly up to 90 days and monthly beyond (presets: 24hrs hourly, 7days and 30days daily, 3months weekly, 6months and 1year monthly); for a fixed interval use "interval:hour", "interval:day", "interval:week" (weeks start on Sunday) or "interval:month". Time series include intervals without data (counts 0, bounceRate/visitDuration null). Rows without a value (e.g. no referrer, or a visit from the project\'s own domain when grouping by referrer) are grouped under "", which also works as a filter value. "firstVisit:<field>" groups users by their first visit ever (first touch, can be before the period), e.g. with users + an event filter for conversions by first-touch source; anonymous users have none ("").',
         ),
         orderBy: analyticsQueryRequestSchema.shape.orderBy.describe(
           'At most one [field, direction] pair, e.g. [["pageviews","desc"]]. The field is a metric, the groupBy field or "date". Default: by date ascending for intervals, otherwise by the first metric that applies to the grouping, descending.',
@@ -250,14 +250,14 @@ export function registerTools(server: McpServer, caller: McpCaller) {
     {
       title: 'List users',
       description:
-        'List the tracked users (identified and anonymous) that were active in the period, most recently seen first by default. Find users by name or identifier with search, filter them, e.g. users from a country who visited a page, and sort them, e.g. by when they last fired a custom event. Each user has firstVisit, where they came from on their first visit ever (null for anonymous users).',
+        'List the tracked users (identified and anonymous) that were active in the period, most recently seen first by default. Find users by name or identifier with search, filter them, e.g. users from a country who visited a page, and sort them, e.g. by when they last fired a custom event.',
       inputSchema: usersListRequestSchema.safeExtend({
         projectId,
         dateRange,
         filters: compactFilters,
         filtersOperator,
         search: usersListRequestSchema.shape.search.describe(
-          "Find users by name: only users whose display name or identifier contains this text (case-insensitive), e.g. a name, username or email address. Use it to look someone up instead of paging through all users; to find them, use a period they were active in (the longest one the plan includes if you don't know).",
+          'Find users whose display name or identifier contains this text (case-insensitive), e.g. a name or email, instead of paging. They must be active in the period.',
         ),
         orderBy: usersListRequestSchema.shape.orderBy.describe(
           'Optional sorting, e.g. [["lastSeenAt","desc"]], or by when users last fired an event: [["lastEventFired","desc",{"name":{"operator":"eq","value":"signup"}}]].',
@@ -279,7 +279,7 @@ export function registerTools(server: McpServer, caller: McpCaller) {
     {
       title: 'Get user',
       description:
-        "Get one user by Vemetric's user id or by the identifier the website or app sent for them (usually its own user id): location, when they were first and last seen, their first visit ever (firstVisit: referrer, UTM tags and entry page, i.e. first-touch attribution; null for anonymous users) and their custom data.",
+        "Get one user by Vemetric's user id or by the identifier the website or app sent for them (usually its own user id): location, when they were first and last seen, their first visit (first-touch source, null if anonymous) and their custom data.",
       inputSchema: userSingleQuerySchema.safeExtend({ projectId, ...userReference }),
       annotations,
     },

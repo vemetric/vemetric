@@ -95,8 +95,7 @@ describe('oauth router', () => {
       expect(info.client).toEqual({
         clientId: 'client_1',
         name: 'Claude',
-        // Dynamically registered apps choose their website and logo themselves, so they aren't shown.
-        uri: null,
+        // Dynamically registered apps choose their logo themselves, so it isn't shown.
         icon: null,
         metadataHost: null,
         redirectTo: 'claude.ai',
@@ -106,7 +105,7 @@ describe('oauth router', () => {
       expect(info.currentAccess).toBeNull();
     });
 
-    it('names the domain of a client metadata document and shows its website and logo', async () => {
+    it('names the domain of a client metadata document and shows its logo', async () => {
       (findClientMock as Mock).mockResolvedValue({
         ...client,
         clientId: 'https://cursor.com/oauth/client.json',
@@ -116,7 +115,6 @@ describe('oauth router', () => {
       const info = await caller.consentInfo({ oauthQuery: OAUTH_QUERY });
 
       expect(info.client.metadataHost).toBe('cursor.com');
-      expect(info.client.uri).toBe('https://claude.ai');
       expect(info.client.icon).toBe('https://example.com/logo.png');
     });
 

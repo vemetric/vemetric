@@ -41,7 +41,7 @@ export const dbOauth = {
       where: { userId },
       include: {
         ...connectionInclude,
-        client: { select: { clientId: true, name: true, icon: true, uri: true, clientDiscoveryId: true } },
+        client: { select: { clientId: true, name: true, icon: true, clientDiscoveryId: true } },
       },
       orderBy: { createdAt: 'desc' },
     });

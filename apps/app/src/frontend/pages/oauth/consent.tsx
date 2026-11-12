@@ -179,19 +179,11 @@ function ConsentForm({ info, oauthQuery }: { info: ConsentInfo; oauthQuery: stri
             </Text>
           </Flex>
         )}
-        {(client.metadataHost || client.uri) && (
+        {client.metadataHost && (
           <Flex gap={2} align="center">
             <TbWorld />
             <Text>
-              {client.metadataHost ? (
-                <>
-                  Registered by <strong>{client.metadataHost}</strong>
-                </>
-              ) : (
-                <Link href={client.uri ?? undefined} target="_blank" rel="noopener noreferrer" variant="underline">
-                  {client.uri}
-                </Link>
-              )}
+              Registered by <strong>{client.metadataHost}</strong>
             </Text>
           </Flex>
         )}

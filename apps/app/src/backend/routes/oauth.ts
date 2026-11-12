@@ -108,15 +108,14 @@ async function saveAccess(userId: string, clientId: string, input: z.infer<typeo
 }
 
 /**
- * How the settings and the consent page show an app. Clients register themselves, so name, logo and website are
- * theirs: any app could use e.g. Vemetric's logo or website to look official. Logo and website are only shown for
- * Client ID Metadata Documents, where the metadata is hosted on the app's own domain (shown as `metadataHost`) and the
- * CIMD plugin checks that the website is on that domain; dynamically registered apps get a neutral icon.
+ * How the settings and the consent page show an app. Clients register themselves, so name and logo are theirs: any
+ * app could use e.g. Vemetric's logo to look official. The logo is only shown for Client ID Metadata Documents, where
+ * the metadata is hosted on the app's own domain (shown as `metadataHost`); dynamically registered apps get a neutral
+ * icon. The app's website isn't shown: for metadata documents the CIMD plugin only accepts one on `metadataHost`.
  */
 function toClientInfo(client: {
   clientId: string;
   name: string | null;
-  uri: string | null;
   icon: string | null;
   clientDiscoveryId: string | null;
 }) {
@@ -124,7 +123,6 @@ function toClientInfo(client: {
   return {
     clientId: client.clientId,
     name: client.name || 'Unknown app',
-    uri: isMetadataDocument ? httpsUrlOrNull(client.uri) : null,
     icon: isMetadataDocument ? httpsUrlOrNull(client.icon) : null,
     // For Client ID Metadata Documents, the domain that hosts the metadata vouches for the app.
     metadataHost: isMetadataDocument ? describeUrl(client.clientId) : null,

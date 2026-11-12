@@ -73,6 +73,64 @@ async function postUserEvents(
   });
 }
 
+/** The first visits stored on the seeded user rows (see analytics.integration.seeding.ts). */
+const firstVisit = (
+  firstSeenAt: string,
+  visit: [
+    referrer: string | null,
+    referrerUrl: string,
+    referrerType: string,
+    utm: [string, string, string, string, string],
+  ],
+) => {
+  const [referrer, referrerUrl, referrerType, [utmSource, utmMedium, utmCampaign, utmContent, utmTerm]] = visit;
+  return {
+    firstSeenAt,
+    firstVisit: {
+      referrer,
+      referrerUrl,
+      referrerType,
+      origin: 'https://example.com',
+      path: '/',
+      utmSource,
+      utmMedium,
+      utmCampaign,
+      utmContent,
+      utmTerm,
+    },
+  };
+};
+
+const FIRST_VISITS: Record<string, ReturnType<typeof firstVisit>> = {
+  '1': firstVisit('2026-01-18T09:00:00Z', [
+    'Google',
+    'https://google.com',
+    'search',
+    ['google', 'cpc', 'winter_launch', 'hero_cta', 'analytics'],
+  ]),
+  '2': firstVisit('2026-01-18T10:00:00Z', [
+    null,
+    'https://news.ycombinator.com',
+    'social',
+    ['hn', 'social', 'winter_launch', 'text_link', 'opensource'],
+  ]),
+  '3': firstVisit('2026-01-19T09:00:00Z', [
+    'Newsletter',
+    'https://newsletter.example.com',
+    'email',
+    ['newsletter', 'email', 'jan_push', 'button', 'metrics'],
+  ]),
+  '4': firstVisit('2026-01-19T11:00:00Z', [
+    'Bing',
+    'https://bing.com',
+    'search',
+    ['bing', 'cpc', 'jan_push', 'ad_1', 'privacy'],
+  ]),
+};
+
+/** Anonymous users have no user row, so Vemetric doesn't know their first visit. */
+const NO_FIRST_VISIT = { firstSeenAt: null, firstVisit: null };
+
 describe('POST /api/v1/users (integration, seeded fixtures)', () => {
   const findByKeyHash = findByKeyHashMock as Mock;
   const getRedisClient = getRedisClientMock as Mock;
@@ -128,6 +186,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
       users: [
         {
           id: '4',
+          ...FIRST_VISITS['4'],
           identifier: 'user-4',
           displayName: 'Charlie',
           country: 'DE',
@@ -140,6 +199,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
         },
         {
           id: '3',
+          ...FIRST_VISITS['3'],
           identifier: 'user-3',
           displayName: 'Bravo',
           country: 'US',
@@ -152,6 +212,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
         },
         {
           id: '2',
+          ...FIRST_VISITS['2'],
           identifier: 'user-2',
           displayName: 'Echo',
           country: 'US',
@@ -164,6 +225,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
         },
         {
           id: '1',
+          ...FIRST_VISITS['1'],
           identifier: 'user-1',
           displayName: 'Zulu',
           country: 'US',
@@ -421,6 +483,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
 
     expect(anonymousUser).toEqual({
       id: '5',
+      ...NO_FIRST_VISIT,
       identifier: null,
       displayName: null,
       country: 'DE',
@@ -467,6 +530,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
     await expect(response.json()).resolves.toEqual({
       user: {
         id: '3',
+        ...FIRST_VISITS['3'],
         identifier: 'user-3',
         displayName: 'Bravo',
         country: 'US',
@@ -486,6 +550,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
     await expect(response.json()).resolves.toEqual({
       user: {
         id: '1',
+        ...FIRST_VISITS['1'],
         identifier: 'user-1',
         displayName: 'Zulu',
         country: 'US',
@@ -517,6 +582,7 @@ describe('POST /api/v1/users (integration, seeded fixtures)', () => {
     await expect(response.json()).resolves.toEqual({
       user: {
         id: '5',
+        ...NO_FIRST_VISIT,
         identifier: null,
         displayName: null,
         country: 'DE',

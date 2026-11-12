@@ -12,6 +12,7 @@ import type { DeviceData } from './device';
 import { EXAMPLE_DEVICE_DATA } from './device';
 import type { FilterOptions, ReferrerData, UrlData } from './session';
 import { EXAMPLE_URL_DATA, sessionRows } from './session';
+import { USER_FIRST_VISIT_FIELDS, type ClickhouseUserFirstVisit } from './user';
 import { formatDateExpression } from '../utils/date';
 import { getEventFilterQueries } from '../utils/filters';
 import { buildStringFilterQuery } from '../utils/filters/base-filters';
@@ -25,6 +26,20 @@ import { buildFunnelStepConditions, buildWindowFunnelSubquery } from '../utils/f
 import { getMetricsGroupExpression, type MetricsQueryGrouping } from '../utils/query-group';
 import { buildUserSortQueries } from '../utils/sort/user-sort';
 import { withSpan } from '../utils/with-span';
+
+const FIRST_VISIT_USER_COLUMNS = USER_FIRST_VISIT_FIELDS.map(
+  (field) => `argMax(${field}, updatedAt) as firstVisit_${field}`,
+).join(', ');
+const FIRST_VISIT_SELECT = [
+  'usr.hasUserRow as hasUserRow',
+  ...USER_FIRST_VISIT_FIELDS.map((field) => `usr.firstVisit_${field} as firstVisit_${field}`),
+].join(', ');
+
+function mapFirstVisitRow(row: Record<string, unknown>): ClickhouseUserFirstVisit {
+  return Object.fromEntries(
+    USER_FIRST_VISIT_FIELDS.map((field) => [field, String(row[`firstVisit_${field}`] ?? '')]),
+  ) as ClickhouseUserFirstVisit;
+}
 
 const BOUNCE_RATE_CALCULATION_QUERY = 'round(countIf(pageViews = 1) / count() * 100, 2)';
 
@@ -385,7 +400,7 @@ export const clickhouseEvent = {
       : '';
 
     const resultSet = await clickhouseClient.query({
-      query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.city as city, u.maxCreatedAt as maxCreatedAt, u.isOnline as isOnline, if(u.latitude IS NULL OR u.longitude IS NULL, NULL, geoToH3(toFloat64(coalesce(u.latitude, 0)), toFloat64(coalesce(u.longitude, 0)), ${GLOBE_H3_RESOLUTION})) as h3BucketId, usr.avatarUrl as avatarUrl, usr.customData as customData${sortSelect}
+      query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.city as city, u.maxCreatedAt as maxCreatedAt, u.isOnline as isOnline, if(u.latitude IS NULL OR u.longitude IS NULL, NULL, geoToH3(toFloat64(coalesce(u.latitude, 0)), toFloat64(coalesce(u.longitude, 0)), ${GLOBE_H3_RESOLUTION})) as h3BucketId, usr.avatarUrl as avatarUrl, usr.customData as customData, ${FIRST_VISIT_SELECT}${sortSelect}
             FROM (
               SELECT userId,
                 argMax(userIdentifier, eventCreatedAt) as identifier,
@@ -417,7 +432,8 @@ export const clickhouseEvent = {
               GROUP BY userId
             ) u
             LEFT JOIN (
-              SELECT id, argMax(avatarUrl, updatedAt) as avatarUrl, argMax(customData, updatedAt) as customData
+              SELECT id, argMax(avatarUrl, updatedAt) as avatarUrl, argMax(customData, updatedAt) as customData,
+                1 as hasUserRow, ${FIRST_VISIT_USER_COLUMNS}
               FROM user
               WHERE projectId=${escape(projectId)}
               GROUP BY id
@@ -441,6 +457,8 @@ export const clickhouseEvent = {
 
       return {
         id: BigInt(row.userId),
+        // Only identified users have a row in the user table, which stores their first visit.
+        firstVisit: Number(row.hasUserRow) === 1 ? mapFirstVisitRow(row) : null,
         identifier: row.identifier as string,
         displayName: row.displayName as string,
         countryCode: row.countryCode as string,

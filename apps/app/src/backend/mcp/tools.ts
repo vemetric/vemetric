@@ -250,7 +250,7 @@ export function registerTools(server: McpServer, caller: McpCaller) {
     {
       title: 'List users',
       description:
-        'List the tracked users (identified and anonymous) that were active in the period, most recently seen first by default. Find users by name or identifier with search, filter them, e.g. users from a country who visited a page, and sort them, e.g. by when they last fired a custom event.',
+        'List the tracked users (identified and anonymous) that were active in the period, most recently seen first by default. Find users by name or identifier with search, filter them, e.g. users from a country who visited a page, and sort them, e.g. by when they last fired a custom event. Each user has firstVisit, where they came from on their first visit ever (null for anonymous users).',
       inputSchema: usersListRequestSchema.safeExtend({
         projectId,
         dateRange,
@@ -279,7 +279,7 @@ export function registerTools(server: McpServer, caller: McpCaller) {
     {
       title: 'Get user',
       description:
-        "Get one user by Vemetric's user id or by the identifier the website or app sent for them (usually its own user id): location, when they were last seen and their custom data.",
+        "Get one user by Vemetric's user id or by the identifier the website or app sent for them (usually its own user id): location, when they were first and last seen, their first visit ever (firstVisit: referrer, UTM tags and entry page, i.e. first-touch attribution; null for anonymous users) and their custom data.",
       inputSchema: userSingleQuerySchema.safeExtend({ projectId, ...userReference }),
       annotations,
     },

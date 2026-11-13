@@ -1,29 +1,31 @@
 import {
-  AFFILIATE_COOKIE_MAX_AGE_DAYS,
-  AFFILIATE_COOKIE_NAME,
+  AFFILIATE_HEADER,
+  AFFILIATE_OAUTH_STATE_KEY,
   AFFILIATE_URL_PARAM,
   getAffiliateCodeFromCookieHeader,
   parseAffiliateCode,
 } from '@vemetric/common/affiliate';
-import { getHostname } from './url';
 
-// Affiliate links can also point straight at the app (e.g. the signup page), so the app keeps the code too.
-// Last click wins: a newer affiliate link replaces the code.
+// The code of the affiliate link this visit started with. Kept in memory only: it survives the navigation within
+// the app (signup → verification → onboarding) and is sent along when the account is created.
+let visitAffiliateCode: string | null = null;
+
 export const captureAffiliateCodeFromUrl = () => {
-  const code = parseAffiliateCode(new URLSearchParams(location.search).get(AFFILIATE_URL_PARAM));
-  if (!code) {
-    return;
-  }
-
-  const hostname = getHostname();
-  const attributes = [
-    'path=/',
-    `max-age=${AFFILIATE_COOKIE_MAX_AGE_DAYS * 24 * 60 * 60}`,
-    'samesite=lax',
-    hostname.includes('.') ? `domain=.${hostname}` : '',
-    location.protocol === 'https:' ? 'secure' : '',
-  ].filter(Boolean);
-  document.cookie = `${AFFILIATE_COOKIE_NAME}=${code}; ${attributes.join('; ')}`;
+  visitAffiliateCode =
+    parseAffiliateCode(new URLSearchParams(location.search).get(AFFILIATE_URL_PARAM)) ?? visitAffiliateCode;
 };
 
-export const getAffiliateCodeFromCookie = () => getAffiliateCodeFromCookieHeader(document.cookie);
+// The latest affiliate link wins: this visit's code, otherwise the one the visitor agreed to remember on the website
+export const getAffiliateCode = () => visitAffiliateCode ?? getAffiliateCodeFromCookieHeader(document.cookie);
+
+// Sent with the email signup, the server saves it on the new account
+export const getAffiliateHeaders = (): Record<string, string> => {
+  const code = getAffiliateCode();
+  return code ? { [AFFILIATE_HEADER]: code } : {};
+};
+
+// Passed through the Google/GitHub redirect in the OAuth state, the server saves it if the login creates an account
+export const getAffiliateOAuthData = () => {
+  const code = getAffiliateCode();
+  return code ? { [AFFILIATE_OAUTH_STATE_KEY]: code } : undefined;
+};

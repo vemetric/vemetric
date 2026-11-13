@@ -1,4 +1,9 @@
-import { getAffiliateCodeFromCookieHeader } from '@vemetric/common/affiliate';
+import {
+  AFFILIATE_HEADER,
+  AFFILIATE_OAUTH_STATE_KEY,
+  getAffiliateCodeFromCookieHeader,
+  parseAffiliateCode,
+} from '@vemetric/common/affiliate';
 import { getBaseDomain, getVemetricUrl } from '@vemetric/common/env';
 import { getDripSequence, getStepDelay } from '@vemetric/email/email-drip-sequences';
 import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
@@ -6,6 +11,7 @@ import { addToQueue } from '@vemetric/queues/queue-utils';
 import type { BetterAuthOptions } from 'better-auth';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { getOAuthState } from 'better-auth/api';
 import { customSession, emailOTP, lastLoginMethod } from 'better-auth/plugins';
 import { dbOrganization, prismaClient } from 'database';
 import { logger } from './backend-logger';
@@ -87,8 +93,7 @@ const options = {
     user: {
       create: {
         before: async (user, ctx) => {
-          // Covers email and social signups: the affiliate cookie is on the base domain, so it reaches the API
-          const affiliateCode = getAffiliateCodeFromCookieHeader(ctx?.headers?.get('cookie'));
+          const affiliateCode = await getAffiliateCodeForSignup(ctx?.headers);
           if (!affiliateCode) {
             return;
           }
@@ -192,6 +197,23 @@ async function createEmailVerificationOtp(email: string): Promise<string | undef
     logger.error({ err, email }, 'Failed to read existing email verification OTP');
     return undefined;
   }
+}
+
+// The affiliate code of the link the visit started with (social login: OAuth state, email signup: header),
+// otherwise the one the visitor agreed to remember in a cookie on the website.
+async function getAffiliateCodeForSignup(headers: Headers | undefined) {
+  let oauthCode: unknown = null;
+  try {
+    oauthCode = (await getOAuthState())?.[AFFILIATE_OAUTH_STATE_KEY];
+  } catch {
+    // no OAuth flow in this request
+  }
+
+  return (
+    parseAffiliateCode(typeof oauthCode === 'string' ? oauthCode : null) ??
+    parseAffiliateCode(headers?.get(AFFILIATE_HEADER)) ??
+    getAffiliateCodeFromCookieHeader(headers?.get('cookie'))
+  );
 }
 
 async function queueNoProjectDrip(userId: string) {

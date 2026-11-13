@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { TbMail, TbLock, TbBrandGithub, TbBrandGoogleFilled } from 'react-icons/tb';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
+import { getAffiliateHeaders } from '@/utils/affiliate';
 import { authClient, loginWithProvider } from '@/utils/auth';
 import { getAppUrl } from '@/utils/url';
 
@@ -39,6 +40,7 @@ function Page() {
         callbackURL: getAppUrl() + '/',
       },
       {
+        headers: getAffiliateHeaders(),
         onRequest: () => {
           setIsLoading(true);
         },

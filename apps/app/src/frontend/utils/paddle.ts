@@ -1,5 +1,5 @@
 import { getPaddleInstance } from '@paddle/paddle-js';
-import { getAffiliateCodeFromCookie } from '@/utils/affiliate';
+import { getAffiliateCode } from '@/utils/affiliate';
 import type { PricingPlan } from '@/utils/pricing';
 
 let shouldReturnToBillingSettingsAfterCheckout = false;
@@ -28,7 +28,7 @@ export const openPaddleCheckout = ({ organizationId, email, pricingPlan, isYearl
     customData: {
       organizationId,
       // read by Klibon to credit the sale to the affiliate (empty when the customer wasn't referred)
-      klibon: affiliateCode ?? getAffiliateCodeFromCookie() ?? '',
+      klibon: affiliateCode ?? getAffiliateCode() ?? '',
     },
     customer: {
       email,

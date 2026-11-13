@@ -91,12 +91,13 @@ function getNextIntervalStart(interval: string, start: Date): Date {
 
 /**
  * The group keys of every interval in the period, also the ones without data, so a time series has no gaps: the
- * interval the start date falls in up to the one the end date falls in.
+ * interval the start date falls in up to the one the end date falls in. The end is exclusive like in the metric
+ * queries (`createdAt < endDate`), so a period ending on an interval boundary doesn't get an empty extra interval.
  */
 export function listIntervalGroupKeys(interval: string, startDate: Date, endDate: Date): string[] {
   const keys: string[] = [];
   let current = getIntervalStart(interval, startDate);
-  while (current && current <= endDate) {
+  while (current && current < endDate) {
     keys.push(formatApiDate(current));
     current = getNextIntervalStart(interval, current);
   }

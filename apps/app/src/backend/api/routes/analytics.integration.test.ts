@@ -253,13 +253,24 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
   });
 
   describe('grouped', () => {
-    it('returns exact timeseries output for interval:auto', async () => {
+    it('returns exact timeseries output for interval:auto, with every interval of the period', async () => {
       const request = {
         dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
         metrics: ['users', 'pageviews', 'events'],
         groupBy: ['interval:auto'],
         orderBy: [['date', 'asc']],
       };
+
+      const hoursWithData: Record<string, { users: number; pageviews: number; events: number }> = {
+        '2026-01-18T09:00:00Z': { users: 1, pageviews: 1, events: 1 },
+        '2026-01-18T10:00:00Z': { users: 1, pageviews: 3, events: 1 },
+        '2026-01-19T09:00:00Z': { users: 1, pageviews: 3, events: 2 },
+        '2026-01-19T11:00:00Z': { users: 1, pageviews: 1, events: 1 },
+      };
+      // 2 days: interval:auto is hourly, and hours without data are filled with zeros
+      const hours = Array.from({ length: 48 }, (_, hour) =>
+        new Date(Date.UTC(2026, 0, 18, hour)).toISOString().replace('.000Z', 'Z'),
+      );
 
       const expected = {
         period: {
@@ -277,50 +288,12 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
         pagination: {
           limit: 100,
           offset: 0,
-          returned: 4,
+          returned: 48,
         },
-        data: [
-          {
-            group: {
-              date: '2026-01-18T09:00:00Z',
-            },
-            metrics: {
-              users: 1,
-              pageviews: 1,
-              events: 1,
-            },
-          },
-          {
-            group: {
-              date: '2026-01-18T10:00:00Z',
-            },
-            metrics: {
-              users: 1,
-              pageviews: 3,
-              events: 1,
-            },
-          },
-          {
-            group: {
-              date: '2026-01-19T09:00:00Z',
-            },
-            metrics: {
-              users: 1,
-              pageviews: 3,
-              events: 2,
-            },
-          },
-          {
-            group: {
-              date: '2026-01-19T11:00:00Z',
-            },
-            metrics: {
-              users: 1,
-              pageviews: 1,
-              events: 1,
-            },
-          },
-        ],
+        data: hours.map((date) => ({
+          group: { date },
+          metrics: hoursWithData[date] ?? { users: 0, pageviews: 0, events: 0 },
+        })),
       };
 
       const response = await postAnalyticsQuery(request, isolated.authHeaders);
@@ -332,6 +305,7 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
     it.each([
       [
         'interval:hour',
+        48,
         [
           ['2026-01-18T09:00:00Z', 1, 1],
           ['2026-01-18T10:00:00Z', 3, 1],
@@ -341,15 +315,16 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
       ],
       [
         'interval:day',
+        2,
         [
           ['2026-01-18T00:00:00Z', 4, 2],
           ['2026-01-19T00:00:00Z', 4, 3],
         ],
       ],
       // 2026-01-18 is a Sunday, weeks start on Sunday
-      ['interval:week', [['2026-01-18T00:00:00Z', 8, 5]]],
-      ['interval:month', [['2026-01-01T00:00:00Z', 8, 5]]],
-    ] as const)('returns a time series for %s', async (groupBy, expectedRows) => {
+      ['interval:week', 1, [['2026-01-18T00:00:00Z', 8, 5]]],
+      ['interval:month', 1, [['2026-01-01T00:00:00Z', 8, 5]]],
+    ] as const)('returns a time series for %s', async (groupBy, expectedLength, expectedRowsWithData) => {
       const response = await postAnalyticsQuery(
         {
           dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
@@ -363,7 +338,102 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
       const body = (await response.json()) as {
         data: Array<{ group: { date: string }; metrics: { pageviews: number; events: number } }>;
       };
-      expect(body.data.map((row) => [row.group.date, row.metrics.pageviews, row.metrics.events])).toEqual(expectedRows);
+      expect(body.data).toHaveLength(expectedLength);
+      const rowsWithData = body.data.filter((row) => row.metrics.pageviews > 0 || row.metrics.events > 0);
+      expect(rowsWithData.map((row) => [row.group.date, row.metrics.pageviews, row.metrics.events])).toEqual(
+        expectedRowsWithData,
+      );
+    });
+
+    it('fills intervals without data with zeros, and null where nothing could be measured', async () => {
+      const response = await postAnalyticsQuery(
+        {
+          dateRange: ['2026-01-17T00:00:00Z', '2026-01-18T23:59:59Z'],
+          metrics: ['users', 'pageviews', 'bounceRate', 'visitDuration'],
+          groupBy: ['interval:day'],
+        },
+        isolated.authHeaders,
+      );
+
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as { data: Array<{ group: { date: string }; metrics: object }> };
+      expect(body.data[0]).toEqual({
+        group: { date: '2026-01-17T00:00:00Z' },
+        metrics: { users: 0, pageviews: 0, bounceRate: null, visitDuration: null },
+      });
+      expect(body.data[1].group.date).toBe('2026-01-18T00:00:00Z');
+      expect(body.data[1].metrics).toMatchObject({
+        users: 2,
+        pageviews: 4,
+        bounceRate: expect.any(Number),
+        visitDuration: expect.any(Number),
+      });
+    });
+
+    it('groups users by their first visit', async () => {
+      const response = await postAnalyticsQuery(
+        {
+          dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+          metrics: ['users'],
+          groupBy: ['firstVisit:referrer'],
+        },
+        isolated.authHeaders,
+      );
+
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as { data: Array<{ group: object; metrics: object }> };
+      // User 2 came without a named referrer (anonymous users, without a stored first visit, are grouped there too)
+      expect(body.data).toEqual([
+        { group: { 'firstVisit:referrer': '' }, metrics: { users: 1 } },
+        { group: { 'firstVisit:referrer': 'Bing' }, metrics: { users: 1 } },
+        { group: { 'firstVisit:referrer': 'Google' }, metrics: { users: 1 } },
+        { group: { 'firstVisit:referrer': 'Newsletter' }, metrics: { users: 1 } },
+      ]);
+    });
+
+    it('counts conversions by first-touch source', async () => {
+      const response = await postAnalyticsQuery(
+        {
+          dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+          metrics: ['users'],
+          groupBy: ['firstVisit:utmCampaign'],
+          filters: [{ type: 'event', name: { operator: 'eq', value: 'signup' } }],
+          orderBy: [['firstVisit:utmCampaign', 'asc']],
+        },
+        isolated.authHeaders,
+      );
+
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as { data: Array<{ group: object; metrics: object }> };
+      expect(body.data).toEqual([
+        { group: { 'firstVisit:utmCampaign': 'jan_push' }, metrics: { users: 1 } },
+        { group: { 'firstVisit:utmCampaign': 'winter_launch' }, metrics: { users: 1 } },
+      ]);
+    });
+
+    it('calculates bounce rate and visit duration per first-touch source', async () => {
+      const response = await postAnalyticsQuery(
+        {
+          dateRange: ['2026-01-18T00:00:00Z', '2026-01-19T23:59:59Z'],
+          metrics: ['users', 'pageviews', 'bounceRate', 'visitDuration'],
+          groupBy: ['firstVisit:page:path'],
+        },
+        isolated.authHeaders,
+      );
+
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as {
+        data: Array<{ group: Record<string, string>; metrics: Record<string, number | null> }>;
+      };
+      // All four identified users entered on the home page
+      expect(body.data).toHaveLength(1);
+      expect(body.data[0].group).toEqual({ 'firstVisit:page:path': '/' });
+      expect(body.data[0].metrics).toMatchObject({
+        users: 4,
+        pageviews: 8,
+        bounceRate: expect.any(Number),
+        visitDuration: expect.any(Number),
+      });
     });
 
     it('keeps a fixed interval where interval:auto would pick a coarser one', async () => {
@@ -382,13 +452,17 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
         return body.data.map((row) => row.group.date);
       };
 
-      await expect(query('interval:auto')).resolves.toEqual(['2026-01-18T00:00:00Z', '2026-01-19T00:00:00Z']);
-      await expect(query('interval:hour')).resolves.toEqual([
-        '2026-01-18T09:00:00Z',
-        '2026-01-18T10:00:00Z',
-        '2026-01-19T09:00:00Z',
-        '2026-01-19T11:00:00Z',
+      await expect(query('interval:auto')).resolves.toEqual([
+        '2026-01-18T00:00:00Z',
+        '2026-01-19T00:00:00Z',
+        '2026-01-20T00:00:00Z',
+        '2026-01-21T00:00:00Z',
       ]);
+      // 4 days of hours are more than the default limit of 100 rows
+      const hours = await query('interval:hour');
+      expect(hours).toHaveLength(96);
+      expect(hours[0]).toBe('2026-01-18T00:00:00Z');
+      expect(hours[95]).toBe('2026-01-21T23:00:00Z');
     });
 
     it('returns exact country breakdown sorted by group field', async () => {

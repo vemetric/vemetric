@@ -1,6 +1,12 @@
 import { z } from '@hono/zod-openapi';
 import { sortDirectionSchema } from '@vemetric/common/sort';
-import { eventPropertyTokenRegex, metricsGroupFieldTokens, parseMetricsQueryGroupingToken } from 'clickhouse';
+import {
+  eventPropertyTokenRegex,
+  metricsGroupFieldTokens,
+  metricsGroupFirstVisitTokens,
+  parseMetricsQueryGroupingToken,
+  type MetricsGroupFirstVisitToken,
+} from 'clickhouse';
 import { apiFiltersOperatorSchema, apiFilterSchema } from './api-filters';
 import { apiDateRangeSchema, apiTimestampSchema, checkDateRangeOrder } from './common';
 import type { Metric } from '../consts/analytics';
@@ -14,8 +20,12 @@ const eventPropertyGroupByTokenSchema = z.string().regex(eventPropertyTokenRegex
 });
 
 const fieldGroupByTokenSchema = z.enum(metricsGroupFieldTokens);
+const firstVisitGroupByTokenSchema = z.enum(
+  Object.keys(metricsGroupFirstVisitTokens) as [MetricsGroupFirstVisitToken, ...MetricsGroupFirstVisitToken[]],
+);
 const groupByTokenSchema = z.union([
   fieldGroupByTokenSchema,
+  firstVisitGroupByTokenSchema,
   z.enum(['interval:auto', 'interval:hour', 'interval:day', 'interval:week', 'interval:month']),
   eventPropertyGroupByTokenSchema,
 ]);
@@ -29,6 +39,7 @@ const orderByPropertyFieldSchema = z.string().regex(eventPropertyTokenRegex, 'In
 const orderByFieldSchema = z.union([
   z.enum(METRICS),
   fieldGroupByTokenSchema,
+  firstVisitGroupByTokenSchema,
   z.literal('date'),
   orderByPropertyFieldSchema,
 ]);
@@ -51,6 +62,16 @@ const fieldGroupSchema = z
     description:
       "Grouping object for predefined dimensions (e.g. country, city, browser, referrer). An empty string stands for rows without a value, e.g. for `referrer` visits without a referrer and visits from the project's own domain.",
     example: { country: 'US' },
+  });
+const firstVisitGroupSchema = z
+  .record(firstVisitGroupByTokenSchema, z.string())
+  .refine((value) => Object.keys(value).length === 1, {
+    message: 'First visit grouping object must contain exactly one key',
+  })
+  .openapi({
+    description:
+      'Grouping object for the first visit of users (first-touch attribution). An empty string stands for users without a value, including all anonymous users.',
+    example: { 'firstVisit:utmCampaign': 'spring_launch' },
   });
 const eventPropertyGroupSchema = z
   .record(eventPropertyGroupByTokenSchema, z.string())
@@ -105,7 +126,7 @@ export const analyticsQueryRequestSchema = z
       .default([])
       .openapi({
         description:
-          'Allowed values: "interval:auto", "interval:hour", "interval:day", "interval:week", "interval:month", "country", "city", "page:origin", "page:path", "browser", "deviceType", "os", "referrer", "referrerType", "utm*", "event:name", or "event:prop:<property_name>". At the moment it\'s only possible to group by one field, please tell us if you need more.\n\nThe interval values return a time series with one row per hour, day, week (starting on Sunday) or month. "interval:auto" picks the interval from the length of the period: hourly up to 2 days, daily up to 31 days, weekly up to 90 days and monthly beyond (for presets: `live` every 30 seconds, `1hr` every 10 minutes, `24hrs` hourly, `7days` and `30days` daily, `3months` weekly, `6months` and `1year` monthly).\n\nRows without a value for the field (e.g. visits without a UTM campaign, or for `referrer` visits without a referrer and visits from the project\'s own domain) are grouped under an empty string `""`, which you can also use as a filter value.',
+          'Allowed values: "interval:auto", "interval:hour", "interval:day", "interval:week", "interval:month", "country", "city", "page:origin", "page:path", "browser", "deviceType", "os", "referrer", "referrerType", "utm*", "event:name", "event:prop:<property_name>", or the first visit: "firstVisit:referrer", "firstVisit:referrerType", "firstVisit:utm*", "firstVisit:page:origin", "firstVisit:page:path". At the moment it\'s only possible to group by one field, please tell us if you need more.\n\nThe interval values return a time series with one row per hour, day, week (starting on Sunday) or month, for every interval of the period, also the ones without data (`users`, `pageviews` and `events` are `0` there, `bounceRate` and `visitDuration` are `null`). "interval:auto" picks the interval from the length of the period: hourly up to 2 days, daily up to 31 days, weekly up to 90 days and monthly beyond (for presets: `live` every 30 seconds, `1hr` every 10 minutes, `24hrs` hourly, `7days` and `30days` daily, `3months` weekly, `6months` and `1year` monthly).\n\nRows without a value for the field (e.g. visits without a UTM campaign, or for `referrer` visits without a referrer and visits from the project\'s own domain) are grouped under an empty string `""`, which you can also use as a filter value.\n\nThe `firstVisit:*` values group by where each user came from on their first visit ever (first-touch attribution), which can be before the selected period, while `referrer`, `utm*` and `page:*` group each visit by its own source (last touch). Combined with the `users` metric and an event filter, e.g. for a signup event, they show which first-touch sources bring conversions. Vemetric stores the first visit when a user is identified, so anonymous users are grouped under `""`.',
         example: ['country'],
       }),
     orderBy: orderBySchema.default([]).openapi({
@@ -242,7 +263,13 @@ export const analyticsQueryResponseSchema = z
         z
           .object({
             group: z
-              .union([aggregateGroupSchema, intervalGroupSchema, fieldGroupSchema, eventPropertyGroupSchema])
+              .union([
+                aggregateGroupSchema,
+                intervalGroupSchema,
+                fieldGroupSchema,
+                firstVisitGroupSchema,
+                eventPropertyGroupSchema,
+              ])
               .openapi({
                 description: 'Group values for this row. Empty object for aggregate queries.',
               }),

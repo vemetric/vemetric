@@ -10,7 +10,7 @@ import { formatDateExpression } from '../utils/date';
 import { buildLocationFilterQueries } from '../utils/filters/location-filter';
 import { buildSourceFilterQueries } from '../utils/filters/source-filter';
 import type { MetricsQueryGrouping } from '../utils/query-group';
-import { getMetricsGroupExpression } from '../utils/query-group';
+import { getMetricsGroupExpression, getMetricsGroupJoin } from '../utils/query-group';
 import { withSpan } from '../utils/with-span';
 
 const TABLE_NAME = 'session_v3';
@@ -400,7 +400,8 @@ export const clickhouseSession = {
       const resultSet = await clickhouseClient.query({
         query: `
       SELECT ${groupExpression} as groupKey, avg(duration) as metricValue
-        FROM ${currentSessionRows(projectId, { startDate, endDate })}
+        FROM ${currentSessionRows(projectId, { startDate, endDate })} AS sessions
+        ${getMetricsGroupJoin(grouping, projectId)}
         WHERE duration > 0
           ${(filterQueries || '').replace(/sessionId/g, 'id')}
       GROUP BY groupKey

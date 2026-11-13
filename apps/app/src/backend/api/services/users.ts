@@ -1,6 +1,6 @@
 import type { z } from '@hono/zod-openapi';
 import type { IUserSortConfig } from '@vemetric/common/sort';
-import { clickhouseEvent, clickhouseUser, getUserFilterQueries } from 'clickhouse';
+import { clickhouseEvent, clickhouseUser, getUserFilterQueries, type ClickhouseUserFirstVisit } from 'clickhouse';
 import { assertRetentionAllowed, type ApiServiceContext } from './context';
 import { getFilterFunnelsData } from '../../utils/filter';
 import type {
@@ -23,6 +23,32 @@ export type UserReference = z.output<typeof userSingleQuerySchema>;
 export type UserResult = z.output<typeof usersSingleResponseSchema>;
 export type UserEventsInput = z.output<typeof userEventsRequestSchema>;
 export type UserEventsResult = z.output<typeof userEventsResponseSchema>;
+
+/** First-touch attribution of a user, from the first visit stored on their user row (identified users only). */
+function toApiFirstVisit(firstVisit: Partial<ClickhouseUserFirstVisit> | null | undefined) {
+  if (!firstVisit) {
+    return { firstSeenAt: null, firstVisit: null };
+  }
+  return {
+    firstSeenAt: toApiTimestamp(firstVisit.firstSeenAt),
+    // Users identified without a pageview (e.g. server-side) have no first visit.
+    firstVisit:
+      firstVisit.origin || firstVisit.pathname
+        ? {
+            referrer: normalizeNullableString(firstVisit.referrer),
+            referrerUrl: normalizeNullableString(firstVisit.referrerUrl),
+            referrerType: normalizeNullableString(firstVisit.referrerType),
+            origin: normalizeNullableString(firstVisit.origin),
+            path: normalizeNullableString(firstVisit.pathname),
+            utmSource: normalizeNullableString(firstVisit.utmSource),
+            utmMedium: normalizeNullableString(firstVisit.utmMedium),
+            utmCampaign: normalizeNullableString(firstVisit.utmCampaign),
+            utmContent: normalizeNullableString(firstVisit.utmContent),
+            utmTerm: normalizeNullableString(firstVisit.utmTerm),
+          }
+        : null,
+  };
+}
 
 const API_USERS_FIELD_TO_INTERNAL = {
   country: 'countryCode',
@@ -75,6 +101,7 @@ export async function listUsers(ctx: ApiServiceContext, payload: UsersListInput)
     },
     filterQueries,
     filterConfig,
+    search: payload.search,
     startDate,
     endDate,
     sortConfig: orderByConfig,
@@ -101,6 +128,7 @@ export async function listUsers(ctx: ApiServiceContext, payload: UsersListInput)
         country: normalizeCountryCode(row.countryCode),
         city: normalizeNullableString(row.city),
         lastSeenAt: toApiTimestamp(row.lastSeenAt),
+        ...toApiFirstVisit(row.firstVisit),
         lastEventFiredAt: toApiTimestamp(row.lastEventFiredAt),
         avatarUrl: normalizeNullableString(row.avatarUrl),
         data: row.data ?? {},
@@ -148,6 +176,7 @@ export async function getUser({ project }: ApiServiceContext, userRef: UserRefer
       country: countryCode,
       city,
       lastSeenAt: toApiTimestamp(latestEvent?.createdAt),
+      ...toApiFirstVisit(user),
       avatarUrl: normalizeNullableString(user?.avatarUrl),
       data: user?.customData ?? {},
       anonymous: identifier === null,

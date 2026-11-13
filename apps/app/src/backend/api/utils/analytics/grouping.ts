@@ -25,7 +25,7 @@ export function isSortingGroupField(field: string, grouping: MetricsQueryGroupin
     return false;
   }
 
-  if (grouping.kind === 'field') {
+  if (grouping.kind === 'field' || grouping.kind === 'first_visit') {
     return field === grouping.token;
   }
 
@@ -54,6 +54,54 @@ export function normalizeGroupKeys(rows: Array<MetricRow>, grouping: MetricsQuer
     groupKey: normalizeGroupKey(grouping, row.groupKey),
     value: row.value,
   }));
+}
+
+const FIXED_INTERVAL_MS: Record<string, number> = {
+  thirty_seconds: 30 * 1000,
+  ten_minutes: 10 * 60 * 1000,
+  hourly: 60 * 60 * 1000,
+  daily: 24 * 60 * 60 * 1000,
+};
+
+/** The start of the interval a date falls in, as ClickHouse groups them: in UTC, weeks start on Sunday. */
+function getIntervalStart(interval: string, date: Date): Date | null {
+  if (interval in FIXED_INTERVAL_MS) {
+    const ms = FIXED_INTERVAL_MS[interval];
+    return new Date(Math.floor(date.getTime() / ms) * ms);
+  }
+  if (interval === 'weekly') {
+    const day = getIntervalStart('daily', date) as Date;
+    return new Date(day.getTime() - day.getUTCDay() * FIXED_INTERVAL_MS.daily);
+  }
+  if (interval === 'monthly') {
+    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+  }
+  return null;
+}
+
+function getNextIntervalStart(interval: string, start: Date): Date {
+  if (interval === 'weekly') {
+    return new Date(start.getTime() + 7 * FIXED_INTERVAL_MS.daily);
+  }
+  if (interval === 'monthly') {
+    return new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1));
+  }
+  return new Date(start.getTime() + FIXED_INTERVAL_MS[interval]);
+}
+
+/**
+ * The group keys of every interval in the period, also the ones without data, so a time series has no gaps: the
+ * interval the start date falls in up to the one the end date falls in. The end is exclusive like in the metric
+ * queries (`createdAt < endDate`), so a period ending on an interval boundary doesn't get an empty extra interval.
+ */
+export function listIntervalGroupKeys(interval: string, startDate: Date, endDate: Date): string[] {
+  const keys: string[] = [];
+  let current = getIntervalStart(interval, startDate);
+  while (current && current < endDate) {
+    keys.push(formatApiDate(current));
+    current = getNextIntervalStart(interval, current);
+  }
+  return keys;
 }
 
 export function resolveAutoIntervalGrouping(

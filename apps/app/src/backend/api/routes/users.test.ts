@@ -108,6 +108,24 @@ describe('POST /api/v1/users (contract)', () => {
       expectValidationDetail(body, 'dateRange', 'Start date must be before or equal to end date');
     });
 
+    it.each([
+      ['an empty search', '   ', 'search must not be empty'],
+      ['a too long search', 'a'.repeat(201), 'search can be at most 200 characters'],
+    ])('rejects %s', async (_, search, message) => {
+      const app = createPublicApi();
+
+      const response = await app.request('/v1/users', {
+        method: 'POST',
+        headers: AUTH_HEADERS,
+        body: JSON.stringify({ dateRange: '7days', search }),
+      });
+
+      expect(response.status).toBe(400);
+      const body = await response.json();
+      expect(body.error.code).toBe('VALIDATION_ERROR');
+      expectValidationDetail(body, 'search', message);
+    });
+
     it('rejects invalid orderBy field', async () => {
       const app = createPublicApi();
 

@@ -48,6 +48,30 @@ const usersOrderBySchema = z
     ],
   });
 
+const nullableFirstVisitString = (description: string, example: string) =>
+  z.string().nullable().openapi({ description, example });
+
+const userFirstVisitSchema = z
+  .object({
+    referrer: nullableFirstVisitString('Referrer of the first visit, `null` without one.', 'Google'),
+    referrerUrl: nullableFirstVisitString('Referrer URL of the first visit.', 'https://www.google.com/'),
+    referrerType: nullableFirstVisitString(
+      'Referrer type of the first visit, with the same values as the `referrerType` filter.',
+      'search',
+    ),
+    origin: nullableFirstVisitString('Origin of the page the user entered on.', 'https://example.com'),
+    path: nullableFirstVisitString('Path of the page the user entered on.', '/pricing'),
+    utmSource: nullableFirstVisitString('UTM source of the first visit.', 'newsletter'),
+    utmMedium: nullableFirstVisitString('UTM medium of the first visit.', 'email'),
+    utmCampaign: nullableFirstVisitString('UTM campaign of the first visit.', 'spring_launch'),
+    utmContent: nullableFirstVisitString('UTM content of the first visit.', 'hero_cta'),
+    utmTerm: nullableFirstVisitString('UTM term of the first visit.', 'web analytics'),
+  })
+  .openapi({
+    description:
+      "The user's first visit ever (first-touch attribution): where they came from and which page they entered on. It can be before the selected period. `null` for anonymous users (Vemetric stores the first visit when a user is identified) and for users without a pageview.",
+  });
+
 export const userListItemSchema = z
   .object({
     id: z.string().openapi({
@@ -73,6 +97,11 @@ export const userListItemSchema = z
     lastSeenAt: apiTimestampSchema.nullable().openapi({
       description: 'UTC timestamp of the latest activity for this user within the selected period.',
     }),
+    firstSeenAt: apiTimestampSchema.nullable().openapi({
+      description:
+        'UTC timestamp of when the user was first seen, also before the selected period. `null` for anonymous users.',
+    }),
+    firstVisit: userFirstVisitSchema.nullable(),
     lastEventFiredAt: apiTimestampSchema.nullable().openapi({
       description:
         'UTC timestamp of when the user last fired the event referenced by `orderBy[0][2]`. Populated only for `orderBy[0][0] = "lastEventFired"`, otherwise `null`.',
@@ -139,6 +168,17 @@ export const usersListRequestSchema = z
     filtersOperator: apiFiltersOperatorSchema.default('and').openapi({
       description: 'Operator to apply between multiple filters.',
     }),
+    search: z
+      .string()
+      .trim()
+      .min(1, 'search must not be empty')
+      .max(200, 'search can be at most 200 characters')
+      .optional()
+      .openapi({
+        description:
+          'Only users whose display name or identifier contains this text (case-insensitive), e.g. a name or an email address.',
+        example: 'john',
+      }),
     orderBy: usersOrderBySchema.optional(),
     limit: z
       .number()

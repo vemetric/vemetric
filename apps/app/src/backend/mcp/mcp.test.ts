@@ -15,6 +15,7 @@ const {
   getRedisClientMock,
   getFilterableDataMock,
   getEventPropertiesMock,
+  queryUsersMock,
   findAccessTokenMock,
   findConnectionMock,
   getUserOrganizationsWithProjectsMock,
@@ -27,6 +28,7 @@ const {
   getRedisClientMock: vi.fn(),
   getFilterableDataMock: vi.fn(),
   getEventPropertiesMock: vi.fn(),
+  queryUsersMock: vi.fn(),
   findAccessTokenMock: vi.fn(),
   findConnectionMock: vi.fn(),
   getUserOrganizationsWithProjectsMock: vi.fn(),
@@ -61,6 +63,7 @@ vi.mock('clickhouse', async (importOriginal) => ({
   clickhouseEvent: {
     getFilterableData: getFilterableDataMock,
     getEventProperties: getEventPropertiesMock,
+    queryUsers: queryUsersMock,
   },
 }));
 
@@ -326,6 +329,28 @@ describe('MCP server', () => {
       expect(textOf(result)).toContain('groupBy can include max one item');
     });
 
+    it('finds users by name or identifier', async () => {
+      (queryUsersMock as Mock).mockResolvedValue([
+        {
+          id: BigInt(7),
+          identifier: 'u-7',
+          displayName: 'octocat',
+          countryCode: 'DE',
+          lastSeenAt: '2026-02-09 10:00:00',
+        },
+      ]);
+      const client = await connect();
+
+      const result = await client.callTool({
+        name: 'list_users',
+        arguments: { projectId: shop.id, dateRange: '30days', search: '  Octo ' },
+      });
+
+      expect(result.isError).toBeFalsy();
+      expect(queryUsersMock).toHaveBeenCalledWith(expect.objectContaining({ projectId: BigInt(100), search: 'Octo' }));
+      expect(result.structuredContent).toMatchObject({ users: [{ id: '7', displayName: 'octocat' }] });
+    });
+
     it('validates filters of tools that only reference the filter format of query_analytics', async () => {
       const client = await connect();
 
@@ -344,8 +369,9 @@ describe('MCP server', () => {
       const { tools } = await client.listTools();
 
       // Only query_analytics carries the full filter schema (~5 KB), see createCompactFilters. The other tools describe
-      // the filter shapes in text (~1 KB more), because clients like Claude.ai load tool definitions on demand.
-      expect(JSON.stringify(tools).length).toBeLessThan(27_500);
+      // the filter shapes in text (~1 KB more), because clients like Claude.ai load tool definitions on demand. Raised
+      // from 27,500 for the firstVisit:* grouping tokens, which appear in both the groupBy and the orderBy enum.
+      expect(JSON.stringify(tools).length).toBeLessThan(28_000);
       const listUsers = tools.find((tool) => tool.name === 'list_users');
       expect(listUsers?.inputSchema.properties?.filters).toMatchObject({
         items: { type: 'object', properties: { type: { type: 'string' } } },

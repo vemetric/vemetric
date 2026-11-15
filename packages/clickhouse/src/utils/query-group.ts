@@ -1,3 +1,4 @@
+import type { ChartInterval } from '@vemetric/common/charts/timespans';
 import { escape } from 'sqlstring';
 
 export const eventPropertyTokenRegex = /^event:prop:([^\r\n]+)$/;
@@ -29,6 +30,23 @@ export const metricsGroupIntervalTokens = {
   'interval:month': 'monthly',
 } as const;
 type MetricsGroupIntervalToken = keyof typeof metricsGroupIntervalTokens;
+
+/**
+ * Group by the user's first visit ever (first-touch attribution), stored on the user row when a user is identified.
+ * Anonymous users have no user row and are grouped under "".
+ */
+export const metricsGroupFirstVisitTokens = {
+  'firstVisit:referrer': 'referrer',
+  'firstVisit:referrerType': 'referrerType',
+  'firstVisit:utmCampaign': 'utmCampaign',
+  'firstVisit:utmContent': 'utmContent',
+  'firstVisit:utmMedium': 'utmMedium',
+  'firstVisit:utmSource': 'utmSource',
+  'firstVisit:utmTerm': 'utmTerm',
+  'firstVisit:page:origin': 'origin',
+  'firstVisit:page:path': 'pathname',
+} as const;
+export type MetricsGroupFirstVisitToken = keyof typeof metricsGroupFirstVisitTokens;
 type MetricsGroupScope = 'event' | 'session';
 
 export type MetricsQueryGrouping =
@@ -36,12 +54,17 @@ export type MetricsQueryGrouping =
   | { kind: 'field'; token: MetricsGroupFieldToken }
   | {
       kind: 'interval';
-      interval: string;
+      interval: ChartInterval | 'auto';
     }
   | {
       kind: 'event_prop';
       token: string;
       property: string;
+    }
+  | {
+      kind: 'first_visit';
+      token: MetricsGroupFirstVisitToken;
+      field: (typeof metricsGroupFirstVisitTokens)[MetricsGroupFirstVisitToken];
     };
 
 export function parseMetricsQueryGroupingToken(token: string | null): MetricsQueryGrouping {
@@ -59,6 +82,11 @@ export function parseMetricsQueryGroupingToken(token: string | null): MetricsQue
 
   if (token in metricsGroupIntervalTokens) {
     return { kind: 'interval', interval: metricsGroupIntervalTokens[token as MetricsGroupIntervalToken] };
+  }
+
+  if (token in metricsGroupFirstVisitTokens) {
+    const firstVisitToken = token as MetricsGroupFirstVisitToken;
+    return { kind: 'first_visit', token: firstVisitToken, field: metricsGroupFirstVisitTokens[firstVisitToken] };
   }
 
   const match = token.match(eventPropertyTokenRegex);
@@ -134,7 +162,8 @@ export function getMetricsGroupExpression(grouping: MetricsQueryGrouping, scope:
       case 'daily':
         return `toStartOfDay(${dateField})`;
       case 'weekly':
-        return `toStartOfWeek(${dateField})`;
+        // Mode 1: weeks start on Monday
+        return `toStartOfWeek(${dateField}, 1)`;
       case 'monthly':
         return `toStartOfMonth(${dateField})`;
       default:
@@ -146,5 +175,27 @@ export function getMetricsGroupExpression(grouping: MetricsQueryGrouping, scope:
     return `JSONExtractString(customData, ${escape(grouping.property ?? '')})`;
   }
 
+  if (grouping.kind === 'first_visit') {
+    return 'firstVisit.firstVisitValue';
+  }
+
   return "'__all__'";
+}
+
+/**
+ * The join a grouping needs after the `FROM` of an event or session query: for the first visit, the users' first-visit
+ * field by `userId` (anonymous users don't match and get "", ClickHouse's default without `join_use_nulls`).
+ */
+export function getMetricsGroupJoin(grouping: MetricsQueryGrouping, projectId: bigint): string {
+  if (grouping.kind !== 'first_visit') {
+    return '';
+  }
+
+  return `LEFT JOIN (
+      SELECT id AS firstVisitUserId, argMax(${grouping.field}, updatedAt) AS firstVisitValue
+      FROM user
+      WHERE projectId = ${escape(projectId)}
+      GROUP BY id
+      HAVING argMax(deleted, updatedAt) = 0
+    ) AS firstVisit ON userId = firstVisit.firstVisitUserId`;
 }

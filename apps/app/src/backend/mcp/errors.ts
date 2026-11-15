@@ -30,7 +30,7 @@ export function getToolErrorMessage(error: ApiError, { organizationId, input, is
         ? `No project with this projectId is shared with this app. Call list_projects to see the projects you can access. The user can share more projects in Vemetric under Account settings > Connected apps: ${getConnectedAppsUrl()}`
         : 'No project with this projectId is available with these credentials. Call list_projects to see the projects you can access.';
     case 'USER_NOT_FOUND':
-      return 'User not found in this project. Use list_users to find valid user ids, or check the identifier with the user.';
+      return 'User not found in this project. Find the user with list_users and its search parameter (by name or identifier), or check the identifier with the user.';
     case 'FUNNEL_NOT_FOUND':
       return 'Funnel not found in this project. Use list_funnels to find valid funnel ids.';
     default:

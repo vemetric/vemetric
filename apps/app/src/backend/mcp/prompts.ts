@@ -68,7 +68,7 @@ export function registerPrompts(server: McpServer) {
     },
     ({ event }) =>
       prompt(
-        `Find out which sources bring the most "${event}" conversions over the last 30 days, not just the most traffic. Check the exact event name with list_filter_values (field "event:name") first. Then count the converting users per source: query_analytics with the metric "users" and an event filter for "${event}", grouped by referrer, utmCampaign and utmSource (filters select users, so this counts the users who came from a source at some point in the period and fired the event; one user can count for several sources). Don't count the events per source: events are credited to the source of the visit they happen in, which is often a later direct visit. Compare with all users per source to get a conversion rate per source. Also find the pages whose visitors convert most (users grouped by page:path with and without the event filter). Show the results in small tables and point out sources with many visitors but few conversions, and the other way around.`,
+        `Find out which sources bring the most "${event}" conversions over the last 30 days, not just the most traffic. Check the exact event name with list_filter_values (field "event:name") first. Then count the converting users by their first-touch source: query_analytics with the metric "users" and an event filter for "${event}", grouped by firstVisit:referrer, firstVisit:utmSource and firstVisit:utmCampaign (where each user came from on their first visit ever, so every converting user counts for exactly one source). Compare with all users per first-touch source (the same queries without the event filter) to get a conversion rate per source. Only identified users have a first visit: "" holds anonymous users and users who came without a referrer or campaign, so leave it out of the conversion rates and just say how many converting users it has. Also find the entry pages whose visitors convert best (grouped by firstVisit:page:path, with and without the event filter). Don't count the events per source: events are credited to the source of the visit they happen in, which is often a later direct visit. Show the results in small tables and point out sources with many visitors but few conversions, and the other way around.`,
       ),
   );
 
@@ -81,13 +81,13 @@ export function registerPrompts(server: McpServer) {
         user: z
           .string()
           .describe(
-            "The user's identifier, i.e. the id your website or app uses for the user (e.g. their id in your database), or their Vemetric user id.",
+            "The user's identifier, i.e. the id your website or app uses for the user (e.g. their id in your database), their Vemetric user id, or their name.",
           ),
       }),
     },
     ({ user }) =>
       prompt(
-        `Summarize the journey of the user "${user}". Look them up with get_user by identifier, and if that finds nobody and it's a number, by id. Then get their events with get_user_events over the longest period the plan includes. Tell me where they are from, when they were first and last seen, how often they visited, which pages they viewed most and which key custom events they triggered and when. Keep it short and factual.`,
+        `Summarize the journey of the user "${user}". Look them up with get_user by identifier, and if that finds nobody and it's a number, by id. If that finds nobody either, search for them with list_users (search "${user}") over the longest period the plan includes, and ask me which one I mean if several users match. Then get their events with get_user_events over the longest period the plan includes. Tell me where they are from, when they were first and last seen, how often they visited, which pages they viewed most and which key custom events they triggered and when. Keep it short and factual.`,
       ),
   );
 }

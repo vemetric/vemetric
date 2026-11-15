@@ -361,6 +361,10 @@ describe('POST /api/v1/analytics/query (contract)', () => {
         'utmSource',
         'utmTerm',
         'event:name',
+        'firstVisit:referrer',
+        'firstVisit:referrerType',
+        'firstVisit:utmCampaign',
+        'firstVisit:page:path',
       ];
 
       for (const token of groupingTokens) {

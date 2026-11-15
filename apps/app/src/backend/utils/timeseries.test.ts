@@ -33,8 +33,9 @@ describe('getStartDate', () => {
   });
 
   it('should return start date for 3months timespan', () => {
+    // Weeks start on Sunday, like ClickHouse's toStartOfWeek (2024-01-14 is the Sunday before "now")
     const result = getTimeSpanStartDate('3months');
-    expect(result.toISOString()).toBe('2023-10-30T00:00:00.000Z');
+    expect(result.toISOString()).toBe('2023-10-29T00:00:00.000Z');
   });
 
   it('should return start date for 6months timespan', () => {
@@ -51,7 +52,7 @@ describe('getStartDate', () => {
 describe('fillTimeSeries', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date('2024-01-15T12:00:00Z'));
+    vi.setSystemTime(new Date('2024-01-15T12:05:00Z'));
   });
 
   afterEach(() => {
@@ -131,20 +132,41 @@ describe('fillTimeSeries', () => {
     ]);
   });
 
-  it('should fill missing weekly data points with zeros', () => {
+  it('should fill missing weekly data points with zeros, with weeks starting on Sunday like ClickHouse', () => {
+    // ClickHouse returns a Date (without time) for toStartOfWeek
     const timeSeries = [
-      { date: '2024-01-01 00:00:00', count: 5 },
-      { date: '2024-01-15 00:00:00', count: 10 },
+      { date: '2023-12-31', count: 5 },
+      { date: '2024-01-14', count: 10 },
     ];
+    // A Monday: its week started the day before
     const startDate = new Date('2024-01-01T00:00:00Z');
 
     const result = fillTimeSeries(timeSeries, startDate, 'weekly');
 
-    expect(result).toHaveLength(3);
     expect(result).toEqual([
-      { date: '2024-01-01T00:00:00.000Z', count: 5 },
-      { date: '2024-01-08T00:00:00.000Z', count: 0 },
-      { date: '2024-01-15T00:00:00.000Z', count: 10 },
+      { date: '2023-12-31T00:00:00.000Z', count: 5 },
+      { date: '2024-01-07T00:00:00.000Z', count: 0 },
+      { date: '2024-01-14T00:00:00.000Z', count: 10 },
+    ]);
+  });
+
+  it('should include the last month of a custom period that starts mid-month', () => {
+    const timeSeries = [
+      { date: '2023-11-01', count: 5 },
+      { date: '2024-01-01', count: 10 },
+    ];
+
+    const result = fillTimeSeries(
+      timeSeries,
+      new Date('2023-11-15T00:00:00Z'),
+      'monthly',
+      new Date('2024-01-10T23:59:59Z'),
+    );
+
+    expect(result).toEqual([
+      { date: '2023-11-01T00:00:00.000Z', count: 5 },
+      { date: '2023-12-01T00:00:00.000Z', count: 0 },
+      { date: '2024-01-01T00:00:00.000Z', count: 10 },
     ]);
   });
 

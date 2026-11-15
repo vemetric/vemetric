@@ -1,10 +1,11 @@
 import type { z } from '@hono/zod-openapi';
+import { listIntervalStarts } from '@vemetric/common/intervals';
 import { getUserFilterQueries, parseMetricsQueryGroupingToken } from 'clickhouse';
 import { assertRetentionAllowed, type ApiServiceContext } from './context';
 import { getFilterFunnelsData } from '../../utils/filter';
 import { DEFAULT_METRICS } from '../consts/analytics';
 import type { analyticsQueryRequestSchema, analyticsQueryResponseSchema } from '../schemas/analytics';
-import { buildGroupObject, listIntervalGroupKeys, resolveAutoIntervalGrouping } from '../utils/analytics/grouping';
+import { buildGroupObject, resolveAutoIntervalGrouping } from '../utils/analytics/grouping';
 import { getEmptyIntervalMetricValue, getEmptyMetricValue, normalizeMetricValue } from '../utils/analytics/metrics';
 import { applyOrdering, getDefaultOrderBy } from '../utils/analytics/ordering';
 import { queryMetricRows } from '../utils/analytics/queries';
@@ -69,8 +70,9 @@ export async function queryAnalytics(
 
   // Time series contain every interval of the period, so clients don't have to fill the gaps themselves.
   const emptyIntervals = new Set<string>();
-  if (grouping.kind === 'interval') {
-    for (const key of listIntervalGroupKeys(grouping.interval, startDate, endDate ?? new Date())) {
+  if (grouping.kind === 'interval' && grouping.interval !== 'auto') {
+    for (const start of listIntervalStarts(grouping.interval, startDate, endDate ?? new Date())) {
+      const key = formatApiDate(start);
       if (!dataByKey.has(key)) {
         dataByKey.set(key, { group: buildGroupObject(grouping, key), metrics: {} });
         emptyIntervals.add(key);

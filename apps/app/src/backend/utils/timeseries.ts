@@ -1,62 +1,14 @@
-import { TIME_SPAN_DATA, type TimeSpan } from '@vemetric/common/charts/timespans';
+import { TIME_SPAN_DATA, type ChartInterval, type TimeSpan } from '@vemetric/common/charts/timespans';
+import { getIntervalStart, listIntervalStarts } from '@vemetric/common/intervals';
 import { clickhouseDateToISO } from 'clickhouse';
-import { addSeconds, addMinutes, addHours, addDays, addWeeks, addMonths, format } from 'date-fns';
+import { addSeconds, addMinutes, addHours } from 'date-fns';
 
-function roundDate(date: Date, interval: string) {
-  // Convert to UTC for consistent rounding
-  const utcDate = new Date(
-    Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate(),
-      date.getUTCHours(),
-      date.getUTCMinutes(),
-      date.getUTCSeconds(),
-    ),
-  );
-
-  switch (interval) {
-    case 'thirty_seconds':
-      utcDate.setUTCSeconds(utcDate.getUTCSeconds() - (utcDate.getUTCSeconds() % 30));
-      utcDate.setUTCMilliseconds(0);
-      break;
-    case 'ten_minutes':
-      utcDate.setUTCMinutes(utcDate.getUTCMinutes() - (utcDate.getUTCMinutes() % 10));
-      utcDate.setUTCSeconds(0);
-      utcDate.setUTCMilliseconds(0);
-      break;
-    case 'hourly':
-      utcDate.setUTCMinutes(0);
-      utcDate.setUTCSeconds(0);
-      utcDate.setUTCMilliseconds(0);
-      break;
-    case 'daily':
-      utcDate.setUTCHours(0);
-      utcDate.setUTCMinutes(0);
-      utcDate.setUTCSeconds(0);
-      utcDate.setUTCMilliseconds(0);
-      break;
-    case 'weekly': {
-      // Round to start of week (Monday)
-      const dayOfWeek = utcDate.getUTCDay();
-      const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-      utcDate.setUTCDate(utcDate.getUTCDate() - daysToSubtract);
-      utcDate.setUTCHours(0);
-      utcDate.setUTCMinutes(0);
-      utcDate.setUTCSeconds(0);
-      utcDate.setUTCMilliseconds(0);
-      break;
-    }
-    case 'monthly':
-      utcDate.setUTCDate(1);
-      utcDate.setUTCHours(0);
-      utcDate.setUTCMinutes(0);
-      utcDate.setUTCSeconds(0);
-      utcDate.setUTCMilliseconds(0);
-      break;
-  }
-
-  return utcDate;
+// Days and weeks in UTC: date-fns' addDays and addWeeks keep the local time, which shifts by an hour across a DST
+// change when the server doesn't run in UTC.
+function addDaysUTC(date: Date, amount: number): Date {
+  const result = new Date(date);
+  result.setUTCDate(result.getUTCDate() + amount);
+  return result;
 }
 
 function addMonthsUTC(date: Date, amount: number): Date {
@@ -78,7 +30,7 @@ export function getTimeSpanStartDate(timespan: TimeSpan, customStartDate?: strin
 
   const timeSpanData = TIME_SPAN_DATA[timespan];
 
-  let startDate = roundDate(new Date(), timeSpanData.interval);
+  let startDate = getIntervalStart(timeSpanData.interval, new Date());
   switch (timespan) {
     case 'live':
       startDate = addSeconds(addMinutes(startDate, -4), -30);
@@ -90,13 +42,13 @@ export function getTimeSpanStartDate(timespan: TimeSpan, customStartDate?: strin
       startDate = addHours(startDate, -23);
       break;
     case '7days':
-      startDate = addDays(startDate, -6);
+      startDate = addDaysUTC(startDate, -6);
       break;
     case '30days':
-      startDate = addDays(startDate, -29);
+      startDate = addDaysUTC(startDate, -29);
       break;
     case '3months':
-      startDate = addWeeks(startDate, -11);
+      startDate = addDaysUTC(startDate, -11 * 7);
       break;
     case '6months':
       startDate = addMonthsUTC(startDate, -5);
@@ -122,10 +74,7 @@ export function getTimeSpanEndDate(timespan: TimeSpan, customEndDate?: string) {
  * For example, if the current period is "Last 7 days", the previous period would be
  * the 7 days before that.
  */
-export function getPreviousPeriodDates(
-  startDate: Date,
-  endDate: Date,
-): { prevStartDate: Date; prevEndDate: Date } {
+export function getPreviousPeriodDates(startDate: Date, endDate: Date): { prevStartDate: Date; prevEndDate: Date } {
   const periodDurationMs = endDate.getTime() - startDate.getTime();
 
   // Previous period ends exactly when current period starts
@@ -135,62 +84,28 @@ export function getPreviousPeriodDates(
   return { prevStartDate, prevEndDate };
 }
 
+/**
+ * Adds the intervals without data to a time series of the dashboard (with a count of 0), so its charts have no gaps.
+ * Uses the same intervals as the API's time series (`listIntervalStarts`).
+ */
 export function fillTimeSeries(
   timeSeries: Array<{ date: string; count: number }> | null,
   startDate: Date,
-  interval: string,
+  interval: ChartInterval,
   endDate: Date = new Date(),
 ) {
-  if (timeSeries) {
-    const filledTimeSeries = [];
-
-    let currentDate = new Date(startDate);
-
-    while (currentDate <= endDate) {
-      const existingData = timeSeries.find((pv) => {
-        if (interval === 'monthly') {
-          return format(pv.date, 'yyyy-MM') === format(currentDate, 'yyyy-MM');
-        } else if (interval === 'weekly') {
-          return format(pv.date, 'yyyy-ww') === format(currentDate, 'yyyy-ww');
-        }
-
-        const pvDate = new Date(clickhouseDateToISO(pv.date));
-
-        if (interval === 'daily') {
-          return pvDate.toDateString() === currentDate.toDateString();
-        }
-
-        return pvDate.toISOString() === currentDate.toISOString();
-      });
-
-      filledTimeSeries.push({
-        count: existingData?.count || 0,
-        date: currentDate.toISOString(),
-      });
-
-      switch (interval) {
-        case 'thirty_seconds':
-          currentDate = addSeconds(currentDate, 30);
-          break;
-        case 'ten_minutes':
-          currentDate = addMinutes(currentDate, 10);
-          break;
-        case 'hourly':
-          currentDate = addHours(currentDate, 1);
-          break;
-        case 'daily':
-          currentDate = addDays(currentDate, 1);
-          break;
-        case 'weekly':
-          currentDate = addWeeks(currentDate, 1);
-          break;
-        case 'monthly':
-          currentDate = addMonths(currentDate, 1);
-          break;
-      }
-    }
-    timeSeries = filledTimeSeries;
+  if (!timeSeries) {
+    return timeSeries;
   }
 
-  return timeSeries;
+  const countByStart = new Map(
+    timeSeries.map(({ date, count }) => [
+      getIntervalStart(interval, new Date(clickhouseDateToISO(date))).getTime(),
+      count,
+    ]),
+  );
+  return listIntervalStarts(interval, startDate, endDate).map((start) => ({
+    count: countByStart.get(start.getTime()) || 0,
+    date: start.toISOString(),
+  }));
 }

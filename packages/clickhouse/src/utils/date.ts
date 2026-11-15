@@ -6,6 +6,10 @@ import {
 } from '@vemetric/common/charts/timespans';
 
 export function clickhouseDateToISO(date: string) {
+  // A Date column, e.g. from toStartOfWeek or toStartOfMonth
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return `${date}T00:00:00.000Z`;
+  }
   let isoDate = `${date.replace(' ', 'T')}`;
   if (!isoDate.includes('.')) {
     isoDate = `${isoDate}.000`;

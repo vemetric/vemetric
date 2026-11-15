@@ -1,3 +1,4 @@
+import type { ChartInterval } from '@vemetric/common/charts/timespans';
 import { escape } from 'sqlstring';
 
 export const eventPropertyTokenRegex = /^event:prop:([^\r\n]+)$/;
@@ -53,7 +54,7 @@ export type MetricsQueryGrouping =
   | { kind: 'field'; token: MetricsGroupFieldToken }
   | {
       kind: 'interval';
-      interval: string;
+      interval: ChartInterval | 'auto';
     }
   | {
       kind: 'event_prop';

@@ -162,7 +162,8 @@ export function getMetricsGroupExpression(grouping: MetricsQueryGrouping, scope:
       case 'daily':
         return `toStartOfDay(${dateField})`;
       case 'weekly':
-        return `toStartOfWeek(${dateField})`;
+        // Mode 1: weeks start on Monday
+        return `toStartOfWeek(${dateField}, 1)`;
       case 'monthly':
         return `toStartOfMonth(${dateField})`;
       default:

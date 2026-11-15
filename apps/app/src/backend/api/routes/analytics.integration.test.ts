@@ -321,8 +321,15 @@ describe('POST /api/v1/analytics/query (integration, seeded fixtures)', () => {
           ['2026-01-19T00:00:00Z', 4, 3],
         ],
       ],
-      // 2026-01-18 is a Sunday, weeks start on Sunday
-      ['interval:week', 1, [['2026-01-18T00:00:00Z', 8, 5]]],
+      // 2026-01-18 is a Sunday and weeks start on Monday, so the period spans two weeks
+      [
+        'interval:week',
+        2,
+        [
+          ['2026-01-12T00:00:00Z', 4, 2],
+          ['2026-01-19T00:00:00Z', 4, 3],
+        ],
+      ],
       ['interval:month', 1, [['2026-01-01T00:00:00Z', 8, 5]]],
     ] as const)('returns a time series for %s', async (groupBy, expectedLength, expectedRowsWithData) => {
       const response = await postAnalyticsQuery(

@@ -10,8 +10,9 @@ function floorTo(date: Date, ms: number): Date {
 }
 
 /**
- * The start of the interval a date falls in, the way ClickHouse groups time series (`toStartOfHour`, `toStartOfWeek`,
- * …): in UTC, and weeks start on Sunday. Used by the dashboard and the API, so their intervals match the query results.
+ * The start of the interval a date falls in, the way ClickHouse groups time series (`toStartOfHour`,
+ * `toStartOfWeek(…, 1)`, …): in UTC, and weeks start on Monday. Used by the dashboard and the API, so their intervals
+ * match the query results.
  */
 export function getIntervalStart(interval: ChartInterval, date: Date): Date {
   switch (interval) {
@@ -25,7 +26,8 @@ export function getIntervalStart(interval: ChartInterval, date: Date): Date {
       return floorTo(date, DAY);
     case 'weekly': {
       const day = floorTo(date, DAY);
-      return new Date(day.getTime() - day.getUTCDay() * DAY);
+      const daysSinceMonday = (day.getUTCDay() + 6) % 7;
+      return new Date(day.getTime() - daysSinceMonday * DAY);
     }
     case 'monthly':
       return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));

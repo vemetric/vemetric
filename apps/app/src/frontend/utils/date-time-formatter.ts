@@ -159,10 +159,10 @@ class DateTimeFormatter {
 
   formatWeek(value: string | Date) {
     const date = this.prepareDate(value);
-    // Weeks start on Sunday like the time series (ClickHouse's toStartOfWeek), and their start is midnight UTC, so the
-    // number comes from the UTC date: in time zones west of UTC, that midnight is still Saturday.
+    // Weeks start on Monday like the time series, and their start is midnight UTC, so the number comes from the UTC
+    // date: in time zones west of UTC, that midnight is still Sunday.
     const utcDay = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
-    const weekNumber = getWeek(utcDay, { weekStartsOn: 0 });
+    const weekNumber = getWeek(utcDay, { weekStartsOn: 1 });
 
     return `Week ${weekNumber}`;
   }

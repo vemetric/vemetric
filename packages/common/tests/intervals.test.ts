@@ -11,12 +11,13 @@ describe('getIntervalStart', () => {
     expect(getIntervalStart('ten_minutes', value).toISOString()).toBe('2026-01-21T09:40:00.000Z');
     expect(getIntervalStart('hourly', value).toISOString()).toBe('2026-01-21T09:00:00.000Z');
     expect(getIntervalStart('daily', value).toISOString()).toBe('2026-01-21T00:00:00.000Z');
-    expect(getIntervalStart('weekly', value).toISOString()).toBe('2026-01-18T00:00:00.000Z');
+    expect(getIntervalStart('weekly', value).toISOString()).toBe('2026-01-19T00:00:00.000Z');
     expect(getIntervalStart('monthly', value).toISOString()).toBe('2026-01-01T00:00:00.000Z');
   });
 
-  it('keeps a Sunday in its own week', () => {
-    expect(getIntervalStart('weekly', date('2026-01-18T23:59:59Z')).toISOString()).toBe('2026-01-18T00:00:00.000Z');
+  it('puts a Sunday in the week that started on the Monday before', () => {
+    expect(getIntervalStart('weekly', date('2026-01-18T23:59:59Z')).toISOString()).toBe('2026-01-12T00:00:00.000Z');
+    expect(getIntervalStart('weekly', date('2026-01-19T00:00:00Z')).toISOString()).toBe('2026-01-19T00:00:00.000Z');
   });
 });
 
@@ -37,12 +38,11 @@ describe('listIntervalStarts', () => {
     ]);
   });
 
-  it('starts weeks on Sunday, like ClickHouse', () => {
-    // 2026-01-21 is a Wednesday
+  it('starts weeks on Monday', () => {
+    // 2026-01-21 is a Wednesday, 2026-02-01 a Sunday
     expect(iso(listIntervalStarts('weekly', date('2026-01-21T08:00:00Z'), date('2026-02-01T10:00:00Z')))).toEqual([
-      '2026-01-18T00:00:00.000Z',
-      '2026-01-25T00:00:00.000Z',
-      '2026-02-01T00:00:00.000Z',
+      '2026-01-19T00:00:00.000Z',
+      '2026-01-26T00:00:00.000Z',
     ]);
   });
 
@@ -188,11 +188,11 @@ describe('isIncompletePeriod', () => {
   });
 
   describe('weekly interval', () => {
-    it('should return true for current week (Sunday start, like ClickHouse)', () => {
-      // June 15, 2024 is a Saturday. Week starts Sunday June 9.
+    it('should return true for current week (Monday start)', () => {
+      // June 15, 2024 is a Saturday. Week starts Monday June 10.
       vi.setSystemTime(new Date(Date.UTC(2024, 5, 15, 14, 30, 0)));
-      const sundayThisWeek = new Date(Date.UTC(2024, 5, 9, 0, 0, 0));
-      expect(isIncompletePeriod(sundayThisWeek, 'weekly')).toBe(true);
+      const mondayThisWeek = new Date(Date.UTC(2024, 5, 10, 0, 0, 0));
+      expect(isIncompletePeriod(mondayThisWeek, 'weekly')).toBe(true);
     });
 
     it('should return true for date within current week', () => {
@@ -203,17 +203,24 @@ describe('isIncompletePeriod', () => {
     });
 
     it('should return false for previous week', () => {
-      // June 15, 2024 is a Saturday. Previous week started June 2.
+      // June 15, 2024 is a Saturday. Previous week started June 3.
       vi.setSystemTime(new Date(Date.UTC(2024, 5, 15, 14, 30, 0)));
       const previousWeek = new Date(Date.UTC(2024, 5, 5, 0, 0, 0)); // Wednesday June 5
       expect(isIncompletePeriod(previousWeek, 'weekly')).toBe(false);
     });
 
-    it('should start a new week on Sunday', () => {
-      // June 16, 2024 is a Sunday, so the week of June 9 is complete.
+    it('should handle Sunday correctly (week started on previous Monday)', () => {
+      // June 16, 2024 is a Sunday. Week started Monday June 10.
       vi.setSystemTime(new Date(Date.UTC(2024, 5, 16, 14, 30, 0)));
-      expect(isIncompletePeriod(new Date(Date.UTC(2024, 5, 16, 0, 0, 0)), 'weekly')).toBe(true);
-      expect(isIncompletePeriod(new Date(Date.UTC(2024, 5, 9, 0, 0, 0)), 'weekly')).toBe(false);
+      const mondayThisWeek = new Date(Date.UTC(2024, 5, 10, 0, 0, 0));
+      expect(isIncompletePeriod(mondayThisWeek, 'weekly')).toBe(true);
+    });
+
+    it('should start a new week on Monday', () => {
+      // June 17, 2024 is a Monday, so the week of June 10 is complete.
+      vi.setSystemTime(new Date(Date.UTC(2024, 5, 17, 14, 30, 0)));
+      expect(isIncompletePeriod(new Date(Date.UTC(2024, 5, 17, 0, 0, 0)), 'weekly')).toBe(true);
+      expect(isIncompletePeriod(new Date(Date.UTC(2024, 5, 10, 0, 0, 0)), 'weekly')).toBe(false);
     });
 
     it('should return false for date from last month', () => {

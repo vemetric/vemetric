@@ -65,6 +65,11 @@ export function formatDateExpression({ timeSpan, startDate, endDate }: TimeSpanO
     return `toStartOfInterval(${field}, INTERVAL 30 SECOND)`;
   }
 
+  if (method === 'toStartOfWeek') {
+    // Mode 1: weeks start on Monday
+    return `toStartOfWeek(${field}, 1)`;
+  }
+
   // Default format for standard ClickHouse functions
   return `${method}(${field})`;
 }

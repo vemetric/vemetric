@@ -13,7 +13,7 @@ export function getConnectedAppsUrl(): string {
 type ToolErrorContext = {
   /** Whether the caller is an app connected via OAuth (rather than an API key). */
   isOauth?: boolean;
-  /** The organization of the project, if known, for the billing link. */
+  /** The organization of the project, if known, for the link to its billing settings. */
   organizationId: string | undefined;
   input: unknown;
 };
@@ -40,10 +40,11 @@ export function getToolErrorMessage(error: ApiError, { organizationId, input, is
 
 function getPlanLimitMessage(organizationId: string | undefined, input: unknown): string {
   const earliestDate = formatApiDay(addDays(new Date(), -FREE_PLAN_RETENTION_DAYS));
-  // Without a known organization, /billing opens the pricing of the user's first organization.
-  const billingUrl = organizationId
-    ? `${getVemetricUrl('app')}/o/${organizationId}?orgSettings=billing&pricingDialog=true`
-    : `${getVemetricUrl('app')}/billing`;
+  // Only the billing settings, without the pricing dialog or a call to upgrade: the app directories of ChatGPT and
+  // Claude don't allow showing subscription plans, linking to checkout or promoting products in tool output.
+  const billingSettings = organizationId
+    ? `the billing settings of their organization in Vemetric: ${getVemetricUrl('app')}/o/${organizationId}?orgSettings=billing`
+    : 'the billing settings of their organization in Vemetric.';
   const plan = `the project's Vemetric plan (Free) only includes data from the last ${FREE_PLAN_RETENTION_DAYS} days (since ${earliestDate})`;
   const dateRange = (input as { dateRange?: PresetTimeSpan | [string, string] } | undefined)?.dateRange;
   const requested = Array.isArray(dateRange)
@@ -52,7 +53,7 @@ function getPlanLimitMessage(organizationId: string | undefined, input: unknown)
 
   return [
     requested,
-    `Tell the user that this period isn't included in their plan and that they can upgrade to the Professional plan for longer data retention: ${billingUrl}`,
+    `Tell the user that this period isn't included in their plan. They can see their plan in ${billingSettings}`,
     `Don't retry with other periods that start before ${earliestDate}. You can offer to answer for the last ${FREE_PLAN_RETENTION_DAYS} days instead.`,
   ].join(' ');
 }

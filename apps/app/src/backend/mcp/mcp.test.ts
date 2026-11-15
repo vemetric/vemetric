@@ -224,7 +224,11 @@ describe('MCP server', () => {
         'get_funnel_results',
       ]);
       for (const tool of tools) {
-        expect(tool.annotations, tool.name).toMatchObject({ readOnlyHint: true, openWorldHint: false });
+        expect(tool.annotations, tool.name).toEqual({
+          readOnlyHint: true,
+          destructiveHint: false,
+          openWorldHint: false,
+        });
         expect(tool.description, tool.name).toBeTruthy();
       }
       const queryAnalytics = tools.find((tool) => tool.name === 'query_analytics');
@@ -370,8 +374,9 @@ describe('MCP server', () => {
 
       // Only query_analytics carries the full filter schema (~5 KB), see createCompactFilters. The other tools describe
       // the filter shapes in text (~1 KB more), because clients like Claude.ai load tool definitions on demand. Raised
-      // from 27,500 for the firstVisit:* grouping tokens, which appear in both the groupBy and the orderBy enum.
-      expect(JSON.stringify(tools).length).toBeLessThan(28_000);
+      // from 27,500 for the firstVisit:* grouping tokens, which appear in both the groupBy and the orderBy enum, and from
+      // 28,000 for the explicit destructiveHint on every tool, which ChatGPT's app directory requires.
+      expect(JSON.stringify(tools).length).toBeLessThan(28_500);
       const listUsers = tools.find((tool) => tool.name === 'list_users');
       expect(listUsers?.inputSchema.properties?.filters).toMatchObject({
         items: { type: 'object', properties: { type: { type: 'string' } } },
@@ -447,7 +452,10 @@ describe('MCP server', () => {
       expect(result.isError).toBe(true);
       const text = textOf(result);
       expect(text).toContain('Vemetric plan (Free) only includes data from the last 30 days');
-      expect(text).toContain('/o/org_1?orgSettings=billing&pricingDialog=true');
+      expect(text).toContain('/o/org_1?orgSettings=billing');
+      // No pricing dialog or call to upgrade: the app directories don't allow promoting plans
+      expect(text).not.toContain('pricingDialog');
+      expect(text).not.toMatch(/upgrade/i);
       expect(getFilterableData).not.toHaveBeenCalled();
     });
 
@@ -656,7 +664,7 @@ describe('MCP server', () => {
       });
 
       expect(findOrganizationById).toHaveBeenCalledWith('org_2');
-      expect(textOf(result)).toContain('/o/org_2?orgSettings=billing&pricingDialog=true');
+      expect(textOf(result)).toContain('/o/org_2?orgSettings=billing');
     });
 
     it('rejects tokens of a connection the user removed', async () => {

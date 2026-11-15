@@ -18,7 +18,8 @@ import { getUser, getUserEvents, listUsers } from '../api/services/users';
 import { formatApiDay } from '../api/utils/date';
 import { FREE_PLAN_RETENTION_DAYS } from '../utils/retention';
 
-const annotations: ToolAnnotations = { readOnlyHint: true, openWorldHint: false };
+// All three hints explicitly: ChatGPT's app directory requires them, Claude's needs readOnlyHint.
+const annotations: ToolAnnotations = { readOnlyHint: true, destructiveHint: false, openWorldHint: false };
 
 const projectId = z
   .string()

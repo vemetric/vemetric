@@ -88,8 +88,16 @@ describe('DateTimeFormatter', () => {
     });
 
     it('should handle different years', () => {
-      expect(dateTimeFormatter.formatWeek('2023-06-15')).toBe('Week 25');
+      // 2023 starts on a Sunday, so its first week starts on January 1
+      expect(dateTimeFormatter.formatWeek('2023-06-15')).toBe('Week 24');
       expect(dateTimeFormatter.formatWeek('2025-03-10')).toBe('Week 11');
+    });
+
+    it('should start weeks on Sunday, like the time series', () => {
+      // A week of a time series, from Sunday November 15 to Saturday November 21, 2026
+      expect(dateTimeFormatter.formatWeek(new Date('2026-11-15T00:00:00.000Z'))).toBe('Week 47');
+      expect(dateTimeFormatter.formatWeek(new Date('2026-11-21T23:59:59.000Z'))).toBe('Week 47');
+      expect(dateTimeFormatter.formatWeek(new Date('2026-11-14T23:59:59.000Z'))).toBe('Week 46');
     });
   });
 

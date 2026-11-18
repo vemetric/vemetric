@@ -94,13 +94,13 @@ export const dbProject = {
 
     return userProjectAccess.some((access) => access.projectId === projectId);
   },
-  /** Deletes the project and queues the deletion of its ClickHouse data (done by the worker, see ClickhouseDeletion). */
-  delete: async (id: string, client: DbClient = prismaClient) => {
-    const run = async (tx: Prisma.TransactionClient) => {
-      const project = await tx.project.delete({ where: { id } });
-      await dbClickhouseDeletion.queueProject(id, 'project-deleted', tx);
-      return project;
-    };
-    return '$transaction' in client ? client.$transaction(run) : run(client);
+  /**
+   * Deletes the project and queues the deletion of its ClickHouse data (done by the worker, see ClickhouseDeletion).
+   * Takes a transaction client so both always happen together.
+   */
+  delete: async (id: string, tx: Prisma.TransactionClient) => {
+    const project = await tx.project.delete({ where: { id } });
+    await dbClickhouseDeletion.queueProject(id, 'project-deleted', tx);
+    return project;
   },
 };

@@ -16,8 +16,18 @@ const botRegexes = bots.flatMap((bot) => {
   }
 });
 
+// Some of the bot regexes backtrack quadratically on long input, and they run on every unauthenticated hub
+// request. Real browser user agents stay well below these limits; a 15 KB one used to cost ~0.5 s of CPU.
+const MAX_USER_AGENT_LENGTH = 1024;
+const MAX_MATCHED_USER_AGENT_LENGTH = 512;
+
 export function isBotUserAgent(userAgent: string) {
-  return botRegexes.some((regex) => regex.test(userAgent));
+  if (userAgent.length > MAX_USER_AGENT_LENGTH) {
+    return true;
+  }
+
+  const matchedUserAgent = userAgent.slice(0, MAX_MATCHED_USER_AGENT_LENGTH);
+  return botRegexes.some((regex) => regex.test(matchedUserAgent));
 }
 
 export function isBot(context: HonoContext) {

@@ -22,4 +22,18 @@ describe('isBotUserAgent', () => {
   ])('does not flag the browser %s', (userAgent) => {
     expect(isBotUserAgent(userAgent)).toBe(false);
   });
+
+  it('treats an oversized user agent as a bot without running the regexes on it', () => {
+    const userAgent = ' '.repeat(15_000);
+    const start = performance.now();
+    expect(isBotUserAgent(userAgent)).toBe(true);
+    expect(performance.now() - start).toBeLessThan(50);
+  });
+
+  it('only matches the start of a long but plausible user agent', () => {
+    const userAgent = 'Mozilla/5.0 (Linux; Android 14) '.padEnd(1000, ' x');
+    const start = performance.now();
+    expect(isBotUserAgent(userAgent)).toBe(false);
+    expect(performance.now() - start).toBeLessThan(50);
+  });
 });

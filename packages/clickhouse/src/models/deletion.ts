@@ -78,7 +78,7 @@ async function waitForMutations(tables: string[], since: string, timeoutMs: numb
     const failed = pending.find((mutation) => mutation.latest_fail_reason);
     if (failed) lastFailReason = `${failed.table}: ${failed.latest_fail_reason}`;
     if (Date.now() > deadline) {
-      await killMutations(pending.map((mutation) => mutation.mutation_id));
+      await killMutations(pending);
       throw new Error(
         `Mutations not done after ${timeoutMs / 1000}s, killed: ${pending.map((m) => `${m.table} ${m.mutation_id}`).join(', ')}` +
           (lastFailReason ? `. Last failure: ${lastFailReason}` : ''),
@@ -88,12 +88,14 @@ async function waitForMutations(tables: string[], since: string, timeoutMs: numb
   }
 }
 
-async function killMutations(mutationIds: string[]) {
-  for (const id of mutationIds) {
-    if (!/^[\w.-]+$/.test(id)) throw new Error(`Unexpected mutation id: ${id}`);
+// Mutation ids are numbered per table, so the same id can exist on another table: kill exact (table, id) pairs.
+async function killMutations(mutations: Array<{ table: string; mutation_id: string }>) {
+  for (const value of mutations.flatMap((mutation) => [mutation.table, mutation.mutation_id])) {
+    if (!/^[\w.-]+$/.test(value)) throw new Error(`Unexpected mutation table or id: ${value}`);
   }
+  const pairs = mutations.map((mutation) => `('${mutation.table}', '${mutation.mutation_id}')`).join(', ');
   await clickhouseClient.command({
-    query: `KILL MUTATION WHERE database = currentDatabase() AND mutation_id IN (${mutationIds.map((id) => `'${id}'`).join(', ')})`,
+    query: `KILL MUTATION WHERE database = currentDatabase() AND (table, mutation_id) IN (${pairs})`,
   });
 }
 

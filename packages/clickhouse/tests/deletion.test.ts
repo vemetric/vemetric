@@ -50,7 +50,7 @@ describe('clickhouseDeletion.deleteProjects', () => {
 
     expect(commands()).toEqual([
       'DELETE FROM `event` WHERE projectId IN (1)',
-      "KILL MUTATION WHERE database = currentDatabase() AND mutation_id IN ('mutation_7.txt')",
+      "KILL MUTATION WHERE database = currentDatabase() AND (table, mutation_id) IN (('event', 'mutation_7.txt'))",
     ]);
   });
 

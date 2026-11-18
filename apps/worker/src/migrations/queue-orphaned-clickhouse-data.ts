@@ -11,6 +11,7 @@
 // Like the other scripts here, ClickHouse is reached via CH_MIGRATIONS_* (e.g. the SSH tunnel), Postgres via
 // DATABASE_URL. Credentials: read them into the shell instead of the file.
 import { createClient } from '@clickhouse/client-web';
+import { clickhouseDeletion } from 'clickhouse';
 import { dbClickhouseDeletion, prismaClient } from 'database';
 
 const execute = process.argv.includes('--execute');
@@ -30,31 +31,12 @@ const clickhouse = createClient({
   clickhouse_settings: { output_format_json_quote_64bit_integers: 1, readonly: '2' },
 });
 
-async function query<T>(sql: string) {
-  return (await (await clickhouse.query({ query: sql, format: 'JSONEachRow' })).json()) as T[];
-}
-
 async function main() {
   const database = new URL(process.env.DATABASE_URL as string);
   console.log(`ClickHouse: ${process.env.CH_MIGRATIONS_HOST} / ${process.env.CH_MIGRATIONS_DB}`);
   console.log(`Postgres:   ${database.hostname}:${database.port || 5432}${database.pathname}\n`);
 
-  const tables = (
-    await query<{ table: string }>(
-      `SELECT table FROM system.columns
-       WHERE database = currentDatabase() AND name = 'projectId'
-         AND table IN (SELECT name FROM system.tables WHERE database = currentDatabase() AND engine LIKE '%MergeTree%')
-       ORDER BY table`,
-    )
-  ).map((row) => row.table);
-
-  const stored = new Map<string, Record<string, number>>();
-  for (const table of tables) {
-    const rows = await query<{ projectId: string; rows: string }>(
-      `SELECT toString(projectId) AS projectId, count() AS rows FROM \`${table}\` GROUP BY projectId`,
-    );
-    for (const row of rows) stored.set(row.projectId, { ...stored.get(row.projectId), [table]: Number(row.rows) });
-  }
+  const stored = await clickhouseDeletion.getStoredProjects(clickhouse);
 
   const existing = new Set((await prismaClient.project.findMany({ select: { id: true } })).map((p) => p.id));
   const queued = new Set(await dbClickhouseDeletion.findQueuedProjectIds());

@@ -1,3 +1,4 @@
+import type { ClickHouseClient } from '@clickhouse/client-web';
 import { clickhouseClient } from '../client';
 
 // Deleting analytics data (deleted projects, single users of a project) with lightweight deletes.
@@ -8,7 +9,9 @@ import { clickhouseClient } from '../client';
 // be merged for a long time, so `applyDeletedMasks` removes the masked rows physically, batched for all deletions.
 //
 // All statements run asynchronously in ClickHouse; we wait by polling `system.mutations` instead of keeping one HTTP
-// request open for the whole time. A statement that timed out keeps running in ClickHouse, and repeating it is harmless.
+// request open for the whole time. ClickHouse retries failing mutations by itself, so a failure reason alone doesn't end
+// the wait. If they aren't done by the deadline, they're killed, so a stuck mutation can't block every later one on the
+// table; repeating the deletes in the next run is harmless.
 
 const POLL_INTERVAL_MS = 5_000;
 const DEFAULT_TIMEOUT_MS = 2 * 60 * 60 * 1000;
@@ -23,19 +26,24 @@ const toUInt64List = (ids: Array<string | bigint>) => {
   return values.join(', ');
 };
 
-async function query<T>(sql: string, params: Record<string, unknown> = {}) {
-  const result = await clickhouseClient.query({ query: sql, query_params: params, format: 'JSONEachRow' });
+async function query<T>(
+  sql: string,
+  params: Record<string, unknown> = {},
+  client: ClickHouseClient = clickhouseClient,
+) {
+  const result = await client.query({ query: sql, query_params: params, format: 'JSONEachRow' });
   return (await result.json()) as T[];
 }
 
 /** MergeTree tables of the analytics database with the given column (views and other engines are left out). */
-async function getTablesWithColumn(column: string) {
+async function getTablesWithColumn(column: string, client: ClickHouseClient = clickhouseClient) {
   const rows = await query<{ table: string }>(
     `SELECT table FROM system.columns
      WHERE database = currentDatabase() AND name = {column:String}
        AND table IN (SELECT name FROM system.tables WHERE database = currentDatabase() AND engine LIKE '%MergeTree%')
      ORDER BY table`,
     { column },
+    client,
   );
   return rows.map((row) => row.table);
 }
@@ -51,9 +59,13 @@ async function serverNow() {
   return row.now;
 }
 
-/** Waits until every mutation started on `tables` since `since` is done; throws if one fails or it takes too long. */
+/**
+ * Waits until every mutation started on `tables` since `since` is done. Past the deadline the unfinished ones are
+ * killed and it throws, with the last failure reason if ClickHouse reported one.
+ */
 async function waitForMutations(tables: string[], since: string, timeoutMs: number) {
   const deadline = Date.now() + timeoutMs;
+  let lastFailReason = '';
   for (;;) {
     const pending = await query<{ table: string; mutation_id: string; latest_fail_reason: string }>(
       `SELECT table, mutation_id, latest_fail_reason FROM system.mutations
@@ -64,14 +76,25 @@ async function waitForMutations(tables: string[], since: string, timeoutMs: numb
     if (pending.length === 0) return;
 
     const failed = pending.find((mutation) => mutation.latest_fail_reason);
-    if (failed) {
-      throw new Error(`Mutation ${failed.mutation_id} on ${failed.table} failed: ${failed.latest_fail_reason}`);
-    }
+    if (failed) lastFailReason = `${failed.table}: ${failed.latest_fail_reason}`;
     if (Date.now() > deadline) {
-      throw new Error(`Mutations still running after ${timeoutMs / 1000}s: ${pending.map((m) => m.table).join(', ')}`);
+      await killMutations(pending.map((mutation) => mutation.mutation_id));
+      throw new Error(
+        `Mutations not done after ${timeoutMs / 1000}s, killed: ${pending.map((m) => `${m.table} ${m.mutation_id}`).join(', ')}` +
+          (lastFailReason ? `. Last failure: ${lastFailReason}` : ''),
+      );
     }
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
   }
+}
+
+async function killMutations(mutationIds: string[]) {
+  for (const id of mutationIds) {
+    if (!/^[\w.-]+$/.test(id)) throw new Error(`Unexpected mutation id: ${id}`);
+  }
+  await clickhouseClient.command({
+    query: `KILL MUTATION WHERE database = currentDatabase() AND mutation_id IN (${mutationIds.map((id) => `'${id}'`).join(', ')})`,
+  });
 }
 
 async function runStatements(statements: Array<{ table: string; sql: string }>, timeoutMs: number) {
@@ -127,12 +150,17 @@ export const clickhouseDeletion = {
     );
   },
 
-  /** Every project id with data in any analytics table, with the stored rows per table. */
-  getStoredProjects: async () => {
+  /**
+   * Every project id with data in any analytics table, with the stored rows per table. Takes a client so scripts can use
+   * their own connection (e.g. `CH_MIGRATIONS_*`).
+   */
+  getStoredProjects: async (client: ClickHouseClient = clickhouseClient) => {
     const projects = new Map<string, Record<string, number>>();
-    for (const table of await getTablesWithColumn('projectId')) {
+    for (const table of await getTablesWithColumn('projectId', client)) {
       const rows = await query<{ projectId: string; rows: string }>(
         `SELECT toString(projectId) AS projectId, count() AS rows FROM \`${table}\` GROUP BY projectId`,
+        {},
+        client,
       );
       for (const row of rows) {
         projects.set(row.projectId, { ...projects.get(row.projectId), [table]: Number(row.rows) });

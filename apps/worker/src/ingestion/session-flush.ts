@@ -1,5 +1,4 @@
 import { NO_REFERRER } from '@vemetric/common/sources';
-import { toWellFormedDeep } from '@vemetric/common/unicode';
 import { clickhouseSession, type ClickhouseSession } from 'clickhouse';
 import { bufferSessionUpdate } from './session-buffer';
 import { sessionKeyPrefix } from './session-redis-commands';
@@ -10,39 +9,38 @@ export async function flushSessionBuffer(limit = 500, onlyKeys?: string[]) {
   if (!Number.isSafeInteger(limit) || limit < 1) return 0;
   const snapshots = await sessionStore.readPending(limit, onlyKeys);
   if (!snapshots.length) return 0;
-  // One insert carries every project's sessions, so a single row ClickHouse cannot parse would block
-  // all of them. State stored before commits were normalized can still hold lone surrogates.
-  const rows = snapshots.map(({ key, state }) => {
-    const [projectId, ...id] = key.slice(sessionKeyPrefix.length).split(':');
-    const sessionId = id.join(':');
+  await clickhouseSession.insertRevisions(
+    snapshots.map(({ key, state }) => {
+      const [projectId, ...id] = key.slice(sessionKeyPrefix.length).split(':');
+      const sessionId = id.join(':');
 
-    if (state.deleted) {
+      if (state.deleted) {
+        return {
+          projectId,
+          id: sessionId,
+          userId: state.session?.userId ?? '0',
+          startedAt: (state.session?.startedAt ?? state.latestAt) || '1970-01-01 00:00:00.000',
+          endedAt: (state.session?.endedAt ?? state.latestAt) || '1970-01-01 00:00:00.000',
+          revision: String(state.revision),
+          deleted: 1,
+        };
+      }
+
       return {
-        projectId,
-        id: sessionId,
+        ...(state.session ?? {
+          ...NO_REFERRER,
+          projectId,
+          id: sessionId,
+          startedAt: state.latestAt || '1970-01-01 00:00:00.000',
+          endedAt: state.latestAt || '1970-01-01 00:00:00.000',
+          duration: 0,
+        }),
         userId: state.session?.userId ?? '0',
-        startedAt: (state.session?.startedAt ?? state.latestAt) || '1970-01-01 00:00:00.000',
-        endedAt: (state.session?.endedAt ?? state.latestAt) || '1970-01-01 00:00:00.000',
         revision: String(state.revision),
-        deleted: 1,
+        deleted: 0,
       };
-    }
-
-    return {
-      ...(state.session ?? {
-        ...NO_REFERRER,
-        projectId,
-        id: sessionId,
-        startedAt: state.latestAt || '1970-01-01 00:00:00.000',
-        endedAt: state.latestAt || '1970-01-01 00:00:00.000',
-        duration: 0,
-      }),
-      userId: state.session?.userId ?? '0',
-      revision: String(state.revision),
-      deleted: 0,
-    };
-  });
-  await clickhouseSession.insertRevisions(rows.map((row) => toWellFormedDeep(row)));
+    }),
+  );
   // No marker is removed before ClickHouse acknowledges; failures remain available for retry.
   await sessionStore.acknowledgeFlush(snapshots);
   return snapshots.length;

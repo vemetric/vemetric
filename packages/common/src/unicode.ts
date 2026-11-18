@@ -4,7 +4,7 @@
 const loneSurrogate = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
 
 export function toWellFormed(value: string) {
-  return value.replace(loneSurrogate, '�');
+  return value.replace(loneSurrogate, '\ufffd');
 }
 
 // Applies toWellFormed to every string, including object keys, in plain JSON-like data.

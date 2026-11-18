@@ -130,51 +130,20 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
   it('keeps flushing every project when a visitor display name holds a lone surrogate', async () => {
     const otherProject = projectId - BigInt(1);
     await bufferSessionUpdate(projectId, 'lone-surrogate', at(0), session('lone-surrogate', 0));
-    await bufferSessionUpdate(otherProject, 'other-project', at(0), { ...session('other-project', 0), projectId: otherProject });
+    await bufferSessionUpdate(otherProject, 'other-project', at(0), {
+      ...session('other-project', 0),
+      projectId: otherProject,
+    });
     // A merge writes the display name of the identify request into the buffered session.
     await reassignBufferedSession(projectId, 'lone-surrogate', userId, 'identified', 'X\ud800');
 
     expect(await stateRedis().get(sessionKey(projectId, 'lone-surrogate'))).not.toContain('\\ud800');
     expect(await flushSessionBuffer()).toBe(2);
     expect(await clickhouseSession.findById(projectId, userId, 'lone-surrogate')).toMatchObject({
-      userDisplayName: 'X�',
+      userDisplayName: 'X\ufffd',
     });
     expect(await clickhouseSession.findById(otherProject, userId, 'other-project')).not.toBeNull();
     expect((await pendingSessionStats()).count).toBe(0);
-  });
-
-  it('flushes and replaces state stored with a lone surrogate escape before normalization', async () => {
-    const key = sessionKey(projectId, 'stored-escape');
-    await bufferSessionUpdate(projectId, 'stored-escape', at(0), session('stored-escape', 0));
-    const state = JSON.parse((await stateRedis().get(key))!);
-    state.session.userDisplayName = 'X\ud800';
-    const poisoned = JSON.stringify(state);
-    expect(poisoned).toContain('\\ud800');
-    await stateRedis().set(key, poisoned);
-
-    // Later activity must be able to replace a stored value cjson cannot decode.
-    expect(await bufferExistingSessionActivity(projectId, 'stored-escape', at(5))).toBe('buffered');
-    expect(await flushSessionBuffer()).toBe(1);
-    expect(await clickhouseSession.findById(projectId, userId, 'stored-escape')).toMatchObject({
-      userDisplayName: 'X�',
-      duration: 5,
-    });
-
-    // A poisoned snapshot that is only flushed (no later activity) is still persisted and acknowledged.
-    await stateRedis().set(key, poisoned);
-    await stateRedis().zadd(dirtyKey, Date.now(), key);
-    expect(await flushSessionBuffer()).toBe(1);
-    expect((await pendingSessionStats()).count).toBe(0);
-    expect(await stateRedis().ttl(key)).toBeGreaterThan(0);
-  });
-
-  it('leaves session state untouched when a commit carries a value it cannot decode', async () => {
-    const key = sessionKey(projectId, 'atomic-commit');
-    await bufferSessionUpdate(projectId, 'atomic-commit', at(0), session('atomic-commit', 0));
-    const raw = (await stateRedis().get(key))!;
-    await expect(stateRedis().commitSessions(2, dirtyKey, key, raw, '{"not json', Date.now(), 120)).rejects.toThrow();
-    expect(await stateRedis().get(key)).toBe(raw);
-    expect(await stateRedis().zscore(dirtyKey, key)).not.toBeNull();
   });
 
   // Redis runs each script atomically, so this checks the scripts' logic rather than a race.

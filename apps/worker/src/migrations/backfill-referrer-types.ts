@@ -24,6 +24,13 @@ import { referrers } from '../consts/referrers';
 const TABLES = ['session_v3', 'event', 'user'] as const;
 type Table = (typeof TABLES)[number];
 
+// Tombstones (`deleted = 1`, e.g. sessions deleted by user merges) only carry the key columns, so the referrer
+// columns have their defaults (`unknown` without a referrer). Reads never see them, so they're skipped. `event` has
+// no tombstones.
+const notDeleted = (table: Table) => (table === 'event' ? '' : 'deleted = 0 AND ');
+// Imported rows keep the importer's names and types, which the Pirsch statement handles (`user` has no imports).
+const ownData = (table: Table) => (table === 'user' ? '' : "importSource = '' AND ");
+
 const VEMETRIC_TYPES = ['none', 'search', 'social', 'email', 'paid', 'llm', 'unknown', 'internal'];
 
 // Names that changed in the referrer list (`renamedReferrers` in fetch-referrers.ts). Rows typed `unknown`,
@@ -38,7 +45,8 @@ async function findListKeysStoredAsUnknown(client: ClickHouseClient) {
   const found = new Set<string>();
   for (const table of TABLES) {
     const result = await client.query({
-      query: `SELECT DISTINCT referrer FROM ${table} WHERE referrerType = 'unknown' AND referrer <> ''`,
+      query: `SELECT DISTINCT referrer FROM ${table}
+        WHERE ${notDeleted(table)}${ownData(table)}referrerType = 'unknown' AND referrer <> ''`,
       format: 'JSONEachRow',
     });
     for (const { referrer } of (await result.json()) as Array<{ referrer: string }>) {
@@ -57,9 +65,7 @@ function getCondition(table: Table, keys: string[]) {
   const condition = `(referrerType = 'direct' OR (referrerType = 'unknown' AND ((referrer = '' AND referrerUrl = '')${listed})))`;
   // The importer writes Pirsch's channel names; their types are handled by the Pirsch statement. Renames apply to
   // imported rows too.
-  return table === 'user'
-    ? `${condition} OR ${renamedCondition}`
-    : `(importSource = '' AND ${condition}) OR ${renamedCondition}`;
+  return `${notDeleted(table)}((${ownData(table)}${condition}) OR ${renamedCondition})`;
 }
 
 function buildStatement(table: Table, keys: string[], partition?: string) {

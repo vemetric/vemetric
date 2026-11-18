@@ -64,7 +64,15 @@ async function commitIfUnchanged(entries: SessionSnapshot[]) {
   for (const entry of entries) {
     const revision = entry.state.revision + 1;
     if (!Number.isSafeInteger(revision)) throw new Error('Session revision overflow');
-    values.push(entry.raw, JSON.stringify({ ...entry.state, revision }));
+    // Visitor strings (e.g. a display name) can hold lone surrogates. Their JSON escapes would make
+    // the commit script's cjson.decode and the ClickHouse flush fail for every project's sessions.
+    // Object keys are fixed field names or come from URL parsing, so only values need replacing.
+    values.push(
+      entry.raw,
+      JSON.stringify({ ...entry.state, revision }, (_, value) =>
+        typeof value === 'string' ? value.toWellFormed() : value,
+      ),
+    );
   }
   return (
     (await stateRedis().commitSessions(

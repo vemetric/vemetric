@@ -127,6 +127,25 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
     });
   });
 
+  it('keeps flushing every project when a visitor display name holds a lone surrogate', async () => {
+    const otherProject = projectId - BigInt(1);
+    await bufferSessionUpdate(projectId, 'lone-surrogate', at(0), session('lone-surrogate', 0));
+    await bufferSessionUpdate(otherProject, 'other-project', at(0), {
+      ...session('other-project', 0),
+      projectId: otherProject,
+    });
+    // A merge writes the display name of the identify request into the buffered session.
+    await reassignBufferedSession(projectId, 'lone-surrogate', userId, 'identified', 'X\ud800');
+
+    expect(await stateRedis().get(sessionKey(projectId, 'lone-surrogate'))).not.toContain('\\ud800');
+    expect(await flushSessionBuffer()).toBe(2);
+    expect(await clickhouseSession.findById(projectId, userId, 'lone-surrogate')).toMatchObject({
+      userDisplayName: 'X\ufffd',
+    });
+    expect(await clickhouseSession.findById(otherProject, userId, 'other-project')).not.toBeNull();
+    expect((await pendingSessionStats()).count).toBe(0);
+  });
+
   // Redis runs each script atomically, so this checks the scripts' logic rather than a race.
   it('hub session scripts create one session per key and never revive an expired or replaced one', async () => {
     const redis = stateRedis();

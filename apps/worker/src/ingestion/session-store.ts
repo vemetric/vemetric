@@ -1,4 +1,5 @@
-import { toWellFormedDeep } from '@vemetric/common/unicode';
+// Types String.prototype.toWellFormed (ES2024), which the Bun runtime provides natively.
+/// <reference lib="es2024.string" />
 import { clickhouseSession, type SessionRevisionRow } from 'clickhouse';
 import type { ChainableCommander } from 'ioredis';
 import { stateRedis } from './redis';
@@ -67,7 +68,13 @@ async function commitIfUnchanged(entries: SessionSnapshot[]) {
     if (!Number.isSafeInteger(revision)) throw new Error('Session revision overflow');
     // Visitor strings (e.g. a display name) can hold lone surrogates. Their JSON escapes would make
     // the commit script's cjson.decode and the ClickHouse flush fail for every project's sessions.
-    values.push(entry.raw, JSON.stringify(toWellFormedDeep({ ...entry.state, revision })));
+    // Object keys are fixed field names or come from URL parsing, so only values need replacing.
+    values.push(
+      entry.raw,
+      JSON.stringify({ ...entry.state, revision }, (_, value) =>
+        typeof value === 'string' ? value.toWellFormed() : value,
+      ),
+    );
   }
   return (
     (await stateRedis().commitSessions(

@@ -597,3 +597,23 @@ model EmailDripHistory {
 
   @@map("email_drip_history")
 }
+
+/// ClickHouse data waiting to be deleted: a deleted project's analytics data, or single analytics users of a project
+/// (`userIds`, e.g. when an account is deleted, its data in Vemetric's own tracking project). Postgres is deleted right
+/// away; the worker deletes the ClickHouse rows once a day with lightweight deletes (`deletedAt`) and removes them
+/// physically once a week (`purgedAt`), see apps/worker/src/workers/clickhouse-deletion-worker.ts.
+/// No relation to Project on purpose: the project is usually gone already.
+model ClickhouseDeletion {
+  id        String    @id @default(uuid())
+  projectId String
+  /// Analytics user ids (`userId` in ClickHouse, `id` in its `user` table). Empty: the whole project.
+  userIds   String[]  @default([])
+  reason    String    @db.VarChar
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+  purgedAt  DateTime?
+  error     String?
+
+  @@index([deletedAt, createdAt])
+  @@map("clickhouse_deletion")
+}

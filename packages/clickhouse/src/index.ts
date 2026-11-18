@@ -1,4 +1,5 @@
 export * from './client';
+export * from './models/deletion';
 export * from './models/device';
 export * from './models/event';
 export * from './models/globe';

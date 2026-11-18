@@ -1,6 +1,7 @@
 import { createBullBoard } from '@bull-board/api';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { HonoAdapter } from '@bull-board/hono';
+import { clickhouseDeletionQueue } from '@vemetric/queues/clickhouse-deletion-queue';
 import { createDeviceQueue } from '@vemetric/queues/create-device-queue';
 import { createUserQueue } from '@vemetric/queues/create-user-queue';
 import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
@@ -58,6 +59,7 @@ createBullBoard({
     sessionQueue,
     sessionFlushQueue,
     emailDripQueue,
+    clickhouseDeletionQueue,
   ].map((queue) => new BullMQAdapter(queue, { readOnlyMode })),
   serverAdapter,
 });

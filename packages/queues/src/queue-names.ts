@@ -10,3 +10,4 @@ export const updateUserQueueName = 'update-user';
 export const emailDripQueueName = 'email-drip';
 export const firstEventQueueName = 'firstEvent';
 export const saltRotationQueueName = 'saltRotation';
+export const clickhouseDeletionQueueName = 'clickhouse-deletion';

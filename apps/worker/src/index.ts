@@ -3,6 +3,7 @@ import { closeStateRedis } from './ingestion';
 import { workerName } from './utils/env';
 import { logger } from './utils/logger';
 import { shutdownQueueTelemetry } from './utils/telemetry';
+import { initClickhouseDeletionWorker } from './workers/clickhouse-deletion-worker';
 import { initCreateUserWorker } from './workers/create-user-worker';
 import { initDeviceWorker } from './workers/device-worker';
 import { initEmailWorker } from './workers/email-worker';
@@ -30,6 +31,7 @@ const initializers = {
   'merge-user': initMergeUserWorker,
   email: initEmailWorker,
   metrics: initMetricsWorker,
+  'clickhouse-deletion': initClickhouseDeletionWorker,
 };
 let ready = false;
 async function main() {

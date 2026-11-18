@@ -1,5 +1,3 @@
-// Types String.prototype.toWellFormed (ES2024), which the Bun runtime provides natively.
-/// <reference lib="es2024.string" />
 import { clickhouseSession, type SessionRevisionRow } from 'clickhouse';
 import type { ChainableCommander } from 'ioredis';
 import { stateRedis } from './redis';

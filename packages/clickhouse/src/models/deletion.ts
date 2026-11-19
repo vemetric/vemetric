@@ -13,6 +13,18 @@ import { clickhouseClient } from '../client';
 // the wait. If they aren't done by the deadline, they're killed, so a stuck mutation can't block every later one on the
 // table; repeating the deletes in the next run is harmless.
 
+/**
+ * Every analytics table with per-project data, and the column holding the analytics user id. Deletions only touch these
+ * tables. When adding a table with a `projectId` column, add it here: `checkTableList` fails every deletion run until
+ * then, so a forgotten table shows up as a failed job instead of data that's silently kept.
+ */
+export const DELETION_TABLES = [
+  { table: 'event', userIdColumn: 'userId' },
+  { table: 'session_v3', userIdColumn: 'userId' },
+  { table: 'device_v2', userIdColumn: 'userId' },
+  { table: 'user', userIdColumn: 'id' },
+] as const;
+
 const POLL_INTERVAL_MS = 5_000;
 const DEFAULT_TIMEOUT_MS = 2 * 60 * 60 * 1000;
 const CHUNK_SIZE = 500;
@@ -35,23 +47,39 @@ async function query<T>(
   return (await result.json()) as T[];
 }
 
-/** MergeTree tables of the analytics database with the given column (views and other engines are left out). */
-async function getTablesWithColumn(column: string, client: ClickHouseClient = clickhouseClient) {
-  const rows = await query<{ table: string }>(
-    `SELECT table FROM system.columns
-     WHERE database = currentDatabase() AND name = {column:String}
+/**
+ * Compares `DELETION_TABLES` with the database: throws if a MergeTree table has a `projectId` column but isn't listed,
+ * or a listed table (or its user id column) doesn't exist anymore.
+ */
+async function checkTableList(client: ClickHouseClient = clickhouseClient) {
+  const rows = await query<{ table: string; columns: string[] }>(
+    `SELECT table, groupArray(name) AS columns FROM system.columns
+     WHERE database = currentDatabase()
        AND table IN (SELECT name FROM system.tables WHERE database = currentDatabase() AND engine LIKE '%MergeTree%')
-     ORDER BY table`,
-    { column },
+     GROUP BY table`,
+    {},
     client,
   );
-  return rows.map((row) => row.table);
-}
+  const columns = new Map(rows.map((row) => [row.table, row.columns]));
+  const listed = new Set<string>(DELETION_TABLES.map((entry) => entry.table));
 
-/** Tables with per-user rows, and the column holding the analytics user id (`id` in `user`). */
-async function getUserTables() {
-  const tables = (await getTablesWithColumn('userId')).filter((table) => table !== 'user');
-  return [{ table: 'user', column: 'id' }, ...tables.map((table) => ({ table, column: 'userId' }))];
+  const unlisted = rows
+    .filter((row) => row.columns.includes('projectId') && !listed.has(row.table))
+    .map((r) => r.table);
+  const stale = DELETION_TABLES.filter((entry) => {
+    const tableColumns = columns.get(entry.table) ?? [];
+    return !tableColumns.includes('projectId') || !tableColumns.includes(entry.userIdColumn);
+  }).map((entry) => `${entry.table} (projectId, ${entry.userIdColumn})`);
+
+  const problems = [
+    ...(unlisted.length ? [`tables with projectId missing in DELETION_TABLES: ${unlisted.join(', ')}`] : []),
+    ...(stale.length ? [`DELETION_TABLES entries not found in the database: ${stale.join(', ')}`] : []),
+  ];
+  if (problems.length > 0) {
+    throw new Error(
+      `Deletion table list is out of date (packages/clickhouse/src/models/deletion.ts): ${problems.join('; ')}`,
+    );
+  }
 }
 
 async function serverNow() {
@@ -112,13 +140,14 @@ async function runStatements(statements: Array<{ table: string; sql: string }>, 
 }
 
 export const clickhouseDeletion = {
-  getTablesWithColumn,
+  checkTableList,
 
   /** Deletes all analytics data of the projects. */
   deleteProjects: async (projectIds: Array<string | bigint>, timeoutMs = DEFAULT_TIMEOUT_MS) => {
     if (projectIds.length === 0) return;
+    await checkTableList();
     const statements: Array<{ table: string; sql: string }> = [];
-    for (const table of await getTablesWithColumn('projectId')) {
+    for (const { table } of DELETION_TABLES) {
       for (let i = 0; i < projectIds.length; i += CHUNK_SIZE) {
         const ids = toUInt64List(projectIds.slice(i, i + CHUNK_SIZE));
         statements.push({ table, sql: `DELETE FROM \`${table}\` WHERE projectId IN (${ids})` });
@@ -136,29 +165,31 @@ export const clickhouseDeletion = {
     if (userIds.length === 0) return;
     const project = toUInt64List([projectId]);
     const users = toUInt64List(userIds);
-    const statements = (await getUserTables()).map(({ table, column }) => ({
+    await checkTableList();
+    const statements = DELETION_TABLES.map(({ table, userIdColumn }) => ({
       table,
-      sql: `DELETE FROM \`${table}\` WHERE projectId = ${project} AND ${column} IN (${users})`,
+      sql: `DELETE FROM \`${table}\` WHERE projectId = ${project} AND ${userIdColumn} IN (${users})`,
     }));
     await runStatements(statements, timeoutMs);
   },
 
   /** Physically removes all rows hidden by lightweight deletes (rewrites only the parts that have masked rows). */
   applyDeletedMasks: async (timeoutMs = DEFAULT_TIMEOUT_MS) => {
-    const tables = await getTablesWithColumn('projectId');
+    await checkTableList();
     await runStatements(
-      tables.map((table) => ({ table, sql: `ALTER TABLE \`${table}\` APPLY DELETED MASK` })),
+      DELETION_TABLES.map(({ table }) => ({ table, sql: `ALTER TABLE \`${table}\` APPLY DELETED MASK` })),
       timeoutMs,
     );
   },
 
   /**
-   * Every project id with data in any analytics table, with the stored rows per table. Takes a client so scripts can use
+   * Every project id with data in the deletion tables, with the stored rows per table. Takes a client so scripts can use
    * their own connection (e.g. `CH_MIGRATIONS_*`).
    */
   getStoredProjects: async (client: ClickHouseClient = clickhouseClient) => {
+    await checkTableList(client);
     const projects = new Map<string, Record<string, number>>();
-    for (const table of await getTablesWithColumn('projectId', client)) {
+    for (const { table } of DELETION_TABLES) {
       const rows = await query<{ projectId: string; rows: string }>(
         `SELECT toString(projectId) AS projectId, count() AS rows FROM \`${table}\` GROUP BY projectId`,
         {},

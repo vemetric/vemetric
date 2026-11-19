@@ -1,4 +1,5 @@
 import {
+  clickhouseDeletionQueueName,
   createDeviceQueueName,
   createUserQueueName,
   emailDripQueueName,
@@ -18,6 +19,7 @@ import { workerName } from '../utils/env';
 import { METRICS_INTERVAL_MS, recordQueueJobCounts } from '../utils/telemetry';
 
 const recordedQueueNames = [
+  clickhouseDeletionQueueName,
   createDeviceQueueName,
   createUserQueueName,
   emailDripQueueName,

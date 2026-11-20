@@ -18,8 +18,6 @@ export const dbClickhouseDeletion = {
     client: DbClient = prismaClient,
   ) => client.clickhouseDeletion.create({ data: { projectId, userIds, reason } }),
 
-  findById: (id: string) => prismaClient.clickhouseDeletion.findUnique({ where: { id } }),
-
   /** Queued at least `minAgeMs` ago and not deleted yet (including ones that failed before). */
   findPending: (minAgeMs: number) =>
     prismaClient.clickhouseDeletion.findMany({

@@ -1,3 +1,4 @@
+import { formatClickhouseDate } from '@vemetric/common/date';
 import type { DeviceData } from 'clickhouse';
 import { clickhouseDevice } from 'clickhouse';
 import { UAParser } from 'ua-parser-js';
@@ -66,6 +67,8 @@ export async function insertDeviceIfNotExists(
   deviceId: bigint,
   deviceData: DeviceData,
   job?: { log: (row: string) => Promise<number> },
+  /** When the hub accepted the data; defaults to now. */
+  createdAt?: Date,
 ) {
   const key = deviceWrittenKey(projectId, userId, deviceId);
   // Cache success only. Duplicate misses across replicas are safe in device_v2, where the
@@ -85,6 +88,7 @@ export async function insertDeviceIfNotExists(
       clientVersion: deviceData.clientVersion,
       clientType: deviceData.clientType,
       deviceType: deviceData.deviceType,
+      createdAt: createdAt ? formatClickhouseDate(createdAt) : undefined,
     },
   ]);
   await stateRedis().set(key, '1', 'EX', deviceCacheTtl);

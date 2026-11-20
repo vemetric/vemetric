@@ -604,15 +604,18 @@ model EmailDripHistory {
 /// physically once a week (`purgedAt`), see apps/worker/src/workers/clickhouse-deletion-worker.ts.
 /// No relation to Project on purpose: the project is usually gone already.
 model ClickhouseDeletion {
-  id        String    @id @default(uuid())
-  projectId String
+  id         String    @id @default(uuid())
+  projectId  String
   /// Analytics user ids (`userId` in ClickHouse, `id` in its `user` table). Empty: the whole project.
-  userIds   String[]  @default([])
-  reason    String    @db.VarChar
-  createdAt DateTime  @default(now())
-  deletedAt DateTime?
-  purgedAt  DateTime?
-  error     String?
+  userIds    String[]  @default([])
+  reason     String    @db.VarChar
+  createdAt  DateTime  @default(now())
+  /// User deletions: the data the hub accepted before this time is deleted.
+  deletedAt  DateTime?
+  /// User deletions: when the delete was repeated for data written late (time-bound by `deletedAt`).
+  repeatedAt DateTime?
+  purgedAt   DateTime?
+  error      String?
 
   @@index([deletedAt, createdAt])
   @@map("clickhouse_deletion")

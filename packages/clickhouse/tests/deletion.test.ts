@@ -12,8 +12,8 @@ const SCHEMA: TableColumns[] = [
   { table: '_migrations', columns: ['version', 'checksum'] },
   { table: 'event', columns: ['projectId', 'userId', 'createdAt'] },
   { table: 'session_v3', columns: ['projectId', 'userId', 'startedAt'] },
-  { table: 'device_v2', columns: ['projectId', 'userId', 'id'] },
-  { table: 'user', columns: ['projectId', 'id', 'identifier'] },
+  { table: 'device_v2', columns: ['projectId', 'userId', 'id', 'createdAt'] },
+  { table: 'user', columns: ['projectId', 'id', 'identifier', 'createdAt'] },
 ];
 
 // Answers the queries in the order deletion.ts sends them: table list check, server time, then one
@@ -62,6 +62,20 @@ describe('clickhouseDeletion', () => {
       'DELETE FROM `session_v3` WHERE projectId = 5 AND userId IN (10, 11)',
       'DELETE FROM `device_v2` WHERE projectId = 5 AND userId IN (10, 11)',
       'DELETE FROM `user` WHERE projectId = 5 AND id IN (10, 11)',
+    ]);
+  });
+
+  it('deletes only what the users tracked before a time', async () => {
+    mockQueries([[]]);
+
+    await clickhouseDeletion.deleteProjectUsers('5', ['10'], 60_000, new Date('2026-11-20T13:54:00.123Z'));
+
+    const before = "toDateTime64('2026-11-20 13:54:00.123', 3, 'UTC')";
+    expect(commands()).toEqual([
+      `DELETE FROM \`event\` WHERE projectId = 5 AND userId IN (10) AND createdAt < ${before}`,
+      `DELETE FROM \`session_v3\` WHERE projectId = 5 AND userId IN (10) AND startedAt < ${before}`,
+      `DELETE FROM \`device_v2\` WHERE projectId = 5 AND userId IN (10) AND createdAt < ${before}`,
+      `DELETE FROM \`user\` WHERE projectId = 5 AND id IN (10) AND createdAt < ${before}`,
     ]);
   });
 

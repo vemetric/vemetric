@@ -20,19 +20,21 @@ import { invalidateIngestionUser } from '../utils/user-cache';
 // low. Postgres is deleted right away, so the data is no longer reachable in the meantime.
 //
 // - `delete`, every night: lightweight deletes for everything queued at least an hour ago. The hour lets queued jobs
-//   and cached sessions of a deleted project finish writing first.
+//   and cached sessions of a deleted project finish writing first. User deletions done at least an hour before are
+//   repeated once for what the hub accepted before them but the worker wrote late (backlog, restarts, retries).
 // - `purge`, every Sunday after the nightly run: removes the deleted rows physically (`APPLY DELETED MASK`), batched
 //   for the whole week, so personal data is gone well within a month.
 // - `delete-users`, a few minutes after a single user was deleted in the app (see queueUserDeletionJob), so the user
 //   does not stay visible until the night.
 //
-// Failed deletions keep `deletedAt` empty and are tried again the next night.
+// Failed deletions keep `deletedAt` (or `repeatedAt`) empty and are tried again the next night.
 
 export const PENDING_MIN_AGE_MS = 60 * 60 * 1000;
 
 export async function deletePendingData() {
   const pending = await dbClickhouseDeletion.findPending(PENDING_MIN_AGE_MS);
-  if (pending.length === 0) return { deleted: 0, failed: 0 };
+  const unrepeated = await dbClickhouseDeletion.findUnrepeated(PENDING_MIN_AGE_MS);
+  if (pending.length === 0 && unrepeated.length === 0) return { deleted: 0, repeated: 0, failed: 0 };
 
   const failed: string[] = [];
   const projects = pending.filter((deletion) => deletion.userIds.length === 0);
@@ -58,7 +60,20 @@ export async function deletePendingData() {
     }
   }
 
-  const result = { deleted: pending.length - failed.length, failed: failed.length };
+  const deleted = pending.length - failed.length;
+  let repeated = 0;
+  for (const deletion of unrepeated) {
+    try {
+      await repeatUserDeletion(deletion);
+      repeated++;
+    } catch (err) {
+      logger.error({ err, deletion: deletion.id }, 'Failed to repeat the ClickHouse deletion of users');
+      await dbClickhouseDeletion.markFailed([deletion.id], String(err));
+      failed.push(deletion.id);
+    }
+  }
+
+  const result = { deleted, repeated, failed: failed.length };
   logger.info(result, 'Deleted queued ClickHouse data');
   if (failed.length > 0) {
     // Fails the job so it shows up in the dashboard; the deletions are tried again the next night.
@@ -78,6 +93,7 @@ export async function deletePendingData() {
  */
 async function deleteUsers(deletion: ClickhouseDeletion) {
   const { projectId, userIds } = deletion;
+  const startedAt = new Date();
   for (const userId of userIds) {
     await deleteUserSessionState(BigInt(projectId), BigInt(userId));
   }
@@ -98,7 +114,31 @@ async function deleteUsers(deletion: ClickhouseDeletion) {
     await stateRedis().del(...devices.map((device) => deviceWrittenKey(projectId, device.userId, device.id)));
   }
 
-  await dbClickhouseDeletion.markDeleted([deletion.id]);
+  await dbClickhouseDeletion.markDeleted([deletion.id], startedAt);
+}
+
+/**
+ * Deletes again what the hub accepted before the users were deleted (`deletedAt`) but the worker wrote afterwards,
+ * keeping what the same user ids tracked since. A create-user job from back then would also make BullMQ drop the
+ * create-user job of an identified user coming back, so it's removed too.
+ */
+async function repeatUserDeletion(deletion: ClickhouseDeletion) {
+  const { projectId, userIds, deletedAt } = deletion;
+  if (!deletedAt) throw new Error(`Deletion ${deletion.id} is not done yet`);
+  await clickhouseDeletion.deleteProjectUsers(projectId, userIds, undefined, deletedAt);
+
+  for (const userId of userIds) {
+    const jobId = `${projectId}-${userId}`;
+    const job = await createUserQueue.getJob(jobId);
+    if (job && job.timestamp < deletedAt.getTime()) {
+      if ((await createUserQueue.remove(jobId)) === 0 && (await createUserQueue.getJob(jobId))) {
+        throw new Error(`create-user job ${jobId} is running`);
+      }
+      await invalidateIngestionUser(BigInt(projectId), BigInt(userId));
+    }
+  }
+
+  await dbClickhouseDeletion.markRepeated([deletion.id]);
 }
 
 /**

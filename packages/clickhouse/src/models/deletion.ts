@@ -14,15 +14,16 @@ import { clickhouseClient } from '../client';
 // table; repeating the deletes in the next run is harmless.
 
 /**
- * Every analytics table with per-project data, and the column holding the analytics user id. Deletions only touch these
- * tables. When adding a table with a `projectId` column, add it here: `checkTableList` fails every deletion run until
- * then, so a forgotten table shows up as a failed job instead of data that's silently kept.
+ * Every analytics table with per-project data, the column holding the analytics user id, and the column with the time
+ * the hub accepted a row's data (for deleting only what a user tracked before a point in time). Deletions only touch
+ * these tables. When adding a table with a `projectId` column, add it here: `checkTableList` fails every deletion run
+ * until then, so a forgotten table shows up as a failed job instead of data that's silently kept.
  */
 export const DELETION_TABLES = [
-  { table: 'event', userIdColumn: 'userId' },
-  { table: 'session_v3', userIdColumn: 'userId' },
-  { table: 'device_v2', userIdColumn: 'userId' },
-  { table: 'user', userIdColumn: 'id' },
+  { table: 'event', userIdColumn: 'userId', timeColumn: 'createdAt' },
+  { table: 'session_v3', userIdColumn: 'userId', timeColumn: 'startedAt' },
+  { table: 'device_v2', userIdColumn: 'userId', timeColumn: 'createdAt' },
+  { table: 'user', userIdColumn: 'id', timeColumn: 'createdAt' },
 ] as const;
 
 const POLL_INTERVAL_MS = 5_000;
@@ -49,7 +50,7 @@ async function query<T>(
 
 /**
  * Compares `DELETION_TABLES` with the database: throws if a MergeTree table has a `projectId` column but isn't listed,
- * or a listed table (or its user id column) doesn't exist anymore.
+ * or a listed table (or one of its columns) doesn't exist anymore.
  */
 async function checkTableList(client: ClickHouseClient = clickhouseClient) {
   const rows = await query<{ table: string; columns: string[] }>(
@@ -68,8 +69,8 @@ async function checkTableList(client: ClickHouseClient = clickhouseClient) {
     .map((r) => r.table);
   const stale = DELETION_TABLES.filter((entry) => {
     const tableColumns = columns.get(entry.table) ?? [];
-    return !tableColumns.includes('projectId') || !tableColumns.includes(entry.userIdColumn);
-  }).map((entry) => `${entry.table} (projectId, ${entry.userIdColumn})`);
+    return [entry.userIdColumn, entry.timeColumn, 'projectId'].some((column) => !tableColumns.includes(column));
+  }).map((entry) => `${entry.table} (projectId, ${entry.userIdColumn}, ${entry.timeColumn})`);
 
   const problems = [
     ...(unlisted.length ? [`tables with projectId missing in DELETION_TABLES: ${unlisted.join(', ')}`] : []),
@@ -156,19 +157,27 @@ export const clickhouseDeletion = {
     await runStatements(statements, timeoutMs);
   },
 
-  /** Deletes the data of single analytics users of a project. */
+  /**
+   * Deletes the data of single analytics users of a project. With `before`, only what the hub accepted before that time
+   * (data written late), keeping what the same user ids tracked afterwards.
+   */
   deleteProjectUsers: async (
     projectId: string | bigint,
     userIds: Array<string | bigint>,
     timeoutMs = DEFAULT_TIMEOUT_MS,
+    before?: Date,
   ) => {
     if (userIds.length === 0) return;
     const project = toUInt64List([projectId]);
     const users = toUInt64List(userIds);
+    // toISOString() is always `YYYY-MM-DDTHH:mm:ss.sssZ`, safe to inline.
+    const beforeTime = before ? `'${before.toISOString().replace('T', ' ').replace('Z', '')}'` : undefined;
     await checkTableList();
-    const statements = DELETION_TABLES.map(({ table, userIdColumn }) => ({
+    const statements = DELETION_TABLES.map(({ table, userIdColumn, timeColumn }) => ({
       table,
-      sql: `DELETE FROM \`${table}\` WHERE projectId = ${project} AND ${userIdColumn} IN (${users})`,
+      sql:
+        `DELETE FROM \`${table}\` WHERE projectId = ${project} AND ${userIdColumn} IN (${users})` +
+        (beforeTime ? ` AND ${timeColumn} < toDateTime64(${beforeTime}, 3, 'UTC')` : ''),
     }));
     await runStatements(statements, timeoutMs);
   },

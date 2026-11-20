@@ -27,6 +27,17 @@ export const dbClickhouseDeletion = {
       orderBy: { createdAt: 'asc' },
     }),
 
+  /** User deletions queued at least `minAgeMs` ago and not deleted yet, oldest first. */
+  findPendingUsers: (minAgeMs: number, take: number) =>
+    prismaClient.clickhouseDeletion.findMany({
+      where: { deletedAt: null, userIds: { isEmpty: false }, createdAt: { lte: new Date(Date.now() - minAgeMs) } },
+      orderBy: { createdAt: 'asc' },
+      take,
+    }),
+
+  countPendingUsers: () =>
+    prismaClient.clickhouseDeletion.count({ where: { deletedAt: null, userIds: { isEmpty: false } } }),
+
   /** For user deletions, `deletedAt` is when the delete started: what the hub accepted before it is deleted. */
   markDeleted: (ids: string[], deletedAt = new Date()) =>
     prismaClient.clickhouseDeletion.updateMany({

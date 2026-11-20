@@ -55,28 +55,60 @@ describe('clickhouseDeletion', () => {
   it('deletes single users with the user id column of each table', async () => {
     mockQueries([[]]);
 
-    await clickhouseDeletion.deleteProjectUsers('5', ['10', '11'], 60_000);
+    await clickhouseDeletion.deleteUsers([{ projectId: '5', userIds: ['10', '11'] }], 60_000);
 
     expect(commands()).toEqual([
-      'DELETE FROM `event` WHERE projectId = 5 AND userId IN (10, 11)',
-      'DELETE FROM `session_v3` WHERE projectId = 5 AND userId IN (10, 11)',
-      'DELETE FROM `device_v2` WHERE projectId = 5 AND userId IN (10, 11)',
-      'DELETE FROM `user` WHERE projectId = 5 AND id IN (10, 11)',
+      'DELETE FROM `event` WHERE (projectId = 5 AND userId IN (10, 11))',
+      'DELETE FROM `session_v3` WHERE (projectId = 5 AND userId IN (10, 11))',
+      'DELETE FROM `device_v2` WHERE (projectId = 5 AND userId IN (10, 11))',
+      'DELETE FROM `user` WHERE (projectId = 5 AND id IN (10, 11))',
     ]);
   });
 
-  it('deletes only what the users tracked before a time', async () => {
+  it('deletes only what users tracked before a time, and combines projects in one statement per table', async () => {
     mockQueries([[]]);
 
-    await clickhouseDeletion.deleteProjectUsers('5', ['10'], 60_000, new Date('2026-11-20T13:54:00.123Z'));
+    await clickhouseDeletion.deleteUsers(
+      [
+        { projectId: '5', userIds: ['10'], before: new Date('2026-11-20T13:54:00.123Z') },
+        { projectId: '6', userIds: ['20', '21'] },
+      ],
+      60_000,
+    );
 
     const before = "toDateTime64('2026-11-20 13:54:00.123', 3, 'UTC')";
     expect(commands()).toEqual([
-      `DELETE FROM \`event\` WHERE projectId = 5 AND userId IN (10) AND createdAt < ${before}`,
-      `DELETE FROM \`session_v3\` WHERE projectId = 5 AND userId IN (10) AND startedAt < ${before}`,
-      `DELETE FROM \`device_v2\` WHERE projectId = 5 AND userId IN (10) AND createdAt < ${before}`,
-      `DELETE FROM \`user\` WHERE projectId = 5 AND id IN (10) AND createdAt < ${before}`,
+      `DELETE FROM \`event\` WHERE (projectId = 5 AND userId IN (10) AND createdAt < ${before}) OR (projectId = 6 AND userId IN (20, 21))`,
+      `DELETE FROM \`session_v3\` WHERE (projectId = 5 AND userId IN (10) AND startedAt < ${before}) OR (projectId = 6 AND userId IN (20, 21))`,
+      `DELETE FROM \`device_v2\` WHERE (projectId = 5 AND userId IN (10) AND createdAt < ${before}) OR (projectId = 6 AND userId IN (20, 21))`,
+      `DELETE FROM \`user\` WHERE (projectId = 5 AND id IN (10) AND createdAt < ${before}) OR (projectId = 6 AND id IN (20, 21))`,
     ]);
+  });
+
+  it('puts at most 500 user ids in one statement', async () => {
+    mockQueries([[]]);
+    const ids = (from: number, count: number) => Array.from({ length: count }, (_, i) => String(from + i));
+
+    await clickhouseDeletion.deleteUsers(
+      [
+        { projectId: '5', userIds: ids(1, 700) },
+        { projectId: '6', userIds: ids(1000, 250) },
+      ],
+      60_000,
+    );
+
+    const eventStatements = commands().filter((sql) => sql.startsWith('DELETE FROM `event`'));
+    expect(eventStatements.map((sql) => sql.split(', ').length + (sql.match(/\) OR \(/g)?.length ?? 0))).toEqual([
+      500, 450,
+    ]);
+    expect(eventStatements[1]).toContain('(projectId = 5 AND userId IN (501, ');
+    expect(eventStatements[1]).toContain(') OR (projectId = 6 AND userId IN (1000, ');
+  });
+
+  it('sends nothing without user ids', async () => {
+    mockQueries([]);
+    await clickhouseDeletion.deleteUsers([{ projectId: '5', userIds: [] }]);
+    expect(commands()).toEqual([]);
   });
 
   it('kills its unfinished mutations at the deadline and reports the last failure', async () => {

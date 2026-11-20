@@ -179,7 +179,7 @@ export const usersRouter = router({
       );
 
       try {
-        await queueUserDeletionJob(deletion.id);
+        await queueUserDeletionJob();
       } catch (err) {
         // Still queued in Postgres: the nightly run deletes it.
         logger.error({ err, deletion: deletion.id }, 'Failed to queue the user deletion job');

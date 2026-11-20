@@ -44,7 +44,7 @@ describe('users.delete', () => {
 
     expect(mocks.deleteIdentifications).toHaveBeenCalledWith('42', ['123'], 'tx');
     expect(mocks.queueUsers).toHaveBeenCalledWith('42', ['123'], 'user-deleted', 'tx');
-    expect(mocks.queueUserDeletionJob).toHaveBeenCalledWith('deletion_1');
+    expect(mocks.queueUserDeletionJob).toHaveBeenCalled();
   });
 
   it('is only allowed for organization admins', async () => {

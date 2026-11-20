@@ -158,27 +158,49 @@ export const clickhouseDeletion = {
   },
 
   /**
-   * Deletes the data of single analytics users of a project. With `before`, only what the hub accepted before that time
-   * (data written late), keeping what the same user ids tracked afterwards.
+   * Deletes the data of single analytics users, of any number of projects, with as few statements as possible: many
+   * small lightweight deletes are much more expensive than a few big ones. With `before`, only what the hub accepted
+   * before that time (data written late), keeping what the same user ids tracked afterwards.
    */
-  deleteProjectUsers: async (
-    projectId: string | bigint,
-    userIds: Array<string | bigint>,
+  deleteUsers: async (
+    groups: Array<{ projectId: string | bigint; userIds: Array<string | bigint>; before?: Date }>,
     timeoutMs = DEFAULT_TIMEOUT_MS,
-    before?: Date,
   ) => {
-    if (userIds.length === 0) return;
-    const project = toUInt64List([projectId]);
-    const users = toUInt64List(userIds);
-    // toISOString() is always `YYYY-MM-DDTHH:mm:ss.sssZ`, safe to inline.
-    const beforeTime = before ? `'${before.toISOString().replace('T', ' ').replace('Z', '')}'` : undefined;
+    // Up to CHUNK_SIZE user ids per statement, from as many groups as fit.
+    const chunks: Array<Array<{ project: string; users: string; before?: string }>> = [[]];
+    let chunkSize = 0;
+    for (const group of groups) {
+      // toISOString() is always `YYYY-MM-DDTHH:mm:ss.sssZ`, safe to inline.
+      const before = group.before?.toISOString().replace('T', ' ').replace('Z', '');
+      for (let i = 0; i < group.userIds.length; i += CHUNK_SIZE) {
+        const userIds = group.userIds.slice(i, i + CHUNK_SIZE);
+        if (chunkSize + userIds.length > CHUNK_SIZE) {
+          chunks.push([]);
+          chunkSize = 0;
+        }
+        chunks.at(-1)!.push({
+          project: toUInt64List([group.projectId]),
+          users: toUInt64List(userIds),
+          before,
+        });
+        chunkSize += userIds.length;
+      }
+    }
+    if (chunkSize === 0) return;
+
     await checkTableList();
-    const statements = DELETION_TABLES.map(({ table, userIdColumn, timeColumn }) => ({
-      table,
-      sql:
-        `DELETE FROM \`${table}\` WHERE projectId = ${project} AND ${userIdColumn} IN (${users})` +
-        (beforeTime ? ` AND ${timeColumn} < toDateTime64(${beforeTime}, 3, 'UTC')` : ''),
-    }));
+    const statements = DELETION_TABLES.flatMap(({ table, userIdColumn, timeColumn }) =>
+      chunks.map((chunk) => ({
+        table,
+        sql: `DELETE FROM \`${table}\` WHERE ${chunk
+          .map(
+            ({ project, users, before }) =>
+              `(projectId = ${project} AND ${userIdColumn} IN (${users})` +
+              (before ? ` AND ${timeColumn} < toDateTime64('${before}', 3, 'UTC'))` : ')'),
+          )
+          .join(' OR ')}`,
+      })),
+    );
     await runStatements(statements, timeoutMs);
   },
 

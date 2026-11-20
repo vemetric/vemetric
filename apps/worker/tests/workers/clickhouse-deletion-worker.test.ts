@@ -1,3 +1,4 @@
+import { queueUserDeletionJob } from '@vemetric/queues/clickhouse-deletion-queue';
 import { removeDeviceJobDeduplication } from '@vemetric/queues/create-device-queue';
 import { createUserQueue } from '@vemetric/queues/create-user-queue';
 import { clickhouseDeletion } from 'clickhouse';
@@ -11,6 +12,8 @@ import {
   deleteQueuedUsers,
   PENDING_MIN_AGE_MS,
   purgeDeletedRows,
+  QUEUED_USERS_BATCH_SIZE,
+  QUEUED_USERS_MIN_AGE_MS,
 } from '../../src/workers/clickhouse-deletion-worker';
 
 const redis = vi.hoisted(() => ({ getdel: vi.fn(), del: vi.fn() }));
@@ -18,7 +21,7 @@ const redis = vi.hoisted(() => ({ getdel: vi.fn(), del: vi.fn() }));
 vi.mock('clickhouse', () => ({
   clickhouseDeletion: {
     deleteProjects: vi.fn(),
-    deleteProjectUsers: vi.fn(),
+    deleteUsers: vi.fn(),
     findProjectUserDevices: vi.fn().mockResolvedValue([]),
     applyDeletedMasks: vi.fn(),
   },
@@ -26,8 +29,9 @@ vi.mock('clickhouse', () => ({
 vi.mock('database', () => ({
   dbUserIdentificationMap: { deleteByUserIds: vi.fn() },
   dbClickhouseDeletion: {
-    findById: vi.fn(),
     findPending: vi.fn(),
+    findPendingUsers: vi.fn(),
+    countPendingUsers: vi.fn().mockResolvedValue(0),
     findUnrepeated: vi.fn().mockResolvedValue([]),
     markRepeated: vi.fn(),
     markDeleted: vi.fn(),
@@ -36,7 +40,12 @@ vi.mock('database', () => ({
     markPurged: vi.fn(),
   },
 }));
-vi.mock('@vemetric/queues/clickhouse-deletion-queue', () => ({ DELETE_USERS_JOB: 'delete-users' }));
+vi.mock('@vemetric/queues/clickhouse-deletion-queue', () => ({
+  DELETE_USERS_JOB: 'delete-users',
+  DELETE_USERS_DEDUPLICATION_ID: 'delete-users',
+  clickhouseDeletionQueue: { removeDeduplicationKey: vi.fn() },
+  queueUserDeletionJob: vi.fn(),
+}));
 vi.mock('@vemetric/queues/create-device-queue', () => ({ removeDeviceJobDeduplication: vi.fn() }));
 vi.mock('@vemetric/queues/create-user-queue', () => ({ createUserQueue: { remove: vi.fn(), getJob: vi.fn() } }));
 vi.mock('../../src/utils/user-cache', () => ({ invalidateIngestionUser: vi.fn() }));
@@ -61,35 +70,42 @@ const deletion = (id: string, projectId: string, userIds: string[] = [], deleted
   error: null,
 });
 
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(dbClickhouseDeletion.findPending).mockResolvedValue([]);
+  vi.mocked(dbClickhouseDeletion.findPendingUsers).mockResolvedValue([]);
+  vi.mocked(createUserQueue.remove).mockResolvedValue(1);
+  vi.mocked(createUserQueue.getJob).mockResolvedValue(undefined);
+});
+
 describe('deletePendingData', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.mocked(createUserQueue.remove).mockResolvedValue(1);
-  });
-
   it('does nothing without pending deletions', async () => {
-    vi.mocked(dbClickhouseDeletion.findPending).mockResolvedValue([]);
-
     expect(await deletePendingData()).toEqual({ deleted: 0, repeated: 0, failed: 0 });
     expect(dbClickhouseDeletion.findPending).toHaveBeenCalledWith(PENDING_MIN_AGE_MS);
     expect(clickhouseDeletion.deleteProjects).not.toHaveBeenCalled();
-    expect(clickhouseDeletion.deleteProjectUsers).not.toHaveBeenCalled();
+    expect(clickhouseDeletion.deleteUsers).not.toHaveBeenCalled();
   });
 
-  it('deletes whole projects in one batch and users per deletion', async () => {
+  it('deletes whole projects in one batch and all users in another', async () => {
     vi.mocked(dbClickhouseDeletion.findPending).mockResolvedValue([
       deletion('a', '1'),
       deletion('b', '2'),
       deletion('c', '1'),
       deletion('d', '3', ['10', '11']),
+      deletion('e', '3', ['12']),
+      deletion('f', '4', ['20']),
     ]);
 
-    expect(await deletePendingData()).toEqual({ deleted: 4, repeated: 0, failed: 0 });
+    expect(await deletePendingData()).toEqual({ deleted: 6, repeated: 0, failed: 0 });
     expect(clickhouseDeletion.deleteProjects).toHaveBeenCalledWith(['1', '2']);
-    expect(clickhouseDeletion.deleteProjectUsers).toHaveBeenCalledWith('3', ['10', '11']);
+    expect(clickhouseDeletion.deleteUsers).toHaveBeenCalledTimes(1);
+    expect(clickhouseDeletion.deleteUsers).toHaveBeenCalledWith([
+      { projectId: '3', userIds: ['10', '11', '12'] },
+      { projectId: '4', userIds: ['20'] },
+    ]);
     expect(dbUserIdentificationMap.deleteByUserIds).toHaveBeenCalledWith('3', ['10', '11']);
     expect(dbClickhouseDeletion.markDeleted).toHaveBeenCalledWith(['a', 'b', 'c']);
-    expect(dbClickhouseDeletion.markDeleted).toHaveBeenCalledWith(['d'], expect.any(Date));
+    expect(dbClickhouseDeletion.markDeleted).toHaveBeenCalledWith(['d', 'e', 'f'], expect.any(Date));
     expect(dbClickhouseDeletion.markFailed).not.toHaveBeenCalled();
   });
 
@@ -107,20 +123,20 @@ describe('deletePendingData', () => {
 describe('deletePendingData, repeating user deletions', () => {
   const deletedAt = new Date('2026-11-20T13:54:00.000Z');
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.mocked(dbClickhouseDeletion.findPending).mockResolvedValue([]);
-    vi.mocked(createUserQueue.remove).mockResolvedValue(1);
-    vi.mocked(createUserQueue.getJob).mockResolvedValue(undefined);
-  });
+  it('deletes again only what was tracked before each deletion, in one batch', async () => {
+    const later = new Date('2026-11-20T14:00:00.000Z');
+    vi.mocked(dbClickhouseDeletion.findUnrepeated).mockResolvedValueOnce([
+      deletion('d', '3', ['10'], deletedAt),
+      deletion('e', '4', ['20'], later),
+    ]);
 
-  it('deletes again only what was tracked before the deletion, once', async () => {
-    vi.mocked(dbClickhouseDeletion.findUnrepeated).mockResolvedValueOnce([deletion('d', '3', ['10'], deletedAt)]);
-
-    expect(await deletePendingData()).toEqual({ deleted: 0, repeated: 1, failed: 0 });
+    expect(await deletePendingData()).toEqual({ deleted: 0, repeated: 2, failed: 0 });
     expect(dbClickhouseDeletion.findUnrepeated).toHaveBeenCalledWith(PENDING_MIN_AGE_MS);
-    expect(clickhouseDeletion.deleteProjectUsers).toHaveBeenCalledWith('3', ['10'], undefined, deletedAt);
-    expect(dbClickhouseDeletion.markRepeated).toHaveBeenCalledWith(['d']);
+    expect(clickhouseDeletion.deleteUsers).toHaveBeenCalledWith([
+      { projectId: '3', userIds: ['10'], before: deletedAt },
+      { projectId: '4', userIds: ['20'], before: later },
+    ]);
+    expect(dbClickhouseDeletion.markRepeated).toHaveBeenCalledWith(['d', 'e']);
     expect(dbUserIdentificationMap.deleteByUserIds).not.toHaveBeenCalled();
   });
 
@@ -140,7 +156,7 @@ describe('deletePendingData, repeating user deletions', () => {
 
   it('leaves failed repeats for the next night', async () => {
     vi.mocked(dbClickhouseDeletion.findUnrepeated).mockResolvedValueOnce([deletion('d', '3', ['10'], deletedAt)]);
-    vi.mocked(clickhouseDeletion.deleteProjectUsers).mockRejectedValueOnce(new Error('timeout'));
+    vi.mocked(clickhouseDeletion.deleteUsers).mockRejectedValueOnce(new Error('timeout'));
 
     await expect(deletePendingData()).rejects.toThrow('1 ClickHouse deletion(s) failed: d');
     expect(dbClickhouseDeletion.markFailed).toHaveBeenCalledWith(['d'], 'Error: timeout');
@@ -149,49 +165,64 @@ describe('deletePendingData, repeating user deletions', () => {
 });
 
 describe('deleteQueuedUsers', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.mocked(createUserQueue.remove).mockResolvedValue(1);
-  });
+  it('deletes all queued users in one batch, then everything that still points to their ids', async () => {
+    vi.mocked(dbClickhouseDeletion.findPendingUsers).mockResolvedValue([
+      deletion('d', '3', ['10']),
+      deletion('e', '3', ['11']),
+    ]);
 
-  it('deletes the users and everything that still points to their ids', async () => {
-    vi.mocked(dbClickhouseDeletion.findById).mockResolvedValue(deletion('d', '3', ['10', '11']));
-
-    expect(await deleteQueuedUsers('d')).toEqual({ deleted: 1 });
-    expect(clickhouseDeletion.deleteProjectUsers).toHaveBeenCalledWith('3', ['10', '11']);
-    expect(dbUserIdentificationMap.deleteByUserIds).toHaveBeenCalledWith('3', ['10', '11']);
+    expect(await deleteQueuedUsers()).toEqual({ deleted: 2, remaining: 0 });
+    expect(dbClickhouseDeletion.findPendingUsers).toHaveBeenCalledWith(QUEUED_USERS_MIN_AGE_MS, QUEUED_USERS_BATCH_SIZE);
+    expect(clickhouseDeletion.deleteUsers).toHaveBeenCalledWith([{ projectId: '3', userIds: ['10', '11'] }]);
+    expect(dbUserIdentificationMap.deleteByUserIds).toHaveBeenCalledWith('3', ['10']);
+    expect(dbUserIdentificationMap.deleteByUserIds).toHaveBeenCalledWith('3', ['11']);
     expect(createUserQueue.remove).toHaveBeenCalledWith('3-10');
     expect(createUserQueue.remove).toHaveBeenCalledWith('3-11');
     expect(invalidateIngestionUser).toHaveBeenCalledWith(BigInt(3), BigInt(10));
     expect(invalidateIngestionUser).toHaveBeenCalledWith(BigInt(3), BigInt(11));
-    expect(dbClickhouseDeletion.markDeleted).toHaveBeenCalledWith(['d'], expect.any(Date));
+    expect(dbClickhouseDeletion.markDeleted).toHaveBeenCalledWith(['d', 'e'], expect.any(Date));
+    expect(queueUserDeletionJob).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when no deletion is old enough', async () => {
+    expect(await deleteQueuedUsers()).toEqual({ deleted: 0, remaining: 0 });
+    expect(clickhouseDeletion.deleteUsers).not.toHaveBeenCalled();
+    expect(dbClickhouseDeletion.markDeleted).not.toHaveBeenCalled();
+  });
+
+  it('queues another job for deletions that were too recent or did not fit in the batch', async () => {
+    vi.mocked(dbClickhouseDeletion.findPendingUsers).mockResolvedValue([deletion('d', '3', ['10'])]);
+    vi.mocked(dbClickhouseDeletion.countPendingUsers).mockResolvedValueOnce(4);
+
+    expect(await deleteQueuedUsers()).toEqual({ deleted: 1, remaining: 4 });
+    expect(queueUserDeletionJob).toHaveBeenCalled();
   });
 
   it('clears session state before the ClickHouse delete and the rest only after it succeeded', async () => {
     const order: string[] = [];
-    vi.mocked(dbClickhouseDeletion.findById).mockResolvedValue(deletion('d', '3', ['10']));
+    vi.mocked(dbClickhouseDeletion.findPendingUsers).mockResolvedValue([deletion('d', '3', ['10'])]);
     vi.mocked(deleteBufferedUserSessions).mockImplementationOnce(async () => {
       order.push('sessions');
       return [];
     });
-    vi.mocked(clickhouseDeletion.deleteProjectUsers).mockImplementation(async () => void order.push('clickhouse'));
+    vi.mocked(clickhouseDeletion.deleteUsers).mockImplementation(async () => void order.push('clickhouse'));
     vi.mocked(dbUserIdentificationMap.deleteByUserIds).mockImplementation((() => {
       order.push('identification');
       return Promise.resolve({ count: 1 });
     }) as never);
 
-    await deleteQueuedUsers('d');
+    await deleteQueuedUsers();
     expect(order).toEqual(['sessions', 'clickhouse', 'identification']);
   });
 
   it("ends the hub's current session and writes tombstones for the buffered sessions", async () => {
-    vi.mocked(dbClickhouseDeletion.findById).mockResolvedValue(deletion('d', '3', ['10', '11']));
+    vi.mocked(dbClickhouseDeletion.findPendingUsers).mockResolvedValue([deletion('d', '3', ['10', '11'])]);
     redis.getdel.mockImplementation(async (key: string) => (key === 'sessionid:3:10' ? 'current' : null));
     vi.mocked(deleteBufferedUserSessions).mockImplementation(async (_projectId, userId) =>
       userId === BigInt(10) ? ['vm:{session-state}:3:current', 'vm:{session-state}:3:pending'] : [],
     );
 
-    await deleteQueuedUsers('d');
+    await deleteQueuedUsers();
     expect(redis.getdel).toHaveBeenCalledWith('sessionid:3:10');
     expect(redis.getdel).toHaveBeenCalledWith('sessionid:3:11');
     expect(deleteBufferedUserSessions).toHaveBeenCalledWith(BigInt(3), BigInt(10), ['current']);
@@ -201,54 +232,65 @@ describe('deleteQueuedUsers', () => {
   });
 
   it('clears the device cache and the create-device job deduplication', async () => {
-    vi.mocked(dbClickhouseDeletion.findById).mockResolvedValue(deletion('d', '3', ['10']));
-    vi.mocked(clickhouseDeletion.findProjectUserDevices).mockResolvedValueOnce([
-      { userId: '10', id: '100' },
-      { userId: '10', id: '101' },
+    vi.mocked(dbClickhouseDeletion.findPendingUsers).mockResolvedValue([
+      deletion('d', '3', ['10']),
+      deletion('e', '4', ['20']),
     ]);
+    vi.mocked(clickhouseDeletion.findProjectUserDevices).mockImplementation(async (projectId) =>
+      projectId === '3' ? [{ userId: '10', id: '100' }] : [{ userId: '20', id: '200' }],
+    );
 
-    await deleteQueuedUsers('d');
+    await deleteQueuedUsers();
     expect(clickhouseDeletion.findProjectUserDevices).toHaveBeenCalledWith('3', ['10']);
-    expect(redis.del).toHaveBeenCalledWith('vm:device-written:3:10:100', 'vm:device-written:3:10:101');
+    expect(redis.del).toHaveBeenCalledWith('vm:device-written:3:10:100', 'vm:device-written:4:20:200');
     expect(removeDeviceJobDeduplication).toHaveBeenCalledWith('3', '10');
+    expect(removeDeviceJobDeduplication).toHaveBeenCalledWith('4', '20');
   });
 
-  it('marks the deletion with the time it started, the cutoff for the repeat', async () => {
-    vi.mocked(dbClickhouseDeletion.findById).mockResolvedValue(deletion('d', '3', ['10']));
+  it('marks the deletions with the time they started, the cutoff for the repeat', async () => {
+    vi.mocked(dbClickhouseDeletion.findPendingUsers).mockResolvedValue([deletion('d', '3', ['10'])]);
     let deleteStarted = 0;
-    vi.mocked(clickhouseDeletion.deleteProjectUsers).mockImplementationOnce(async () => {
+    vi.mocked(clickhouseDeletion.deleteUsers).mockImplementationOnce(async () => {
       deleteStarted = Date.now();
     });
 
-    await deleteQueuedUsers('d');
+    await deleteQueuedUsers();
     const [, deletedAt] = vi.mocked(dbClickhouseDeletion.markDeleted).mock.calls[0];
     expect(deletedAt!.getTime()).toBeLessThanOrEqual(deleteStarted);
   });
 
-  it('skips deletions the nightly run already did', async () => {
-    vi.mocked(dbClickhouseDeletion.findById).mockResolvedValue(deletion('d', '3', ['10'], new Date()));
-
-    expect(await deleteQueuedUsers('d')).toEqual({ deleted: 0 });
-    expect(clickhouseDeletion.deleteProjectUsers).not.toHaveBeenCalled();
-  });
-
-  it('fails while a create-user job for the user is running, so it is tried again', async () => {
-    vi.mocked(dbClickhouseDeletion.findById).mockResolvedValue(deletion('d', '3', ['10']));
-    vi.mocked(createUserQueue.remove).mockResolvedValue(0);
+  it('fails only the deletion whose create-user job is running, so it is tried again', async () => {
+    vi.mocked(dbClickhouseDeletion.findPendingUsers).mockResolvedValue([
+      deletion('d', '3', ['10']),
+      deletion('e', '3', ['11']),
+    ]);
+    vi.mocked(createUserQueue.remove).mockImplementation(async (id) => (id === '3-10' ? 0 : 1));
     vi.mocked(createUserQueue.getJob).mockResolvedValue({ id: '3-10' } as never);
 
-    await expect(deleteQueuedUsers('d')).rejects.toThrow('create-user job 3-10 is running');
+    await expect(deleteQueuedUsers()).rejects.toThrow('1 user deletion(s) failed: d');
     expect(dbClickhouseDeletion.markFailed).toHaveBeenCalledWith(['d'], 'Error: create-user job 3-10 is running');
-    expect(dbClickhouseDeletion.markDeleted).not.toHaveBeenCalled();
+    expect(dbClickhouseDeletion.markDeleted).toHaveBeenCalledWith(['e'], expect.any(Date));
   });
 
   it('does not fail when there is no create-user job anymore', async () => {
-    vi.mocked(dbClickhouseDeletion.findById).mockResolvedValue(deletion('d', '3', ['10']));
+    vi.mocked(dbClickhouseDeletion.findPendingUsers).mockResolvedValue([deletion('d', '3', ['10'])]);
     vi.mocked(createUserQueue.remove).mockResolvedValue(0);
-    vi.mocked(createUserQueue.getJob).mockResolvedValue(undefined);
 
-    expect(await deleteQueuedUsers('d')).toEqual({ deleted: 1 });
+    expect(await deleteQueuedUsers()).toEqual({ deleted: 1, remaining: 0 });
     expect(dbClickhouseDeletion.markDeleted).toHaveBeenCalledWith(['d'], expect.any(Date));
+  });
+
+  it('marks every deletion of the batch as failed when the ClickHouse delete fails, without cleaning up', async () => {
+    vi.mocked(dbClickhouseDeletion.findPendingUsers).mockResolvedValue([
+      deletion('d', '3', ['10']),
+      deletion('e', '4', ['20']),
+    ]);
+    vi.mocked(clickhouseDeletion.deleteUsers).mockRejectedValueOnce(new Error('timeout'));
+
+    await expect(deleteQueuedUsers()).rejects.toThrow('2 user deletion(s) failed: d, e');
+    expect(dbClickhouseDeletion.markFailed).toHaveBeenCalledWith(['d', 'e'], 'Error: timeout');
+    expect(dbUserIdentificationMap.deleteByUserIds).not.toHaveBeenCalled();
+    expect(dbClickhouseDeletion.markDeleted).not.toHaveBeenCalled();
   });
 });
 

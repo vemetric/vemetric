@@ -22,6 +22,8 @@ interface WebSocketData {
   proxyConfig: ProxyConfig;
   path: string;
   targetWs?: WebSocket;
+  // Messages from the client before the target connection is open.
+  pending: Array<string | Buffer>;
 }
 
 const proxies: ProxyConfig[] = [
@@ -105,6 +107,7 @@ serve<WebSocketData>({
           host: requestHost,
           proxyConfig: proxyConfig,
           path: `${url.pathname}${url.search}`,
+          pending: [],
         } as WebSocketData,
       });
 
@@ -127,6 +130,7 @@ serve<WebSocketData>({
 
       targetWs.onopen = () => {
         logger.info(`[${new Date().toISOString()}] WebSocket connected: ${host} -> ${wsTarget}`);
+        for (const message of ws.data.pending.splice(0)) targetWs.send(message);
       };
 
       targetWs.onmessage = (event) => ws.send(event.data);
@@ -136,7 +140,11 @@ serve<WebSocketData>({
       ws.data.targetWs = targetWs;
     },
     message(ws: ServerWebSocket<WebSocketData>, message) {
-      ws.data.targetWs?.send(message);
+      // send() throws while the target is still connecting or already closed (e.g. Vite's HMR client reconnecting
+      // while the app restarts), and an uncaught error here stops the whole proxy.
+      const targetWs = ws.data.targetWs;
+      if (targetWs?.readyState === WebSocket.OPEN) targetWs.send(message);
+      else if (targetWs?.readyState === WebSocket.CONNECTING) ws.data.pending.push(message);
     },
     close(ws: ServerWebSocket<WebSocketData>) {
       ws.data.targetWs?.close();

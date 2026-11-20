@@ -1,7 +1,7 @@
 import { type DbClient, prismaClient } from '../client';
 export { type ClickhouseDeletion } from '@prisma/client';
 
-export type ClickhouseDeletionReason = 'project-deleted' | 'account-deleted' | 'orphaned';
+export type ClickhouseDeletionReason = 'project-deleted' | 'account-deleted' | 'user-deleted' | 'orphaned';
 
 // ClickHouse data waiting to be deleted by the worker (clickhouse-deletion-worker). Queue it in the same transaction
 // that deletes the Postgres side, so nothing is left behind if one of them fails.
@@ -25,10 +25,36 @@ export const dbClickhouseDeletion = {
       orderBy: { createdAt: 'asc' },
     }),
 
-  markDeleted: (ids: string[]) =>
+  /** User deletions queued at least `minAgeMs` ago and not deleted yet, oldest first. */
+  findPendingUsers: (minAgeMs: number, take: number) =>
+    prismaClient.clickhouseDeletion.findMany({
+      where: { deletedAt: null, userIds: { isEmpty: false }, createdAt: { lte: new Date(Date.now() - minAgeMs) } },
+      orderBy: { createdAt: 'asc' },
+      take,
+    }),
+
+  countPendingUsers: () =>
+    prismaClient.clickhouseDeletion.count({ where: { deletedAt: null, userIds: { isEmpty: false } } }),
+
+  /** For user deletions, `deletedAt` is when the delete started: what the hub accepted before it is deleted. */
+  markDeleted: (ids: string[], deletedAt = new Date()) =>
     prismaClient.clickhouseDeletion.updateMany({
       where: { id: { in: ids } },
-      data: { deletedAt: new Date(), error: null },
+      data: { deletedAt, error: null },
+    }),
+
+  /** User deletions done at least `minAgeMs` ago whose delete wasn't repeated yet for data written late. */
+  findUnrepeated: (minAgeMs: number) =>
+    prismaClient.clickhouseDeletion.findMany({
+      where: { userIds: { isEmpty: false }, repeatedAt: null, deletedAt: { lte: new Date(Date.now() - minAgeMs) } },
+      orderBy: { deletedAt: 'asc' },
+    }),
+
+  /** The repeat may have deleted rows again, so the weekly purge runs for it too. */
+  markRepeated: (ids: string[]) =>
+    prismaClient.clickhouseDeletion.updateMany({
+      where: { id: { in: ids } },
+      data: { repeatedAt: new Date(), purgedAt: null, error: null },
     }),
 
   markFailed: (ids: string[], error: string) =>

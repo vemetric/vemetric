@@ -1,3 +1,4 @@
+import { formatClickhouseDate } from '@vemetric/common/date';
 import type { DeviceData } from 'clickhouse';
 import { clickhouseDevice } from 'clickhouse';
 import { UAParser } from 'ua-parser-js';
@@ -57,14 +58,19 @@ export async function getDeviceDataFromHeaders(headers: Record<string, string>):
   return deviceData;
 }
 
+export const deviceWrittenKey = (projectId: bigint | string, userId: bigint | string, deviceId: bigint | string) =>
+  `vm:device-written:${projectId}:${userId}:${deviceId}`;
+
 export async function insertDeviceIfNotExists(
   projectId: bigint,
   userId: bigint,
   deviceId: bigint,
   deviceData: DeviceData,
   job?: { log: (row: string) => Promise<number> },
+  /** When the hub accepted the data; defaults to now. */
+  createdAt?: Date,
 ) {
-  const key = `vm:device-written:${projectId}:${userId}:${deviceId}`;
+  const key = deviceWrittenKey(projectId, userId, deviceId);
   // Cache success only. Duplicate misses across replicas are safe in device_v2, where the
   // earliest creation timestamp wins by revision. The device timestamp is derived by the model.
   if (await stateRedis().exists(key)) return;
@@ -82,6 +88,7 @@ export async function insertDeviceIfNotExists(
       clientVersion: deviceData.clientVersion,
       clientType: deviceData.clientType,
       deviceType: deviceData.deviceType,
+      createdAt: createdAt ? formatClickhouseDate(createdAt) : undefined,
     },
   ]);
   await stateRedis().set(key, '1', 'EX', deviceCacheTtl);

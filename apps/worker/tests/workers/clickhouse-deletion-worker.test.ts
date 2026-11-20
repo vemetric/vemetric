@@ -1,7 +1,10 @@
+import { removeDeviceJobDeduplication } from '@vemetric/queues/create-device-queue';
 import { createUserQueue } from '@vemetric/queues/create-user-queue';
 import { clickhouseDeletion } from 'clickhouse';
 import { dbClickhouseDeletion, dbUserIdentificationMap } from 'database';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { deleteBufferedUserSessions } from '../../src/ingestion/session-buffer';
+import { flushSessionBuffer } from '../../src/ingestion/session-flush';
 import { invalidateIngestionUser } from '../../src/utils/user-cache';
 import {
   deletePendingData,
@@ -10,8 +13,15 @@ import {
   purgeDeletedRows,
 } from '../../src/workers/clickhouse-deletion-worker';
 
+const redis = vi.hoisted(() => ({ getdel: vi.fn(), del: vi.fn() }));
+
 vi.mock('clickhouse', () => ({
-  clickhouseDeletion: { deleteProjects: vi.fn(), deleteProjectUsers: vi.fn(), applyDeletedMasks: vi.fn() },
+  clickhouseDeletion: {
+    deleteProjects: vi.fn(),
+    deleteProjectUsers: vi.fn(),
+    findProjectUserDevices: vi.fn().mockResolvedValue([]),
+    applyDeletedMasks: vi.fn(),
+  },
 }));
 vi.mock('database', () => ({
   dbUserIdentificationMap: { deleteByUserIds: vi.fn() },
@@ -25,8 +35,16 @@ vi.mock('database', () => ({
   },
 }));
 vi.mock('@vemetric/queues/clickhouse-deletion-queue', () => ({ DELETE_USERS_JOB: 'delete-users' }));
+vi.mock('@vemetric/queues/create-device-queue', () => ({ removeDeviceJobDeduplication: vi.fn() }));
 vi.mock('@vemetric/queues/create-user-queue', () => ({ createUserQueue: { remove: vi.fn(), getJob: vi.fn() } }));
 vi.mock('../../src/utils/user-cache', () => ({ invalidateIngestionUser: vi.fn() }));
+vi.mock('../../src/ingestion/redis', () => ({ stateRedis: () => redis }));
+vi.mock('../../src/ingestion/session-buffer', () => ({ deleteBufferedUserSessions: vi.fn().mockResolvedValue([]) }));
+vi.mock('../../src/ingestion/session-flush', () => ({ flushSessionBuffer: vi.fn() }));
+vi.mock('../../src/utils/device', () => ({
+  deviceWrittenKey: (projectId: string, userId: string, deviceId: string) =>
+    `vm:device-written:${projectId}:${userId}:${deviceId}`,
+}));
 vi.mock('../../src/utils/logger', () => ({ logger: { info: vi.fn(), error: vi.fn() } }));
 
 const deletion = (id: string, projectId: string, userIds: string[] = [], deletedAt: Date | null = null) => ({
@@ -102,9 +120,13 @@ describe('deleteQueuedUsers', () => {
     expect(dbClickhouseDeletion.markDeleted).toHaveBeenCalledWith(['d']);
   });
 
-  it('cleans up only after the ClickHouse delete succeeded', async () => {
+  it('clears session state before the ClickHouse delete and the rest only after it succeeded', async () => {
     const order: string[] = [];
     vi.mocked(dbClickhouseDeletion.findById).mockResolvedValue(deletion('d', '3', ['10']));
+    vi.mocked(deleteBufferedUserSessions).mockImplementationOnce(async () => {
+      order.push('sessions');
+      return [];
+    });
     vi.mocked(clickhouseDeletion.deleteProjectUsers).mockImplementation(async () => void order.push('clickhouse'));
     vi.mocked(dbUserIdentificationMap.deleteByUserIds).mockImplementation((() => {
       order.push('identification');
@@ -112,7 +134,36 @@ describe('deleteQueuedUsers', () => {
     }) as never);
 
     await deleteQueuedUsers('d');
-    expect(order).toEqual(['clickhouse', 'identification']);
+    expect(order).toEqual(['sessions', 'clickhouse', 'identification']);
+  });
+
+  it("ends the hub's current session and writes tombstones for the buffered sessions", async () => {
+    vi.mocked(dbClickhouseDeletion.findById).mockResolvedValue(deletion('d', '3', ['10', '11']));
+    redis.getdel.mockImplementation(async (key: string) => (key === 'sessionid:3:10' ? 'current' : null));
+    vi.mocked(deleteBufferedUserSessions).mockImplementation(async (_projectId, userId) =>
+      userId === BigInt(10) ? ['vm:{session-state}:3:current', 'vm:{session-state}:3:pending'] : [],
+    );
+
+    await deleteQueuedUsers('d');
+    expect(redis.getdel).toHaveBeenCalledWith('sessionid:3:10');
+    expect(redis.getdel).toHaveBeenCalledWith('sessionid:3:11');
+    expect(deleteBufferedUserSessions).toHaveBeenCalledWith(BigInt(3), BigInt(10), ['current']);
+    expect(deleteBufferedUserSessions).toHaveBeenCalledWith(BigInt(3), BigInt(11), []);
+    expect(flushSessionBuffer).toHaveBeenCalledTimes(1);
+    expect(flushSessionBuffer).toHaveBeenCalledWith(2, ['vm:{session-state}:3:current', 'vm:{session-state}:3:pending']);
+  });
+
+  it('clears the device cache and the create-device job deduplication', async () => {
+    vi.mocked(dbClickhouseDeletion.findById).mockResolvedValue(deletion('d', '3', ['10']));
+    vi.mocked(clickhouseDeletion.findProjectUserDevices).mockResolvedValueOnce([
+      { userId: '10', id: '100' },
+      { userId: '10', id: '101' },
+    ]);
+
+    await deleteQueuedUsers('d');
+    expect(clickhouseDeletion.findProjectUserDevices).toHaveBeenCalledWith('3', ['10']);
+    expect(redis.del).toHaveBeenCalledWith('vm:device-written:3:10:100', 'vm:device-written:3:10:101');
+    expect(removeDeviceJobDeduplication).toHaveBeenCalledWith('3', '10');
   });
 
   it('skips deletions the nightly run already did', async () => {

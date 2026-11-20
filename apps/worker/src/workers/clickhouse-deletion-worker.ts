@@ -1,10 +1,16 @@
+import { sessionIdRedisKey } from '@vemetric/common/session';
 import { DELETE_USERS_JOB, type DeleteUsersJobData } from '@vemetric/queues/clickhouse-deletion-queue';
+import { removeDeviceJobDeduplication } from '@vemetric/queues/create-device-queue';
 import { createUserQueue } from '@vemetric/queues/create-user-queue';
 import { clickhouseDeletionQueueName } from '@vemetric/queues/queue-names';
 import { defaultQueueConnection } from '@vemetric/queues/queue-utils';
 import { type Job, Queue, Worker } from 'bullmq';
 import { clickhouseDeletion } from 'clickhouse';
 import { type ClickhouseDeletion, dbClickhouseDeletion, dbUserIdentificationMap } from 'database';
+import { stateRedis } from '../ingestion/redis';
+import { deleteBufferedUserSessions } from '../ingestion/session-buffer';
+import { flushSessionBuffer } from '../ingestion/session-flush';
+import { deviceWrittenKey } from '../utils/device';
 import { workerName } from '../utils/env';
 import { logger } from '../utils/logger';
 import { queueTelemetry } from '../utils/telemetry';
@@ -66,10 +72,16 @@ export async function deletePendingData() {
  * the same user id (the `_vuid` cookie) and identify again; that has to create them from scratch:
  * - an identification entry recreated in the meantime would now point to a user row that is gone,
  * - the completed create-user job (job id `{projectId}-{userId}`) would make BullMQ drop the new one,
- * - the ingestion user cache would tag new events with the deleted user's identifier and name.
+ * - the ingestion user cache would tag new events with the deleted user's identifier and name,
+ * - the device cache and the hub's create-device job deduplication would skip writing their device again.
+ * Buffered sessions are cleared before the delete instead, so their old data can't be written after it.
  */
 async function deleteUsers(deletion: ClickhouseDeletion) {
   const { projectId, userIds } = deletion;
+  for (const userId of userIds) {
+    await deleteUserSessionState(BigInt(projectId), BigInt(userId));
+  }
+  const devices = await clickhouseDeletion.findProjectUserDevices(projectId, userIds);
   await clickhouseDeletion.deleteProjectUsers(projectId, userIds);
 
   await dbUserIdentificationMap.deleteByUserIds(projectId, userIds);
@@ -80,9 +92,27 @@ async function deleteUsers(deletion: ClickhouseDeletion) {
       throw new Error(`create-user job ${jobId} is running`);
     }
     await invalidateIngestionUser(BigInt(projectId), BigInt(userId));
+    await removeDeviceJobDeduplication(projectId, userId);
+  }
+  if (devices.length > 0) {
+    await stateRedis().del(...devices.map((device) => deviceWrittenKey(projectId, device.userId, device.id)));
   }
 
   await dbClickhouseDeletion.markDeleted([deletion.id]);
+}
+
+/**
+ * The hub sends a visitor's events to their current session for 30 minutes, and the worker caches sessions while they
+ * are written. A visitor still browsing would keep the deleted session going: drop the hub's session id so new events
+ * start a new session, and write deletion tombstones for the buffered sessions now (the ClickHouse delete removes them
+ * too).
+ */
+async function deleteUserSessionState(projectId: bigint, userId: bigint) {
+  const currentSessionId = await stateRedis().getdel(sessionIdRedisKey(projectId, userId));
+  const keys = await deleteBufferedUserSessions(projectId, userId, currentSessionId ? [currentSessionId] : []);
+  if (keys.length > 0) {
+    await flushSessionBuffer(keys.length, keys);
+  }
 }
 
 /** A single queued user deletion, see queueUserDeletionJob. Skips it when the nightly run got there first. */

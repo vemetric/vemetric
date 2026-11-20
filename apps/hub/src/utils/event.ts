@@ -2,7 +2,7 @@ import { formatClickhouseDate } from '@vemetric/common/date';
 import { EventNames } from '@vemetric/common/event';
 import { generateEventId } from '@vemetric/common/id';
 import { getNormalizedDomain } from '@vemetric/common/url';
-import { createDeviceQueue } from '@vemetric/queues/create-device-queue';
+import { createDeviceQueue, deviceJobDeduplicationId } from '@vemetric/queues/create-device-queue';
 import { eventQueue } from '@vemetric/queues/event-queue';
 import { addToQueue } from '@vemetric/queues/queue-utils';
 import { sessionQueue } from '@vemetric/queues/session-queue';
@@ -110,7 +110,7 @@ export const trackEvent = async (context: HonoContext, body: EventSchema) => {
     {
       // Repeated events of a device only need one job; the first one sets the device's creation time.
       deduplication: {
-        id: `${projectId}:${userId}:${getDeviceHeadersFingerprint(headers)}`,
+        id: deviceJobDeduplicationId(projectId, userId, getDeviceHeadersFingerprint(headers)),
         ttl: DEVICE_JOB_DEDUPLICATION_MS,
       },
     },

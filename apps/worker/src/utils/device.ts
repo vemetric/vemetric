@@ -57,6 +57,9 @@ export async function getDeviceDataFromHeaders(headers: Record<string, string>):
   return deviceData;
 }
 
+export const deviceWrittenKey = (projectId: bigint | string, userId: bigint | string, deviceId: bigint | string) =>
+  `vm:device-written:${projectId}:${userId}:${deviceId}`;
+
 export async function insertDeviceIfNotExists(
   projectId: bigint,
   userId: bigint,
@@ -64,7 +67,7 @@ export async function insertDeviceIfNotExists(
   deviceData: DeviceData,
   job?: { log: (row: string) => Promise<number> },
 ) {
-  const key = `vm:device-written:${projectId}:${userId}:${deviceId}`;
+  const key = deviceWrittenKey(projectId, userId, deviceId);
   // Cache success only. Duplicate misses across replicas are safe in device_v2, where the
   // earliest creation timestamp wins by revision. The device timestamp is derived by the model.
   if (await stateRedis().exists(key)) return;

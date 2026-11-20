@@ -173,6 +173,15 @@ export const clickhouseDeletion = {
     await runStatements(statements, timeoutMs);
   },
 
+  /** The device ids of single analytics users of a project, to clear caches that point to them. */
+  findProjectUserDevices: async (projectId: string | bigint, userIds: Array<string | bigint>) => {
+    if (userIds.length === 0) return [];
+    return query<{ userId: string; id: string }>(
+      `SELECT DISTINCT toString(userId) AS userId, toString(id) AS id FROM device_v2
+       WHERE projectId = ${toUInt64List([projectId])} AND userId IN (${toUInt64List(userIds)})`,
+    );
+  },
+
   /** Physically removes all rows hidden by lightweight deletes (rewrites only the parts that have masked rows). */
   applyDeletedMasks: async (timeoutMs = DEFAULT_TIMEOUT_MS) => {
     await checkTableList();

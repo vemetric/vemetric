@@ -24,7 +24,12 @@ export function getVemetricUrl(subDomain?: SubDomain): string {
 /**
  * The MCP server's URL. OAuth access tokens are bound to it, so there's exactly one per deployment: `MCP_URL` for a
  * dedicated host (e.g. `https://mcp.vemetric.com/mcp`), otherwise `/mcp` on the app.
+ *
+ * Local development behind the dev proxy (`*.vemetric.localhost`, plain http) uses the app's dev server directly:
+ * Better Auth's MCP plugin only accepts http resource URLs on `localhost` or a loopback IP, and fails to start otherwise.
  */
 export function getMcpUrl(): string {
-  return process.env.MCP_URL || `${getVemetricUrl('app')}/mcp`;
+  if (process.env.MCP_URL) return process.env.MCP_URL;
+  if (getBaseDomain().includes('localhost')) return 'http://localhost:4000/mcp';
+  return `${getVemetricUrl('app')}/mcp`;
 }

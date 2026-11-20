@@ -2,14 +2,15 @@ import { isEntityUnknown } from '@vemetric/common/event';
 import { filterConfigSchema, type IEventFilter } from '@vemetric/common/filters';
 import type { FunnelStep } from '@vemetric/common/funnel';
 import { userSortConfigSchema } from '@vemetric/common/sort';
+import { queueUserDeletionJob } from '@vemetric/queues/clickhouse-deletion-queue';
 import type { ClickhouseEvent } from 'clickhouse';
 import { clickhouseEvent, clickhouseSession, clickhouseUser, getUserFilterQueries } from 'clickhouse';
-import { dbFunnel } from 'database';
+import { dbClickhouseDeletion, dbFunnel, dbUserIdentificationMap, prismaClient } from 'database';
 import { addDays, addMonths, startOfDay } from 'date-fns';
 import { z } from 'zod';
 import { logger } from '../utils/backend-logger';
 import { getFilterFunnelsData } from '../utils/filter';
-import { projectProcedure, projectTimespanProcedure, router } from '../utils/trpc';
+import { projectAdminProcedure, projectProcedure, projectTimespanProcedure, router } from '../utils/trpc';
 
 const EVENTS_PER_PAGE = 50;
 const USERS_PER_PAGE = 50;
@@ -156,6 +157,36 @@ export const usersRouter = router({
       deviceData,
     };
   }),
+  /**
+   * Deletes all tracked data of one user (identified or anonymous). The identification entry goes right away, so the
+   * identifier is free again; the analytics data is deleted by the worker a few minutes later.
+   */
+  delete: projectAdminProcedure
+    .input(z.object({ userId: z.string().regex(/^\d+$/) }))
+    .mutation(async (opts) => {
+      const {
+        input: { userId },
+        ctx: { projectId, user },
+      } = opts;
+
+      const deletion = await prismaClient.$transaction(async (tx) => {
+        await dbUserIdentificationMap.deleteByUserIds(String(projectId), [userId], tx);
+        return dbClickhouseDeletion.queueUsers(String(projectId), [userId], 'user-deleted', tx);
+      });
+      logger.info(
+        { projectId: String(projectId), userId, deletion: deletion.id, by: user.id },
+        'Tracked user queued for deletion',
+      );
+
+      try {
+        await queueUserDeletionJob(deletion.id);
+      } catch (err) {
+        // Still queued in Postgres: the nightly run deletes it.
+        logger.error({ err, deletion: deletion.id }, 'Failed to queue the user deletion job');
+      }
+
+      return { success: true };
+    }),
   events: projectProcedure
     .input(
       z.object({

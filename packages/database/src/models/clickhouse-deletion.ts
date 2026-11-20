@@ -1,7 +1,7 @@
 import { type DbClient, prismaClient } from '../client';
 export { type ClickhouseDeletion } from '@prisma/client';
 
-export type ClickhouseDeletionReason = 'project-deleted' | 'account-deleted' | 'orphaned';
+export type ClickhouseDeletionReason = 'project-deleted' | 'account-deleted' | 'user-deleted' | 'orphaned';
 
 // ClickHouse data waiting to be deleted by the worker (clickhouse-deletion-worker). Queue it in the same transaction
 // that deletes the Postgres side, so nothing is left behind if one of them fails.
@@ -17,6 +17,8 @@ export const dbClickhouseDeletion = {
     reason: ClickhouseDeletionReason,
     client: DbClient = prismaClient,
   ) => client.clickhouseDeletion.create({ data: { projectId, userIds, reason } }),
+
+  findById: (id: string) => prismaClient.clickhouseDeletion.findUnique({ where: { id } }),
 
   /** Queued at least `minAgeMs` ago and not deleted yet (including ones that failed before). */
   findPending: (minAgeMs: number) =>

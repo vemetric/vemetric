@@ -157,10 +157,6 @@ export const usersRouter = router({
       deviceData,
     };
   }),
-  /**
-   * Deletes all tracked data of one user (identified or anonymous). The identification entry goes right away, so the
-   * identifier is free again; the analytics data is deleted by the worker a few minutes later.
-   */
   delete: projectAdminProcedure
     .input(z.object({ userId: z.string().regex(/^\d+$/) }))
     .mutation(async (opts) => {

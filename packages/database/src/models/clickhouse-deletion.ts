@@ -25,7 +25,6 @@ export const dbClickhouseDeletion = {
       orderBy: { createdAt: 'asc' },
     }),
 
-  /** User deletions queued at least `minAgeMs` ago and not deleted yet, oldest first. */
   findPendingUsers: (minAgeMs: number, take: number) =>
     prismaClient.clickhouseDeletion.findMany({
       where: { deletedAt: null, userIds: { isEmpty: false }, createdAt: { lte: new Date(Date.now() - minAgeMs) } },
@@ -36,21 +35,20 @@ export const dbClickhouseDeletion = {
   countPendingUsers: () =>
     prismaClient.clickhouseDeletion.count({ where: { deletedAt: null, userIds: { isEmpty: false } } }),
 
-  /** For user deletions, `deletedAt` is when the delete started: what the hub accepted before it is deleted. */
+  /** For user deletions, `deletedAt` is when the delete started: the cutoff of the repeat. */
   markDeleted: (ids: string[], deletedAt = new Date()) =>
     prismaClient.clickhouseDeletion.updateMany({
       where: { id: { in: ids } },
       data: { deletedAt, error: null },
     }),
 
-  /** User deletions done at least `minAgeMs` ago whose delete wasn't repeated yet for data written late. */
   findUnrepeated: (minAgeMs: number) =>
     prismaClient.clickhouseDeletion.findMany({
       where: { userIds: { isEmpty: false }, repeatedAt: null, deletedAt: { lte: new Date(Date.now() - minAgeMs) } },
       orderBy: { deletedAt: 'asc' },
     }),
 
-  /** The repeat may have deleted rows again, so the weekly purge runs for it too. */
+  /** The repeat may have deleted rows, so the weekly purge has to run again. */
   markRepeated: (ids: string[]) =>
     prismaClient.clickhouseDeletion.updateMany({
       where: { id: { in: ids } },

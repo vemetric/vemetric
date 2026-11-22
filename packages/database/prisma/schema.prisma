@@ -610,9 +610,8 @@ model ClickhouseDeletion {
   userIds    String[]  @default([])
   reason     String    @db.VarChar
   createdAt  DateTime  @default(now())
-  /// User deletions: the data the hub accepted before this time is deleted.
+  /// User deletions: when the delete started, the cutoff of the repeat.
   deletedAt  DateTime?
-  /// User deletions: when the delete was repeated for data written late (time-bound by `deletedAt`).
   repeatedAt DateTime?
   purgedAt   DateTime?
   error      String?

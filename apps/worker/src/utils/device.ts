@@ -67,7 +67,6 @@ export async function insertDeviceIfNotExists(
   deviceId: bigint,
   deviceData: DeviceData,
   job?: { log: (row: string) => Promise<number> },
-  /** When the hub accepted the data; defaults to now. */
   createdAt?: Date,
 ) {
   const key = deviceWrittenKey(projectId, userId, deviceId);

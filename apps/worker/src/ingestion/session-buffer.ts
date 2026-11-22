@@ -151,11 +151,7 @@ export async function deleteBufferedSession(projectId: bigint, id: string) {
   throw new Error('Session deletion contention; retry');
 }
 
-/**
- * Marks the buffered sessions of a deleted user as deleted: those with pending writes (the user's Redis index) and
- * `extraIds`. Otherwise a pending snapshot, or new activity on a cached session, would write the old session data
- * again after the ClickHouse delete. Returns the keys to flush.
- */
+/** Returns the keys to flush. */
 export async function deleteBufferedUserSessions(projectId: bigint, userId: bigint, extraIds: string[] = []) {
   const prefix = sessionKey(projectId, '');
   const keys = Array.from(

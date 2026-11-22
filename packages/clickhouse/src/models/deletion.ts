@@ -14,10 +14,10 @@ import { clickhouseClient } from '../client';
 // table; repeating the deletes in the next run is harmless.
 
 /**
- * Every analytics table with per-project data, the column holding the analytics user id, and the column with the time
- * the hub accepted a row's data (for deleting only what a user tracked before a point in time). Deletions only touch
- * these tables. When adding a table with a `projectId` column, add it here: `checkTableList` fails every deletion run
- * until then, so a forgotten table shows up as a failed job instead of data that's silently kept.
+ * Every analytics table with per-project data, its analytics user id column, and the column with the time the hub
+ * accepted a row's data. Deletions only touch these tables. When adding a table with a `projectId` column, add it
+ * here: `checkTableList` fails every deletion run until then, so a forgotten table shows up as a failed job instead of
+ * data that's silently kept.
  */
 export const DELETION_TABLES = [
   { table: 'event', userIdColumn: 'userId', timeColumn: 'createdAt' },
@@ -157,16 +157,11 @@ export const clickhouseDeletion = {
     await runStatements(statements, timeoutMs);
   },
 
-  /**
-   * Deletes the data of single analytics users, of any number of projects, with as few statements as possible: many
-   * small lightweight deletes are much more expensive than a few big ones. With `before`, only what the hub accepted
-   * before that time (data written late), keeping what the same user ids tracked afterwards.
-   */
+  /** With `before`, only what the hub accepted before that time. */
   deleteUsers: async (
     groups: Array<{ projectId: string | bigint; userIds: Array<string | bigint>; before?: Date }>,
     timeoutMs = DEFAULT_TIMEOUT_MS,
   ) => {
-    // Up to CHUNK_SIZE user ids per statement, from as many groups as fit.
     const chunks: Array<Array<{ project: string; users: string; before?: string }>> = [[]];
     let chunkSize = 0;
     for (const group of groups) {
@@ -204,7 +199,6 @@ export const clickhouseDeletion = {
     await runStatements(statements, timeoutMs);
   },
 
-  /** The device ids of single analytics users of a project, to clear caches that point to them. */
   findProjectUserDevices: async (projectId: string | bigint, userIds: Array<string | bigint>) => {
     if (userIds.length === 0) return [];
     return query<{ userId: string; id: string }>(

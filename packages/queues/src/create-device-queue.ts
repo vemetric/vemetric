@@ -12,11 +12,9 @@ export const createDeviceQueue = new Queue<CreateDeviceQueueProps>(createDeviceQ
   connection: defaultQueueConnection,
 });
 
-/** The hub adds one create-device job per device of a visitor at a time (BullMQ deduplication id). */
 export const deviceJobDeduplicationId = (projectId: bigint | string, userId: bigint | string, fingerprint: string) =>
   `${projectId}:${userId}:${fingerprint}`;
 
-/** Removes the deduplication of a visitor's create-device jobs, so the next event creates their device again. */
 export async function removeDeviceJobDeduplication(projectId: bigint | string, userId: bigint | string) {
   const prefix = `${createDeviceQueue.qualifiedName}:de:`;
   const client = await createDeviceQueue.client;

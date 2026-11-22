@@ -34,7 +34,7 @@ export async function initDeviceWorker() {
       const deviceId = getDeviceId(projectId, userId, deviceData);
 
       await logJobStep(job, 'device before insertDeviceIfNotExists', { projectId, userId, deviceId });
-      // The time the hub added the job, so a device written late keeps the time of its data (see user deletions).
+      // The hub's time, so the repeat of user deletions catches devices written late.
       await insertDeviceIfNotExists(projectId, userId, deviceId, deviceData, job, new Date(job.timestamp));
       await logJobStep(job, 'device done', { projectId, userId, deviceId });
     },

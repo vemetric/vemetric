@@ -37,6 +37,10 @@ export async function initEmailWorker() {
       try {
         await processEmailSequenceStep(data);
       } catch (error) {
+        if (!(await sequenceOwnerExists(data))) {
+          // the project or user was deleted, so there's no sequence row to mark as failed (it would violate the foreign key)
+          throw error;
+        }
         await prismaClient.emailDripSequence.upsert({
           where: getSequenceWhereClause(data),
           update: {
@@ -81,7 +85,8 @@ async function getUserAndProject(data: EmailDripQueueProps): Promise<{ user: Use
     });
 
     if (!user) {
-      throw new Error(`User not found: ${data.userId}`);
+      // User was deleted, gracefully skip this sequence
+      return null;
     }
 
     if (!user.emailVerified) {
@@ -151,6 +156,11 @@ async function processEmailSequenceStep(data: EmailDripQueueProps) {
   }
 
   if (stepNumber === 0) {
+    if (!(await sequenceOwnerExists(data))) {
+      // the project or user was deleted before the sequence started, gracefully skip it
+      return;
+    }
+
     // we're starting a new sequence, let's create a record for it
     await prismaClient.emailDripSequence.create({
       data: {
@@ -266,6 +276,13 @@ async function processEmailSequenceStep(data: EmailDripQueueProps) {
     });
     throw new Error(result.response.Message);
   }
+}
+
+async function sequenceOwnerExists(data: EmailDripQueueProps) {
+  if ('userId' in data) {
+    return (await prismaClient.user.findUnique({ where: { id: data.userId }, select: { id: true } })) !== null;
+  }
+  return (await prismaClient.project.findUnique({ where: { id: data.projectId }, select: { id: true } })) !== null;
 }
 
 function getSequenceWhereClause(data: EmailDripQueueProps) {

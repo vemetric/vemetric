@@ -12,7 +12,7 @@ export const DELETE_USERS_JOB = 'delete-users';
 export const DELETE_USERS_DEDUPLICATION_ID = DELETE_USERS_JOB;
 
 // Lets events the hub accepted before the deletion be written first.
-const DELETE_USERS_DELAY_MS = 2 * 60 * 1000;
+const DELETE_USERS_DELAY_MS = 30 * 1000;
 
 export const queueUserDeletionJob = () =>
   clickhouseDeletionQueue.add(

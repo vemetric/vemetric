@@ -29,13 +29,13 @@ import { invalidateIngestionUser } from '../utils/user-cache';
 //   late.
 // - `purge`, every Sunday after the nightly run: removes the deleted rows physically (`APPLY DELETED MASK`), batched
 //   for the whole week, so personal data is gone well within a month.
-// - `delete-users`, a few minutes after users were deleted in the app (see queueUserDeletionJob).
+// - `delete-users`, half a minute after users were deleted in the app (see queueUserDeletionJob).
 //
 // Failed deletions keep `deletedAt` (or `repeatedAt`) empty and are tried again the next night.
 
 export const PENDING_MIN_AGE_MS = 60 * 60 * 1000;
 // Lets events the hub accepted just before a deletion be written first.
-export const QUEUED_USERS_MIN_AGE_MS = 60 * 1000;
+export const QUEUED_USERS_MIN_AGE_MS = 15 * 1000;
 export const QUEUED_USERS_BATCH_SIZE = 1000;
 
 export async function deletePendingData() {

@@ -25,7 +25,7 @@ export const DeleteUserButton = ({ projectId, userId, userName, isIdentified }: 
       setIsOpen(false);
       toaster.create({
         title: 'User deleted',
-        description: 'Their data disappears from your dashboards within a few minutes.',
+        description: 'Their data disappears from your dashboards within a minute.',
         type: 'success',
         duration: 6000,
       });

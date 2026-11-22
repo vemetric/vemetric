@@ -21,11 +21,19 @@ function quote(value: string): string {
 }
 
 /**
+ * The scopes clients should request. With `offline_access` they get a refresh token: without it the access token
+ * expires after an hour and the user has to connect again. Generic MCP clients request exactly the scopes of this
+ * challenge (Claude adds `offline_access` itself), and the protected resource metadata can't list it, because it's an
+ * authorization server scope (Better Auth's MCP plugin filters it out there).
+ */
+const CHALLENGE_SCOPE = `${MCP_SCOPE} offline_access`;
+
+/**
  * A `401`/`403` with an RFC 6750 challenge that points clients to the OAuth discovery. Requests without credentials
  * get no `error` (the client starts the OAuth flow), rejected credentials `invalid_token` or `insufficient_scope`.
  */
 function challenge(rejection?: { error: 'invalid_token' | 'insufficient_scope'; message: string }) {
-  const params = [`resource_metadata=${quote(getProtectedResourceMetadataUrl())}`, `scope=${quote(MCP_SCOPE)}`];
+  const params = [`resource_metadata=${quote(getProtectedResourceMetadataUrl())}`, `scope=${quote(CHALLENGE_SCOPE)}`];
   if (rejection) {
     params.push(`error=${quote(rejection.error)}`, `error_description=${quote(rejection.message)}`);
   }

@@ -587,7 +587,8 @@ describe('MCP server', () => {
       expect(challenge).toContain(
         `resource_metadata="${new URL(getMcpUrl()).origin}/.well-known/oauth-protected-resource/mcp"`,
       );
-      expect(challenge).toContain('scope="analytics:read"');
+      // offline_access, so generic clients get a refresh token instead of reconnecting every hour
+      expect(challenge).toContain('scope="analytics:read offline_access"');
       expect(challenge).not.toContain('error=');
     });
 

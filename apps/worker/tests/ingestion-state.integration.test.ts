@@ -20,6 +20,7 @@ import {
   findPendingSession,
   reassignBufferedSession,
   deleteBufferedSession,
+  deleteBufferedUserSessions,
 } from '../src/ingestion/session-buffer';
 import { flushSessionBuffer, pendingSessionStats, persistSessionUpdates } from '../src/ingestion/session-flush';
 import { sessionKeyPrefix } from '../src/ingestion/session-redis-commands';
@@ -244,6 +245,25 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
     await bufferSessionUpdate(projectId, 'deleted-before-creation', at(0), session('deleted-before-creation', 0));
     expect(await flushSessionBuffer()).toBe(0);
     expect(await clickhouseSession.findById(projectId, userId, 'deleted-before-creation')).toBeNull();
+  });
+
+  it("writes tombstones for a deleted user's buffered sessions, so later activity cannot revive them", async () => {
+    const otherUser = BigInt('18446744073709551002');
+    // The hub's current session: written and cached clean, so it is no longer in the user's index.
+    await persistSessionUpdates([session('current', 0)]);
+    await bufferSessionUpdate(projectId, 'pending', at(10), session('pending', 10));
+    await bufferSessionUpdate(projectId, 'merged', at(20), { ...session('merged', 20), userId: otherUser });
+
+    const keys = await deleteBufferedUserSessions(projectId, userId, ['current', 'merged', 'unknown']);
+    expect(keys.sort()).toEqual([sessionKey(projectId, 'current'), sessionKey(projectId, 'pending')]);
+    expect(await flushSessionBuffer(keys.length, keys)).toBe(2);
+
+    expect(await bufferExistingSessionActivity(projectId, 'current', at(30))).toBe('buffered');
+    expect(await bufferExistingSessionActivity(projectId, 'pending', at(30))).toBe('buffered');
+    await flushSessionBuffer();
+    expect(await clickhouseSession.findById(projectId, userId, 'current')).toBeNull();
+    expect(await clickhouseSession.findById(projectId, userId, 'pending')).toBeNull();
+    expect(await clickhouseSession.findById(projectId, otherUser, 'merged')).toMatchObject({ startedAt: at(20) });
   });
 
   it('does not clear an update that arrives while an older snapshot is being written', async () => {

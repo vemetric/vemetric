@@ -31,6 +31,7 @@ import { getReferrerLabel, getReferrerTooltip } from '@/utils/referrer';
 import { trpc } from '@/utils/trpc';
 import { formatQueryParams } from '@/utils/url';
 import { ActivityHeatmap } from './activity-heatmap';
+import { DeleteUserButton } from './delete-user-button';
 import { RenderAttributeValue } from './render-attribute-value';
 import { UserAvatar } from './user-avatar';
 import { UserFunnelProgress } from './user-funnel-progress';
@@ -402,6 +403,12 @@ export const UserDetailColumn = (props: Props) => {
                   </Card.Body>
                 </Card.Root>
                 <UserFunnelProgress projectId={projectId} userId={userId} />
+                <DeleteUserButton
+                  projectId={projectId}
+                  userId={userId}
+                  userName={userName}
+                  isIdentified={Boolean(user?.identifier)}
+                />
               </>
             )}
           </Flex>

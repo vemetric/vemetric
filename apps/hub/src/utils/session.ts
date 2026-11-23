@@ -1,16 +1,12 @@
-import { SESSION_DURATION_MINUTES } from '@vemetric/common/session';
+import { SESSION_DURATION_MINUTES, sessionIdRedisKey } from '@vemetric/common/session';
 import { generateSessionId } from 'database';
 import { getRedisClient } from './redis';
 
 const REDIS_SESSION_DURATION = 60 * SESSION_DURATION_MINUTES;
 
-function getRedisSessionKey(projectId: bigint, userId: bigint) {
-  return `sessionid:${projectId}:${userId}`;
-}
-
 export async function getSessionId(projectId: bigint, userId: bigint) {
   const redisClient = await getRedisClient();
-  const sessionKey = getRedisSessionKey(projectId, userId);
+  const sessionKey = sessionIdRedisKey(projectId, userId);
   return redisClient.get(sessionKey);
 }
 
@@ -39,7 +35,7 @@ return 0`;
 export async function getOrCreateSessionId(projectId: bigint, userId: bigint) {
   const redis = await getRedisClient();
   const [sessionId, created] = (await redis.eval(GET_OR_CREATE_SESSION, {
-    keys: [getRedisSessionKey(projectId, userId)],
+    keys: [sessionIdRedisKey(projectId, userId)],
     arguments: [generateSessionId(), String(REDIS_SESSION_DURATION)],
   })) as [string, number];
   return { sessionId: String(sessionId), isNewSession: Number(created) === 1 };
@@ -50,7 +46,7 @@ export async function increaseRedisSessionDuration(projectId: bigint, userId: bi
   return (
     Number(
       await redis.eval(REFRESH_SESSION, {
-        keys: [getRedisSessionKey(projectId, userId)],
+        keys: [sessionIdRedisKey(projectId, userId)],
         arguments: [sessionId, String(REDIS_SESSION_DURATION)],
       }),
     ) === 1

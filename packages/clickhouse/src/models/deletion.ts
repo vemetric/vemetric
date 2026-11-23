@@ -1,4 +1,5 @@
 import type { ClickHouseClient } from '@clickhouse/client-web';
+import { formatClickhouseDate } from '@vemetric/common/date';
 import { clickhouseClient } from '../client';
 
 // Deleting analytics data (deleted projects, single users of a project) with lightweight deletes.
@@ -165,8 +166,7 @@ export const clickhouseDeletion = {
     const chunks: Array<Array<{ project: string; users: string; before?: string }>> = [[]];
     let chunkSize = 0;
     for (const group of groups) {
-      // toISOString() is always `YYYY-MM-DDTHH:mm:ss.sssZ`, safe to inline.
-      const before = group.before?.toISOString().replace('T', ' ').replace('Z', '');
+      const before = group.before && formatClickhouseDate(group.before);
       for (let i = 0; i < group.userIds.length; i += CHUNK_SIZE) {
         const userIds = group.userIds.slice(i, i + CHUNK_SIZE);
         if (chunkSize + userIds.length > CHUNK_SIZE) {

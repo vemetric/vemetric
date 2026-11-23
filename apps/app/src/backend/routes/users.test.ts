@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   deleteIdentifications: vi.fn(),
   queueUsers: vi.fn(),
   queueUserDeletionJob: vi.fn(),
+  trackEvent: vi.fn(),
 }));
 
 vi.mock('database', () => ({
@@ -22,17 +23,18 @@ vi.mock('database', () => ({
 }));
 vi.mock('@vemetric/queues/clickhouse-deletion-queue', () => ({ queueUserDeletionJob: mocks.queueUserDeletionJob }));
 vi.mock('clickhouse', () => ({}));
+vi.mock('../utils/vemetric-client', () => ({ vemetric: { trackEvent: mocks.trackEvent } }));
 vi.mock('../utils/billing', () => ({ getSubscriptionStatus: vi.fn().mockResolvedValue({ isActive: true }) }));
 vi.mock('../utils/backend-logger', () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } }));
 
 const caller = usersRouter.createCaller({
-  var: { user: { id: 'user_1' }, session: { id: 'session_1' } },
+  var: { user: { id: 'user_1', name: 'Admin' }, session: { id: 'session_1' } },
 } as never);
 
 describe('users.delete', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.findProject.mockResolvedValue({ id: '42', organizationId: 'org_1' });
+    mocks.findProject.mockResolvedValue({ id: '42', domain: 'example.com', organizationId: 'org_1' });
     mocks.hasOrganizationAccess.mockResolvedValue(true);
     mocks.hasProjectAccess.mockResolvedValue(true);
     mocks.findOrganization.mockResolvedValue({ id: 'org_1' });
@@ -45,6 +47,11 @@ describe('users.delete', () => {
     expect(mocks.deleteIdentifications).toHaveBeenCalledWith('42', ['123'], 'tx');
     expect(mocks.queueUsers).toHaveBeenCalledWith('42', ['123'], 'user-deleted', 'tx');
     expect(mocks.queueUserDeletionJob).toHaveBeenCalled();
+    expect(mocks.trackEvent).toHaveBeenCalledWith('UserDeleted', {
+      userIdentifier: 'user_1',
+      userDisplayName: 'Admin',
+      eventData: { projectId: '42', projectDomain: 'example.com', userId: '123' },
+    });
   });
 
   it('is only allowed for organization admins', async () => {

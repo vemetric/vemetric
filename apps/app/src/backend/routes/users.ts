@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { logger } from '../utils/backend-logger';
 import { getFilterFunnelsData } from '../utils/filter';
 import { projectAdminProcedure, projectProcedure, projectTimespanProcedure, router } from '../utils/trpc';
+import { vemetric } from '../utils/vemetric-client';
 
 const EVENTS_PER_PAGE = 50;
 const USERS_PER_PAGE = 50;
@@ -162,7 +163,7 @@ export const usersRouter = router({
     .mutation(async (opts) => {
       const {
         input: { userId },
-        ctx: { projectId, user },
+        ctx: { projectId, project, user },
       } = opts;
 
       const deletion = await prismaClient.$transaction(async (tx) => {
@@ -179,6 +180,16 @@ export const usersRouter = router({
       } catch (err) {
         // Still queued in Postgres: the nightly run deletes it.
         logger.error({ err, deletion: deletion.id }, 'Failed to queue the user deletion job');
+      }
+
+      try {
+        await vemetric.trackEvent('UserDeleted', {
+          userIdentifier: user.id,
+          userDisplayName: user.name,
+          eventData: { projectId: project.id, projectDomain: project.domain, userId },
+        });
+      } catch (err) {
+        logger.error({ err }, 'Track event error');
       }
 
       return { success: true };

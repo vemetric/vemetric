@@ -1,7 +1,7 @@
 import { queueUserDeletionJob } from '@vemetric/queues/clickhouse-deletion-queue';
 import { removeDeviceJobDeduplication } from '@vemetric/queues/create-device-queue';
 import { createUserQueue } from '@vemetric/queues/create-user-queue';
-import { clickhouseDeletion } from 'clickhouse';
+import { clickhouseDeletion, clickhouseDevice } from 'clickhouse';
 import { dbClickhouseDeletion, dbUserIdentificationMap } from 'database';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { deleteBufferedUserSessions } from '../../src/ingestion/session-buffer';
@@ -22,9 +22,9 @@ vi.mock('clickhouse', () => ({
   clickhouseDeletion: {
     deleteProjects: vi.fn(),
     deleteUsers: vi.fn(),
-    findProjectUserDevices: vi.fn().mockResolvedValue([]),
     applyDeletedMasks: vi.fn(),
   },
+  clickhouseDevice: { findIdsByUserIds: vi.fn().mockResolvedValue([]) },
 }));
 vi.mock('database', () => ({
   dbUserIdentificationMap: { deleteByUserIds: vi.fn() },
@@ -236,12 +236,12 @@ describe('deleteQueuedUsers', () => {
       deletion('d', '3', ['10']),
       deletion('e', '4', ['20']),
     ]);
-    vi.mocked(clickhouseDeletion.findProjectUserDevices).mockImplementation(async (projectId) =>
-      projectId === '3' ? [{ userId: '10', id: '100' }] : [{ userId: '20', id: '200' }],
+    vi.mocked(clickhouseDevice.findIdsByUserIds).mockImplementation(async (projectId) =>
+      projectId === BigInt(3) ? [{ userId: '10', id: '100' }] : [{ userId: '20', id: '200' }],
     );
 
     await deleteQueuedUsers();
-    expect(clickhouseDeletion.findProjectUserDevices).toHaveBeenCalledWith('3', ['10']);
+    expect(clickhouseDevice.findIdsByUserIds).toHaveBeenCalledWith(BigInt(3), [BigInt(10)]);
     expect(redis.del).toHaveBeenCalledWith('vm:device-written:3:10:100', 'vm:device-written:4:20:200');
     expect(removeDeviceJobDeduplication).toHaveBeenCalledWith('3', '10');
     expect(removeDeviceJobDeduplication).toHaveBeenCalledWith('4', '20');

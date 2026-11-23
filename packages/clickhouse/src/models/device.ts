@@ -84,6 +84,17 @@ export const clickhouseDevice = {
       return device;
     });
   },
+  /** Raw rows, so devices already hidden by a tombstone are included too. */
+  findIdsByUserIds: async (projectId: bigint, userIds: bigint[]) => {
+    if (userIds.length === 0) return [];
+    const resultSet = await clickhouseClient.query({
+      query: `SELECT DISTINCT toString(userId) AS userId, toString(id) AS id FROM ${TABLE_NAME}
+        WHERE projectId = {projectId:UInt64} AND userId IN {userIds:Array(UInt64)}`,
+      query_params: { projectId, userIds },
+      format: 'JSONEachRow',
+    });
+    return (await resultSet.json()) as Array<{ userId: string; id: string }>;
+  },
   insert: async (devices: Array<Omit<ClickhouseDevice, 'createdAt'> & { createdAt?: string }>) => {
     await clickhouseInsert({
       table: TABLE_NAME,

@@ -10,7 +10,7 @@ import { createUserQueue } from '@vemetric/queues/create-user-queue';
 import { clickhouseDeletionQueueName } from '@vemetric/queues/queue-names';
 import { defaultQueueConnection } from '@vemetric/queues/queue-utils';
 import { type Job, Queue, Worker } from 'bullmq';
-import { clickhouseDeletion } from 'clickhouse';
+import { clickhouseDeletion, clickhouseDevice } from 'clickhouse';
 import { type ClickhouseDeletion, dbClickhouseDeletion, dbUserIdentificationMap } from 'database';
 import { stateRedis } from '../ingestion/redis';
 import { deleteBufferedUserSessions } from '../ingestion/session-buffer';
@@ -102,7 +102,7 @@ async function deleteUsers(deletions: ClickhouseDeletion[]) {
       }
     }
     for (const [projectId, userIds] of Array.from(userIdsByProject)) {
-      const found = await clickhouseDeletion.findProjectUserDevices(projectId, userIds);
+      const found = await clickhouseDevice.findIdsByUserIds(BigInt(projectId), userIds.map(BigInt));
       devices.push(...found.map((device) => ({ projectId, ...device })));
     }
     await clickhouseDeletion.deleteUsers(

@@ -313,7 +313,7 @@ export const clickhouseEvent = {
     const resultSet = await clickhouseClient.query({
       query: `SELECT ${EVENT_KEY_SELECTOR} FROM ${TABLE_NAME} WHERE projectId=${escape(projectId)} AND userId=${escape(
         userId,
-      )} GROUP BY id HAVING sum(sign) > 0`,
+      )} GROUP BY id, sessionId HAVING sum(sign) > 0`,
       format: 'JSONEachRow',
     });
     const result = (await resultSet.json()) as Array<any>;
@@ -933,7 +933,7 @@ export const clickhouseEvent = {
     'getUsagePerProject',
     async (projectIds: Array<string>, startDate: Date, endDate: Date) => {
       const resultSet = await clickhouseClient.query({
-        query: `SELECT projectId, count() as events from ${TABLE_NAME} WHERE projectId IN (${projectIds
+        query: `SELECT projectId, greatest(0, sum(sign)) as events from ${TABLE_NAME} WHERE projectId IN (${projectIds
           .map((id) => escape(id))
           .join(',')}) 
         AND createdAt >= toStartOfDay(parseDateTimeBestEffortOrNull('${formatClickhouseDate(startDate)}'))
@@ -972,8 +972,8 @@ export const clickhouseEvent = {
    * event list) never show a moved event in its old session.
    */
   moveEvents: async (moves: Array<{ from: ClickhouseEvent; to: ClickhouseEvent }>) => {
-    // Well below max_insert_block_size, so every batch is a single block.
-    const BATCH_SIZE = 10_000;
+    // Small enough to stay within a single ClickHouse insert block even with large customData/headers.
+    const BATCH_SIZE = 2_000;
     for (let offset = 0; offset < moves.length; offset += BATCH_SIZE) {
       await clickhouseInsert({
         table: TABLE_NAME,
@@ -1198,7 +1198,8 @@ export const clickhouseEvent = {
           ${startDate ? `AND createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
           ${endDate ? `AND createdAt < '${formatClickhouseDate(endDate)}'` : ''}
           ${filterQueries || ''}
-          GROUP BY id
+          -- Keep cancelled rows of moved events separate from their new user/session until ClickHouse collapses them.
+          GROUP BY id, userId, sessionId
           HAVING sum(sign) > 0
           ORDER BY eventTime DESC
           LIMIT ${escape(limit)}`,

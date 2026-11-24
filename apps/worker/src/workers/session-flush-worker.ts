@@ -23,15 +23,26 @@ export async function initSessionFlushWorker() {
   return new Worker(
     sessionFlushQueueName,
     async () => {
+      const errors: unknown[] = [];
       // Dirty keys are never removed before a successful write.
-      for (let batch = 0; batch < 10; batch++) {
-        if ((await flushSessionBuffer(batchSize)) < batchSize) break;
+      try {
+        for (let batch = 0; batch < 10; batch++) {
+          if ((await flushSessionBuffer(batchSize)) < batchSize) break;
+        }
+      } catch (err) {
+        errors.push(err);
       }
       // User rows too: the user table keeps the last inserted row, so they need this single
       // writer to be written in order.
-      for (let batch = 0; batch < 10; batch++) {
-        if ((await flushUserBuffer(batchSize)) < batchSize) break;
+      try {
+        for (let batch = 0; batch < 10; batch++) {
+          if ((await flushUserBuffer(batchSize)) < batchSize) break;
+        }
+      } catch (err) {
+        errors.push(err);
       }
+      if (errors.length === 1) throw errors[0];
+      if (errors.length > 1) throw new AggregateError(errors, 'Session and user flushes failed');
     },
     { connection: defaultQueueConnection, name: workerName, concurrency: 1, telemetry: queueTelemetry },
   );

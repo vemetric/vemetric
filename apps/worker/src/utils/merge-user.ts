@@ -66,8 +66,14 @@ async function loadTargetSessions(projectId: bigint, target: bigint, from: numbe
     sessions = (await getBufferedSessions(projectId, target, persisted)).filter(
       (session) => toMs(session.startedAt) <= end && toMs(session.endedAt) >= start,
     );
-    const nextStart = Math.min(start, ...sessions.map((session) => toMs(session.startedAt) - SESSION_GAP_MS));
-    const nextEnd = Math.max(end, ...sessions.map((session) => toMs(session.endedAt) + SESSION_GAP_MS));
+    let nextStart = start;
+    let nextEnd = end;
+    for (const session of sessions) {
+      const s = toMs(session.startedAt) - SESSION_GAP_MS;
+      const e = toMs(session.endedAt) + SESSION_GAP_MS;
+      if (s < nextStart) nextStart = s;
+      if (e > nextEnd) nextEnd = e;
+    }
     if (nextStart === start && nextEnd === end) break;
     start = nextStart;
     end = nextEnd;
@@ -187,11 +193,20 @@ async function mergeIntoTargets(
     targets.push(target);
 
     // Plan the sessions this merge has not decided yet against the identified user's sessions.
-    const times = [
-      ...entrySessions.flatMap((session) => [toMs(session.startedAt), toMs(session.endedAt)]),
-      ...entryEvents.map((event) => toMs(event.createdAt)),
-    ];
-    const targetSessions = await loadTargetSessions(projectId, target, Math.min(...times), Math.max(...times));
+    let minTime = Infinity;
+    let maxTime = -Infinity;
+    for (const session of entrySessions) {
+      const s = toMs(session.startedAt);
+      const e = toMs(session.endedAt);
+      if (s < minTime) minTime = s;
+      if (e > maxTime) maxTime = e;
+    }
+    for (const event of entryEvents) {
+      const t = toMs(event.createdAt);
+      if (t < minTime) minTime = t;
+      if (t > maxTime) maxTime = t;
+    }
+    const targetSessions = await loadTargetSessions(projectId, target, minTime, maxTime);
     const undecided = entrySessions.filter((session) => !decided[session.id]);
     const { visits, survivors } = planVisits([
       ...undecided.map((session) => planSession(session, true)),
@@ -311,13 +326,23 @@ async function applySessionDecisions(
     if (survivor !== session) merged.set(survivor, [...(merged.get(survivor) ?? []), session]);
   }
   for (const [survivor, members] of Array.from(merged.entries())) {
-    const memberEvents = entryEvents.filter((event) => members.includes(event.sessionId));
-    const ends = [
-      ...members.map((member) => known.get(member)?.endedAt).filter((end): end is string => end !== undefined),
-      ...memberEvents.map((event) => event.createdAt),
-    ].map(toMs);
-    if (ends.length && known.has(survivor) && Math.max(...ends) > toMs(known.get(survivor)!.endedAt)) {
-      await bufferSessionUpdate(projectId, survivor, formatClickhouseDate(new Date(Math.max(...ends))));
+    const memberSet = new Set(members);
+    let maxEnd = -Infinity;
+    for (const member of members) {
+      const endedAt = known.get(member)?.endedAt;
+      if (endedAt !== undefined) {
+        const ms = toMs(endedAt);
+        if (ms > maxEnd) maxEnd = ms;
+      }
+    }
+    for (const event of entryEvents) {
+      if (memberSet.has(event.sessionId)) {
+        const ms = toMs(event.createdAt);
+        if (ms > maxEnd) maxEnd = ms;
+      }
+    }
+    if (maxEnd > -Infinity && known.has(survivor) && maxEnd > toMs(known.get(survivor)!.endedAt)) {
+      await bufferSessionUpdate(projectId, survivor, formatClickhouseDate(new Date(maxEnd)));
     }
     for (const member of members) {
       await deleteBufferedSession(projectId, member);

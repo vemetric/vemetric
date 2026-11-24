@@ -4,7 +4,7 @@ import { mergeUserBackoff, mergeUserQueue } from '@vemetric/queues/merge-user-qu
 import { mergeUserQueueName } from '@vemetric/queues/queue-names';
 import { DelayedError, Worker, type Job } from 'bullmq';
 import { dbUserIdentificationMap } from 'database';
-import { getUser } from '../ingestion';
+import { getUser, isUserDeleted } from '../ingestion';
 import { loadMergeRecord, saveMergeRecord } from '../ingestion/merge-record';
 import { workerName } from '../utils/env';
 import { logger } from '../utils/logger';
@@ -16,9 +16,12 @@ const MAX_SESSION_WAIT_MS = 5 * 60 * 1_000;
 
 // Records a merge of an anonymous id into an identified user. Repeated identifications into the
 // same user extend its cutoff; a merge into another user starts a new period of the anonymous id.
+// Returns false when the target user was deleted and the merge should be skipped.
 async function registerMerge(job: Job<MergeUserQueueProps>, projectId: bigint, source: bigint, target: bigint) {
+  if (await isUserDeleted(projectId, target)) return false;
   const identification = await dbUserIdentificationMap.findByUserId(String(projectId), String(target));
   if (!identification) {
+    if (await isUserDeleted(projectId, target)) return false;
     throw new Error(`User not found: ${target}`);
   }
   const cutoff = job.data.cutoff ?? formatClickhouseDate(new Date(job.timestamp + (job.opts.delay ?? 0)));
@@ -49,6 +52,7 @@ async function registerMerge(job: Job<MergeUserQueueProps>, projectId: bigint, s
     merges.sort((a, b) => (a.cutoff < b.cutoff ? -1 : 1));
   }
   await saveMergeRecord(projectId, source, { ...record, merges });
+  return true;
 }
 
 export async function initMergeUserWorker() {
@@ -63,7 +67,7 @@ export async function initMergeUserWorker() {
         const oldUserId = BigInt(job.data.oldUserId);
         const newUserId = BigInt(job.data.newUserId);
         if (oldUserId === newUserId) return;
-        await registerMerge(job, projectId, oldUserId, newUserId);
+        if (!(await registerMerge(job, projectId, oldUserId, newUserId))) return;
         userId = oldUserId;
       } else if (job.data.userId !== undefined) {
         // A follow-up for activity that arrived after the merge.

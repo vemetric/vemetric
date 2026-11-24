@@ -27,7 +27,10 @@ export const getAffiliateCodeFromCookieHeader = (cookieHeader: string | null | u
       continue;
     }
     if (cookie.slice(0, separatorIndex).trim() === AFFILIATE_COOKIE_NAME) {
-      return parseAffiliateCode(cookie.slice(separatorIndex + 1).trim());
+      const parsed = parseAffiliateCode(cookie.slice(separatorIndex + 1).trim());
+      if (parsed) {
+        return parsed;
+      }
     }
   }
 

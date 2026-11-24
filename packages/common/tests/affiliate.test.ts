@@ -27,4 +27,8 @@ describe('getAffiliateCodeFromCookieHeader', () => {
     expect(getAffiliateCodeFromCookieHeader('my_vemetric_ref=partner_1')).toBeNull();
     expect(getAffiliateCodeFromCookieHeader('vemetric_ref=bad%20code')).toBeNull();
   });
+
+  it('skips an invalid duplicate cookie and returns a later valid one', () => {
+    expect(getAffiliateCodeFromCookieHeader('vemetric_ref=bad%20code; vemetric_ref=partner_1')).toBe('partner_1');
+  });
 });

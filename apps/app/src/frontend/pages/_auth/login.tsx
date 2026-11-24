@@ -6,6 +6,7 @@ import { TbBrandGithub, TbBrandGoogleFilled, TbLock, TbMail } from 'react-icons/
 import { Checkbox } from '@/components/ui/checkbox';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
+import { getVisitAffiliateSearch } from '@/utils/affiliate';
 import { authClient, loginWithProvider } from '@/utils/auth';
 import { getAppUrl } from '@/utils/url';
 
@@ -70,7 +71,9 @@ function Page() {
         <Text textStyle="sm" color="fg.muted">
           Don&apos;t have an account?{' '}
           <Link asChild variant="underline">
-            <RouterLink to="/signup">Sign up</RouterLink>
+            <RouterLink to="/signup" search={getVisitAffiliateSearch()}>
+              Sign up
+            </RouterLink>
           </Link>
         </Text>
 

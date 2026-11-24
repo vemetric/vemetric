@@ -157,10 +157,11 @@ function Page() {
                   colorPalette="purple"
                   loading={isLoading}
                   onClick={() => {
+                    const organization = session?.organizations.find((o) => o.id === orgId);
                     openPaddleCheckout({
                       organizationId: orgId,
                       email: session?.user.email ?? '',
-                      affiliateCode: session?.user.affiliateCode,
+                      affiliateCode: organization?.affiliateCode ?? session?.user.affiliateCode,
                       pricingPlan,
                       isYearly,
                     });

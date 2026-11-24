@@ -151,6 +151,19 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('user writes against 
     expect(await stateRedis().ttl(userKey(projectId, userId))).toBeGreaterThan(23 * 60 * 60);
   });
 
+  it('does not re-dirty a deleted user when an in-flight flush acknowledges afterwards', async () => {
+    await upsertUser(projectId, userId, { type: 'create', create: create(0, { plan: 'free' }) });
+    const inFlight = await userStore.readPending(10);
+    expect(inFlight).toHaveLength(1);
+
+    await deleteUserState(projectId, userId);
+    await userStore.acknowledgeFlush(inFlight);
+
+    expect(await stateRedis().zcard(dirtyKey)).toBe(0);
+    expect(await stateRedis().ttl(userKey(projectId, userId))).toBeGreaterThan(23 * 60 * 60);
+    expect(await userStore.readPending(10)).toEqual([]);
+  });
+
   it('writes a user whose display name and custom data hold lone surrogates', async () => {
     await upsertUser(projectId, userId, {
       type: 'create',

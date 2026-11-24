@@ -46,7 +46,7 @@ async function mergeIntoUser(
   fiveSecondRoundedDate.setSeconds(fiveSecondRoundedDate.getSeconds() - (fiveSecondRoundedDate.getSeconds() % 5));
   const oldUserId = String(anonymousUserId);
 
-  await continueSession(projectId, anonymousUserId, identifiedUserId);
+  await continueSession(projectId, anonymousUserId, identifiedUserId, sessionId);
   await addToQueue(
     mergeUserQueue,
     {

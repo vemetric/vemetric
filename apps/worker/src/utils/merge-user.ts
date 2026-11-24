@@ -26,12 +26,21 @@ if redis.call('GET', KEYS[1]) == ARGV[1] then
 end
 return 0`;
 
+// Clears the anonymous id's current session once a merge moved or merged it away, unless it changed meanwhile.
+const CLEAR_HUB_SESSION = `
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+  return redis.call('DEL', KEYS[1])
+end
+return 0`;
+
 type Decisions = Map<string, string>;
 
-function decisionsOf(...records: Array<MergeRecord | null>): Decisions {
+function decisionsOf(records: Array<MergeRecord | null>, target?: string): Decisions {
   const decisions: Decisions = new Map();
   for (const record of records) {
-    for (const [session, decided] of Object.entries(record?.sessions ?? {})) decisions.set(session, decided.session);
+    for (const [session, decided] of Object.entries(record?.sessions ?? {})) {
+      if (target === undefined || decided.user === target) decisions.set(session, decided.session);
+    }
   }
   return decisions;
 }
@@ -104,8 +113,13 @@ export async function reconcileUser(
     if (outcome.pendingSessionId) return outcome;
     targets = outcome.targets;
   }
-  await moveEventsOfMergedSessions(projectId, userId, (await loadMergeRecord(projectId, userId)) ?? record);
-  for (const target of targets) {
+  const latest = (await loadMergeRecord(projectId, userId)) ?? record;
+  await moveEventsOfMergedSessions(projectId, userId, latest);
+  const targetIds = Array.from(
+    new Set([...targets.map(String), ...(latest.merges ?? []).map((entry) => entry.target)]),
+  ).map(BigInt);
+  for (const target of targetIds) {
+    if (await isUserDeleted(projectId, target)) continue;
     const targetRecord = await loadMergeRecord(projectId, target);
     if (targetRecord) await moveEventsOfMergedSessions(projectId, target, targetRecord);
   }
@@ -199,7 +213,7 @@ async function mergeIntoTargets(
     await saveMergeRecord(projectId, source, record);
     if (targetRecord.sessions) await saveMergeRecord(projectId, target, targetRecord);
 
-    const decisions = decisionsOf(record, targetRecord);
+    const decisions = decisionsOf([record, targetRecord], entry.target);
     await applySessionDecisions(
       projectId,
       source,
@@ -285,11 +299,12 @@ async function applySessionDecisions(
   for (const session of entrySessions) {
     if (resolveSession(decisions, session.id) === session.id) {
       await reassignBufferedSession(projectId, session.id, target, entry.identifier, entry.displayName);
+      await stateRedis().eval(CLEAR_HUB_SESSION, 1, sessionIdRedisKey(projectId, source), session.id);
     }
   }
 
   // Every session that keeps a visit first extends to the end of everything merged into it,
-  // then the others are deleted and current sessions in the hub point to the one that kept it.
+  // then the others are deleted, cleared on the merged id, and repointed on the identified user.
   const merged = new Map<string, string[]>();
   for (const session of Array.from(decisions.keys())) {
     const survivor = resolveSession(decisions, session);
@@ -306,16 +321,15 @@ async function applySessionDecisions(
     }
     for (const member of members) {
       await deleteBufferedSession(projectId, member);
-      for (const owner of [source, target]) {
-        await stateRedis().eval(REPOINT_HUB_SESSION, 1, sessionIdRedisKey(projectId, owner), member, survivor);
-      }
+      await stateRedis().eval(CLEAR_HUB_SESSION, 1, sessionIdRedisKey(projectId, source), member);
+      await stateRedis().eval(REPOINT_HUB_SESSION, 1, sessionIdRedisKey(projectId, target), member, survivor);
     }
   }
 }
 
 // Events of this id in its own sessions that were merged into another session of the same user.
 async function moveEventsOfMergedSessions(projectId: bigint, userId: bigint, record: MergeRecord) {
-  const decisions = decisionsOf(record);
+  const decisions = decisionsOf([record], String(userId));
   const ownMerged = Object.entries(record.sessions ?? {})
     .filter(([session, decided]) => decided.user === String(userId) && decided.session !== session)
     .map(([session]) => session);

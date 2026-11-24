@@ -48,12 +48,14 @@ export async function deleteUserState(projectId: bigint, userId: bigint) {
   const key = userKey(projectId, userId);
   for (let attempt = 0; attempt < 100; attempt++) {
     const { raw, state } = await userStore.load(key);
-    if (state.deleted) break;
+    if (state.deleted) {
+      await userStore.markDeleted(key);
+      break;
+    }
     if (await userStore.commitIfUnchanged({ key, raw, state: { revision: state.revision, deleted: true } }, false))
       break;
     if (attempt === 99) throw new Error('User deletion contention; retry');
   }
-  await userStore.markDeleted(key);
   await invalidateIngestionUser(projectId, userId);
 }
 

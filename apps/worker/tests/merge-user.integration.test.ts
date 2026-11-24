@@ -400,6 +400,32 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('user merges against 
     expect(await liveRowsPerEvent()).toEqual([1, 1, 1, 1]);
   });
 
+  it('finishes moving target session events on retry when the second move fails', async () => {
+    await visit(alice, 'T', [[20, '/dashboard']]);
+    await visit(anonymous, 'S', [[0, '/landing']]);
+    const move = clickhouseEvent.moveEvents;
+    let calls = 0;
+    const failing = vi.spyOn(clickhouseEvent, 'moveEvents').mockImplementation(async (moves) => {
+      calls++;
+      if (calls === 2) throw new Error('timeout on target move');
+      return move(moves);
+    });
+
+    await expect(merge(10)).rejects.toThrow('timeout on target move');
+    expect(await eventsOf(anonymous)).toHaveLength(0);
+
+    failing.mockImplementation(move);
+    // Retrying the original merge job for anonymous must still finish moving alice's events out of T.
+    await reconcileUser(projectId, anonymous);
+
+    expect((await eventsOf(alice)).map((e) => [e.pathname, e.sessionId])).toEqual([
+      ['/landing', 'S'],
+      ['/dashboard', 'S'],
+    ]);
+    expect((await sessionsOf(alice)).map((s) => s.id)).toEqual(['S']);
+    expect(await liveRowsPerEvent()).toEqual([1, 1]);
+  });
+
   it('moves events and sessions stored after the merge with a follow-up', async () => {
     await visit(alice, 'T', [[40, '/dashboard']]);
     await visit(anonymous, 'S', [
@@ -440,6 +466,60 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('user merges against 
     expect(await bufferSessionUpdate(projectId, 'T', at(45))).toBe('deleted');
     await continueMergedSession(projectId, alice, 'T', at(45));
     expect(await sessionsOf(alice)).toMatchObject([{ id: 'S', endedAt: at(45) }]);
+  });
+
+  it('follows user hops when a surviving anonymous session is later merged into an earlier session', async () => {
+    const otherAnonymous = BigInt('18446744073709551012');
+    await visit(anonymous, 'S1', [[20, '/pricing']]);
+    await merge(25);
+
+    // Another anonymous visit from earlier merges S1 into S0 on alice.
+    await visit(otherAnonymous, 'S0', [[0, '/landing']]);
+    await saveMergeRecord(projectId, otherAnonymous, {
+      merges: [{ target: String(alice), cutoff: at(30), identifier: 'alice', displayName: 'Alice' }],
+    });
+    await reconcileUser(projectId, otherAnonymous);
+
+    expect(await bufferSessionUpdate(projectId, 'S1', at(45))).toBe('deleted');
+    await continueMergedSession(projectId, anonymous, 'S1', at(45));
+    expect(await sessionsOf(alice)).toMatchObject([{ id: 'S0', endedAt: at(45) }]);
+  });
+
+  it('clears the merged id hub session and isolates decisions across targets on a shared anonymous id', async () => {
+    const bob = BigInt('18446744073709551013');
+    await upsertUser(projectId, bob, {
+      type: 'create',
+      create: {
+        createdAt: at(-600),
+        identifier: 'bob',
+        displayName: 'Bob',
+        avatarUrl: '',
+        data: {},
+        firstPageView: {},
+      },
+    });
+    await visit(alice, 'TA', [[0, '/alice']]);
+    await visit(anonymous, 'SA', [[10, '/landing-a']]);
+    await stateRedis().set(hubKey(anonymous), 'SA', 'EX', 1800);
+    await merge(15);
+
+    // The anonymous id's hub session is cleared instead of repointed to Alice's TA.
+    expect(await stateRedis().get(hubKey(anonymous))).toBeNull();
+
+    // Later, Bob merges from the same shared anonymous id; Alice's earlier decision (SA -> TA) must not leak.
+    await visit(anonymous, 'SB', [[100, '/landing-b']]);
+    await stateRedis().set(hubKey(anonymous), 'SB', 'EX', 1800);
+    await stateRedis().set(hubKey(bob), 'SA', 'EX', 1800);
+    const record = (await loadMergeRecord(projectId, anonymous))!;
+    await saveMergeRecord(projectId, anonymous, {
+      ...record,
+      merges: [...record.merges!, { target: String(bob), cutoff: at(105), identifier: 'bob', displayName: 'Bob' }],
+    });
+    await reconcileUser(projectId, anonymous);
+
+    expect(await stateRedis().get(hubKey(anonymous))).toBeNull();
+    expect(await stateRedis().get(hubKey(bob))).toBe('SA');
+    expect((await sessionsOf(bob)).map((s) => s.id)).toEqual(['SB']);
   });
 
   it('puts events of sessions that never existed into the visit they fall into', async () => {

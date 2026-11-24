@@ -725,6 +725,59 @@ describe.sequential('hub ingestion integration', () => {
     }
   });
 
+  it('does not share a session when a second visitor logs in on the same hash right after the first', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
+    const projectId = BigInt(project.projectId);
+    const sharedAgent = `${TEST_USER_AGENT} account-switch`;
+
+    try {
+      await ingestPageView(project, { url: `https://${project.domain}/alice-landing`, userAgent: sharedAgent });
+      await identifyUser(project, 'alice-switch@example.com', 'Alice', { 'user-agent': sharedAgent });
+      await ingestPageView(project, {
+        url: `https://${project.domain}/alice-app`,
+        identifier: 'alice-switch@example.com',
+        userAgent: sharedAgent,
+      });
+      await waitForQueuesIdle(30000);
+
+      // Without waiting 30 minutes for the hub session to expire, another visitor (or switched account)
+      // on the same IP+UA browses and logs in.
+      await ingestPageView(project, { url: `https://${project.domain}/bob-landing`, userAgent: sharedAgent });
+      await identifyUser(project, 'bob-switch@example.com', 'Bob', { 'user-agent': sharedAgent });
+      await ingestPageView(project, {
+        url: `https://${project.domain}/bob-app`,
+        identifier: 'bob-switch@example.com',
+        userAgent: sharedAgent,
+      });
+      await waitForQueuesIdle(30000);
+
+      const aliceUser = (await clickhouseUser.findByIdentifier(projectId, 'alice-switch@example.com'))!;
+      const bobUser = (await clickhouseUser.findByIdentifier(projectId, 'bob-switch@example.com'))!;
+      await waitForStable('both accounts kept separate sessions', async () => {
+        const aliceEvents = await clickhouseEvent.findByUserId(projectId, aliceUser.id);
+        const bobEvents = await clickhouseEvent.findByUserId(projectId, bobUser.id);
+        return (
+          aliceEvents
+            .map((e) => e.pathname)
+            .sort()
+            .join('|') === '/alice-app|/alice-landing' &&
+          bobEvents
+            .map((e) => e.pathname)
+            .sort()
+            .join('|') === '/bob-app|/bob-landing'
+        );
+      });
+      const aliceSessions = await clickhouseSession.findByUserId(projectId, aliceUser.id);
+      const bobSessions = await clickhouseSession.findByUserId(projectId, bobUser.id);
+      expect(aliceSessions).toHaveLength(1);
+      expect(bobSessions).toHaveLength(1);
+      expect(bobSessions[0]!.id).not.toBe(aliceSessions[0]!.id);
+    } finally {
+      await cleanupProject(project);
+    }
+  });
+
   it('keeps an anonymous visit in one session when the visitor logs into an existing user', async () => {
     const project = nextProjectContext();
     await createProject(project);

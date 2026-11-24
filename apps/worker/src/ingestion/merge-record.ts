@@ -69,9 +69,10 @@ export async function continueMergedSession(projectId: bigint, userId: bigint, s
   let session = sessionId;
   for (let hop = 0; hop < 5; hop++) {
     const decided = (await loadMergeRecord(projectId, BigInt(owner)))?.sessions?.[session];
-    if (!decided || decided.session === session) return;
+    if (!decided || (decided.user === owner && decided.session === session)) return;
+    const sessionChanged = decided.session !== session;
     owner = decided.user;
     session = decided.session;
-    if ((await bufferSessionUpdate(projectId, session, at)) !== 'deleted') return;
+    if (sessionChanged && (await bufferSessionUpdate(projectId, session, at)) !== 'deleted') return;
   }
 }

@@ -52,15 +52,17 @@ async function commitIfUnchanged(snapshot: UserSnapshot, dirty: boolean) {
   const revision = snapshot.state.revision + 1;
   if (!Number.isSafeInteger(revision)) throw new Error('User revision overflow');
   const next = { ...snapshot.state, revision };
+  const mode = next.deleted ? '2' : dirty ? '1' : '0';
+  const ttl = next.deleted ? deletedUserTtl : next.user ? userCleanTtl : pendingUserTtl;
   return (
     (await stateRedis().commitUser(
       dirtyKey,
       snapshot.key,
       snapshot.raw,
       JSON.stringify(next, wellFormed),
-      dirty ? '1' : '0',
+      mode,
       Date.now(),
-      next.user ? userCleanTtl : pendingUserTtl,
+      ttl,
     )) === 1
   );
 }
@@ -76,6 +78,10 @@ async function readPending(limit: number): Promise<UserSnapshot[]> {
     if (raw) {
       const state = JSON.parse(raw) as UserState;
       if (state.user) snapshots.push({ key, raw, state });
+      else if (state.deleted) {
+        await redis.zrem(dirtyKey, key);
+        if ((await redis.ttl(key)) === -1) await redis.expire(key, deletedUserTtl);
+      }
     } else if (await redis.zscore(dirtyKey, key)) {
       // Lost outside this code (eviction, manual deletion): report it and keep flushing the rest.
       logger.error({ key }, 'Missing dirty user state');
@@ -89,7 +95,7 @@ async function acknowledgeFlush(snapshots: UserSnapshot[]) {
   const pipeline = stateRedis().pipeline() as ChainableCommander & UserCommands;
   const now = Date.now();
   for (const snapshot of snapshots) {
-    pipeline.acknowledgeUser(snapshot.key, dirtyKey, snapshot.raw, userCleanTtl, now);
+    pipeline.acknowledgeUser(snapshot.key, dirtyKey, snapshot.raw, userCleanTtl, now, deletedUserTtl);
   }
   const results = await pipeline.exec();
   for (const [error] of results ?? []) {

@@ -5,7 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { clickhouseClient } from '../../../packages/clickhouse/src/client';
 import { clickhouseUser } from '../../../packages/clickhouse/src/models/user';
 import { closeStateRedis, stateRedis } from '../src/ingestion/redis';
-import { flushUserBuffer, getUser, upsertUser } from '../src/ingestion/user-buffer';
+import { deleteUserState, flushUserBuffer, getUser, isUserDeleted, upsertUser } from '../src/ingestion/user-buffer';
 import { userKeyPrefix } from '../src/ingestion/user-redis-commands';
 import { type UserCreate } from '../src/ingestion/user-state';
 import { pendingUserTtl, userKey, userStore } from '../src/ingestion/user-store';
@@ -134,6 +134,33 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('user writes against 
     expect(await findIngestionUser(projectId, userId)).toMatchObject({ identifier: 'alice', displayName: 'Alice' });
     await upsertUser(projectId, userId, { type: 'update', update: { updatedAt: at(5), displayName: 'Alice A.' } });
     expect(await findIngestionUser(projectId, userId)).toMatchObject({ displayName: 'Alice A.' });
+  });
+
+  it('ignores and never writes a deleted user again', async () => {
+    await upsertUser(projectId, userId, { type: 'create', create: create(0, { plan: 'free' }) });
+    await set(5, { plan: 'pro' });
+    await deleteUserState(projectId, userId);
+
+    await set(9, { plan: 'enterprise' });
+    await upsertUser(projectId, userId, { type: 'create', create: create(10) });
+    expect(await flushUserBuffer()).toBe(0);
+    expect(await clickhouseUser.findById(projectId, userId)).toBeNull();
+    expect(await findIngestionUser(projectId, userId)).toBeNull();
+    expect(await getUser(projectId, userId)).toBeNull();
+    expect(await isUserDeleted(projectId, userId)).toBe(true);
+    expect(await stateRedis().ttl(userKey(projectId, userId))).toBeGreaterThan(23 * 60 * 60);
+  });
+
+  it('writes a user whose display name and custom data hold lone surrogates', async () => {
+    await upsertUser(projectId, userId, {
+      type: 'create',
+      create: { ...create(0), displayName: 'Bad \ud800 name', data: { ['key\udc00']: 'value \ud800' } },
+    });
+    await flushUserBuffer();
+    expect(await clickhouseUser.findById(projectId, userId)).toMatchObject({
+      displayName: 'Bad \ufffd name',
+      customData: { 'key\ufffd': 'value \ufffd' },
+    });
   });
 
   it('does not create or flush a user for updates of an anonymous id', async () => {

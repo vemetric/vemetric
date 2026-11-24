@@ -1,4 +1,5 @@
 import { z } from '@hono/zod-openapi';
+import { normalizeReferrerType } from './sources';
 
 const anyOperator = z.literal('any');
 const andOperator = z.literal('and');
@@ -61,7 +62,7 @@ export const listFilterSchema = z.object({
     description: 'List of values to filter by',
   }),
   operator: listOperatorsSchema.openapi({
-    description: `Operator to apply for the list filter. The "any" operator means that any value is accepted and effectively disables the filter.`,
+    description: `Operator to apply for the list filter. The "any" operator means that any value is accepted and effectively disables the filter. To require a value, use "noneOf" with [""].`,
   }),
 });
 export type IListFilter = z.infer<typeof listFilterSchema>;
@@ -115,7 +116,10 @@ export type IReferrerUrlFilter = z.infer<typeof referrerUrlFilterSchema>;
 
 const referrerTypeFilterSchema = z.object({
   type: z.literal('referrerType'),
-  referrerTypeFilter: listFilterSchema.optional(),
+  // `direct` is the old name of `internal`: old links and saved filters show and keep working as `internal`.
+  referrerTypeFilter: listFilterSchema
+    .transform((filter) => ({ ...filter, value: Array.from(new Set(filter.value.map(normalizeReferrerType))) }))
+    .optional(),
 });
 export type IReferrerTypeFilter = z.infer<typeof referrerTypeFilterSchema>;
 

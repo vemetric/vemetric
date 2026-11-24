@@ -196,6 +196,42 @@ describe('getReferrerFromRequest', () => {
 
     const result = await getReferrerFromRequest(BigInt(123), headers);
 
-    expect(result).toBeUndefined();
+    expect(result).toEqual({ referrer: '', referrerUrl: '', referrerType: 'none' });
+  });
+
+  it('should treat an empty v-referrer header like a missing one', async () => {
+    vi.mocked(dbProject.findById).mockResolvedValueOnce({ domain: 'example.com' } as any);
+
+    const result = await getReferrerFromRequest(BigInt(123), { 'v-referrer': '' }, 'https://example.com/page');
+
+    expect(result).toEqual({ referrer: '', referrerUrl: '', referrerType: 'none' });
+  });
+
+  it('should type a referrer from the own domain as internal', async () => {
+    vi.mocked(dbProject.findById).mockResolvedValueOnce({ domain: 'example.com' } as any);
+
+    const result = await getReferrerFromRequest(
+      BigInt(123),
+      { 'v-referrer': 'https://www.example.com/pricing' },
+      'https://example.com/signup',
+    );
+
+    expect(result).toEqual({ referrer: '', referrerUrl: 'https://www.example.com/pricing', referrerType: 'internal' });
+  });
+
+  it('should keep the ref param as referrer for an own-domain referrer', async () => {
+    vi.mocked(dbProject.findById).mockResolvedValueOnce({ domain: 'example.com' } as any);
+
+    const result = await getReferrerFromRequest(
+      BigInt(123),
+      { 'v-referrer': 'https://example.com/blog' },
+      'https://example.com/signup?ref=blog-footer',
+    );
+
+    expect(result).toEqual({
+      referrer: 'blog-footer',
+      referrerUrl: 'https://example.com/blog',
+      referrerType: 'internal',
+    });
   });
 });

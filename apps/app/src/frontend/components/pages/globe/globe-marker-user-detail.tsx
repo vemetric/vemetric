@@ -1,16 +1,18 @@
 import { Box, Button, Card, Flex, Icon, SimpleGrid, Span, Spinner, Text } from '@chakra-ui/react';
 import { Link } from '@tanstack/react-router';
 import { isEntityUnknown } from '@vemetric/common/event';
-import { TbArrowLeft, TbClock, TbDirectionSign, TbUserSquareRounded } from 'react-icons/tb';
+import { TbArrowLeft, TbClock, TbUserSquareRounded } from 'react-icons/tb';
 import { mergeAll } from 'remeda';
 import { BrowserIcon } from '@/components/browser-icon';
 import { DeviceIcon } from '@/components/device-icon';
 import { LiveTimeAgo } from '@/components/live-time-ago';
 import { LoadingImage } from '@/components/loading-image';
 import { OsIcon } from '@/components/os-icon';
+import { ReferrerTypeIcon } from '@/components/referrer-icon';
 import { Tooltip } from '@/components/ui/tooltip';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import { getFaviconUrl } from '@/utils/favicon';
+import { getReferrerLabel, getReferrerTooltip } from '@/utils/referrer';
 import { trpc, type GlobeBucketUser } from '@/utils/trpc';
 import { formatQueryParams } from '@/utils/url';
 import { getUserName } from '@/utils/user';
@@ -108,11 +110,7 @@ export const GlobeMarkerUserDetail = (props: Props) => {
                       Referrer
                     </Box>
                     <Flex justify="flex-end" minW={0}>
-                      <Tooltip
-                        content={
-                          latestSession.referrer ? `Referred via ${latestSession.referrerUrl}` : 'Direct page visit.'
-                        }
-                      >
+                      <Tooltip content={getReferrerTooltip(latestSession)}>
                         <Flex align="center" gap={1} minW={0}>
                           <Flex
                             align="center"
@@ -131,11 +129,11 @@ export const GlobeMarkerUserDetail = (props: Props) => {
                                 boxSize="14px"
                               />
                             ) : (
-                              <TbDirectionSign />
+                              <ReferrerTypeIcon referrerType={latestSession.referrerType || 'none'} />
                             )}
                           </Flex>
                           <Text fontWeight="medium" truncate>
-                            {latestSession.referrer || 'Direct'}
+                            {getReferrerLabel(latestSession)}
                           </Text>
                         </Flex>
                       </Tooltip>

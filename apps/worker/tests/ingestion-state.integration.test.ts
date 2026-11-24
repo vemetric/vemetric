@@ -20,6 +20,7 @@ import {
   findPendingSession,
   reassignBufferedSession,
   deleteBufferedSession,
+  deleteBufferedUserSessions,
 } from '../src/ingestion/session-buffer';
 import { flushSessionBuffer, pendingSessionStats, persistSessionUpdates } from '../src/ingestion/session-flush';
 import { sessionKeyPrefix } from '../src/ingestion/session-redis-commands';
@@ -127,6 +128,25 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
     });
   });
 
+  it('keeps flushing every project when a visitor display name holds a lone surrogate', async () => {
+    const otherProject = projectId - BigInt(1);
+    await bufferSessionUpdate(projectId, 'lone-surrogate', at(0), session('lone-surrogate', 0));
+    await bufferSessionUpdate(otherProject, 'other-project', at(0), {
+      ...session('other-project', 0),
+      projectId: otherProject,
+    });
+    // A merge writes the display name of the identify request into the buffered session.
+    await reassignBufferedSession(projectId, 'lone-surrogate', userId, 'identified', 'X\ud800');
+
+    expect(await stateRedis().get(sessionKey(projectId, 'lone-surrogate'))).not.toContain('\\ud800');
+    expect(await flushSessionBuffer()).toBe(2);
+    expect(await clickhouseSession.findById(projectId, userId, 'lone-surrogate')).toMatchObject({
+      userDisplayName: 'X\ufffd',
+    });
+    expect(await clickhouseSession.findById(otherProject, userId, 'other-project')).not.toBeNull();
+    expect((await pendingSessionStats()).count).toBe(0);
+  });
+
   // Redis runs each script atomically, so this checks the scripts' logic rather than a race.
   it('hub session scripts create one session per key and never revive an expired or replaced one', async () => {
     const redis = stateRedis();
@@ -225,6 +245,27 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
     await bufferSessionUpdate(projectId, 'deleted-before-creation', at(0), session('deleted-before-creation', 0));
     expect(await flushSessionBuffer()).toBe(0);
     expect(await clickhouseSession.findById(projectId, userId, 'deleted-before-creation')).toBeNull();
+  });
+
+  it("writes tombstones for a deleted user's buffered sessions, so later activity cannot revive them", async () => {
+    const otherUser = BigInt('18446744073709551002');
+    // The hub's current session: written and cached clean, so it is no longer in the user's index.
+    await persistSessionUpdates([session('current', 0)]);
+    await bufferSessionUpdate(projectId, 'pending', at(10), session('pending', 10));
+    await bufferSessionUpdate(projectId, 'merged', at(20), { ...session('merged', 20), userId: otherUser });
+
+    const keys = await deleteBufferedUserSessions(projectId, userId, ['current', 'merged', 'unknown']);
+    expect(keys.sort()).toEqual([sessionKey(projectId, 'current'), sessionKey(projectId, 'pending')]);
+    expect(await flushSessionBuffer(keys.length, keys)).toBe(2);
+
+    // Activity of a deleted session is dropped; the deletion also removed the user's merge record, so
+    // the session worker does not continue another session with it either.
+    expect(await bufferExistingSessionActivity(projectId, 'current', at(30))).toBe('deleted');
+    expect(await bufferExistingSessionActivity(projectId, 'pending', at(30))).toBe('deleted');
+    await flushSessionBuffer();
+    expect(await clickhouseSession.findById(projectId, userId, 'current')).toBeNull();
+    expect(await clickhouseSession.findById(projectId, userId, 'pending')).toBeNull();
+    expect(await clickhouseSession.findById(projectId, otherUser, 'merged')).toMatchObject({ startedAt: at(20) });
   });
 
   it('does not clear an update that arrives while an older snapshot is being written', async () => {

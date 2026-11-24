@@ -1,3 +1,4 @@
+import { NO_REFERRER } from '@vemetric/common/sources';
 import { clickhouseSession, type ClickhouseSession } from 'clickhouse';
 import { bufferSessionUpdate } from './session-buffer';
 import { sessionKeyPrefix } from './session-redis-commands';
@@ -27,6 +28,7 @@ export async function flushSessionBuffer(limit = 500, onlyKeys?: string[]) {
 
       return {
         ...(state.session ?? {
+          ...NO_REFERRER,
           projectId,
           id: sessionId,
           startedAt: state.latestAt || '1970-01-01 00:00:00.000',

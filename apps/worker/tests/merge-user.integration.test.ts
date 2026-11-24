@@ -16,7 +16,7 @@ import {
 import { closeStateRedis, stateRedis } from '../src/ingestion/redis';
 import { bufferSessionUpdate } from '../src/ingestion/session-buffer';
 import { flushSessionBuffer } from '../src/ingestion/session-flush';
-import { flushUserBuffer, getUser, upsertUser } from '../src/ingestion/user-buffer';
+import { deleteUserState, flushUserBuffer, getUser, upsertUser } from '../src/ingestion/user-buffer';
 import { insertDeviceIfNotExists } from '../src/utils/device';
 import { followUpIfMerged } from '../src/utils/merge-follow-up';
 import { reconcileUser } from '../src/utils/merge-user';
@@ -243,6 +243,16 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('user merges against 
     const record = await loadMergeRecord(projectId, anonymous);
     expect(needsFollowUp(record, anonymous, event(anonymous, 'VISIT', 140, '/late'))).toBe(true);
     expect(needsFollowUp(record, anonymous, event(anonymous, 'OTHER', 5, '/late'))).toBe(false);
+  });
+
+  it('moves nothing to a user that was deleted', async () => {
+    await visit(anonymous, 'S', [[0, '/landing']]);
+    await deleteUserState(projectId, alice);
+    await merge(10);
+
+    expect(await eventsOf(alice)).toHaveLength(0);
+    expect((await eventsOf(anonymous)).map((e) => e.pathname)).toEqual(['/landing']);
+    expect((await sessionsOf(anonymous)).map((s) => s.id)).toEqual(['S']);
   });
 
   it('moves an anonymous visit to the identified user with its entry data', async () => {

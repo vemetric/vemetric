@@ -33,7 +33,7 @@ services:
     command: redis-server --maxmemory-policy noeviction
 
   clickhouse:
-    image: clickhouse/clickhouse-server:26.3.8.4
+    image: clickhouse/clickhouse-server:26.3.62.3
     container_name: vemetric-clickhouse
     environment:
       - CLICKHOUSE_DB=vemetric

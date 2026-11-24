@@ -29,9 +29,9 @@ initializePaddle({
 
 // Global search params available on all routes
 const rootSearchSchema = z.object({
-  orgSettings: z.enum(['general', 'billing', 'members']).optional(),
+  orgSettings: z.enum(['general', 'billing', 'members', 'api']).optional(),
   pricingDialog: z.boolean().optional(),
-  settings: z.enum(['general', 'auth', 'notifications']).optional(),
+  settings: z.enum(['general', 'auth', 'notifications', 'apps']).optional(),
   changeEmail: z.boolean().optional(),
   error: z.string().optional(),
 });
@@ -104,21 +104,25 @@ function RootLayout() {
 
   useEffect(() => {
     if (changeEmail) {
-      setTimeout(() => {
-        toaster.create({
-          title: 'Email changed',
-          description: 'Your email address has been changed successfully.',
-          type: 'success',
-          duration: 5000,
+      // better-auth appends `error` to the callback URL when the change-email link is rejected
+      // (e.g. INVALID_TOKEN, TOKEN_EXPIRED); the error effect below shows that toast instead.
+      if (!errorCode) {
+        setTimeout(() => {
+          toaster.create({
+            title: 'Email changed',
+            description: 'Your email address has been changed successfully.',
+            type: 'success',
+            duration: 5000,
+          });
         });
-      });
+      }
       navigate({
         to: location.pathname,
         search: (prev) => ({ ...prev, changeEmail: undefined }),
         replace: true,
       });
     }
-  }, [changeEmail, location.pathname, navigate]);
+  }, [changeEmail, errorCode, location.pathname, navigate]);
 
   useEffect(() => {
     if (errorCode) {

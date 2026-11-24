@@ -11,7 +11,7 @@ export const Route = createFileRoute('/_layout/p/$projectId')({
 function ProjectLayoutComponent() {
   return (
     <ProjectProvider>
-      {/* data-project-layout enables the stable scrollbar gutter defined in the theme's globalCss */}
+      {/* data-project-layout keeps the scrollbar visible via the rule in the theme's globalCss */}
       <Box display="contents" data-project-layout>
         <Outlet />
       </Box>

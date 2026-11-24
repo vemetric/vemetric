@@ -1,9 +1,10 @@
 import { Box, Flex, Skeleton, Tag, Text } from '@chakra-ui/react';
-import { TbDirectionSign } from 'react-icons/tb';
 import { LoadingImage } from '@/components/loading-image';
+import { ReferrerTypeIcon } from '@/components/referrer-icon';
 import { Tooltip } from '@/components/ui/tooltip';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import { getFaviconUrl } from '@/utils/favicon';
+import { getReferrerLabel, getReferrerTooltip } from '@/utils/referrer';
 import type { EventData, SessionData } from '@/utils/trpc';
 import { DateSeparator } from './date-separator';
 import { EventCard } from './event-card';
@@ -183,7 +184,7 @@ export const SessionEventGroup = (props: Props) => {
                   borderBottomWidth="1.5px"
                   roundedBottomLeft="md"
                 />
-                <Tooltip content={session.referrer ? `Referred via ${session.referrerUrl}` : `Direct page visit.`}>
+                <Tooltip content={getReferrerTooltip(session)}>
                   <Tag.Root mt={1} size="lg" rounded="md" colorPalette="gray" px={1} pr={1.5}>
                     <Tag.Label display="flex" alignItems="center" gap={1}>
                       <Flex
@@ -203,10 +204,10 @@ export const SessionEventGroup = (props: Props) => {
                             boxSize="16px"
                           />
                         ) : (
-                          <TbDirectionSign />
+                          <ReferrerTypeIcon referrerType={session.referrerType || 'none'} />
                         )}
                       </Flex>
-                      {session.referrer || 'Direct'}
+                      {getReferrerLabel(session)}
                     </Tag.Label>
                   </Tag.Root>
                 </Tooltip>

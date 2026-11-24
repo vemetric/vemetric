@@ -64,3 +64,25 @@ export const getSourceValue = (
 
   return { segment: 'referrer', referrer: 'referrer', utm: 'utmCampaign' };
 };
+
+// Stored for visits without a referrer header and without a ref/via/utm_source/source param. Without it the
+// insert would fall back to the ClickHouse column default 'unknown', which means "a source without a category".
+export const NO_REFERRER = { referrer: '', referrerUrl: '', referrerType: 'none' } as const;
+
+// `direct` was the old name of `internal` (a page on the project's own domain). Old filters, links and API
+// clients may still send it, so it stays accepted. It can't get a new meaning.
+export const normalizeReferrerType = (value: string) => (value === 'direct' ? 'internal' : value);
+
+export const REFERRER_TYPE_DESCRIPTIONS: Record<string, string> = {
+  none: 'No referrer: typed in, bookmarks, apps, or the referrer was removed',
+  search: 'Search engines',
+  social: 'Social networks and communities',
+  llm: 'AI assistants and AI search',
+  email: 'Email clients and webmail',
+  paid: 'Ad networks',
+  unknown: "A website or source that isn't in Vemetric's list of known sources",
+  internal: 'A page on your own domain, e.g. a new session after 30 minutes of inactivity',
+};
+
+export const getReferrerTypeLabel = (value: string) =>
+  value === 'llm' ? 'LLM' : value ? value.charAt(0).toUpperCase() + value.slice(1) : value;

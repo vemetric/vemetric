@@ -39,3 +39,24 @@ export async function flushUserBuffer(limit = 500) {
 }
 
 export const pendingUserStats = () => userStore.pendingStats();
+
+/**
+ * Called before a user's data is deleted from ClickHouse: from then on, changes queued for the user
+ * are ignored, the flusher never writes the user again and ingestion no longer sees it.
+ */
+export async function deleteUserState(projectId: bigint, userId: bigint) {
+  const key = userKey(projectId, userId);
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const { raw, state } = await userStore.load(key);
+    if (state.deleted) break;
+    if (await userStore.commitIfUnchanged({ key, raw, state: { revision: state.revision, deleted: true } }, false))
+      break;
+    if (attempt === 99) throw new Error('User deletion contention; retry');
+  }
+  await userStore.markDeleted(key);
+  await invalidateIngestionUser(projectId, userId);
+}
+
+export async function isUserDeleted(projectId: bigint, userId: bigint) {
+  return (await userStore.load(userKey(projectId, userId))).state.deleted === true;
+}

@@ -91,6 +91,13 @@ describe('DateTimeFormatter', () => {
       expect(dateTimeFormatter.formatWeek('2023-06-15')).toBe('Week 25');
       expect(dateTimeFormatter.formatWeek('2025-03-10')).toBe('Week 11');
     });
+
+    it('should start weeks on Monday, like the time series', () => {
+      // A week of a time series, from Monday November 16 to Sunday November 22, 2026
+      expect(dateTimeFormatter.formatWeek(new Date('2026-11-16T00:00:00.000Z'))).toBe('Week 47');
+      expect(dateTimeFormatter.formatWeek(new Date('2026-11-22T23:59:59.000Z'))).toBe('Week 47');
+      expect(dateTimeFormatter.formatWeek(new Date('2026-11-15T23:59:59.000Z'))).toBe('Week 46');
+    });
   });
 
   describe('formatDuration', () => {

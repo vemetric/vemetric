@@ -1,6 +1,6 @@
 import { z } from '@hono/zod-openapi';
 import { eventApiFilterSchema, pageApiFilterSchema, apiFilterSchema, apiFiltersOperatorSchema } from './api-filters';
-import { apiDateRangeSchema, apiTimestampSchema } from './common';
+import { apiDateRangeSchema, apiTimestampSchema, checkDateRangeOrder } from './common';
 
 export const funnelIdSchema = z.string().openapi({
   description: 'Unique funnel id.',
@@ -70,19 +70,7 @@ export const funnelResultsRequestSchema = z
     }),
   })
   .superRefine((data, ctx) => {
-    if (Array.isArray(data.dateRange)) {
-      const [rawStart, rawEnd] = data.dateRange;
-      const start = new Date(rawStart);
-      const end = new Date(rawEnd);
-
-      if (start.getTime() > end.getTime()) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['dateRange'],
-          message: 'Start date must be before or equal to end date',
-        });
-      }
-    }
+    checkDateRangeOrder(data.dateRange, ctx);
   });
 
 const funnelResultStepSchema = z.object({

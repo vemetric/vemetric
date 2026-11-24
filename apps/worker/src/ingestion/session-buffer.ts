@@ -142,8 +142,9 @@ export async function reassignBufferedSession(
   throw new Error('Session merge contention; retry job');
 }
 
-export async function deleteBufferedSession(projectId: bigint, id: string) {
-  const key = sessionKey(projectId, id);
+export const deleteBufferedSession = (projectId: bigint, id: string) => deleteSessionKey(sessionKey(projectId, id));
+
+async function deleteSessionKey(key: string) {
   for (let attempt = 0; attempt < 100; attempt++) {
     const { raw, state } = await sessionStore.load(key);
     if (!state.latestAt) state.latestAt = new Date().toISOString().replace('T', ' ').replace('Z', '');
@@ -151,4 +152,23 @@ export async function deleteBufferedSession(projectId: bigint, id: string) {
     if (await sessionStore.commitIfUnchanged([{ key, raw, state: { ...state, deleted: true } }])) return;
   }
   throw new Error('Session deletion contention; retry');
+}
+
+/** Returns the keys to flush. */
+export async function deleteBufferedUserSessions(projectId: bigint, userId: bigint, extraIds: string[] = []) {
+  const keys = Array.from(
+    new Set([
+      ...(await stateRedis().smembers(sessionUserKey(projectId, userId))),
+      ...extraIds.map((id) => sessionKey(projectId, id)),
+    ]),
+  );
+  const deleted: string[] = [];
+  for (const key of keys) {
+    const { state } = await sessionStore.load(key);
+    // A session merged into another user belongs to them now.
+    if (state.deleted || state.session?.userId !== String(userId)) continue;
+    await deleteSessionKey(key);
+    deleted.push(key);
+  }
+  return deleted;
 }

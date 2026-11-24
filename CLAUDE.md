@@ -44,7 +44,7 @@ bun run test
 ## Key Technologies
 
 - **Runtime**: Bun (backend services)
-- **Frontend**: React 18 + TypeScript + Vite + Chakra UI v3
+- **Frontend**: React 19 + TypeScript + Vite + Chakra UI v3
 - **Backend**: Hono + tRPC + Better Auth
 - **State Management**: TanStack Query + Valtio
 - **Routing**: TanStack Router

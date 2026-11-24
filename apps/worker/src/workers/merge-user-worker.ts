@@ -22,7 +22,8 @@ async function registerMerge(job: Job<MergeUserQueueProps>, projectId: bigint, s
     throw new Error(`User not found: ${target}`);
   }
   const cutoff = job.data.cutoff ?? formatClickhouseDate(new Date(job.timestamp + (job.opts.delay ?? 0)));
-  const displayName = job.data.displayName ?? (await getUser(projectId, target))?.displayName;
+  // Lone surrogates in a visitor's display name would make the moved events' insert fail.
+  const displayName = (job.data.displayName ?? (await getUser(projectId, target))?.displayName)?.toWellFormed();
 
   const record = (await loadMergeRecord(projectId, source)) ?? {};
   const merges = [...(record.merges ?? [])];

@@ -205,9 +205,13 @@ async function main() {
   const identifier = isIdentified ? `seed_user_${String(userId)}@example.com` : '';
   const eventCreatedAt = new Date(Math.ceil(NOW.getTime() / 1000) * 1000 + 1000 + Math.floor(Math.random() * 1000));
   const sessionStartedAt = new Date(eventCreatedAt.getTime() - (1 + Math.floor(Math.random() * 5)) * 1000);
-  const referrerType = Math.random() >= 0.5 ? 'direct' : 'search';
-  const referrer = referrerType === 'search' ? 'Google' : '';
-  const referrerUrl = referrerType === 'search' ? 'https://google.com/search?q=product+analytics' : '';
+  // One of each referrer type the worker stores: no referrer, the own domain, a listed source, a website.
+  const { referrer, referrerUrl, referrerType } = sample([
+    { referrer: '', referrerUrl: '', referrerType: 'none' },
+    { referrer: '', referrerUrl: `https://${project.domain}/blog`, referrerType: 'internal' },
+    { referrer: 'Google', referrerUrl: 'https://google.com/search?q=product+analytics', referrerType: 'search' },
+    { referrer: 'indiehackers.com', referrerUrl: 'https://www.indiehackers.com/', referrerType: 'unknown' },
+  ]);
   const origin = `https://${project.domain}`;
 
   const user: ClickhouseUser = {

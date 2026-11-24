@@ -10,6 +10,7 @@ const dirtyKey = `${userKeyPrefix}dirty`;
 export const userCleanTtl = envPositiveInteger('USER_STATE_CACHE_TTL_SECONDS', 120);
 // Updates for a user that does not exist yet wait this long for the create.
 export const pendingUserTtl = envPositiveInteger('USER_PENDING_UPDATE_TTL_SECONDS', 3600);
+const deletedUserTtl = 24 * 60 * 60;
 export const userKey = (projectId: bigint | string, userId: bigint | string) =>
   `${userKeyPrefix}${projectId}:${userId}`;
 
@@ -37,6 +38,16 @@ async function loadUser(key: string): Promise<{ raw: string; state: UserState }>
   return loadUser(key);
 }
 
+// Visitor strings (display names, custom data keys and values) can hold lone surrogates. Their JSON
+// escapes make the ClickHouse insert fail, and users of every project are flushed in one batch.
+const wellFormed = (_key: string, value: unknown) => {
+  if (typeof value === 'string') return value.toWellFormed();
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key.toWellFormed(), item]));
+  }
+  return value;
+};
+
 async function commitIfUnchanged(snapshot: UserSnapshot, dirty: boolean) {
   const revision = snapshot.state.revision + 1;
   if (!Number.isSafeInteger(revision)) throw new Error('User revision overflow');
@@ -46,7 +57,7 @@ async function commitIfUnchanged(snapshot: UserSnapshot, dirty: boolean) {
       dirtyKey,
       snapshot.key,
       snapshot.raw,
-      JSON.stringify(next),
+      JSON.stringify(next, wellFormed),
       dirty ? '1' : '0',
       Date.now(),
       next.user ? userCleanTtl : pendingUserTtl,
@@ -94,4 +105,18 @@ async function pendingStats() {
   return { count, oldestAgeSeconds };
 }
 
-export const userStore = { load: loadUser, commitIfUnchanged, readPending, acknowledgeFlush, pendingStats };
+// Removes a user's state from the flush and keeps its deletion marker for a day: long enough for jobs
+// accepted before the deletion, after which ClickHouse no longer has the user either.
+async function markDeleted(key: string) {
+  await stateRedis().zrem(dirtyKey, key);
+  await stateRedis().expire(key, deletedUserTtl);
+}
+
+export const userStore = {
+  load: loadUser,
+  commitIfUnchanged,
+  readPending,
+  acknowledgeFlush,
+  pendingStats,
+  markDeleted,
+};

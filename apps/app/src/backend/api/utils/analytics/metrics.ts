@@ -42,6 +42,11 @@ export function isMetricApplicableForGrouping(metric: Metric, grouping: MetricsQ
   return true;
 }
 
+/** An interval of a time series without any data: nothing was counted, and there were no visits to measure. */
+export function getEmptyIntervalMetricValue(metric: Metric): number | null {
+  return metric === 'bounceRate' || metric === 'visitDuration' ? null : 0;
+}
+
 export function getEmptyMetricValue(metric: Metric, grouping: MetricsQueryGrouping): number | null {
   return isMetricApplicableForGrouping(metric, grouping) ? 0 : null;
 }

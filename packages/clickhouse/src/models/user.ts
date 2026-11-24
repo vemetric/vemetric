@@ -51,6 +51,26 @@ const EXAMPLE_USER: Required<ClickhouseUser> = {
   customData: {},
 };
 
+/**
+ * The first visit stored on the user row when the user is identified (the worker's `getUserFirstPageViewData`), shown
+ * as "First seen" in the dashboard. Without `queryParams` and `urlHash`, which can contain secrets.
+ */
+export const USER_FIRST_VISIT_FIELDS = [
+  'firstSeenAt',
+  'referrer',
+  'referrerUrl',
+  'referrerType',
+  'origin',
+  'pathname',
+  'utmSource',
+  'utmMedium',
+  'utmCampaign',
+  'utmContent',
+  'utmTerm',
+] as const satisfies ReadonlyArray<keyof ClickhouseUser>;
+
+export type ClickhouseUserFirstVisit = Record<(typeof USER_FIRST_VISIT_FIELDS)[number], string>;
+
 const transformKeySelector = (key: keyof ClickhouseUser, idColName = 'id') =>
   key === idColName ? key : `argMax(${key}, updatedAt)`;
 

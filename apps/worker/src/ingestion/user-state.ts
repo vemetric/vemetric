@@ -1,5 +1,6 @@
 import { formatClickhouseDate } from '@vemetric/common/date';
 import type { GeoData } from '@vemetric/common/geo';
+import { NO_REFERRER } from '@vemetric/common/sources';
 import type { UpdateUserDataModel } from '@vemetric/queues/update-user-queue';
 import { clickhouseDateToISO, type ClickhouseUser } from 'clickhouse';
 import { isDeepEqual } from 'remeda';
@@ -21,6 +22,8 @@ export interface UserState {
   pending?: UserUpdate[];
   // The earliest first page view a merge brought before the user was created; applied by the create.
   pendingFirstPageView?: Partial<StoredUser>;
+  // The user was deleted: every later change is ignored and nothing is written again.
+  deleted?: boolean;
 }
 
 export interface UserUpdate {
@@ -155,6 +158,7 @@ export function applyUserOp(
   op: UserOp,
   ids: { projectId: string; userId: string },
 ): { state: UserState; dirty: boolean } | null {
+  if (state.deleted) return null;
   const fieldsAt = state.fieldsAt ?? {};
 
   if (op.type === 'attribute') {
@@ -220,6 +224,8 @@ export function applyUserOp(
     city: '',
     latitude: null,
     longitude: null,
+    // Users without a pageview have no referrer; the first pageview below overrides it.
+    ...NO_REFERRER,
     ...(create.geo ?? {}),
     ...storedFields(create.firstPageView ?? {}),
   };

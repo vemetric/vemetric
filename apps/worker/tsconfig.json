@@ -2,6 +2,7 @@
   "compilerOptions": {
     "esModuleInterop": true,
     "strict": true,
+    "lib": ["ES2024"],
     "jsx": "react-jsx",
     "types": ["bun"],
     "module": "ESNext",

@@ -1,4 +1,5 @@
 import { formatClickhouseDate } from '@vemetric/common/date';
+import { sessionIdRedisKey } from '@vemetric/common/session';
 import type { ClickhouseEvent, ClickhouseSession } from 'clickhouse';
 import { clickhouseDevice, clickhouseEvent, clickhouseSession, getDeviceId } from 'clickhouse';
 import { insertDeviceIfNotExists } from './device';
@@ -10,14 +11,13 @@ import {
   deleteBufferedSession,
   findPendingSession,
   getBufferedSessions,
+  isUserDeleted,
   reassignBufferedSession,
   stateRedis,
   upsertUser,
 } from '../ingestion';
 import { loadMergeRecord, saveMergeRecord, type MergeEntry, type MergeRecord } from '../ingestion/merge-record';
 
-// The hub's key for a user's current session (apps/hub/src/utils/session.ts).
-const hubSessionKey = (projectId: bigint, userId: bigint | string) => `sessionid:${projectId}:${userId}`;
 // Points the user's current session at the session that kept the visit, unless it changed meanwhile.
 const REPOINT_HUB_SESSION = `
 if redis.call('GET', KEYS[1]) == ARGV[1] then
@@ -165,6 +165,8 @@ async function mergeIntoTargets(
   const remainingEvents = new Set(sourceEvents.map((event) => event.id));
   for (const [index, entry] of Array.from(merges.entries())) {
     const target = BigInt(entry.target);
+    // A deleted user gets nothing anymore; its merged id keeps its activity.
+    if (await isUserDeleted(projectId, target)) continue;
     const entrySessions = sourceSessions.filter((session) => sessionEntry.get(session.id) === index);
     const entryEvents = movingEvents.filter((item) => item.index === index).map(({ event }) => event);
     if (!entrySessions.length && !entryEvents.length) continue;
@@ -305,7 +307,7 @@ async function applySessionDecisions(
     for (const member of members) {
       await deleteBufferedSession(projectId, member);
       for (const owner of [source, target]) {
-        await stateRedis().eval(REPOINT_HUB_SESSION, 1, hubSessionKey(projectId, owner), member, survivor);
+        await stateRedis().eval(REPOINT_HUB_SESSION, 1, sessionIdRedisKey(projectId, owner), member, survivor);
       }
     }
   }

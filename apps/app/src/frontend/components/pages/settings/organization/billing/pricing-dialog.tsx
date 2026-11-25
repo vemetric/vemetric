@@ -87,13 +87,10 @@ export const PricingDialog = ({
       onOpenChange({ open: false });
     }
 
-    const organization = session.organizations.find((o) => o.id === organizationId);
-
     requestAnimationFrame(() => {
       openPaddleCheckout({
         organizationId,
         email: session.user.email,
-        affiliateCode: organization?.affiliateCode ?? session.user.affiliateCode,
         pricingPlan,
         isYearly,
       });

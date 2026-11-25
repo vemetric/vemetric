@@ -18,16 +18,12 @@ interface CheckoutProps {
   email: string;
   pricingPlan: PricingPlan;
   isYearly: boolean;
-  // the affiliate code saved on the organization or account at signup
-  affiliateCode?: string | null;
 }
 
-export const openPaddleCheckout = ({ organizationId, email, pricingPlan, isYearly, affiliateCode }: CheckoutProps) => {
+export const openPaddleCheckout = ({ organizationId, email, pricingPlan, isYearly }: CheckoutProps) => {
   getPaddleInstance()?.Checkout.open({
     customData: {
       organizationId,
-      // read by Klibon to credit the sale to the affiliate (only for signups referred by a partner)
-      ...(affiliateCode ? { klibon: affiliateCode } : {}),
     },
     customer: {
       email,

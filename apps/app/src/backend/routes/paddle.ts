@@ -1,4 +1,4 @@
-import type { EventEntity } from '@paddle/paddle-node-sdk';
+import type { AdjustmentNotification, EventEntity, TransactionNotification } from '@paddle/paddle-node-sdk';
 import { EventName } from '@paddle/paddle-node-sdk';
 import { getClientIp } from '@vemetric/common/request-ip';
 import { sendTransactionalMail, type TemplateData, type TemplateName } from '@vemetric/email/transactional';
@@ -6,6 +6,13 @@ import type { BillingInfo } from 'database';
 import { dbBillingInfo, dbOrganization } from 'database';
 import type { HonoContext } from '../types';
 import { logger } from '../utils/backend-logger';
+import {
+  getAdjustmentRefundAmount,
+  getTransactionConversionType,
+  getTransactionNetAmount,
+  KlibonRetryableError,
+  reportKlibonConversion,
+} from '../utils/klibon';
 import { paddleApi } from '../utils/paddle';
 import { vemetric } from '../utils/vemetric-client';
 
@@ -83,21 +90,67 @@ export async function validateWebhook(context: HonoContext): Promise<EventEntity
   }
 }
 
+const getOrganizationIdFromCustomData = (customData: unknown): string | null => {
+  if (!customData || typeof customData !== 'object') {
+    return null;
+  }
+  const organizationId = (customData as { organizationId?: unknown }).organizationId;
+  return typeof organizationId === 'string' && organizationId.length > 0 ? organizationId : null;
+};
+
+const resolveOrganizationIdForTransaction = async (transaction: TransactionNotification): Promise<string | null> => {
+  const fromCustomData = getOrganizationIdFromCustomData(transaction.customData);
+  if (fromCustomData) {
+    return fromCustomData;
+  }
+  if (transaction.subscriptionId) {
+    const billingInfo = await dbBillingInfo.findBySubscriptionId(transaction.subscriptionId);
+    if (billingInfo) {
+      return billingInfo.organizationId;
+    }
+  }
+  return null;
+};
+
+const resolveOrganizationIdForAdjustment = async (adjustment: AdjustmentNotification): Promise<string | null> => {
+  if (adjustment.subscriptionId) {
+    const billingInfo = await dbBillingInfo.findBySubscriptionId(adjustment.subscriptionId);
+    if (billingInfo) {
+      return billingInfo.organizationId;
+    }
+  }
+
+  const byTransaction = await dbBillingInfo.findByTransactionId(adjustment.transactionId);
+  if (byTransaction) {
+    return byTransaction.organizationId;
+  }
+
+  try {
+    const transaction = await paddleApi.transactions.get(adjustment.transactionId);
+    return getOrganizationIdFromCustomData(transaction.customData);
+  } catch (err) {
+    logger.warn(
+      { err, adjustmentId: adjustment.id, transactionId: adjustment.transactionId },
+      'Paddle: failed to resolve organizationId for adjustment',
+    );
+    return null;
+  }
+};
+
 export const paddleWebhookHandler = async (context: HonoContext) => {
   const entity = await validateWebhook(context);
   if (!entity) {
     return context.text('', 400);
   }
 
-  const organizationId =
-    'customData' in entity.data ? (entity.data.customData as { organizationId: string }).organizationId : null;
-  if (!organizationId) {
-    logger.error({ entity }, 'Paddle: no organizationId found in custom data');
-    return context.text('', 400);
-  }
-
   switch (entity.eventType) {
     case EventName.SubscriptionCreated: {
+      const organizationId = getOrganizationIdFromCustomData(entity.data.customData);
+      if (!organizationId) {
+        logger.error({ entity }, 'Paddle: no organizationId found in custom data');
+        return context.text('', 400);
+      }
+
       const productId = entity.data.items[0].product?.id;
       if (!productId) {
         logger.error({ entity }, 'Paddle: no productId found in subscription created event');
@@ -156,6 +209,12 @@ export const paddleWebhookHandler = async (context: HonoContext) => {
       break;
     }
     case EventName.SubscriptionUpdated: {
+      const organizationId = getOrganizationIdFromCustomData(entity.data.customData);
+      if (!organizationId) {
+        logger.error({ entity }, 'Paddle: no organizationId found in custom data');
+        return context.text('', 400);
+      }
+
       const scheduledChange = entity.data.scheduledChange;
 
       const productId = entity.data.items[0].product?.id;
@@ -207,6 +266,102 @@ export const paddleWebhookHandler = async (context: HonoContext) => {
             },
           });
         }
+      }
+      break;
+    }
+    case EventName.TransactionCompleted: {
+      const conversionType = getTransactionConversionType(entity.data.origin);
+      if (!conversionType) {
+        break;
+      }
+
+      const organizationId = await resolveOrganizationIdForTransaction(entity.data);
+      if (!organizationId) {
+        logger.warn({ transactionId: entity.data.id }, 'Paddle: no organizationId found for completed transaction');
+        break;
+      }
+
+      const organization = await dbOrganization.findById(organizationId);
+      // Only report conversions for organizations referred by an affiliate partner.
+      if (!organization?.affiliateCode) {
+        break;
+      }
+
+      const amount = getTransactionNetAmount(entity.data.details?.totals);
+      if (amount === null) {
+        logger.warn(
+          { transactionId: entity.data.id, organizationId },
+          'Paddle: could not determine net amount for completed transaction',
+        );
+        break;
+      }
+
+      try {
+        await reportKlibonConversion({
+          eventId: entity.data.id,
+          type: conversionType,
+          amount,
+          currency: entity.data.details?.totals?.currencyCode ?? entity.data.currencyCode,
+          customerId: organizationId,
+          referralCode: organization.affiliateCode,
+          paymentId: entity.data.id,
+          subscriptionId: entity.data.subscriptionId,
+        });
+      } catch (err) {
+        if (err instanceof KlibonRetryableError) {
+          return context.text('', 500);
+        }
+        throw err;
+      }
+      break;
+    }
+    case EventName.AdjustmentCreated:
+    case EventName.AdjustmentUpdated: {
+      const isCommissionReversal =
+        (entity.data.action === 'refund' || entity.data.action === 'chargeback') && entity.data.status === 'approved';
+      if (!isCommissionReversal) {
+        break;
+      }
+
+      const organizationId = await resolveOrganizationIdForAdjustment(entity.data);
+      if (!organizationId) {
+        logger.warn(
+          { adjustmentId: entity.data.id, transactionId: entity.data.transactionId },
+          'Paddle: no organizationId found for approved refund adjustment',
+        );
+        break;
+      }
+
+      const organization = await dbOrganization.findById(organizationId);
+      // Only report refunds for organizations referred by an affiliate partner.
+      if (!organization?.affiliateCode) {
+        break;
+      }
+
+      const amount = getAdjustmentRefundAmount(entity.data.totals);
+      if (amount === null) {
+        logger.warn(
+          { adjustmentId: entity.data.id, organizationId },
+          'Paddle: could not determine refund amount for adjustment',
+        );
+        break;
+      }
+
+      try {
+        await reportKlibonConversion({
+          eventId: entity.data.id,
+          type: 'refund',
+          amount,
+          currency: entity.data.totals.currencyCode ?? entity.data.currencyCode,
+          customerId: organizationId,
+          paymentId: entity.data.transactionId,
+          subscriptionId: entity.data.subscriptionId,
+        });
+      } catch (err) {
+        if (err instanceof KlibonRetryableError) {
+          return context.text('', 500);
+        }
+        throw err;
       }
       break;
     }

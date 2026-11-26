@@ -66,6 +66,8 @@ export const BillingTab = ({ organizationId }: Props) => {
   const isPastDue = billingInfo?.isPastDue;
   // Manually granted subscriptions don't exist in Paddle, so there's nothing to fetch or manage there
   const isPaddleSubscription = billingInfo?.isPaddleSubscription ?? false;
+  // Their plan can only be changed by us, so the pricing dialog is replaced by the chat
+  const isManualSubscription = Boolean(hasActiveSubscription) && !isPaddleSubscription;
   const { pricingPlanIndex, isYearly, eventsIncluded, price, hasMultipleExceededCycles, showLimitWarning, cycles } =
     getPricingPlan(billingInfo);
 
@@ -118,7 +120,7 @@ export const BillingTab = ({ organizationId }: Props) => {
             </Stack>
             {!billingInfo.subscriptionEndDate && (
               <>
-                {hasActiveSubscription && !isPaddleSubscription ? (
+                {isManualSubscription ? (
                   <Button size="sm" variant="surface" colorPalette="gray" onClick={() => openCrispChat()}>
                     Contact us to change your plan <TbArrowRight />
                   </Button>
@@ -257,6 +259,11 @@ export const BillingTab = ({ organizationId }: Props) => {
                   variant="subtle"
                   colorPalette="red"
                   onClick={() => {
+                    if (isManualSubscription) {
+                      openCrispChat();
+                      return;
+                    }
+
                     navigate({
                       to: location.pathname,
                       resetScroll: false,
@@ -264,7 +271,7 @@ export const BillingTab = ({ organizationId }: Props) => {
                     });
                   }}
                 >
-                  Upgrade
+                  {isManualSubscription ? 'Contact us' : 'Upgrade'}
                 </Button>
               )}
             </Flex>
@@ -295,7 +302,7 @@ export const BillingTab = ({ organizationId }: Props) => {
           </Card.Root>
         )}
 
-        {pricingDialog && (
+        {pricingDialog && !isManualSubscription && (
           <PricingDialog
             open
             onOpenChange={({ open }) =>

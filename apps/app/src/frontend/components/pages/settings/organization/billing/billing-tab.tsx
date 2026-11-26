@@ -20,6 +20,7 @@ import { InfoTip } from '@/components/info-tip';
 import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import { toaster } from '@/components/ui/toaster';
 import { UsageCycleHistory } from '@/components/usage-cycle-history';
+import { useOpenCrispChat } from '@/stores/crisp-chat-store';
 import { getPricingPlan } from '@/utils/pricing';
 import { trpc } from '@/utils/trpc';
 import { BillingHistory } from './billing-history';
@@ -33,6 +34,7 @@ export const BillingTab = ({ organizationId }: Props) => {
   const location = useLocation();
   const { pricingDialog = false } = useSearch({ strict: false });
   const navigate = useNavigate();
+  const openCrispChat = useOpenCrispChat();
   const [isUndoCancellationLoading, setIsUndoCancellationLoading] = useState(false);
   const [fakeLoading, setFakeLoading] = useState(true); // to avoid weird layout shift of pricing dialog when visible immediately
 
@@ -62,6 +64,8 @@ export const BillingTab = ({ organizationId }: Props) => {
 
   const hasActiveSubscription = billingInfo?.isActive;
   const isPastDue = billingInfo?.isPastDue;
+  // Manually granted subscriptions don't exist in Paddle, so there's nothing to fetch or manage there
+  const isPaddleSubscription = billingInfo?.isPaddleSubscription ?? false;
   const { pricingPlanIndex, isYearly, eventsIncluded, price, hasMultipleExceededCycles, showLimitWarning, cycles } =
     getPricingPlan(billingInfo);
 
@@ -69,7 +73,7 @@ export const BillingTab = ({ organizationId }: Props) => {
     {
       organizationId,
     },
-    { enabled: isPastDue },
+    { enabled: isPastDue && isPaddleSubscription },
   );
 
   if (error) {
@@ -87,7 +91,7 @@ export const BillingTab = ({ organizationId }: Props) => {
   }
 
   const nextPaymentDate = billingInfo?.subscriptionNextBilledAt;
-  const hasInvoices = hasActiveSubscription;
+  const hasInvoices = hasActiveSubscription && isPaddleSubscription;
 
   if (isLoading || fakeLoading) {
     return (
@@ -114,7 +118,11 @@ export const BillingTab = ({ organizationId }: Props) => {
             </Stack>
             {!billingInfo.subscriptionEndDate && (
               <>
-                {isPastDue ? (
+                {hasActiveSubscription && !isPaddleSubscription ? (
+                  <Button size="sm" variant="surface" colorPalette="gray" onClick={() => openCrispChat()}>
+                    Contact us to change your plan <TbArrowRight />
+                  </Button>
+                ) : isPastDue ? (
                   <Button
                     size="sm"
                     variant="solid"
@@ -195,24 +203,26 @@ export const BillingTab = ({ organizationId }: Props) => {
                 <Text textStyle="xs" color="fg.error">
                   Your subscription will be cancelled on {format(billingInfo.subscriptionEndDate, 'MMMM d, yyyy')}.
                 </Text>
-                <Button
-                  variant="surface"
-                  size="2xs"
-                  loading={isUndoCancellationLoading}
-                  onClick={async () => {
-                    setIsUndoCancellationLoading(true);
-                    try {
-                      await undoCancellation({
-                        organizationId,
-                      });
-                      window.location.reload();
-                    } catch {
-                      setIsUndoCancellationLoading(false);
-                    }
-                  }}
-                >
-                  Undo cancellation
-                </Button>
+                {isPaddleSubscription && (
+                  <Button
+                    variant="surface"
+                    size="2xs"
+                    loading={isUndoCancellationLoading}
+                    onClick={async () => {
+                      setIsUndoCancellationLoading(true);
+                      try {
+                        await undoCancellation({
+                          organizationId,
+                        });
+                        window.location.reload();
+                      } catch {
+                        setIsUndoCancellationLoading(false);
+                      }
+                    }}
+                  >
+                    Undo cancellation
+                  </Button>
+                )}
               </Flex>
             )}
           </Card.Body>

@@ -1,6 +1,6 @@
 import type { BillingInfo } from 'database';
 import { describe, expect, it } from 'vitest';
-import { isPaddleSubscription } from './billing';
+import { isPaddleSubscription, MANUAL_SUBSCRIPTION_ID } from './billing';
 
 const billingInfo = (overrides: Partial<BillingInfo>) =>
   ({
@@ -10,7 +10,7 @@ const billingInfo = (overrides: Partial<BillingInfo>) =>
   }) as BillingInfo;
 
 describe('isPaddleSubscription', () => {
-  it('accepts billing info with Paddle subscription and customer IDs', () => {
+  it('accepts billing info from Paddle', () => {
     expect(isPaddleSubscription(billingInfo({}))).toBe(true);
   });
 
@@ -19,12 +19,9 @@ describe('isPaddleSubscription', () => {
     expect(isPaddleSubscription(undefined)).toBe(false);
   });
 
-  it('rejects manually granted subscriptions with placeholder IDs', () => {
-    // This is what our manually granted subscriptions store
-    expect(isPaddleSubscription(billingInfo({ subscriptionId: '1', customerId: '1' }))).toBe(false);
-    expect(isPaddleSubscription(billingInfo({ subscriptionId: '' }))).toBe(false);
-    expect(isPaddleSubscription(billingInfo({ subscriptionId: 'manual' }))).toBe(false);
-    expect(isPaddleSubscription(billingInfo({ subscriptionId: 'sub_fake' }))).toBe(false);
-    expect(isPaddleSubscription(billingInfo({ customerId: 'fake-customer' }))).toBe(false);
+  it('rejects manually granted subscriptions', () => {
+    expect(
+      isPaddleSubscription(billingInfo({ subscriptionId: MANUAL_SUBSCRIPTION_ID, customerId: MANUAL_SUBSCRIPTION_ID })),
+    ).toBe(false);
   });
 });

@@ -2,12 +2,12 @@ import { TRPCError } from '@trpc/server';
 import type { BillingInfo } from 'database';
 import { z } from 'zod';
 import { logger } from '../utils/backend-logger';
-import { isPaddleSubscription, type PaddleBillingInfo } from '../utils/billing';
+import { isPaddleSubscription } from '../utils/billing';
 import { paddleApi } from '../utils/paddle';
 import { organizationProcedure, organizationAdminProcedure, router, projectOrPublicProcedure } from '../utils/trpc';
 import { getUsageCycles } from '../utils/usage';
 
-function assertPaddleSubscription(billingInfo: BillingInfo | null): asserts billingInfo is PaddleBillingInfo {
+function assertPaddleSubscription(billingInfo: BillingInfo | null): asserts billingInfo is BillingInfo {
   if (!billingInfo) {
     throw new TRPCError({ code: 'NOT_FOUND', message: 'Billing info not found' });
   }

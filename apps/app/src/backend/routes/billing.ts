@@ -1,9 +1,24 @@
 import { TRPCError } from '@trpc/server';
+import type { BillingInfo } from 'database';
 import { z } from 'zod';
 import { logger } from '../utils/backend-logger';
+import { isPaddleSubscription } from '../utils/billing';
 import { paddleApi } from '../utils/paddle';
 import { organizationProcedure, organizationAdminProcedure, router, projectOrPublicProcedure } from '../utils/trpc';
 import { getUsageCycles } from '../utils/usage';
+
+function assertPaddleSubscription(billingInfo: BillingInfo | null): asserts billingInfo is BillingInfo {
+  if (!billingInfo) {
+    throw new TRPCError({ code: 'NOT_FOUND', message: 'Billing info not found' });
+  }
+
+  if (!isPaddleSubscription(billingInfo)) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'This subscription is not managed through Paddle. Please contact us to change it.',
+    });
+  }
+}
 
 export const billingRouter = router({
   billingStatus: organizationProcedure.query(async (opts) => {
@@ -38,6 +53,7 @@ export const billingRouter = router({
       ...subscriptionStatus,
       subscriptionEndDate: billingInfo?.subscriptionEndDate,
       subscriptionNextBilledAt: billingInfo?.subscriptionNextBilledAt,
+      isPaddleSubscription: isPaddleSubscription(billingInfo),
       usageCycles,
     };
   }),
@@ -46,7 +62,7 @@ export const billingRouter = router({
       ctx: { billingInfo },
     } = opts;
 
-    if (!billingInfo) {
+    if (!isPaddleSubscription(billingInfo)) {
       return null;
     }
 
@@ -62,7 +78,7 @@ export const billingRouter = router({
       ctx: { billingInfo },
     } = opts;
 
-    if (!billingInfo) {
+    if (!isPaddleSubscription(billingInfo)) {
       return [];
     }
 
@@ -93,9 +109,7 @@ export const billingRouter = router({
         ctx: { billingInfo },
       } = opts;
 
-      if (!billingInfo) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Billing info not found' });
-      }
+      assertPaddleSubscription(billingInfo);
 
       const transaction = await paddleApi.transactions.get(transactionId);
       if (transaction.customerId !== billingInfo.customerId) {
@@ -114,9 +128,7 @@ export const billingRouter = router({
       ctx: { billingInfo },
     } = opts;
 
-    if (!billingInfo) {
-      throw new TRPCError({ code: 'NOT_FOUND', message: 'Billing info not found' });
-    }
+    assertPaddleSubscription(billingInfo);
 
     await paddleApi.subscriptions.update(billingInfo.subscriptionId, {
       scheduledChange: null,
@@ -134,9 +146,7 @@ export const billingRouter = router({
         ctx: { organizationId, billingInfo },
       } = opts;
 
-      if (!billingInfo) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Billing info not found' });
-      }
+      assertPaddleSubscription(billingInfo);
 
       const preview = await paddleApi.subscriptions.previewUpdate(billingInfo.subscriptionId, {
         prorationBillingMode: 'prorated_immediately',
@@ -172,9 +182,7 @@ export const billingRouter = router({
         ctx: { billingInfo },
       } = opts;
 
-      if (!billingInfo) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Billing info not found' });
-      }
+      assertPaddleSubscription(billingInfo);
 
       await paddleApi.subscriptions.update(billingInfo.subscriptionId, {
         prorationBillingMode: 'prorated_immediately',

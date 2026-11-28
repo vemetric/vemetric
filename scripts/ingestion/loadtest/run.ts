@@ -224,7 +224,7 @@ function sendOne() {
   identity.lastSentAt = Date.now();
   if (identity.sent >= PAGEVIEWS_PER_VISITOR) {
     visitors.splice(visitors.indexOf(identity), 1);
-    void send('/l', identity, {});
+    void send('/l', identity, identity.identified ? { identifier: identity.identifier } : {});
   }
 }
 

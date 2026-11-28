@@ -235,7 +235,7 @@ describe('reportKlibonConversion', () => {
     });
   });
 
-  it('throws KlibonRetryableError on 5xx, 429, and network failures', async () => {
+  it('throws KlibonRetryableError on config 4xx, 429, 5xx, and network failures', async () => {
     process.env.KLIBON_API_KEY = 'klb_live_123';
     const input = {
       eventId: 'txn_1',
@@ -247,6 +247,12 @@ describe('reportKlibonConversion', () => {
       paymentId: 'txn_1',
     };
 
+    fetchMock.mockResolvedValueOnce(new Response('unauthorized', { status: 401 }));
+    await expect(reportKlibonConversion(input)).rejects.toBeInstanceOf(KlibonRetryableError);
+
+    fetchMock.mockResolvedValueOnce(new Response('no active program', { status: 409 }));
+    await expect(reportKlibonConversion(input)).rejects.toBeInstanceOf(KlibonRetryableError);
+
     fetchMock.mockResolvedValueOnce(new Response('server error', { status: 503 }));
     await expect(reportKlibonConversion(input)).rejects.toBeInstanceOf(KlibonRetryableError);
 
@@ -257,7 +263,7 @@ describe('reportKlibonConversion', () => {
     await expect(reportKlibonConversion(input)).rejects.toBeInstanceOf(KlibonRetryableError);
   });
 
-  it('does not throw on non-retryable 4xx responses', async () => {
+  it('does not throw on 422 validation errors', async () => {
     process.env.KLIBON_API_KEY = 'klb_live_123';
     fetchMock.mockResolvedValueOnce(new Response('invalid payload', { status: 422 }));
 

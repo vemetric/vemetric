@@ -100,6 +100,10 @@ export const getTransactionConversionType = (origin: TransactionOrigin): 'sale' 
 export const reportKlibonConversion = async (input: KlibonConversionInput): Promise<void> => {
   const apiKey = process.env.KLIBON_API_KEY?.trim();
   if (!apiKey) {
+    logger.warn(
+      { eventId: input.eventId, type: input.type, organizationId: input.customerId },
+      'Klibon: KLIBON_API_KEY is not set; skipping conversion report',
+    );
     return;
   }
 
@@ -164,8 +168,9 @@ export const reportKlibonConversion = async (input: KlibonConversionInput): Prom
     'Klibon: conversion API returned an error',
   );
 
-  // Ask Paddle to retry on rate limits and server errors; 4xx errors won't succeed on retry.
-  if (response.status === 429 || response.status >= 500) {
+  // Ask Paddle to retry everything except validation failures: 401/400/404/409 are config issues that succeed once
+  // fixed, and Klibon dedupes retries by event_id.
+  if (response.status !== 422) {
     throw new KlibonRetryableError(`Klibon API responded with status ${response.status}`);
   }
 };

@@ -29,18 +29,18 @@ export interface ClickhouseGlobeBucket {
   users: ClickhouseGlobeUser[];
 }
 
-function getGlobeLocatedUsersQuery(props: { projectId: bigint; startDate?: Date; endDate?: Date; userIds?: bigint[] }) {
-  const { projectId, startDate, endDate, userIds } = props;
+function getGlobeLocatedUsersQuery(props: { projectId: bigint; startDate?: Date; endDate?: Date }) {
+  const { projectId, startDate, endDate } = props;
 
   return `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.city as city, u.latitude as latitude, u.longitude as longitude, geoToH3(toFloat64(u.latitude), toFloat64(u.longitude), ${GLOBE_H3_RESOLUTION}) as h3BucketId, u.maxCreatedAt as maxCreatedAt, ifNull(s.lastSessionEndedAt >= ${ONLINE_USERS_INTERVAL_QUERY}, false) as isOnline, usr.avatarUrl as avatarUrl
             FROM (
               SELECT userId,
                 argMax(userIdentifier, eventCreatedAt) as identifier,
                 argMax(userDisplayName, eventCreatedAt) as displayName,
-                argMax(countryCode, eventCreatedAt) as countryCode,
-                argMax(city, eventCreatedAt) as city,
-                argMax(latitude, eventCreatedAt) as latitude,
-                argMax(longitude, eventCreatedAt) as longitude,
+                argMaxIf(countryCode, eventCreatedAt, eventLatitude IS NOT NULL AND eventLongitude IS NOT NULL) as countryCode,
+                argMaxIf(city, eventCreatedAt, eventLatitude IS NOT NULL AND eventLongitude IS NOT NULL) as city,
+                assumeNotNull(argMaxIf(eventLatitude, eventCreatedAt, eventLatitude IS NOT NULL AND eventLongitude IS NOT NULL)) as latitude,
+                assumeNotNull(argMaxIf(eventLongitude, eventCreatedAt, eventLatitude IS NOT NULL AND eventLongitude IS NOT NULL)) as longitude,
                 max(eventCreatedAt) as maxCreatedAt
               FROM (
                 SELECT any(userId) as userId,
@@ -48,19 +48,18 @@ function getGlobeLocatedUsersQuery(props: { projectId: bigint; startDate?: Date;
                   argMax(userDisplayName, createdAt) as userDisplayName,
                   argMax(countryCode, createdAt) as countryCode,
                   argMax(city, createdAt) as city,
-                  assumeNotNull(argMax(latitude, createdAt)) as latitude,
-                  assumeNotNull(argMax(longitude, createdAt)) as longitude,
+                  argMax(latitude, createdAt) as eventLatitude,
+                  argMax(longitude, createdAt) as eventLongitude,
                   max(createdAt) as eventCreatedAt
                 FROM ${TABLE_NAME} e
                 WHERE e.projectId=${escape(projectId)}
                   ${startDate ? `AND e.createdAt >= '${formatClickhouseDate(startDate)}'` : ''}
                   ${endDate ? `AND e.createdAt < '${formatClickhouseDate(endDate)}'` : ''}
-                  ${userIds && userIds.length > 0 ? `AND e.userId IN (${userIds.map((userId) => escape(userId)).join(',')})` : ''}
-                  AND e.latitude IS NOT NULL AND e.longitude IS NOT NULL
                 GROUP BY id
                 HAVING sum(sign) > 0
               )
               GROUP BY userId
+              HAVING countIf(eventLatitude IS NOT NULL AND eventLongitude IS NOT NULL) > 0
             ) u
             LEFT JOIN (
               ${getOnlineSessionsByUserQuery(projectId)}
@@ -179,8 +178,9 @@ export const clickhouseGlobe = {
       startDate?: Date;
       endDate?: Date;
       bucketIds: string[];
+      limit: number;
     }): Promise<ClickhouseGlobeUser[]> => {
-      const { projectId, startDate, endDate, bucketIds } = input;
+      const { projectId, startDate, endDate, bucketIds, limit } = input;
 
       const resultSet = await clickhouseClient.query({
         query: `SELECT *
@@ -188,7 +188,8 @@ export const clickhouseGlobe = {
               ${getGlobeLocatedUsersQuery({ projectId, startDate, endDate })}
             )
             WHERE h3BucketId IN (${bucketIds.map((bucketId) => `toUInt64(${escape(bucketId)})`).join(',')})
-            ORDER BY maxCreatedAt DESC, userId DESC`,
+            ORDER BY maxCreatedAt DESC, userId DESC
+            LIMIT ${escape(limit)}`,
         format: 'JSONEachRow',
       });
       const result = (await resultSet.json()) as Array<any>;
@@ -198,8 +199,19 @@ export const clickhouseGlobe = {
   ),
   queryJoinedUsersSince: withSpan(
     'queryJoinedUsersSince',
-    async (input: { projectId: bigint; startDate?: Date; endDate?: Date; since: Date; limit: number }) => {
-      const { projectId, startDate, endDate, since, limit } = input;
+    async (input: {
+      projectId: bigint;
+      startDate?: Date;
+      endDate?: Date;
+      cursor: { firstSeenAt: Date; userId?: bigint };
+      limit: number;
+    }) => {
+      const { projectId, startDate, endDate, cursor, limit } = input;
+      const formattedFirstSeenAt = formatClickhouseDate(cursor.firstSeenAt);
+      const cursorQuery =
+        cursor.userId === undefined
+          ? `firstSeenAt > '${formattedFirstSeenAt}'`
+          : `(firstSeenAt > '${formattedFirstSeenAt}' OR (firstSeenAt = '${formattedFirstSeenAt}' AND userId > ${escape(cursor.userId)}))`;
 
       const resultSet = await clickhouseClient.query({
         query: `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.firstSeenAt as firstSeenAt, if(u.latitude IS NULL OR u.longitude IS NULL, NULL, geoToH3(toFloat64(coalesce(u.latitude, 0)), toFloat64(coalesce(u.longitude, 0)), ${GLOBE_H3_RESOLUTION})) as h3BucketId, usr.avatarUrl as avatarUrl
@@ -225,7 +237,7 @@ export const clickhouseGlobe = {
                 HAVING sum(sign) > 0
               )
               GROUP BY userId
-              HAVING firstSeenAt > '${formatClickhouseDate(since)}'
+              HAVING ${cursorQuery}
             ) u
             LEFT JOIN (
               SELECT id, argMax(avatarUrl, updatedAt) as avatarUrl
@@ -234,7 +246,7 @@ export const clickhouseGlobe = {
               GROUP BY id
               HAVING argMax(deleted, updatedAt) = 0
             ) usr ON u.userId = usr.id
-            ORDER BY u.firstSeenAt DESC, u.userId DESC
+            ORDER BY u.firstSeenAt ASC, u.userId ASC
             LIMIT ${escape(limit)}`,
         format: 'JSONEachRow',
       });

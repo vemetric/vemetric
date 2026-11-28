@@ -47,6 +47,8 @@ export function createStaticApp() {
       return c.html(indexHtml);
     }
 
+    // a missing asset must not be cached by a CDN, it may exist a moment later during a deployment
+    c.header('Cache-Control', 'no-store');
     return c.text('Not Found', 404);
   });
 

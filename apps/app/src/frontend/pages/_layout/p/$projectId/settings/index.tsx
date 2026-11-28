@@ -1,6 +1,5 @@
 import { Button, Tabs, Text } from '@chakra-ui/react';
 import { useNavigate, createFileRoute } from '@tanstack/react-router';
-import { fallback, zodValidator } from '@tanstack/zod-adapter';
 import { TbSettings, TbCreditCard, TbKey } from 'react-icons/tb';
 import { z } from 'zod';
 import { ProjectApiTab } from '@/components/pages/settings/project/api-tab';
@@ -11,11 +10,11 @@ import { useOrgSettingsDialog } from '@/hooks/use-org-settings-dialog';
 import { useSetBreadcrumbs } from '@/stores/header-store';
 
 const settingsSearchSchema = z.object({
-  tab: fallback(z.enum(['general', 'billing', 'api']), 'general').default('general'),
+  tab: z.enum(['general', 'billing', 'api']).default('general').catch('general'),
 });
 
 export const Route = createFileRoute('/_layout/p/$projectId/settings/')({
-  validateSearch: zodValidator(settingsSearchSchema),
+  validateSearch: settingsSearchSchema,
   component: Page,
 });
 

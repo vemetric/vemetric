@@ -1,4 +1,7 @@
-import { getBaseDomain, getVemetricUrl } from '@vemetric/common/env';
+import { cimd } from '@better-auth/cimd';
+import { fetchClientMetadataResource } from '@better-auth/cimd/node';
+import { mcp } from '@better-auth/mcp';
+import { getBaseDomain, getMcpUrl, getVemetricUrl } from '@vemetric/common/env';
 import { getDripSequence, getStepDelay } from '@vemetric/email/email-drip-sequences';
 import { emailDripQueue } from '@vemetric/queues/email-drip-queue';
 import { addToQueue } from '@vemetric/queues/queue-utils';
@@ -9,10 +12,12 @@ import { customSession, emailOTP, lastLoginMethod } from 'better-auth/plugins';
 import { dbOrganization, prismaClient } from 'database';
 import { logger } from './backend-logger';
 import { sendEmailVerificationLink, sendPasswordResetLink } from './email';
+import { MCP_SCOPE, OAUTH_ACCESS_TOKEN_PREFIX, OAUTH_CONSENT_PAGE, OAUTH_REFRESH_TOKEN_PREFIX } from './oauth-consts';
 import { emailVerificationRateLimiter } from './rate-limit';
 import { vemetric } from './vemetric-client';
 
 export const TRUSTED_ORIGINS = [getVemetricUrl('app'), getVemetricUrl()];
+
 const isLocalhost = getBaseDomain().includes('localhost');
 
 const options = {
@@ -105,6 +110,32 @@ const options = {
   },
   plugins: [
     lastLoginMethod(),
+    // OAuth 2.1 authorization server for MCP clients (Claude, ChatGPT, Cursor, …).
+    mcp({
+      resource: getMcpUrl(),
+      resources: [
+        {
+          identifier: getMcpUrl(),
+          name: 'Vemetric MCP server',
+          allowedScopes: [MCP_SCOPE, 'offline_access'],
+        },
+      ],
+      scopes: [MCP_SCOPE, 'offline_access'],
+      // Users authorize clients; there are no machine-to-machine clients (`client_credentials`).
+      grantTypes: ['authorization_code', 'refresh_token'],
+      loginPage: '/login',
+      consentPage: OAUTH_CONSENT_PAGE,
+      // Opaque access tokens only: `/mcp` looks them up by their hash, so disconnecting an app takes effect right away.
+      disableJwtPlugin: true,
+      prefix: { opaqueAccessToken: OAUTH_ACCESS_TOKEN_PREFIX, refreshToken: OAUTH_REFRESH_TOKEN_PREFIX },
+      // MCP clients register themselves (public clients with PKCE). Clients that don't say whether they're native apps
+      // (e.g. Cursor with a loopback redirect) would be rejected as web apps otherwise.
+      allowDynamicClientRegistration: true,
+      allowUnauthenticatedClientRegistration: true,
+      clientRegistrationDefaultApplicationType: 'infer',
+    }),
+    // Client ID Metadata Documents: newer MCP clients use an https URL to their metadata as client_id.
+    cimd({ fetchClientMetadataResource, metadataProfile: 'mcp-2026-07-28' }),
     emailOTP({
       sendVerificationOnSignUp: false,
       sendVerificationOTP: async ({ email, type }) => {

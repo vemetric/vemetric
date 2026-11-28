@@ -1,7 +1,50 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { timeSpanSearchMiddleware } from './timespans';
+import { getDatePickerDisabledTooltip, timeSpanSearchMiddleware } from './timespans';
 
 describe('timespans', () => {
+  describe('getDatePickerDisabledTooltip', () => {
+    const retentionTooltip = 'Data retention';
+    const futureTooltip = 'Future date';
+    const minDate = new Date(2026, 5, 26);
+    const maxDate = new Date(2026, 6, 31);
+
+    it('does not describe dates before the global 2010 floor as retention-limited', () => {
+      expect(
+        getDatePickerDisabledTooltip({
+          date: new Date(2009, 11, 31),
+          minDate,
+          maxDate,
+          minRangeDisabledTooltip: retentionTooltip,
+          maxRangeDisabledTooltip: futureTooltip,
+        }),
+      ).toBeUndefined();
+    });
+
+    it('keeps the retention tooltip for unavailable dates from 2010 onward', () => {
+      expect(
+        getDatePickerDisabledTooltip({
+          date: new Date(2010, 0, 1),
+          minDate,
+          maxDate,
+          minRangeDisabledTooltip: retentionTooltip,
+          maxRangeDisabledTooltip: futureTooltip,
+        }),
+      ).toBe(retentionTooltip);
+    });
+
+    it('keeps the separate tooltip for future dates', () => {
+      expect(
+        getDatePickerDisabledTooltip({
+          date: new Date(2026, 7, 1),
+          minDate,
+          maxDate,
+          minRangeDisabledTooltip: retentionTooltip,
+          maxRangeDisabledTooltip: futureTooltip,
+        }),
+      ).toBe(futureTooltip);
+    });
+  });
+
   describe('formatTimeSpanDateRange', () => {
     let formatTimeSpanDateRange: any;
 

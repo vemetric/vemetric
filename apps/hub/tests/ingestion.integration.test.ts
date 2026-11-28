@@ -1,10 +1,12 @@
+import { createHash } from 'node:crypto';
 import { EventNames } from '@vemetric/common/event';
 import type { FunnelStep } from '@vemetric/common/funnel';
 import type { Queue, Worker } from 'bullmq';
 import { clickhouseClient, clickhouseDevice, clickhouseEvent, clickhouseSession, clickhouseUser } from 'clickhouse';
-import { dbFunnel, prismaClient } from 'database';
+import { dbFunnel, generateUserId, prismaClient } from 'database';
 import Redis from 'ioredis';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { flushSessionBuffer, closeStateRedis } from '../../worker/src/ingestion';
 
 vi.mock('@vemetric/common/request-ip', () => ({
   getClientIp: () => '127.0.0.1',
@@ -55,6 +57,7 @@ async function waitFor(description: string, predicate: () => Promise<boolean>, t
 
   while (Date.now() - startedAt < timeoutMs) {
     try {
+      await flushSessionBuffer();
       if (await predicate()) {
         return;
       }
@@ -130,7 +133,7 @@ async function cleanupProject(context: ProjectContext) {
 }
 
 async function cleanupClickHouse(projectId: string) {
-  for (const table of ['event', 'session', 'user', 'device']) {
+  for (const table of ['event', 'user', 'session_v3', 'device_v2']) {
     await clickhouseClient.command({
       query: `ALTER TABLE ${table} DELETE WHERE projectId = {projectId:UInt64} SETTINGS mutations_sync = 2`,
       query_params: { projectId },
@@ -162,7 +165,9 @@ async function waitForQueuesIdle(timeoutMs = 10000) {
         runtime!.queues.map((queue) => queue.getJobCounts('waiting', 'active', 'delayed', 'prioritized', 'paused')),
       );
 
-      return counts.every((count) => Object.values(count).every((value) => value === 0));
+      if (!counts.every((count) => Object.values(count).every((value) => value === 0))) return false;
+      await flushSessionBuffer();
+      return (await runtime!.redis.zcard('vm:{session-state}:dirty')) === 0;
     },
     timeoutMs,
   );
@@ -206,6 +211,7 @@ async function ingestPageView(
     displayName?: string;
     userAgent?: string;
     contextId?: string;
+    headers?: Record<string, string>;
   },
 ) {
   const response = await requestHub(
@@ -218,10 +224,51 @@ async function ingestPageView(
       displayName: props.displayName,
       contextId: props.contextId,
     },
-    props.userAgent ? { 'user-agent': props.userAgent } : {},
+    { ...(props.userAgent ? { 'user-agent': props.userAgent } : {}), ...props.headers },
   );
 
   expect(response.status).toBe(200);
+}
+
+// a browser's cookies for the hub, shared by all projects that send to it
+type CookieJar = Map<string, string>;
+
+async function ingestCookiePageView(project: ProjectContext, jar: CookieJar, path: string) {
+  const cookie = [...jar].map(([name, value]) => `${name}=${value}`).join('; ');
+  const response = await requestHub(
+    '/e',
+    project,
+    { name: EventNames.PageView, url: `https://${project.domain}${path}` },
+    { 'allow-cookies': 'true', ...(cookie ? { cookie } : {}) },
+  );
+
+  expect(response.status).toBe(200);
+
+  for (const setCookie of response.headers.getSetCookie()) {
+    const [pair] = setCookie.split(';');
+    const separatorIndex = pair.indexOf('=');
+    const name = pair.slice(0, separatorIndex);
+    if (setCookie.includes('Max-Age=0')) {
+      jar.delete(name);
+    } else {
+      jar.set(name, pair.slice(separatorIndex + 1));
+    }
+  }
+}
+
+async function getEventCountsByUser(project: ProjectContext) {
+  const users = await clickhouseEvent.queryUsers({
+    projectId: BigInt(project.projectId),
+    filterQueries: '',
+    ...getQueryRange(),
+  });
+
+  const counts = new Map<string, number>();
+  for (const user of users) {
+    const events = await clickhouseEvent.findByUserId(BigInt(project.projectId), user.id);
+    counts.set(String(user.id), events.length);
+  }
+  return counts;
 }
 
 async function ingestEvent(
@@ -264,6 +311,61 @@ async function identifyUser(
   );
 
   expect(response.status).toBe(200);
+}
+
+async function ingestBeaconPageView(
+  project: ProjectContext,
+  props: {
+    url: string;
+    allowCookies: boolean;
+    cookieUserId: bigint;
+    userAgent: string;
+    contextId: string;
+  },
+) {
+  if (!runtime) {
+    throw new Error('Test runtime not initialized');
+  }
+
+  // beacon requests can't set custom headers, so the SDK sends Token and Allow-Cookies in the body
+  const response = await runtime.fetch(
+    new Request('http://hub.test/e', {
+      method: 'POST',
+      headers: new Headers({
+        'content-type': 'application/json',
+        'user-agent': props.userAgent,
+        cookie: userIdCookie(project, props.cookieUserId),
+      }),
+      body: JSON.stringify({
+        Token: project.token,
+        'Allow-Cookies': String(props.allowCookies),
+        'V-SDK': 'integration-test',
+        name: EventNames.PageView,
+        url: props.url,
+        contextId: props.contextId,
+      }),
+    }),
+  );
+
+  expect(response.status).toBe(200);
+}
+
+// the hub's per-project user id cookie (see getUserIdCookieName in src/utils/cookie.ts)
+function userIdCookie(project: ProjectContext, userId: bigint) {
+  const projectHash = createHash('sha256').update(project.projectId).digest('hex').slice(0, 10);
+  return `__Host-vuid_${projectHash}=${userId}`;
+}
+
+function cookieHeaders(project: ProjectContext, cookieUserId: bigint, allowCookies: boolean) {
+  return { cookie: userIdCookie(project, cookieUserId), 'allow-cookies': String(allowCookies) };
+}
+
+async function queryProjectUsers(project: ProjectContext) {
+  return clickhouseEvent.queryUsers({
+    projectId: BigInt(project.projectId),
+    filterQueries: '',
+    ...getQueryRange(),
+  });
 }
 
 function getQueryRange() {
@@ -311,7 +413,7 @@ describe.sequential('hub ingestion integration', () => {
       enrichUserQueueModule,
       mergeUserQueueModule,
     ] = await Promise.all([
-      import('../src/index'),
+      import('../src/app'),
       import('../../worker/src/workers/event-worker').then(async (eventWorkerModule) => ({
         initEventWorker: eventWorkerModule.initEventWorker,
         initSessionWorker: (await import('../../worker/src/workers/session-worker')).initSessionWorker,
@@ -341,7 +443,7 @@ describe.sequential('hub ingestion integration', () => {
     ]);
 
     runtime = {
-      fetch: async (request: Request) => await hubModule.default.fetch(request),
+      fetch: async (request: Request) => await hubModule.app.fetch(request),
       workers,
       redis,
       queues: [
@@ -371,6 +473,7 @@ describe.sequential('hub ingestion integration', () => {
     await flushRedis();
     await Promise.all(runtime.workers.map((worker) => worker.close()));
     await runtime.redis.quit();
+    await closeStateRedis();
     await prismaClient.$disconnect();
     vi.unstubAllGlobals();
   });
@@ -403,6 +506,7 @@ describe.sequential('hub ingestion integration', () => {
       expect(users).toHaveLength(1);
       const anonymousUserId = users[0].id;
 
+      await waitForQueuesIdle();
       const [events, sessions, devices] = await Promise.all([
         clickhouseEvent.getLatestEventsByUserId({
           projectId: BigInt(project.projectId),
@@ -642,6 +746,260 @@ describe.sequential('hub ingestion integration', () => {
       expect(users).toHaveLength(1);
       expect(users[0].id).toBe(identifiedUser!.id);
       await expectActiveUserMetrics(project.projectId, 1);
+    } finally {
+      await cleanupProject(project);
+    }
+  });
+
+  it('ignores the user id cookie on requests that do not allow cookies', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
+    const cookieUserId = generateUserId();
+
+    try {
+      await ingestPageView(project, {
+        url: `https://${project.domain}/with-cookie`,
+        contextId: 'cookieless-with-cookie',
+        headers: cookieHeaders(project, cookieUserId, false),
+      });
+      await ingestPageView(project, {
+        url: `https://${project.domain}/without-cookie`,
+        contextId: 'cookieless-without-cookie',
+      });
+
+      await waitFor('cookieless events under the hashed id', async () => {
+        const users = await queryProjectUsers(project);
+        if (users.length !== 1) {
+          return false;
+        }
+
+        const events = await clickhouseEvent.findByUserId(BigInt(project.projectId), users[0].id);
+        return events.length === 2;
+      });
+
+      const users = await queryProjectUsers(project);
+      expect(users).toHaveLength(1);
+      expect(users[0].id).not.toBe(cookieUserId);
+      expect(await clickhouseEvent.findByUserId(BigInt(project.projectId), cookieUserId)).toHaveLength(0);
+    } finally {
+      await cleanupProject(project);
+    }
+  });
+
+  it('prefers the mapped body identifier over the user id cookie', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
+    const cookieUserId = generateUserId();
+
+    try {
+      await identifyUser(project, 'cookie-identified-user', 'Cookie Identified User');
+      await ingestPageView(project, {
+        url: `https://${project.domain}/dashboard`,
+        identifier: 'cookie-identified-user',
+        displayName: 'Cookie Identified User',
+        contextId: 'identifier-with-cookie',
+        headers: cookieHeaders(project, cookieUserId, true),
+      });
+
+      await waitFor('identified event despite cookie', async () => {
+        const user = await clickhouseUser.findByIdentifier(BigInt(project.projectId), 'cookie-identified-user');
+        if (!user) {
+          return false;
+        }
+
+        const events = await clickhouseEvent.findByUserId(BigInt(project.projectId), user.id);
+        return events.length === 1;
+      });
+
+      const identifiedUser = await clickhouseUser.findByIdentifier(BigInt(project.projectId), 'cookie-identified-user');
+      const users = await queryProjectUsers(project);
+      expect(users).toHaveLength(1);
+      expect(users[0].id).toBe(identifiedUser!.id);
+      expect(identifiedUser!.id).not.toBe(cookieUserId);
+      expect(await clickhouseEvent.findByUserId(BigInt(project.projectId), cookieUserId)).toHaveLength(0);
+    } finally {
+      await cleanupProject(project);
+    }
+  });
+
+  it('uses the user id cookie on requests that allow cookies and carry no identifier', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
+    const cookieUserId = generateUserId();
+
+    try {
+      await ingestPageView(project, {
+        url: `https://${project.domain}/pricing`,
+        contextId: 'cookie-mode-anonymous',
+        headers: cookieHeaders(project, cookieUserId, true),
+      });
+
+      await waitFor('event under the cookie id', async () => {
+        const events = await clickhouseEvent.findByUserId(BigInt(project.projectId), cookieUserId);
+        return events.length === 1;
+      });
+
+      const users = await queryProjectUsers(project);
+      expect(users).toHaveLength(1);
+      expect(users[0].id).toBe(cookieUserId);
+    } finally {
+      await cleanupProject(project);
+    }
+  });
+
+  it('reads Allow-Cookies from the body of beacon requests', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
+    const allowedCookieUserId = generateUserId();
+    const ignoredCookieUserId = generateUserId();
+
+    try {
+      await ingestBeaconPageView(project, {
+        url: `https://${project.domain}/beacon-cookies-allowed`,
+        allowCookies: true,
+        cookieUserId: allowedCookieUserId,
+        userAgent: `${TEST_USER_AGENT} beacon-allowed`,
+        contextId: 'beacon-cookies-allowed',
+      });
+      await ingestBeaconPageView(project, {
+        url: `https://${project.domain}/beacon-cookies-not-allowed`,
+        allowCookies: false,
+        cookieUserId: ignoredCookieUserId,
+        userAgent: `${TEST_USER_AGENT} beacon-not-allowed`,
+        contextId: 'beacon-cookies-not-allowed',
+      });
+
+      await waitFor('beacon events', async () => {
+        const users = await queryProjectUsers(project);
+        return users.length === 2;
+      });
+
+      const userIds = (await queryProjectUsers(project)).map((user) => user.id);
+      expect(userIds).toContain(allowedCookieUserId);
+      expect(userIds).not.toContain(ignoredCookieUserId);
+    } finally {
+      await cleanupProject(project);
+    }
+  });
+
+  it('identifies a cookieless visitor under the hashed id even when a user id cookie is present', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
+    const cookieUserId = generateUserId();
+    const visitorUserAgent = `${TEST_USER_AGENT} cookieless-identify`;
+
+    try {
+      await ingestPageView(project, {
+        url: `https://${project.domain}/pricing`,
+        userAgent: visitorUserAgent,
+        contextId: 'cookieless-identify-anonymous',
+        headers: cookieHeaders(project, cookieUserId, false),
+      });
+
+      await waitFor('anonymous visitor before identify', async () => {
+        const users = await queryProjectUsers(project);
+        return users.length === 1;
+      });
+      const [anonymousUser] = await queryProjectUsers(project);
+      expect(anonymousUser.id).not.toBe(cookieUserId);
+
+      await identifyUser(project, 'cookieless-identify-user', 'Cookieless Identify User', {
+        'user-agent': visitorUserAgent,
+        ...cookieHeaders(project, cookieUserId, false),
+      });
+      await waitForQueuesIdle(30000);
+
+      await waitFor('identified user record', async () => {
+        const user = await clickhouseUser.findByIdentifier(BigInt(project.projectId), 'cookieless-identify-user');
+        return user !== null;
+      });
+
+      const identifiedUser = await clickhouseUser.findByIdentifier(
+        BigInt(project.projectId),
+        'cookieless-identify-user',
+      );
+      expect(identifiedUser!.id).toBe(anonymousUser.id);
+      const users = await queryProjectUsers(project);
+      expect(users).toHaveLength(1);
+      expect(users[0].id).toBe(anonymousUser.id);
+    } finally {
+      await cleanupProject(project);
+    }
+  });
+
+  it('keeps a separate cookie user per project when projects share a cookie jar', async () => {
+    const projectA = nextProjectContext();
+    const projectB = nextProjectContext();
+    await createProject(projectA);
+    await createProject(projectB);
+
+    try {
+      const jar: CookieJar = new Map();
+      await ingestCookiePageView(projectA, jar, '/a-1');
+      await ingestCookiePageView(projectB, jar, '/b-1');
+      await ingestCookiePageView(projectA, jar, '/a-2');
+      await ingestCookiePageView(projectB, jar, '/b-2');
+
+      const cookieNames = [...jar.keys()];
+      expect(cookieNames).toHaveLength(2);
+      expect(cookieNames.every((name) => name.startsWith('__Host-vuid_'))).toBe(true);
+
+      await waitForStable('cookie events of both projects', async () => {
+        const [countsA, countsB] = await Promise.all([getEventCountsByUser(projectA), getEventCountsByUser(projectB)]);
+        return [...countsA.values()].join() === '2' && [...countsB.values()].join() === '2';
+      });
+
+      const [userA] = [...(await getEventCountsByUser(projectA)).keys()];
+      const [userB] = [...(await getEventCountsByUser(projectB)).keys()];
+      expect(userA).not.toBe(userB);
+      expect([...jar.values()].sort()).toEqual([userA, userB].sort());
+    } finally {
+      await cleanupProject(projectA);
+      await cleanupProject(projectB);
+    }
+  });
+
+  it('deletes the legacy shared cookie without using its id', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
+
+    try {
+      // a session that started before the per-project cookie existed
+      await ingestPageView(project, { url: `https://${project.domain}/before`, contextId: 'legacy-session' });
+      await waitFor('legacy session user', async () => (await getEventCountsByUser(project)).size === 1);
+      const [legacyUserId] = [...(await getEventCountsByUser(project)).keys()];
+
+      const jar: CookieJar = new Map([['_vuid', legacyUserId]]);
+      await ingestCookiePageView(project, jar, '/after');
+      expect(jar.has('_vuid')).toBe(false);
+
+      await waitForStable('cookie event', async () => (await getEventCountsByUser(project)).size === 2);
+      const cookieUserId = jar.get([...jar.keys()].find((name) => name.startsWith('__Host-vuid_'))!);
+      expect(cookieUserId).toBeDefined();
+      expect(cookieUserId).not.toBe(legacyUserId);
+      expect((await getEventCountsByUser(project)).get(cookieUserId!)).toBe(1);
+    } finally {
+      await cleanupProject(project);
+    }
+  });
+
+  it('deletes the legacy shared cookie for visitors from excluded IPs', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
+    await prismaClient.project.update({ where: { id: project.projectId }, data: { excludedIps: '127.0.0.1' } });
+
+    try {
+      const response = await requestHub(
+        '/e',
+        project,
+        { name: EventNames.PageView, url: `https://${project.domain}/excluded` },
+        { 'allow-cookies': 'true', cookie: '_vuid=123' },
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.getSetCookie().some((cookie) => cookie.startsWith('_vuid=;'))).toBe(true);
+      // the normal path would issue a per-project cookie, so its absence shows the request was dropped as excluded
+      expect(response.headers.getSetCookie().some((cookie) => cookie.startsWith('__Host-vuid_'))).toBe(false);
     } finally {
       await cleanupProject(project);
     }

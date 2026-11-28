@@ -3,9 +3,9 @@ import { createFileRoute, Link as RouterLink, useNavigate } from '@tanstack/reac
 import { useState } from 'react';
 import { TbBuilding, TbCheck } from 'react-icons/tb';
 import { Logo } from '@/components/logo';
+import { SignedInAs } from '@/components/signed-in-as';
 import { ErrorState } from '@/components/ui/empty-state';
 import { toaster } from '@/components/ui/toaster';
-import { UserIdentity } from '@/components/user-identity';
 import { authClient } from '@/utils/auth';
 import { redirectPath } from '@/utils/local-storage';
 import { trpc } from '@/utils/trpc';
@@ -130,19 +130,10 @@ function InvitePage() {
                       <TbCheck />
                       Accept Invitation
                     </Button>
-                    <Button asChild variant="outline">
+                    <Button asChild variant="surface">
                       <RouterLink to="/">Go to Dashboard</RouterLink>
                     </Button>
-                    <Flex align="center" gap={2} justify="center" flexWrap="wrap" mt={2} color="fg.muted">
-                      <Text fontSize="sm" flexShrink="0">
-                        Signed in as
-                      </Text>
-                      <UserIdentity
-                        displayName={session.user.name || session.user.email || 'Unnamed'}
-                        image={session.user.image}
-                        avatarSize="2xs"
-                      />
-                    </Flex>
+                    <SignedInAs user={session.user} mt={2} />
                   </Stack>
                 ) : (
                   <Stack gap={3} w="full">

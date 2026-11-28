@@ -11,19 +11,21 @@
     "test": "turbo run test",
     "test:watch": "turbo run test:watch",
     "test:integration": "turbo run test:integration",
+    "seed:local-random-user": "bun run --cwd apps/worker seed:local-random-user",
     "e2e": "turbo run e2e --filter=e2e",
     "e2e:ui": "turbo run e2e:ui --filter=e2e",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "turbo": "turbo"
   },
   "devDependencies": {
-    "eslint": "^9.18.0",
-    "prettier": "^3.0.3",
-    "turbo": "2.6.1"
+    "eslint": "^9.39.5",
+    "prettier": "^3.9.9",
+    "turbo": "2.11.5"
   },
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "scripts/*"
   ],
   "packageManager": "bun@1.3.11"
 }

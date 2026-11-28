@@ -7,31 +7,30 @@ on:
         description: Branch, tag, or SHA to test. Defaults to the selected workflow ref.
         required: false
         type: string
-  issue_comment:
+  # Opt-in per PR via the `e2e` label. While the label is set, every push re-runs the tests.
+  # PRs without the label skip the job, which counts as passing for the required check.
+  pull_request:
     types:
-      - created
+      - opened
+      - reopened
+      - synchronize
+      - labeled
   schedule:
     - cron: '0 2 * * *'
 
 permissions:
   contents: read
-  issues: read
-  pull-requests: read
-
-concurrency:
-  group: e2e
-  cancel-in-progress: false
 
 jobs:
   tests:
     name: E2ETests
-    runs-on: [vemetric-e2e]
-    if: |
-      github.event_name != 'issue_comment' ||
-      (
-        github.event.issue.pull_request &&
-        startsWith(github.event.comment.body, '/run-e2e')
-      )
+    runs-on: ubuntu-latest
+    # Checks the label on every PR event (not just the one that added it), so an unrelated
+    # label event re-runs the tests instead of creating a skipped run that hides a failure.
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'e2e')
+    concurrency:
+      group: e2e-${{ github.event.pull_request.number || inputs.ref || github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     timeout-minutes: 30
     env:
       CI: 'true'
@@ -41,44 +40,10 @@ jobs:
       TURBO_TELEMETRY_DISABLED: '1'
 
     steps:
-      - name: Resolve run target
-        id: target
-        uses: actions/github-script@v7
-        with:
-          script: |
-            if (context.eventName !== 'issue_comment') {
-              core.setOutput('ref', '${{ inputs.ref || github.sha }}');
-              return;
-            }
-
-            const { owner, repo } = context.repo;
-            const commenter = context.payload.comment.user.login;
-            const prNumber = context.payload.issue.number;
-
-            const { data: permission } = await github.rest.repos.getCollaboratorPermissionLevel({
-              owner,
-              repo,
-              username: commenter,
-            });
-
-            if (!['admin', 'maintain', 'write'].includes(permission.permission)) {
-              core.setFailed(`${commenter} does not have permission to run E2E tests.`);
-              return;
-            }
-
-            const { data: pull } = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
-
-            if (pull.head.repo.full_name !== `${owner}/${repo}`) {
-              core.setFailed('Refusing to run E2E tests for forked PRs on the self-hosted runner.');
-              return;
-            }
-
-            core.setOutput('ref', pull.head.sha);
-
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ steps.target.outputs.ref }}
+          ref: ${{ inputs.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -90,6 +55,13 @@ jobs:
         with:
           bun-version: 1.3.11
 
+      - name: Cache bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
@@ -100,7 +72,7 @@ jobs:
           printf '\nVEMETRIC_DEV_PROXY_DISABLED=%s\n' "$VEMETRIC_DEV_PROXY_DISABLED" >> .env
 
       - name: Start test services
-        run: docker compose -p vemetric-e2e-${{ github.run_id }} up -d --wait
+        run: docker compose -p vemetric-e2e-${{ github.run_id }} --profile test up -d --wait
 
       - name: Wait for test services
         run: |
@@ -113,6 +85,13 @@ jobs:
 
           for i in {1..60}; do
             if docker compose -p vemetric-e2e-${{ github.run_id }} exec -T redis redis-cli ping; then
+              break
+            fi
+            sleep 2
+          done
+
+          for i in {1..60}; do
+            if docker compose -p vemetric-e2e-${{ github.run_id }} --profile test exec -T redis-test redis-cli ping; then
               break
             fi
             sleep 2
@@ -137,6 +116,13 @@ jobs:
       - name: Deploy ClickHouse migrations
         run: bun --filter clickhouse migrate-local
 
+      # The ingestion state tests clear their tables, so they get their own ClickHouse database.
+      - name: Prepare ingestion state test database
+        run: |
+          set -a; . ./.env; set +a
+          curl -fsS -u "$CLICKHOUSE_USER:$CLICKHOUSE_PASSWORD" "$CLICKHOUSE_HOST" --data-binary 'CREATE DATABASE IF NOT EXISTS vm_concurrency_test_ci'
+          CH_MIGRATIONS_DB=vm_concurrency_test_ci bun --filter clickhouse migrate-local
+
       - name: Run app integration tests
         timeout-minutes: 10
         run: bun --filter app test:integration
@@ -145,8 +131,17 @@ jobs:
         timeout-minutes: 10
         run: bun --filter hub test:integration
 
+      - name: Run ingestion state integration tests
+        timeout-minutes: 10
+        run: |
+          set -a; . ./.env; set +a
+          export INGESTION_STATE_TESTS=1 CLICKHOUSE_DB=vm_concurrency_test_ci REDIS_URL=redis://localhost:16389
+          bun run --cwd apps/worker test
+          bun run --cwd packages/clickhouse test
+
       - name: Install Playwright browser
-        run: npx playwright install chromium
+        working-directory: apps/e2e
+        run: bun run playwright install --with-deps chromium
 
       - name: Start app
         run: |
@@ -202,4 +197,4 @@ jobs:
 
       - name: Stop test services
         if: always()
-        run: docker compose -p vemetric-e2e-${{ github.run_id }} down -v --remove-orphans
+        run: docker compose -p vemetric-e2e-${{ github.run_id }} --profile test down -v --remove-orphans

@@ -1,8 +1,14 @@
 import { z } from '@hono/zod-openapi';
 import { sortDirectionSchema } from '@vemetric/common/sort';
-import { eventPropertyTokenRegex, metricsGroupFieldTokens, parseMetricsQueryGroupingToken } from 'clickhouse';
+import {
+  eventPropertyTokenRegex,
+  metricsGroupFieldTokens,
+  metricsGroupFirstVisitTokens,
+  parseMetricsQueryGroupingToken,
+  type MetricsGroupFirstVisitToken,
+} from 'clickhouse';
 import { apiFiltersOperatorSchema, apiFilterSchema } from './api-filters';
-import { apiDateRangeSchema, apiTimestampSchema } from './common';
+import { apiDateRangeSchema, apiTimestampSchema, checkDateRangeOrder } from './common';
 import type { Metric } from '../consts/analytics';
 import { DEFAULT_METRICS, METRICS, METRICS_SET } from '../consts/analytics';
 import { isSortingGroupField } from '../utils/analytics/grouping';
@@ -14,9 +20,13 @@ const eventPropertyGroupByTokenSchema = z.string().regex(eventPropertyTokenRegex
 });
 
 const fieldGroupByTokenSchema = z.enum(metricsGroupFieldTokens);
+const firstVisitGroupByTokenSchema = z.enum(
+  Object.keys(metricsGroupFirstVisitTokens) as [MetricsGroupFirstVisitToken, ...MetricsGroupFirstVisitToken[]],
+);
 const groupByTokenSchema = z.union([
   fieldGroupByTokenSchema,
-  z.literal('interval:auto'),
+  firstVisitGroupByTokenSchema,
+  z.enum(['interval:auto', 'interval:hour', 'interval:day', 'interval:week', 'interval:month']),
   eventPropertyGroupByTokenSchema,
 ]);
 
@@ -29,6 +39,7 @@ const orderByPropertyFieldSchema = z.string().regex(eventPropertyTokenRegex, 'In
 const orderByFieldSchema = z.union([
   z.enum(METRICS),
   fieldGroupByTokenSchema,
+  firstVisitGroupByTokenSchema,
   z.literal('date'),
   orderByPropertyFieldSchema,
 ]);
@@ -48,8 +59,19 @@ const fieldGroupSchema = z
     message: 'Grouping object must contain exactly one key',
   })
   .openapi({
-    description: 'Grouping object for predefined dimensions (e.g. country, city, browser, referrer).',
+    description:
+      "Grouping object for predefined dimensions (e.g. country, city, browser, referrer). An empty string stands for rows without a value, e.g. for `referrer` visits without a referrer and visits from the project's own domain.",
     example: { country: 'US' },
+  });
+const firstVisitGroupSchema = z
+  .record(firstVisitGroupByTokenSchema, z.string())
+  .refine((value) => Object.keys(value).length === 1, {
+    message: 'First visit grouping object must contain exactly one key',
+  })
+  .openapi({
+    description:
+      'Grouping object for the first visit of users (first-touch attribution). An empty string stands for users without a value, including all anonymous users.',
+    example: { 'firstVisit:utmCampaign': 'spring_launch' },
   });
 const eventPropertyGroupSchema = z
   .record(eventPropertyGroupByTokenSchema, z.string())
@@ -104,12 +126,12 @@ export const analyticsQueryRequestSchema = z
       .default([])
       .openapi({
         description:
-          'Allowed values: "interval:auto", "country", "city", "page:origin", "page:path", "browser", "deviceType", "os", "referrer", "referrerType", "utm*", "event:name", or "event:prop:<property_name>". At the moment it\'s only possible to group by one field, please tell us if you need more.',
+          'Allowed values: "interval:auto", "interval:hour", "interval:day", "interval:week", "interval:month", "country", "city", "page:origin", "page:path", "browser", "deviceType", "os", "referrer", "referrerType", "utm*", "event:name", "event:prop:<property_name>", or the first visit: "firstVisit:referrer", "firstVisit:referrerType", "firstVisit:utm*", "firstVisit:page:origin", "firstVisit:page:path". At the moment it\'s only possible to group by one field, please tell us if you need more.\n\nThe interval values return a time series with one row per hour, day, week (starting on Monday) or month, for every interval of the period, also the ones without data (`users`, `pageviews` and `events` are `0` there, `bounceRate` and `visitDuration` are `null`). If the period runs until now, its last interval is still in progress, so lower values there aren\'t a drop. "interval:auto" picks the interval from the length of the period: hourly up to 2 days, daily up to 31 days, weekly up to 90 days and monthly beyond (for presets: `live` every 30 seconds, `1hr` every 10 minutes, `24hrs` hourly, `7days` and `30days` daily, `3months` weekly, `6months` and `1year` monthly).\n\nRows without a value for the field (e.g. visits without a UTM campaign, or for `referrer` visits without a referrer and visits from the project\'s own domain) are grouped under an empty string `""`, which you can also use as a filter value.\n\nThe `firstVisit:*` values group by where each user came from on their first visit ever (first-touch attribution), which can be before the selected period, while `referrer`, `utm*` and `page:*` group each visit by its own source (last touch). Combined with the `users` metric and an event filter, e.g. for a signup event, they show which first-touch sources bring conversions. Vemetric stores the first visit when a user is identified, so anonymous users are grouped under `""`.',
         example: ['country'],
       }),
     orderBy: orderBySchema.default([]).openapi({
       description:
-        "Gives you the ability to order by a specific field and direction. At the moment it's only possible to order by one field.",
+        "Gives you the ability to order by a specific field and direction. At the moment it's only possible to order by one field. Without it, rows are ordered by `date` ascending when grouping by an interval, and by the first metric descending for other groupings (skipping metrics that don't apply to the grouping, like `bounceRate` per page). Rows with equal values are ordered by their group value.",
       example: [['users', 'desc']],
       'x-vemetric-docs': {
         hideTupleVariantChildren: true,
@@ -132,7 +154,8 @@ export const analyticsQueryRequestSchema = z
       .array(apiFilterSchema)
       .optional()
       .openapi({
-        description: 'Ability to filter the results based on multiple criteria.',
+        description:
+          'Ability to filter the results based on multiple criteria. Filters select users: the results include all data of the users who match the filters in the period. For example, a page filter for `/blog` also counts the other pages and sessions of the users who visited the blog. Only the `pageviews` and `events` metrics apply page and event filters to the counted pageviews and events themselves. Use an empty string to match a missing value, e.g. `{"type":"referrer","operator":"eq","value":""}` for visits without a referrer and visits from the project\'s own domain.',
         'x-vemetric-docs': { collapseByDefault: true },
       }),
     filtersOperator: apiFiltersOperatorSchema.default('and').openapi({
@@ -142,25 +165,13 @@ export const analyticsQueryRequestSchema = z
   .superRefine((data, ctx) => {
     if (data.groupBy.length > 1) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         path: ['groupBy'],
         message: 'groupBy can include max one item',
       });
     }
 
-    if (Array.isArray(data.dateRange)) {
-      const [rawStart, rawEnd] = data.dateRange;
-      const start = new Date(rawStart);
-      const end = new Date(rawEnd);
-
-      if (start.getTime() > end.getTime()) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['dateRange'],
-          message: 'Start date must be before or equal to end date',
-        });
-      }
-    }
+    checkDateRangeOrder(data.dateRange, ctx);
 
     const selectedMetrics = data.metrics && data.metrics.length > 0 ? data.metrics : DEFAULT_METRICS;
     const grouping = parseMetricsQueryGroupingToken(data.groupBy[0] ?? null);
@@ -169,7 +180,7 @@ export const analyticsQueryRequestSchema = z
       const isMetric = METRICS_SET.has(field as Metric);
       if (isMetric && !selectedMetrics.includes(field as Metric)) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           path: ['orderBy', index, 0],
           message: 'Sort metric must be included in metrics',
         });
@@ -177,7 +188,7 @@ export const analyticsQueryRequestSchema = z
 
       if (!isMetric && !isSortingGroupField(field, grouping)) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           path: ['orderBy', index, 0],
           message: 'Invalid sort field',
         });
@@ -252,7 +263,13 @@ export const analyticsQueryResponseSchema = z
         z
           .object({
             group: z
-              .union([aggregateGroupSchema, intervalGroupSchema, fieldGroupSchema, eventPropertyGroupSchema])
+              .union([
+                aggregateGroupSchema,
+                intervalGroupSchema,
+                fieldGroupSchema,
+                firstVisitGroupSchema,
+                eventPropertyGroupSchema,
+              ])
               .openapi({
                 description: 'Group values for this row. Empty object for aggregate queries.',
               }),

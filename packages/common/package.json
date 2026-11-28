@@ -13,15 +13,16 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@hono/zod-openapi": "^0.19.5",
-    "hono": "^4.6.13",
+    "@hono/zod-openapi": "^1.6.3",
+    "hono": "^4.13.11",
     "nanoid": "^5.0.4",
     "pino": "^9.6.0",
     "siphash": "^1.1.0",
-    "zod": "3.24.2"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@vemetric/eslint-config": "workspace:*",
-    "vitest": "^3.2.3"
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.11"
   }
 }

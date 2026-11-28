@@ -84,6 +84,7 @@ export const TimespanSelect = ({ from }: Props) => {
                   <DateRangePicker
                     minDate={data?.isSubscriptionActive ? undefined : todayMinus31Days}
                     minRangeDisabledTooltip="Upgrade to the Professional plan for longer data retention."
+                    maxRangeDisabledTooltip="No data yet, this period is in the future."
                     value={
                       timespan === 'custom' && startDate
                         ? {
@@ -108,7 +109,6 @@ export const TimespanSelect = ({ from }: Props) => {
                       });
                       setOpen(false);
                     }}
-                    enableMonthRangeSelection
                   />
                 </Popover.Content>
               </Popover.Positioner>

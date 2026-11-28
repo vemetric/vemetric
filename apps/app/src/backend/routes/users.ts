@@ -1,20 +1,50 @@
 import { isEntityUnknown } from '@vemetric/common/event';
-import { filterConfigSchema } from '@vemetric/common/filters';
+import { filterConfigSchema, type IEventFilter } from '@vemetric/common/filters';
 import type { FunnelStep } from '@vemetric/common/funnel';
 import { userSortConfigSchema } from '@vemetric/common/sort';
+import { queueUserDeletionJob } from '@vemetric/queues/clickhouse-deletion-queue';
 import type { ClickhouseEvent } from 'clickhouse';
 import { clickhouseEvent, clickhouseSession, clickhouseUser, getUserFilterQueries, isSessionOnline } from 'clickhouse';
-import { dbFunnel } from 'database';
+import { dbClickhouseDeletion, dbFunnel, dbUserIdentificationMap, prismaClient } from 'database';
 import { addDays, addMonths, startOfDay } from 'date-fns';
 import { z } from 'zod';
+import { logger } from '../utils/backend-logger';
 import { getFilterFunnelsData } from '../utils/filter';
-import { projectProcedure, projectTimespanProcedure, router } from '../utils/trpc';
+import { projectAdminProcedure, projectProcedure, projectTimespanProcedure, router } from '../utils/trpc';
+import { vemetric } from '../utils/vemetric-client';
 
 const EVENTS_PER_PAGE = 50;
 const USERS_PER_PAGE = 50;
+const RECENT_ACTIVITY_DAYS = 7;
 
 const getFreePlanStartDate = (isSubscriptionActive: boolean) =>
   isSubscriptionActive ? undefined : addDays(startOfDay(new Date()), -30);
+
+/**
+ * Returns a map of userId -> (YYYY-MM-DD -> event count) for the last few days.
+ * Errors are swallowed so the user list still loads without the activity.
+ */
+const getRecentActivity = async (props: { projectId: bigint; userIds: Array<bigint>; eventFilter?: IEventFilter }) => {
+  const { projectId, userIds, eventFilter } = props;
+  const activity: Record<string, Record<string, number>> = {};
+
+  try {
+    const rows = await clickhouseEvent.getEventCountsByDayForUsers({
+      projectId,
+      userIds,
+      startDate: addDays(startOfDay(new Date()), -(RECENT_ACTIVITY_DAYS - 1)),
+      eventFilter,
+    });
+    rows.forEach((row) => {
+      activity[row.userId] ??= {};
+      activity[row.userId][row.createdAt] = row.count;
+    });
+  } catch (err) {
+    logger.error({ err, projectId: String(projectId) }, 'Failed to load recent user activity');
+  }
+
+  return activity;
+};
 
 export const usersRouter = router({
   list: projectTimespanProcedure
@@ -41,6 +71,7 @@ export const usersRouter = router({
         clickhouseEvent.queryUsers({
           projectId,
           pagination: {
+            type: 'offset',
             offset,
             limit: USERS_PER_PAGE + 1, // Get one extra to determine if there are more
           },
@@ -55,11 +86,23 @@ export const usersRouter = router({
 
       const hasNextPage = users.length > USERS_PER_PAGE;
       const paginatedUsers = hasNextPage ? users.slice(0, -1) : users;
-      const isInitialized = users.length > 0 || (await clickhouseEvent.getAllEventsCount(projectId)) > 0;
+      const [isInitialized, recentActivity] = await Promise.all([
+        users.length > 0 || clickhouseEvent.getAllEventsCount(projectId).then((count) => count > 0),
+        getRecentActivity({
+          projectId,
+          userIds: paginatedUsers.map((user) => user.id),
+          // When sorting by a specific event, only count that event (same as the sort)
+          eventFilter: sortConfig?.by?.type === 'event' && sortConfig.by.nameFilter ? sortConfig.by : undefined,
+        }),
+      ]);
 
       return {
         projectToken: project.token,
-        users: paginatedUsers.map((user) => ({ ...user, id: String(user.id) })),
+        users: paginatedUsers.map((user) => ({
+          ...user,
+          id: String(user.id),
+          recentActivity: recentActivity[String(user.id)] ?? {},
+        })),
         hasNextPage,
         isInitialized,
       };
@@ -118,12 +161,48 @@ export const usersRouter = router({
       deviceData,
     };
   }),
+  delete: projectAdminProcedure
+    .input(z.object({ userId: z.string().regex(/^\d+$/) }))
+    .mutation(async (opts) => {
+      const {
+        input: { userId },
+        ctx: { projectId, project, user },
+      } = opts;
+
+      const deletion = await prismaClient.$transaction(async (tx) => {
+        await dbUserIdentificationMap.deleteByUserIds(String(projectId), [userId], tx);
+        return dbClickhouseDeletion.queueUsers(String(projectId), [userId], 'user-deleted', tx);
+      });
+      logger.info(
+        { projectId: String(projectId), userId, deletion: deletion.id, by: user.id },
+        'Tracked user queued for deletion',
+      );
+
+      try {
+        await queueUserDeletionJob();
+      } catch (err) {
+        // Still queued in Postgres: the nightly run deletes it.
+        logger.error({ err, deletion: deletion.id }, 'Failed to queue the user deletion job');
+      }
+
+      try {
+        await vemetric.trackEvent('UserDeleted', {
+          userIdentifier: user.id,
+          userDisplayName: user.name,
+          eventData: { projectId: project.id, projectDomain: project.domain, userId },
+        });
+      } catch (err) {
+        logger.error({ err }, 'Track event error');
+      }
+
+      return { success: true };
+    }),
   events: projectProcedure
     .input(
       z.object({
         userId: z.string(),
         cursor: z.string().optional(), // ISO timestamp string
-        date: z.string().date().optional(), // YYYY-MM-DD format
+        date: z.iso.date().optional(), // YYYY-MM-DD format
         filterConfig: filterConfigSchema,
       }),
     )

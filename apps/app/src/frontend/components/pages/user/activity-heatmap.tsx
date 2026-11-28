@@ -5,6 +5,27 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import { trpc } from '@/utils/trpc';
 
+/**
+ * Returns the background color for an activity cell, with a stronger base opacity
+ * in dark mode so empty and low-activity cells stay visible.
+ */
+export const getActivityColor = (count: number, maxCount: number) => {
+  const intensity = count === 0 ? 0 : Math.max(0.3, Math.min(1, count / maxCount));
+
+  return {
+    base: `purple.500/${Math.round((intensity * 0.85 + 0.15) * 100)}`,
+    _dark: `purple.500/${Math.round((intensity * 0.6 + 0.4) * 100)}`,
+  };
+};
+
+const ACTIVITY_SKELETON_COLOR = 'purple.500/25';
+
+/** Format: YYYY-MM-DD, matching the keys of the activity event maps */
+export const getActivityDateKey = (date: Date) => date.toISOString().split('T')[0];
+
+export const getActivityTooltip = (date: Date, count: number, eventLabel = 'event') =>
+  `${dateTimeFormatter.formatDate(date)}: ${count} ${eventLabel}${count === 1 ? '' : 's'}`;
+
 interface Props {
   projectId: string;
   userId: string;
@@ -56,7 +77,7 @@ export function ActivityHeatmap({ projectId, userId, selectedDate }: Props) {
         continue; // Skip if month is not in our display range
       }
 
-      const key = date.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+      const key = getActivityDateKey(date);
       daysByMonth[monthKey].unshift({
         date,
         count: eventMap?.[key] ?? 0,
@@ -98,14 +119,13 @@ export function ActivityHeatmap({ projectId, userId, selectedDate }: Props) {
                         return null;
                       }
 
-                      const intensity = day.count === 0 ? 0 : Math.max(0.3, Math.min(1, day.count / maxCount));
-                      const color = `purple.500/${(intensity * 0.85 + 0.15) * 100}`; // Purple color with varying opacity
+                      const color = getActivityColor(day.count, maxCount);
                       const hasSelection = selectedDate !== undefined;
-                      const dateString = day.date.toISOString().split('T')[0];
+                      const dateString = getActivityDateKey(day.date);
                       const isSelected = dateString === selectedDate;
 
                       const isOutOfDataRetention = startDate && day.date < startDate;
-                      let tooltipContent = `${dateTimeFormatter.formatDate(day.date)}: ${day.count} events`;
+                      let tooltipContent = getActivityTooltip(day.date, day.count);
                       if (isOutOfDataRetention) {
                         tooltipContent = 'Upgrade to the Professional plan for longer data retention';
                       }
@@ -121,7 +141,7 @@ export function ActivityHeatmap({ projectId, userId, selectedDate }: Props) {
                         <Box key={index} transition="all 0.2s" opacity={opacity}>
                           <Tooltip content={tooltipContent}>
                             {isLoading ? (
-                              <Skeleton w="12px" h="12px" bg="purple.500/25" rounded="xs" />
+                              <Skeleton w="12px" h="12px" bg={ACTIVITY_SKELETON_COLOR} rounded="xs" />
                             ) : (
                               <Box
                                 w="12px"

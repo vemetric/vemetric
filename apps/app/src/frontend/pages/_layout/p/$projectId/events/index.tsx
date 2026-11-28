@@ -1,6 +1,5 @@
 import { Box, Flex, Spinner, Icon, Button, Card, Link as ChakraLink } from '@chakra-ui/react';
 import { createFileRoute } from '@tanstack/react-router';
-import { zodValidator } from '@tanstack/zod-adapter';
 import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { AnimatePresence } from 'motion/react';
@@ -31,7 +30,7 @@ const eventsSearchSchema = z.object({
 });
 
 export const Route = createFileRoute('/_layout/p/$projectId/events/')({
-  validateSearch: zodValidator(eventsSearchSchema),
+  validateSearch: eventsSearchSchema,
   search: {
     middlewares: [timeSpanSearchMiddleware],
   },

@@ -11,4 +11,17 @@ export interface CreateDeviceQueueProps {
 export const createDeviceQueue = new Queue<CreateDeviceQueueProps>(createDeviceQueueName, {
   connection: defaultQueueConnection,
 });
-createDeviceQueue.setGlobalConcurrency(1);
+
+export const deviceJobDeduplicationId = (projectId: bigint | string, userId: bigint | string, fingerprint: string) =>
+  `${projectId}:${userId}:${fingerprint}`;
+
+export async function removeDeviceJobDeduplication(projectId: bigint | string, userId: bigint | string) {
+  const prefix = `${createDeviceQueue.qualifiedName}:de:`;
+  const client = await createDeviceQueue.client;
+  const stream = client.scanStream({ match: `${prefix}${deviceJobDeduplicationId(projectId, userId, '*')}`, count: 1000 });
+  for await (const keys of stream as AsyncIterable<string[]>) {
+    for (const key of keys) {
+      await createDeviceQueue.removeDeduplicationKey(key.slice(prefix.length));
+    }
+  }
+}

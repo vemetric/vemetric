@@ -1,16 +1,18 @@
 import { Box, Button, Card, Flex, Icon, SimpleGrid, Span, Spinner, Text } from '@chakra-ui/react';
 import { Link } from '@tanstack/react-router';
 import { isEntityUnknown } from '@vemetric/common/event';
-import { useEffect, useMemo, useState } from 'react';
-import { TbArrowLeft, TbClock, TbDirectionSign, TbUserSquareRounded } from 'react-icons/tb';
+import { TbArrowLeft, TbClock, TbUserSquareRounded } from 'react-icons/tb';
 import { mergeAll } from 'remeda';
 import { BrowserIcon } from '@/components/browser-icon';
 import { DeviceIcon } from '@/components/device-icon';
+import { LiveTimeAgo } from '@/components/live-time-ago';
 import { LoadingImage } from '@/components/loading-image';
 import { OsIcon } from '@/components/os-icon';
+import { ReferrerTypeIcon } from '@/components/referrer-icon';
 import { Tooltip } from '@/components/ui/tooltip';
 import { dateTimeFormatter } from '@/utils/date-time-formatter';
 import { getFaviconUrl } from '@/utils/favicon';
+import { getReferrerLabel, getReferrerTooltip } from '@/utils/referrer';
 import { trpc, type GlobeBucketUser } from '@/utils/trpc';
 import { formatQueryParams } from '@/utils/url';
 import { getUserName } from '@/utils/user';
@@ -19,6 +21,7 @@ import { GlobeSingleUserAvatar } from './globe-single-user-avatar';
 
 interface Props {
   projectId: string;
+  userId: string;
   user?: GlobeBucketUser;
   isSingleUser: boolean;
   onBack: () => void;
@@ -26,11 +29,8 @@ interface Props {
 }
 
 export const GlobeMarkerUserDetail = (props: Props) => {
-  const { projectId, user: _user, isSingleUser, onBack, isBucketUsersLoading } = props;
-  const { data: userData, isLoading } = trpc.globe.singleUser.useQuery(
-    { projectId, userId: _user?.id ?? '' },
-    { enabled: Boolean(_user) },
-  );
+  const { projectId, userId, user: _user, isSingleUser, onBack, isBucketUsersLoading } = props;
+  const { data: userData, isLoading } = trpc.globe.singleUser.useQuery({ projectId, userId });
 
   const user = mergeAll([_user, userData?.user]);
   const displayName = getUserName(user?.displayName, user?.identifier);
@@ -45,32 +45,13 @@ export const GlobeMarkerUserDetail = (props: Props) => {
     !isEntityUnknown(deviceData?.osName) ||
     !isEntityUnknown(deviceData?.deviceType);
 
-  const [sessionDurationNow, setSessionDurationNow] = useState(() => Date.now());
-  const latestSessionDuration = useMemo(() => {
-    if (!latestSession?.startedAt) {
-      return null;
-    }
-
-    return dateTimeFormatter.formatDurationBetween(
-      latestSession.startedAt,
-      latestEvent?.isOnline ? new Date(sessionDurationNow) : latestSession.endedAt,
-    );
-  }, [latestEvent?.isOnline, latestSession?.startedAt, latestSession?.endedAt, sessionDurationNow]);
-
-  useEffect(() => {
-    if (!latestSession?.id || !latestEvent?.isOnline) {
-      return;
-    }
-
-    setSessionDurationNow(Date.now());
-    const intervalId = window.setInterval(() => {
-      setSessionDurationNow(Date.now());
-    }, 1000);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [latestEvent?.isOnline, latestSession?.id]);
+  const latestSessionDuration = latestSession?.startedAt ? (
+    isOnline ? (
+      <LiveTimeAgo value={latestSession.startedAt} format="duration" suffix={null} />
+    ) : (
+      dateTimeFormatter.formatDurationBetween(latestSession.startedAt, latestSession.endedAt)
+    )
+  ) : null;
 
   return (
     <>
@@ -83,7 +64,14 @@ export const GlobeMarkerUserDetail = (props: Props) => {
           )}
           <Box pt={1} pr={2.5}>
             {user && (
-              <GlobeSingleUserAvatar user={user} border="1.5px solid" borderColor="bg" rounded="0.6em" boxShadow="sm" />
+              <GlobeSingleUserAvatar
+                user={user}
+                border="1.5px solid"
+                borderColor="bg"
+                rounded="0.6em"
+                boxShadow="sm"
+                boxSize="36px"
+              />
             )}
           </Box>
           {user && (
@@ -122,11 +110,7 @@ export const GlobeMarkerUserDetail = (props: Props) => {
                       Referrer
                     </Box>
                     <Flex justify="flex-end" minW={0}>
-                      <Tooltip
-                        content={
-                          latestSession.referrer ? `Referred via ${latestSession.referrerUrl}` : 'Direct page visit.'
-                        }
-                      >
+                      <Tooltip content={getReferrerTooltip(latestSession)}>
                         <Flex align="center" gap={1} minW={0}>
                           <Flex
                             align="center"
@@ -145,11 +129,11 @@ export const GlobeMarkerUserDetail = (props: Props) => {
                                 boxSize="14px"
                               />
                             ) : (
-                              <TbDirectionSign />
+                              <ReferrerTypeIcon referrerType={latestSession.referrerType || 'none'} />
                             )}
                           </Flex>
                           <Text fontWeight="medium" truncate>
-                            {latestSession.referrer || 'Direct'}
+                            {getReferrerLabel(latestSession)}
                           </Text>
                         </Flex>
                       </Tooltip>

@@ -7,8 +7,9 @@ const getDefaultTransportTarget = (): TransportTarget =>
     ? {
         target: '@axiomhq/pino',
         options: {
-          dataset: 'vemetric',
+          dataset: process.env.AXIOM_DATASET ?? 'vemetric',
           token: process.env.AXIOM_TOKEN,
+          url: process.env.AXIOM_URL ?? 'https://api.axiom.co',
         },
       }
     : {

@@ -1,4 +1,4 @@
-import type { ErrorLogParams, Logger, LogParams, WarnLogParams } from '@clickhouse/client-web';
+import type { ClickHouseSettings, ErrorLogParams, Logger, LogParams, WarnLogParams } from '@clickhouse/client-web';
 import { ClickHouseLogLevel, createClient } from '@clickhouse/client-web';
 import { jsonStringify } from '@vemetric/common/json';
 import { createLogger } from '@vemetric/logger';
@@ -53,10 +53,37 @@ export const clickhouseClient = createClient({
   },
 });
 
-export const clickhouseInsert = async <T>({ table, values }: { table: string; values: ReadonlyArray<T> }) => {
+/**
+ * Settings for high-volume ingestion writes (events, devices). ClickHouse batches concurrent
+ * small inserts from all worker replicas server-side instead of creating one part per job.
+ * `wait_for_async_insert` keeps job completion tied to persistence, and
+ * `async_insert_deduplicate` keeps the retry deduplication of synchronous inserts on
+ * replicated tables. Set `CLICKHOUSE_ASYNC_INSERTS=false` to insert synchronously.
+ */
+export function ingestionInsertSettings(): ClickHouseSettings | undefined {
+  if (process.env.CLICKHOUSE_ASYNC_INSERTS === 'false') return undefined;
+  return {
+    async_insert: 1,
+    wait_for_async_insert: 1,
+    async_insert_deduplicate: 1,
+    async_insert_use_adaptive_busy_timeout: 0,
+    async_insert_busy_timeout_ms: 100,
+  };
+}
+
+export const clickhouseInsert = async <T>({
+  table,
+  values,
+  settings,
+}: {
+  table: string;
+  values: ReadonlyArray<T>;
+  settings?: ClickHouseSettings;
+}) => {
   return await clickhouseClient.insert({
     table,
     values: JSON.parse(jsonStringify(values)),
     format: 'JSONEachRow',
+    clickhouse_settings: settings,
   });
 };

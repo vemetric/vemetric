@@ -27,6 +27,11 @@ export function formatApiDate(date: Date): string {
   return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
 
+/** The UTC day of a date as YYYY-MM-DD, the date format `dateRange` accepts. */
+export function formatApiDay(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
 export function toApiTimestamp(value: string | null | undefined): string | null {
   if (!value) {
     return null;

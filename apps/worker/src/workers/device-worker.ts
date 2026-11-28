@@ -1,15 +1,20 @@
 import type { CreateDeviceQueueProps } from '@vemetric/queues/create-device-queue';
+import { createDeviceQueue } from '@vemetric/queues/create-device-queue';
 import { createDeviceQueueName } from '@vemetric/queues/queue-names';
 import { Worker } from 'bullmq';
 import { getDeviceId } from 'clickhouse';
 import { getDeviceDataFromHeaders, insertDeviceIfNotExists } from '../utils/device';
+import { envPositiveInteger, workerName } from '../utils/env';
 import { logJobStep } from '../utils/job-logger';
+import { queueTelemetry } from '../utils/telemetry';
 
 export async function initDeviceWorker() {
+  await createDeviceQueue.removeGlobalConcurrency();
   return new Worker<CreateDeviceQueueProps>(
     createDeviceQueueName,
     async (job) => {
       const { projectId: _projectId, userId: _userId, headers } = job.data;
+
       const projectId = BigInt(_projectId);
       const userId = BigInt(_userId);
 
@@ -29,14 +34,17 @@ export async function initDeviceWorker() {
       const deviceId = getDeviceId(projectId, userId, deviceData);
 
       await logJobStep(job, 'device before insertDeviceIfNotExists', { projectId, userId, deviceId });
-      await insertDeviceIfNotExists(projectId, userId, deviceId, deviceData, job);
+      // The hub's time, so the repeat of user deletions catches devices written late.
+      await insertDeviceIfNotExists(projectId, userId, deviceId, deviceData, job, new Date(job.timestamp));
       await logJobStep(job, 'device done', { projectId, userId, deviceId });
     },
     {
       connection: {
         url: process.env.REDIS_URL,
       },
-      concurrency: 1,
+      name: workerName,
+      telemetry: queueTelemetry,
+      concurrency: envPositiveInteger('DEVICE_WORKER_CONCURRENCY', 200),
       removeOnComplete: {
         count: 1000,
       },

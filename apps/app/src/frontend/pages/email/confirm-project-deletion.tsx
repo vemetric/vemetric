@@ -1,30 +1,29 @@
 import { createFileRoute, Navigate } from '@tanstack/react-router';
-import { zodValidator } from '@tanstack/zod-adapter';
 import { useEffect, useState } from 'react';
 import { z } from 'zod';
 import { toaster } from '@/components/ui/toaster';
 
 const searchSchema = z.object({
   success: z.coerce.boolean().optional(),
-  error: z.enum(['missing_token', 'invalid_token', 'not_found', 'unauthorized', 'deletion_failed']).optional(),
+  deletionError: z.enum(['missingToken', 'invalidToken', 'notFound', 'unauthorized', 'deletionFailed']).optional(),
   domain: z.string().optional(),
 });
 
 export const Route = createFileRoute('/email/confirm-project-deletion')({
   component: ConfirmProjectDeletionPage,
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
 });
 
 const ERROR_MESSAGES: Record<string, { title: string; description: string }> = {
-  missing_token: {
+  missingToken: {
     title: 'Invalid link',
     description: 'The confirmation link is incomplete. Please try again from the email.',
   },
-  invalid_token: {
+  invalidToken: {
     title: 'Link expired or invalid',
     description: 'This confirmation link has expired or is invalid. Please request a new deletion confirmation.',
   },
-  not_found: {
+  notFound: {
     title: 'Project not found',
     description: 'The project may have already been deleted.',
   },
@@ -32,14 +31,14 @@ const ERROR_MESSAGES: Record<string, { title: string; description: string }> = {
     title: 'Unauthorized',
     description: 'You no longer have permission to delete this project.',
   },
-  deletion_failed: {
+  deletionFailed: {
     title: 'Deletion failed',
     description: 'We encountered an error while deleting the project. Please try again or contact us.',
   },
 };
 
 function ConfirmProjectDeletionPage() {
-  const { success, error, domain } = Route.useSearch();
+  const { success, deletionError, domain } = Route.useSearch();
   const [hasShownToast, setHasShownToast] = useState(false);
 
   useEffect(() => {
@@ -57,8 +56,8 @@ function ConfirmProjectDeletionPage() {
           duration: 10000,
           meta: { closable: true },
         });
-      } else if (error) {
-        const errorInfo = ERROR_MESSAGES[error] || {
+      } else if (deletionError) {
+        const errorInfo = ERROR_MESSAGES[deletionError] || {
           title: 'Error',
           description: 'An unexpected error occurred.',
         };
@@ -72,7 +71,7 @@ function ConfirmProjectDeletionPage() {
         });
       }
     }
-  }, [success, error, domain, hasShownToast]);
+  }, [success, deletionError, domain, hasShownToast]);
 
   return <Navigate to="/" />;
 }

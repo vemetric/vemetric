@@ -1,5 +1,16 @@
 import type { ISources } from '@vemetric/common/sources';
-import { TbQuestionMark, TbDirectionSign, TbSearch, TbSocial, TbAi, TbAd, TbMail } from 'react-icons/tb';
+import {
+  TbQuestionMark,
+  TbDirectionSign,
+  TbSearch,
+  TbSocial,
+  TbAi,
+  TbAd,
+  TbMail,
+  TbLinkOff,
+  TbWorld,
+  TbHome,
+} from 'react-icons/tb';
 import { getFaviconUrl } from '@/utils/favicon';
 import { LoadingImage } from './loading-image';
 
@@ -34,8 +45,13 @@ export const ReferrerIcon = ({ source = 'referrer', referrer, referrerUrl, refer
 
 export const ReferrerTypeIcon = ({ referrerType }: { referrerType?: string }) => {
   switch (referrerType) {
+    case 'none':
+      return <TbLinkOff />;
+    case 'internal':
     case 'direct':
-      return <TbDirectionSign />;
+      return <TbHome />;
+    case 'unknown':
+      return <TbWorld />;
     case 'search':
       return <TbSearch />;
     case 'social':

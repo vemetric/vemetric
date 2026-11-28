@@ -1,30 +1,59 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import { createRoute, z } from '@hono/zod-openapi';
-import { authorizationHeaderSchema, commonOpenApiErrorResponses } from '../schemas/common';
+import { requireProject } from '../middleware/project';
+import { commonErrorResponses, errorResponses, projectRequestHeaders, rateLimitResponseHeaders } from '../openapi';
+import { getProject, listProjects } from '../services/project';
 import type { PublicApiHonoEnv } from '../types';
+import { listApiKeyProjects } from '../utils/api-key-access';
 
-function splitCsv(value: string | null): string[] {
-  if (!value) {
-    return [];
-  }
-
-  return value
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean);
-}
+const projectsListRoute = createRoute({
+  method: 'get',
+  path: '/v1/projects',
+  operationId: 'listProjects',
+  tags: ['Project'],
+  summary: 'List projects',
+  description:
+    "Returns the projects the API key covers: the key's own project for a project key, the covered projects of the organization for an organization key. Use their IDs in the `X-Vemetric-Project` header.",
+  responses: {
+    200: {
+      description: 'Success',
+      headers: rateLimitResponseHeaders,
+      content: {
+        'application/json': {
+          schema: z.object({
+            projects: z
+              .array(
+                z.object({
+                  id: z.string().openapi({ description: 'Project ID', example: '1234567890123456' }),
+                  name: z.string().openapi({ description: 'Project name', example: 'My Website' }),
+                  domain: z.string().openapi({ description: 'Project domain', example: 'example.com' }),
+                }),
+              )
+              .openapi({ description: 'Projects the API key covers, sorted by name.' }),
+          }),
+        },
+      },
+    },
+    ...commonErrorResponses,
+  },
+});
 
 const projectRoute = createRoute({
   method: 'get',
   path: '/v1/project',
+  operationId: 'getProject',
+  tags: ['Project'],
   summary: 'Get project',
-  description: 'Returns the data of the project associated with the provided API key.',
+  description:
+    "Returns the data of the project: the key's own project for a project key, the project in the `X-Vemetric-Project` header for an organization key.",
+  middleware: requireProject,
   request: {
-    headers: authorizationHeaderSchema,
+    headers: projectRequestHeaders,
   },
   responses: {
     200: {
       description: 'Success',
+      headers: rateLimitResponseHeaders,
       content: {
         'application/json': {
           schema: z.object({
@@ -46,11 +75,11 @@ const projectRoute = createRoute({
                   description: 'Public token used for tracking',
                   example: 'project_token_123',
                 }),
-                createdAt: z.string().datetime().openapi({
+                createdAt: z.iso.datetime().openapi({
                   description: 'Project creation timestamp (ISO 8601)',
                   example: '2026-02-07T12:00:00.000Z',
                 }),
-                firstEventAt: z.string().datetime().nullable().openapi({
+                firstEventAt: z.iso.datetime().nullable().openapi({
                   description: 'Timestamp of the first ingested event, if available (ISO 8601)',
                   example: '2026-02-07T12:30:00.000Z',
                 }),
@@ -74,27 +103,17 @@ const projectRoute = createRoute({
         },
       },
     },
-    ...commonOpenApiErrorResponses,
+    404: errorResponses.projectNotFound,
+    ...commonErrorResponses,
   },
 });
 
 export function registerProjectRoutes(api: OpenAPIHono<PublicApiHonoEnv>) {
-  api.openapi(projectRoute, ({ json, var: { project } }) => {
-    return json(
-      {
-        project: {
-          id: project.id,
-          name: project.name,
-          domain: project.domain,
-          token: project.token,
-          createdAt: project.createdAt.toISOString(),
-          firstEventAt: project.firstEventAt ? project.firstEventAt.toISOString() : null,
-          hasPublicDashboard: project.publicDashboard,
-          excludedIps: splitCsv(project.excludedIps),
-          excludedCountries: splitCsv(project.excludedCountries),
-        },
-      },
-      200,
-    );
+  api.openapi(projectsListRoute, async ({ json, var: { apiKey } }) => {
+    return json(listProjects(await listApiKeyProjects(apiKey)), 200);
+  });
+
+  api.openapi(projectRoute, ({ json, var: vars }) => {
+    return json(getProject(vars), 200);
   });
 }

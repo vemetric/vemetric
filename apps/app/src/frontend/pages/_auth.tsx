@@ -5,6 +5,7 @@ import { Logo } from '@/components/logo';
 import { AuthIllustration } from '@/components/pages/_auth/auth-illustration';
 import { SplashScreen } from '@/components/splash-screen';
 import { requireAnonymous } from '@/utils/auth-guards';
+import { rememberPendingOauthAuthorize } from '@/utils/oauth-flow';
 import { getLandingPageUrl } from '@/utils/url';
 
 export const Route = createFileRoute('/_auth')({
@@ -13,6 +14,8 @@ export const Route = createFileRoute('/_auth')({
       // Allow logged-in users to access reset-password page
       return;
     }
+    // An app (e.g. Claude) asked for access and the user has to sign in or sign up first.
+    rememberPendingOauthAuthorize(window.location.search);
     return requireAnonymous();
   },
   pendingComponent: SplashScreen,

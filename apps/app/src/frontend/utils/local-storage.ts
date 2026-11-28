@@ -20,8 +20,8 @@ export const redirectPath = {
 };
 
 const countriesMapViewStateSchema = z.object({
-  center: z.tuple([z.number().finite(), z.number().finite()]),
-  zoom: z.number().finite(),
+  center: z.tuple([z.number(), z.number()]),
+  zoom: z.number(),
 });
 export type CountriesMapViewState = z.infer<typeof countriesMapViewStateSchema>;
 
@@ -80,10 +80,10 @@ export const countriesMapLocked = {
 };
 
 const globeViewStateSchema = z.object({
-  scale: z.number().finite(),
-  offset: z.tuple([z.number().finite(), z.number().finite()]),
-  phi: z.number().finite(),
-  theta: z.number().finite(),
+  scale: z.number(),
+  offset: z.tuple([z.number(), z.number()]),
+  phi: z.number(),
+  theta: z.number(),
   autoRotate: z.boolean().optional(),
   locked: z.boolean().optional(),
 });

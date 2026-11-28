@@ -11,7 +11,6 @@ import {
   Text,
 } from '@chakra-ui/react';
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { zodValidator } from '@tanstack/zod-adapter';
 import { getTimespanRefetchInterval } from '@vemetric/common/charts/timespans';
 import { filterConfigSchema } from '@vemetric/common/filters';
 import { AnimatePresence, motion } from 'motion/react';
@@ -45,7 +44,7 @@ const searchSchema = z.object({
 });
 
 export const Route = createFileRoute('/_layout/p/$projectId/funnels/$funnelId')({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
   search: {
     middlewares: [timeSpanSearchMiddleware],
   },

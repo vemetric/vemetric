@@ -1,4 +1,4 @@
-import { prismaClient } from '../client';
+import { type DbClient, prismaClient } from '../client';
 export { type UserIdentificationMap } from '@prisma/client';
 
 export const dbUserIdentificationMap = {
@@ -22,6 +22,10 @@ export const dbUserIdentificationMap = {
   findByUserId: (projectId: string, userId: string) =>
     prismaClient.userIdentificationMap.findUnique({
       where: { projectId_userId: { projectId, userId } },
+    }),
+  deleteByUserIds: (projectId: string, userIds: string[], client: DbClient = prismaClient) =>
+    client.userIdentificationMap.deleteMany({
+      where: { projectId, userId: { in: userIds } },
     }),
   deleteByProjectId: (projectId: string) =>
     prismaClient.userIdentificationMap.deleteMany({

@@ -23,6 +23,9 @@ export const BaseLayout = (props: Props) => {
         align="center"
         justify="space-between"
         gap={2}
+        pos={{ base: 'sticky', md: 'static' }}
+        top={0}
+        zIndex="sticky"
         bg={{ base: 'bg.card', md: 'none' }}
         px={{ base: 1.5, md: 5 }}
         pt={{ base: 0, md: 4 }}

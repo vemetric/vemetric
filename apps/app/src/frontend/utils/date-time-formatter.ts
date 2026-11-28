@@ -159,7 +159,10 @@ class DateTimeFormatter {
 
   formatWeek(value: string | Date) {
     const date = this.prepareDate(value);
-    const weekNumber = getWeek(date, { weekStartsOn: 1 }); // Monday as first day of week
+    // Weeks start on Monday like the time series, and their start is midnight UTC, so the number comes from the UTC
+    // date: in time zones west of UTC, that midnight is still Sunday.
+    const utcDay = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+    const weekNumber = getWeek(utcDay, { weekStartsOn: 1 });
 
     return `Week ${weekNumber}`;
   }

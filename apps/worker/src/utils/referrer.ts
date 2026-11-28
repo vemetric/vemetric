@@ -1,3 +1,4 @@
+import { NO_REFERRER } from '@vemetric/common/sources';
 import { getNormalizedDomain } from '@vemetric/common/url';
 import type { ReferrerData } from 'clickhouse';
 import { dbProject } from 'database';
@@ -8,9 +9,9 @@ export function getReferrer(
   projectDomain: string | undefined,
   url?: string,
   paramValue?: string,
-): ReferrerData | undefined {
+): Required<ReferrerData> {
   if (!url && !paramValue) {
-    return undefined;
+    return { ...NO_REFERRER };
   }
 
   try {
@@ -19,7 +20,7 @@ export function getReferrer(
       return {
         referrer: paramValue || '',
         referrerUrl: url,
-        referrerType: 'direct',
+        referrerType: 'internal',
       };
     }
 
@@ -32,7 +33,7 @@ export function getReferrer(
   } catch (err) {
     logger.error({ err }, 'Invalid Referrer URL');
     return {
-      referrer: paramValue || url,
+      referrer: paramValue || url || '',
       referrerUrl: url || '',
       referrerType: 'unknown',
     };
@@ -68,10 +69,15 @@ function getReferrerParamValue(url?: string) {
   }
 }
 
-export async function getReferrerFromRequest(projectId: bigint, headers: Record<string, string>, url?: string) {
+export async function getReferrerFromRequest(
+  projectId: bigint,
+  headers: Record<string, string>,
+  url?: string,
+  projectDomain?: string,
+) {
   const paramValue = getReferrerParamValue(url);
   const referrerHeader = headers['v-referrer'];
 
-  const project = await dbProject.findById(String(projectId));
-  return getReferrer(project?.domain, referrerHeader || undefined, paramValue);
+  const domain = projectDomain ?? (await dbProject.findById(String(projectId)))?.domain;
+  return getReferrer(domain, referrerHeader || undefined, paramValue);
 }

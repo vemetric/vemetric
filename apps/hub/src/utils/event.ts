@@ -2,27 +2,30 @@ import { formatClickhouseDate } from '@vemetric/common/date';
 import { EventNames } from '@vemetric/common/event';
 import { generateEventId } from '@vemetric/common/id';
 import { getNormalizedDomain } from '@vemetric/common/url';
-import { createDeviceQueue } from '@vemetric/queues/create-device-queue';
+import { createDeviceQueue, deviceJobDeduplicationId } from '@vemetric/queues/create-device-queue';
 import { eventQueue } from '@vemetric/queues/event-queue';
 import { addToQueue } from '@vemetric/queues/queue-utils';
 import { sessionQueue } from '@vemetric/queues/session-queue';
 import { updateUserQueue } from '@vemetric/queues/update-user-queue';
-import { generateSessionId, generateUserId } from 'database';
+import { generateUserId } from 'database';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 import type { HonoContext } from '../types';
 import { setUserIdCookie } from './cookie';
-import { sanitizeHeaders } from './headers';
+import { getDeviceHeadersFingerprint, sanitizeHeaders } from './headers';
 import { getUserIdFromRequest } from './request';
-import { getSessionId, increaseRedisSessionDuration } from './session';
+import { getOrCreateSessionId } from './session';
+
+// Kept short: under floods of unique identities every key lives for the full window in Redis.
+const DEVICE_JOB_DEDUPLICATION_MS = 2 * 60 * 1000;
 
 export const eventSchema = z.object({
   name: z.string().min(1),
-  url: z.string().url().optional(),
+  url: z.url().optional(),
   contextId: z.string().optional(),
   identifier: z.string().optional(),
   displayName: z.string().optional(),
-  customData: z.record(z.any()).optional(),
+  customData: z.record(z.string(), z.any()).optional(),
   userData: z
     .object({
       set: z.record(z.string(), z.any()).optional(),
@@ -89,11 +92,7 @@ export const trackEvent = async (context: HonoContext, body: EventSchema) => {
   }
 
   // session handling
-  let sessionId = await getSessionId(projectId, userId);
-  if (sessionId === null) {
-    sessionId = generateSessionId();
-  }
-  await increaseRedisSessionDuration(projectId, userId, sessionId);
+  const { sessionId, isNewSession } = await getOrCreateSessionId(projectId, userId);
 
   const headers = sanitizeHeaders(req.header());
 
@@ -101,18 +100,30 @@ export const trackEvent = async (context: HonoContext, body: EventSchema) => {
 
   const now = formatClickhouseDate(new Date());
 
-  await addToQueue(createDeviceQueue, {
-    projectId: String(projectId),
-    userId: String(userId),
-    headers,
-  });
+  await addToQueue(
+    createDeviceQueue,
+    {
+      projectId: String(projectId),
+      userId: String(userId),
+      headers,
+    },
+    {
+      // Repeated events of a device only need one job; the first one sets the device's creation time.
+      deduplication: {
+        id: deviceJobDeduplicationId(projectId, userId, getDeviceHeadersFingerprint(headers)),
+        ttl: DEVICE_JOB_DEDUPLICATION_MS,
+      },
+    },
+  );
 
   await addToQueue(sessionQueue, {
     type: 'createOrExtend',
     projectId: String(projectId),
     userId: String(userId),
     sessionId,
-    createdAt: formatClickhouseDate(new Date()),
+    isNewSession,
+    createdAt: now,
+    projectDomain: context.var.project.domain,
     geoData,
     headers,
     url,
@@ -124,6 +135,7 @@ export const trackEvent = async (context: HonoContext, body: EventSchema) => {
     projectId: String(projectId),
     userId: String(userId),
     eventId,
+    projectDomain: context.var.project.domain,
     sessionId,
     contextId,
     createdAt: now,

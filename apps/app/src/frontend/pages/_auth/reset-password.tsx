@@ -1,6 +1,5 @@
 import { Stack, Heading, Input, Button, Text, Link, Field } from '@chakra-ui/react';
 import { createFileRoute, Link as RouterLink, useNavigate, redirect } from '@tanstack/react-router';
-import { zodValidator } from '@tanstack/zod-adapter';
 import { motion } from 'motion/react';
 import { useState } from 'react';
 import { TbLock } from 'react-icons/tb';
@@ -14,7 +13,7 @@ const resetPasswordSchema = z.object({
 });
 
 export const Route = createFileRoute('/_auth/reset-password')({
-  validateSearch: zodValidator(resetPasswordSchema),
+  validateSearch: resetPasswordSchema,
   beforeLoad: ({ search }) => {
     if (!search.token) {
       throw redirect({ to: '/', replace: true });

@@ -287,7 +287,7 @@ export const projectsRouter = router({
     return updatedIcons;
   }),
 
-  addExcludedIp: projectProcedure.input(z.object({ ip: z.string().ip() })).mutation(async (opts) => {
+  addExcludedIp: projectProcedure.input(z.object({ ip: z.union([z.ipv4(), z.ipv6()]) })).mutation(async (opts) => {
     const {
       input: { ip },
       ctx: { project },

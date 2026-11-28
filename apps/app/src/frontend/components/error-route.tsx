@@ -1,12 +1,11 @@
 import { Center, Link, Spinner, Text } from '@chakra-ui/react';
 import { CrispLink } from './crisp-link';
 import { ErrorState } from './ui/empty-state';
-
-const isModuleNotFoundError = (error: any): boolean =>
-  typeof error?.message === 'string' && /Failed to fetch dynamically imported module/.test(error.message);
+import { isReloadingForNewBuild } from '../utils/new-build-reload';
 
 export const errorRoute = ({ error }: { error: any }) => {
-  if (isModuleNotFoundError(error)) {
+  // a chunk of an outdated build failed to load and the page is about to reload (see main.tsx)
+  if (isReloadingForNewBuild()) {
     return (
       <Center p={5}>
         <Spinner size="xl" colorPalette="purple" color="colorPalette.fg" borderWidth="2.5px" />

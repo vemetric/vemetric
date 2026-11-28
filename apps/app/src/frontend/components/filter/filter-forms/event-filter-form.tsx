@@ -24,7 +24,8 @@ interface Props {
 }
 
 export const EventFilterForm = ({ filter: _filter, onChange, onSubmit, buttonText = 'Save' }: Props) => {
-  const { projectId, domain } = useProjectContext();
+  const { projectId } = useProjectContext();
+  const isPublicDashboard = !projectId;
   const { eventNames } = useFilterContext();
   const [filter, setFilter] = useState<IEventFilter>(
     _filter ?? {
@@ -37,13 +38,12 @@ export const EventFilterForm = ({ filter: _filter, onChange, onSubmit, buttonTex
 
   const { data: propertyValues, isLoading } = trpc.filters.getEventPropertiesWithValues.useQuery(
     {
-      projectId,
-      domain,
+      projectId: projectId ?? '',
       eventName: nameFilter.value,
       operator: nameFilter.operator,
     },
     {
-      enabled: !!nameFilter.value && (filter.propertiesFilter?.length ?? 0) > 0,
+      enabled: !isPublicDashboard && !!nameFilter.value && (filter.propertiesFilter?.length ?? 0) > 0,
     },
   );
 
@@ -176,10 +176,14 @@ export const EventFilterForm = ({ filter: _filter, onChange, onSubmit, buttonTex
       )}
 
       <Flex justify="space-between" align="center" p={2}>
-        <Button size="2xs" rounded="sm" variant="surface" onClick={addPropertyFilter}>
-          <TbPlus />
-          Add Property Filter
-        </Button>
+        {isPublicDashboard ? (
+          <Box />
+        ) : (
+          <Button size="2xs" rounded="sm" variant="surface" onClick={addPropertyFilter}>
+            <TbPlus />
+            Add Property Filter
+          </Button>
+        )}
         {onSubmit && (
           <Button type="submit" size="2xs" rounded="sm">
             {buttonText}

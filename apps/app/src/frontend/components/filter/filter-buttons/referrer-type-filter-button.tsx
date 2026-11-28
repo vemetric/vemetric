@@ -1,8 +1,10 @@
 import { Box, Button, Flex, Icon, Tag, Text } from '@chakra-ui/react';
 import type { IReferrerTypeFilter } from '@vemetric/common/filters';
+import { getReferrerTypeLabel } from '@vemetric/common/sources';
 import { Fragment } from 'react';
 import { TbCircleDashedNumber0, TbDirectionSign } from 'react-icons/tb';
 import { ReferrerTypeIcon } from '@/components/referrer-icon';
+import { Tooltip } from '@/components/ui/tooltip';
 import { FilterButton } from '../filter-button';
 import { ReferrerTypeFilterForm, ReferrerTypeFilterTitle } from '../filter-forms/referrer-type-form';
 
@@ -56,11 +58,13 @@ export const ReferrerTypeFilterButton = ({ filter, onChange, onDelete }: Props) 
               referrerTypeFilter.value.slice(0, 3).map((type, index) => (
                 <Fragment key={type}>
                   {index > 0 && <>,&nbsp;</>}
-                  <Tag.Root key={type} p="0.5">
-                    <Tag.Label>
-                      <ReferrerTypeIcon referrerType={type} />
-                    </Tag.Label>
-                  </Tag.Root>
+                  <Tooltip content={getReferrerTypeLabel(type)}>
+                    <Tag.Root key={type} p="0.5">
+                      <Tag.Label>
+                        <ReferrerTypeIcon referrerType={type} />
+                      </Tag.Label>
+                    </Tag.Root>
+                  </Tooltip>
                 </Fragment>
               ))
             ) : (

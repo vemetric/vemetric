@@ -10,6 +10,7 @@ import { Provider } from './components/ui/provider';
 import { Toaster } from './components/ui/toaster';
 import { routeTree } from './routeTree.gen';
 import 'simplebar-react/dist/simplebar.min.css';
+import { reloadForNewBuild } from './utils/new-build-reload';
 import { getHubUrl } from './utils/url';
 
 const router = createRouter({
@@ -30,7 +31,7 @@ declare module '@tanstack/react-router' {
 
 // reloads the app if there is an error fetching an outdated chunk due to a new build deployed
 window.addEventListener('vite:preloadError', () => {
-  window.location.reload();
+  reloadForNewBuild();
 });
 
 const isMobile =

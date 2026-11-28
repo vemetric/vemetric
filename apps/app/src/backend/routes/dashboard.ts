@@ -437,7 +437,7 @@ export const dashboardRouter = router({
       const funnelsData = await getFilterFunnelsData(project.id, filterConfig);
       const { filterQueries } = getUserFilterQueries({ filterConfig, projectId, startDate, endDate, funnelsData });
 
-      const properties = await clickhouseEvent.getEventProperties(projectId, eventName, {
+      const properties = await clickhouseEvent.getEventProperties(projectId, [eventName], {
         startDate,
         endDate,
         filterQueries,
@@ -445,7 +445,7 @@ export const dashboardRouter = router({
       });
 
       return {
-        properties,
+        properties: properties.map(({ name, count, users }) => ({ name, count, users })),
       };
     }),
   getPropertyValues: publicTimespanProcedure

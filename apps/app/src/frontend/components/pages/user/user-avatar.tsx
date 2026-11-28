@@ -23,7 +23,7 @@ export const UserAvatar = ({ displayName, avatarUrl, identifier, id, enableBlink
       flexShrink={0}
       overflow="hidden"
       userSelect="none"
-      filter={isAnonymous ? 'grayscale(100%)' : 'none'}
+      filter={isAnonymous ? 'grayscale(85%)' : 'none'}
       {...props}
     >
       {avatarUrl ? (
@@ -32,7 +32,7 @@ export const UserAvatar = ({ displayName, avatarUrl, identifier, id, enableBlink
         <Facehash
           enableBlink={enableBlink}
           name={(displayName || identifier || '?') + id}
-          size={32}
+          size="100%"
           colors={[
             'var(--chakra-colors-red-500)',
             'var(--chakra-colors-green-500)',

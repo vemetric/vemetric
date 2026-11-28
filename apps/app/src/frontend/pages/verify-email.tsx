@@ -1,6 +1,5 @@
 import { Box, Button, Card, Container, Flex, Heading, Link, PinInput, Stack, Text } from '@chakra-ui/react';
 import { createFileRoute, Link as RouterLink, redirect, useNavigate } from '@tanstack/react-router';
-import { zodValidator } from '@tanstack/zod-adapter';
 import { useState } from 'react';
 import { TbMailCheck } from 'react-icons/tb';
 import { z } from 'zod';
@@ -8,15 +7,14 @@ import { Logo } from '@/components/logo';
 import { toaster } from '@/components/ui/toaster';
 import { authClient } from '@/utils/auth';
 import { requireAnonymous } from '@/utils/auth-guards';
-import { redirectPath } from '@/utils/local-storage';
 import { getAppUrl, getLandingPageUrl } from '@/utils/url';
 
 const searchSchema = z.object({
-  email: z.string().email().catch(''),
+  email: z.email().catch(''),
 });
 
 export const Route = createFileRoute('/verify-email')({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
   beforeLoad: async ({ search }) => {
     await requireAnonymous();
     if (!search.email) {
@@ -58,14 +56,8 @@ function VerifyEmailPage() {
       return;
     }
 
-    const redirect = redirectPath.get();
-    if (redirect) {
-      redirectPath.clear();
-      navigate({ to: redirect });
-      return;
-    }
-
-    navigate({ to: '/' });
+    // Like every sign-in, /redirect continues where the user came from (an app asking for access, an invitation).
+    navigate({ to: '/redirect' });
   };
 
   const sendCode = async () => {
@@ -74,7 +66,8 @@ function VerifyEmailPage() {
     setIsSendingCode(true);
     const result = await authClient.sendVerificationEmail({
       email: trimmedEmail,
-      callbackURL: getAppUrl() + '/',
+      // The link in the email signs the user in, so it ends on /redirect like every other sign-in.
+      callbackURL: getAppUrl() + '/redirect',
     });
     setIsSendingCode(false);
 

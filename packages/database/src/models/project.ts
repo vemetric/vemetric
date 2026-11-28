@@ -1,4 +1,6 @@
+import type { Prisma } from '@prisma/client';
 import { type DbClient, prismaClient } from '../client';
+import { dbClickhouseDeletion } from './clickhouse-deletion';
 import { generateProjectId, generateToken } from '../utils/id';
 export { type Project } from '@prisma/client';
 
@@ -38,6 +40,18 @@ export const dbProject = {
   findByOrganizationId: ({ organizationId, client = prismaClient }: { organizationId: string; client?: DbClient }) =>
     client.project.findMany({
       where: { organizationId },
+    }),
+  findByIds: ({
+    ids,
+    organizationId,
+    client = prismaClient,
+  }: {
+    ids: string[];
+    organizationId: string;
+    client?: DbClient;
+  }) =>
+    client.project.findMany({
+      where: { id: { in: ids }, organizationId },
     }),
   findByOrganizationAndUserId: (organizationId: string, userId: string) =>
     prismaClient.project.findMany({
@@ -80,8 +94,13 @@ export const dbProject = {
 
     return userProjectAccess.some((access) => access.projectId === projectId);
   },
-  delete: (id: string, client: DbClient = prismaClient) =>
-    client.project.delete({
-      where: { id },
-    }),
+  /**
+   * Deletes the project and queues the deletion of its ClickHouse data (done by the worker, see ClickhouseDeletion).
+   * Takes a transaction client so both always happen together.
+   */
+  delete: async (id: string, tx: Prisma.TransactionClient) => {
+    const project = await tx.project.delete({ where: { id } });
+    await dbClickhouseDeletion.queueProject(id, 'project-deleted', tx);
+    return project;
+  },
 };

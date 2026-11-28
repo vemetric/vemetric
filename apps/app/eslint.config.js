@@ -41,7 +41,8 @@ export default [
     files: ['src/backend/**/*.{ts,tsx}'],
   })),
   {
-    files: ['src/backend/api/**/*.{ts,tsx}'],
+    // The MCP server is public API code too: its logs go to the API logger stream.
+    files: ['src/backend/api/**/*.{ts,tsx}', 'src/backend/mcp/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -58,7 +59,7 @@ export default [
   },
   {
     files: ['src/backend/**/*.{ts,tsx}'],
-    ignores: ['src/backend/api/**/*.{ts,tsx}'],
+    ignores: ['src/backend/api/**/*.{ts,tsx}', 'src/backend/mcp/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
         'error',

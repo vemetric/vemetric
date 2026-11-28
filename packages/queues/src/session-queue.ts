@@ -16,6 +16,9 @@ interface CreateOrExtendProps extends BaseProps {
   geoData: GeoData | undefined;
   headers: Record<string, string>;
   url?: string;
+  projectDomain?: string;
+  // The hub generated this session id for this event, so no stored state can exist yet.
+  isNewSession?: boolean;
   reqIdentifier?: string;
   reqDisplayName?: string;
 }
@@ -29,4 +32,3 @@ export type SessionQueueProps = CreateOrExtendProps | ExtendOnlyProps;
 export const sessionQueue = new Queue<SessionQueueProps>(sessionQueueName, {
   connection: defaultQueueConnection,
 });
-sessionQueue.setGlobalConcurrency(1);

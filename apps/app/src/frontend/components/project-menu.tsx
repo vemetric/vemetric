@@ -55,12 +55,20 @@ export const ProjectMenu = () => {
   // On mobile, use drill-down pattern instead of submenu (no space for nested menu)
   const isMobile = useBreakpointValue({ base: true, md: false });
   const [mobileView, setMobileView] = useState<'main' | 'organizations'>('main');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Reset mobile view when menu closes
   const handleOpenChange = (details: { open: boolean }) => {
+    setIsMenuOpen(details.open);
     if (!details.open) {
       setMobileView('main');
     }
+  };
+
+  // The settings buttons sit in menu items that keep the menu open, and an open menu closes the dialog right away
+  const handleOpenOrgSettings = () => {
+    handleOpenChange({ open: false });
+    openOrgSettings();
   };
 
   const projectsSection = (
@@ -126,7 +134,7 @@ export const ProjectMenu = () => {
 
   return (
     <>
-      <MenuRoot positioning={{ strategy: 'fixed' }} onOpenChange={handleOpenChange}>
+      <MenuRoot positioning={{ strategy: 'fixed' }} open={isMenuOpen} onOpenChange={handleOpenChange}>
         <MenuTrigger asChild>
           <Button
             variant="surface"
@@ -197,7 +205,7 @@ export const ProjectMenu = () => {
                     minW="auto"
                     onClick={(e) => {
                       e.stopPropagation();
-                      openOrgSettings();
+                      handleOpenOrgSettings();
                     }}
                   >
                     <TbSettings />
@@ -226,7 +234,10 @@ export const ProjectMenu = () => {
                     p={1}
                     h="auto"
                     minW="auto"
-                    onClick={() => openOrgSettings()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenOrgSettings();
+                    }}
                   >
                     <TbSettings />
                   </Button>

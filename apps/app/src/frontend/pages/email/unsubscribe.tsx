@@ -1,27 +1,26 @@
 import { createFileRoute, Navigate } from '@tanstack/react-router';
-import { zodValidator } from '@tanstack/zod-adapter';
 import { useEffect, useState } from 'react';
 import { z } from 'zod';
 import { toaster } from '@/components/ui/toaster';
 
 const searchSchema = z.object({
-  error: z.boolean().optional(),
+  unsubscribeError: z.boolean().optional(),
 });
 
 export const Route = createFileRoute('/email/unsubscribe')({
   component: UnsubscribePage,
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
 });
 
 function UnsubscribePage() {
-  const { error } = Route.useSearch();
+  const { unsubscribeError } = Route.useSearch();
   const [hasShownToast, setHasShownToast] = useState(false);
 
   useEffect(() => {
     if (!hasShownToast) {
       setHasShownToast(true);
 
-      if (error) {
+      if (unsubscribeError) {
         toaster.create({
           id: 'email-unsubscribe-error',
           title: 'Unsubscribe failed',
@@ -41,7 +40,7 @@ function UnsubscribePage() {
         });
       }
     }
-  }, [error, hasShownToast]);
+  }, [unsubscribeError, hasShownToast]);
 
   return <Navigate to="/" />;
 }

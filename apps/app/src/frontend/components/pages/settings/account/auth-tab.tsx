@@ -32,8 +32,8 @@ export const AccountAuthenticationTab = () => {
     await Promise.all([refetch(), refetchAuth()]);
   };
 
-  const hasGoogle = Boolean(settings.accounts.find((a) => a.provider === 'google'));
-  const hasGitHub = Boolean(settings.accounts.find((a) => a.provider === 'github'));
+  const googleAccountId = settings.accounts.find((a) => a.provider === 'google')?.id;
+  const githubAccountId = settings.accounts.find((a) => a.provider === 'github')?.id;
 
   return (
     <Flex flexDir="column" gap={4} p={4}>
@@ -49,15 +49,15 @@ export const AccountAuthenticationTab = () => {
         <Stack gap="3">
           <EmailAuthCard email={settings.user.email} hasPassword={settings.hasPassword} onUpdate={refreshData} />
           <GoogleAuthCard
-            isConnected={hasGoogle}
+            accountId={googleAccountId}
             hasPassword={settings.hasPassword}
-            hasOtherProvider={hasGitHub}
+            hasOtherProvider={Boolean(githubAccountId)}
             onUpdate={refreshData}
           />
           <GitHubAuthCard
-            isConnected={hasGitHub}
+            accountId={githubAccountId}
             hasPassword={settings.hasPassword}
-            hasOtherProvider={hasGoogle}
+            hasOtherProvider={Boolean(googleAccountId)}
             onUpdate={refreshData}
           />
         </Stack>

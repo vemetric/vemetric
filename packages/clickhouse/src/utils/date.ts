@@ -6,6 +6,10 @@ import {
 } from '@vemetric/common/charts/timespans';
 
 export function clickhouseDateToISO(date: string) {
+  // A Date column, e.g. from toStartOfWeek or toStartOfMonth
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return `${date}T00:00:00.000Z`;
+  }
   let isoDate = `${date.replace(' ', 'T')}`;
   if (!isoDate.includes('.')) {
     isoDate = `${isoDate}.000`;
@@ -59,6 +63,11 @@ export function formatDateExpression({ timeSpan, startDate, endDate }: TimeSpanO
   if (method === 'THIRTY_SECONDS') {
     // Round to 30-second intervals
     return `toStartOfInterval(${field}, INTERVAL 30 SECOND)`;
+  }
+
+  if (method === 'toStartOfWeek') {
+    // Mode 1: weeks start on Monday
+    return `toStartOfWeek(${field}, 1)`;
   }
 
   // Default format for standard ClickHouse functions

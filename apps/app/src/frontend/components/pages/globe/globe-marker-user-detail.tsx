@@ -35,7 +35,7 @@ export const GlobeMarkerUserDetail = (props: Props) => {
   const user = mergeAll([_user, userData?.user]);
   const displayName = getUserName(user?.displayName, user?.identifier);
   const { deviceData, latestEvent, latestPageView, latestSession } = userData ?? {};
-  const isOnline = Boolean(latestEvent?.isOnline);
+  const isOnline = Boolean(userData?.isOnline ?? latestEvent?.isOnline);
   const latestPageViewUrl = latestPageView
     ? `${latestPageView.origin ?? ''}${latestPageView.pathname ?? ''}${formatQueryParams(latestPageView.queryParams ?? {})}${latestPageView.urlHash ?? ''}`
     : null;

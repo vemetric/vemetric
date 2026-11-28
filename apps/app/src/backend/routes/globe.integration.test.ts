@@ -3,6 +3,7 @@ import {
   clickhouseDateToISO,
   clickhouseEvent,
   clickhouseGlobe,
+  clickhouseSession,
   clickhouseUser,
   EXAMPLE_EVENT,
   type ClickhouseEvent,
@@ -65,13 +66,18 @@ async function resetFixtures() {
     query_params: queryParams,
   });
   await clickhouseClient.command({
+    query: 'ALTER TABLE session_v3 DELETE WHERE projectId = {projectId:UInt64} SETTINGS mutations_sync = 2',
+    query_params: queryParams,
+  });
+  await clickhouseClient.command({
     query: 'ALTER TABLE user DELETE WHERE projectId = {projectId:UInt64} SETTINGS mutations_sync = 2',
     query_params: queryParams,
   });
 }
 
 describe('globe data queries (integration)', () => {
-  const recentUnlocatedAt = new Date(Date.now() - 10_000);
+  const recentSessionHeartbeatAt = new Date(Date.now() - 5_000);
+  const recentUnlocatedAt = new Date(recentSessionHeartbeatAt.getTime() - 5_000);
   const olderLocatedAt = new Date(recentUnlocatedAt.getTime() - 60_000);
   const sharedFirstSeenAt = new Date(recentUnlocatedAt.getTime() + 1_000);
   const sharedTimestampUserIds = Array.from({ length: 251 }, (_, index) => BigInt(1_000 + index));
@@ -112,11 +118,27 @@ describe('globe data queries (integration)', () => {
         }),
       ),
     ]);
+    await clickhouseSession.insertRevisions([
+      {
+        projectId: String(PROJECT_ID),
+        userId: '1',
+        id: 'active-session-1',
+        startedAt: toClickhouseDate(olderLocatedAt),
+        endedAt: toClickhouseDate(recentSessionHeartbeatAt),
+        duration: 65,
+        countryCode: 'AT',
+        city: 'Vienna',
+        latitude: 48.2082,
+        longitude: 16.3738,
+        revision: '1',
+        deleted: 0,
+      },
+    ]);
   });
 
   afterAll(resetFixtures);
 
-  it('keeps the latest located coordinates but reports presence from the newest event', async () => {
+  it('keeps the latest located coordinates and reports presence and lastSeenAt from active session activity', async () => {
     const buckets = await clickhouseGlobe.queryGlobeBuckets({
       projectId: PROJECT_ID,
       startDate: new Date(olderLocatedAt.getTime() - 1_000),
@@ -126,7 +148,7 @@ describe('globe data queries (integration)', () => {
     expect(user).toMatchObject({ isOnline: true });
     expect(user?.latitude).toBeCloseTo(48.2082, 3);
     expect(user?.longitude).toBeCloseTo(16.3738, 3);
-    expect(clickhouseDateToISO(user?.lastSeenAt ?? '')).toBe(recentUnlocatedAt.toISOString());
+    expect(clickhouseDateToISO(user?.lastSeenAt ?? '')).toBe(recentSessionHeartbeatAt.toISOString());
   });
 
   it('does not announce a user who was already present when the globe was opened', async () => {

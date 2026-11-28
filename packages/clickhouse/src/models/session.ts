@@ -6,7 +6,8 @@ import { jsonStringify } from '@vemetric/common/json';
 import type { ISources } from '@vemetric/common/sources';
 import { escape } from 'sqlstring';
 import { clickhouseClient, clickhouseInsert } from '../client';
-import { formatDateExpression } from '../utils/date';
+import { ONLINE_USER_INTERVAL_SECONDS, ONLINE_USER_LOOKBACK_SECONDS, ONLINE_USERS_INTERVAL_QUERY } from '../consts';
+import { clickhouseDateToISO, formatDateExpression } from '../utils/date';
 import { buildLocationFilterQueries } from '../utils/filters/location-filter';
 import { buildSourceFilterQueries } from '../utils/filters/source-filter';
 import type { MetricsQueryGrouping } from '../utils/query-group';
@@ -200,6 +201,43 @@ function candidateSessionIdsSubquery(projectId: bigint, userId: bigint, overlapF
 function sessionOverlapFilter(range?: { start: Date; end: Date }) {
   if (!range) return '';
   return ` AND startedAt <= '${formatClickhouseDate(range.end)}' AND endedAt >= '${formatClickhouseDate(range.start)}'`;
+}
+
+export function getOnlineSessionsByUserQuery(projectId: bigint) {
+  // Relies on the ended_at_idx minmax skip index to skip historical granules before the active window.
+  const candidateIds = `SELECT DISTINCT id FROM ${TABLE_NAME} WHERE projectId = ${escape(projectId)} AND endedAt >= ${ONLINE_USERS_INTERVAL_QUERY}`;
+
+  return `
+    SELECT userId, max(endedAt) as lastSessionEndedAt, toUInt8(1) as isOnline
+    FROM (
+      SELECT userId, endedAt, deleted
+      FROM ${TABLE_NAME}
+      WHERE projectId = ${escape(projectId)}
+        AND id IN (${candidateIds})
+      ORDER BY revision DESC
+      LIMIT 1 BY id
+    )
+    WHERE deleted = 0
+      AND endedAt >= ${ONLINE_USERS_INTERVAL_QUERY}
+    GROUP BY userId
+  `;
+}
+
+export function getEffectiveLastSeenExpression(eventTimestampColumn: string, endDate?: Date) {
+  const sessionEndedAt = `coalesce(s.lastSessionEndedAt, ${eventTimestampColumn})`;
+  const endDateCondition = endDate ? ` AND ${sessionEndedAt} < '${formatClickhouseDate(endDate)}'` : '';
+  return `if(coalesce(s.isOnline, 0) = 1${endDateCondition}, greatest(${eventTimestampColumn}, ${sessionEndedAt}), ${eventTimestampColumn})`;
+}
+
+export function isSessionOnline(session: Pick<ClickhouseSession, 'endedAt'> | null | undefined) {
+  if (!session) {
+    return false;
+  }
+
+  const intervalMs = ONLINE_USER_INTERVAL_SECONDS * 1_000;
+  const onlineThreshold = Math.floor(Date.now() / intervalMs) * intervalMs - ONLINE_USER_LOOKBACK_SECONDS * 1_000;
+
+  return new Date(clickhouseDateToISO(session.endedAt)).getTime() >= onlineThreshold;
 }
 
 export const clickhouseSession = {

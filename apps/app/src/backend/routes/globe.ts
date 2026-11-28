@@ -1,6 +1,13 @@
 import { isEntityUnknown } from '@vemetric/common/event';
 import type { ClickhouseEvent } from 'clickhouse';
-import { clickhouseDateToISO, clickhouseEvent, clickhouseGlobe, clickhouseSession, clickhouseUser } from 'clickhouse';
+import {
+  clickhouseDateToISO,
+  clickhouseEvent,
+  clickhouseGlobe,
+  clickhouseSession,
+  clickhouseUser,
+  isSessionOnline,
+} from 'clickhouse';
 import { z } from 'zod';
 import { getVisualGlobeBuckets } from '../utils/globe';
 import { projectProcedure, projectTimespanProcedure, router } from '../utils/trpc';
@@ -91,7 +98,10 @@ export const globeRouter = router({
       clickhouseEvent.getLatestPageViewByUserId(projectId, userId),
     ]);
 
-    const latestEvent: (ClickhouseEvent & { isOnline: boolean }) | null = latestEvents[0] ?? null;
+    const isOnline = isSessionOnline(latestSession);
+    const latestEvent: (ClickhouseEvent & { isOnline: boolean }) | null = latestEvents[0]
+      ? { ...latestEvents[0], isOnline }
+      : null;
 
     const deviceData = {
       clientName: isEntityUnknown(latestEvent?.clientName)
@@ -112,6 +122,7 @@ export const globeRouter = router({
     };
 
     return {
+      isOnline,
       latestEvent,
       latestPageView,
       latestSession: latestSession

@@ -1,7 +1,8 @@
 import { formatClickhouseDate } from '@vemetric/common/date';
 import { escape } from 'sqlstring';
 import { clickhouseClient } from '../client';
-import { GLOBE_H3_RESOLUTION, ONLINE_USERS_INTERVAL_QUERY } from '../consts';
+import { GLOBE_H3_RESOLUTION } from '../consts';
+import { getEffectiveLastSeenExpression, getOnlineSessionsByUserQuery } from './session';
 import { withSpan } from '../utils/with-span';
 
 const TABLE_NAME = 'event';
@@ -30,8 +31,9 @@ export interface ClickhouseGlobeBucket {
 
 function getGlobeLocatedUsersQuery(props: { projectId: bigint; startDate?: Date; endDate?: Date }) {
   const { projectId, startDate, endDate } = props;
+  const lastSeenExpr = getEffectiveLastSeenExpression('u.maxEventCreatedAt', endDate);
 
-  return `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.city as city, u.latitude as latitude, u.longitude as longitude, geoToH3(toFloat64(u.latitude), toFloat64(u.longitude), ${GLOBE_H3_RESOLUTION}) as h3BucketId, u.maxCreatedAt as maxCreatedAt, u.isOnline as isOnline, usr.avatarUrl as avatarUrl
+  return `SELECT u.userId as userId, u.identifier as identifier, u.displayName as displayName, u.countryCode as countryCode, u.city as city, u.latitude as latitude, u.longitude as longitude, geoToH3(toFloat64(u.latitude), toFloat64(u.longitude), ${GLOBE_H3_RESOLUTION}) as h3BucketId, ${lastSeenExpr} as maxCreatedAt, coalesce(s.isOnline, 0) as isOnline, usr.avatarUrl as avatarUrl
             FROM (
               SELECT userId,
                 argMax(userIdentifier, eventCreatedAt) as identifier,
@@ -40,8 +42,7 @@ function getGlobeLocatedUsersQuery(props: { projectId: bigint; startDate?: Date;
                 argMaxIf(city, eventCreatedAt, eventLatitude IS NOT NULL AND eventLongitude IS NOT NULL) as city,
                 assumeNotNull(argMaxIf(eventLatitude, eventCreatedAt, eventLatitude IS NOT NULL AND eventLongitude IS NOT NULL)) as latitude,
                 assumeNotNull(argMaxIf(eventLongitude, eventCreatedAt, eventLatitude IS NOT NULL AND eventLongitude IS NOT NULL)) as longitude,
-                max(eventCreatedAt) as maxCreatedAt,
-                max(eventCreatedAt) >= ${ONLINE_USERS_INTERVAL_QUERY} as isOnline
+                max(eventCreatedAt) as maxEventCreatedAt
               FROM (
                 SELECT any(userId) as userId,
                   argMax(userIdentifier, createdAt) as userIdentifier,
@@ -61,6 +62,9 @@ function getGlobeLocatedUsersQuery(props: { projectId: bigint; startDate?: Date;
               GROUP BY userId
               HAVING countIf(eventLatitude IS NOT NULL AND eventLongitude IS NOT NULL) > 0
             ) u
+            LEFT ANY JOIN (
+              ${getOnlineSessionsByUserQuery(projectId)}
+            ) s ON u.userId = s.userId
             LEFT JOIN (
               SELECT id, argMax(avatarUrl, updatedAt) as avatarUrl
               FROM user

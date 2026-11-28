@@ -17,7 +17,6 @@ import { eventSchema, trackEvent, validateSpecialEvents } from './utils/event';
 import { logger } from './utils/logger';
 import { handlePageLeave } from './utils/page-leave';
 import { getProjectByToken } from './utils/project';
-import { releaseUserIdentificationLock, waitForUserIdentificationLock } from './utils/redis';
 import { getHashedUserId, getUserIdFromRequest, isPrefetchRequest } from './utils/request';
 import { getSessionId, hasActiveSession } from './utils/session';
 import { identifySchema, identifyUser } from './utils/user';
@@ -169,17 +168,7 @@ app.post(
   async (context) => {
     const { req } = context;
     const body = req.valid('json');
-    const { identifier } = body;
-
     const { projectId } = context.var;
-
-    // Another identification of the same identifier (e.g. a backend request at signup) runs first;
-    // this one then merges its own anonymous activity into the user.
-    const { lockAcquired } = await waitForUserIdentificationLock(projectId, identifier);
-    if (!lockAcquired) {
-      logger.info({ projectId: String(projectId), identifier }, 'Identification already running');
-      return context.text('Identification is running', 202);
-    }
 
     try {
       // The id the visitor's earlier requests used: the cookie, or without one the hashed id
@@ -206,11 +195,8 @@ app.post(
         hashedUserId !== null && hashedSessionId !== null ? { userId: hashedUserId, sessionId: hashedSessionId } : null,
       );
 
-      await releaseUserIdentificationLock(projectId, identifier);
-
       return context.text('', 200);
     } catch (err) {
-      await releaseUserIdentificationLock(projectId, identifier);
       logger.error({ err }, 'Error identifying user');
       throw err;
     }

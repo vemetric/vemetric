@@ -133,25 +133,32 @@ export async function identifyUser(
     }
   }
 
-  let identifiedUserId: bigint;
-  const existingUserWithIdentifer = await dbUserIdentificationMap.findByIdentifier(String(projectId), identifier);
-  if (!existingUserWithIdentifer) {
+  // An identified user always gets a new id. The anonymous id (for cookieless tracking a hash of
+  // IP address and browser that other visitors can share for the rest of the day) is merged into it.
+  // Postgres's unique (projectId, identifier) index serializes concurrent first identifications.
+  const candidateUserId = generateUserId();
+  let record: { projectId: string; userId: string; identifier: string };
+  let created: boolean;
+  try {
+    ({ record, created } = await dbUserIdentificationMap.findOrCreate(
+      String(projectId),
+      String(candidateUserId),
+      identifier,
+    ));
+  } catch (err) {
+    logger.error(
+      { projectId: String(projectId), userId: String(candidateUserId), identifier, err },
+      'Error creating user identification map entry',
+    );
+    throw err;
+  }
+
+  const identifiedUserId = BigInt(record.userId);
+  if (created) {
     logInfo(
       { projectId: String(projectId), userId: String(userId), identifier },
       'user identified for the first time, create the user',
     );
-    // An identified user always gets a new id. The anonymous id (for cookieless tracking a hash of
-    // IP address and browser that other visitors can share for the rest of the day) is merged into it.
-    identifiedUserId = generateUserId();
-    try {
-      await dbUserIdentificationMap.create(String(projectId), String(identifiedUserId), identifier);
-    } catch (err) {
-      logger.error(
-        { projectId: String(projectId), userId: String(identifiedUserId), identifier, err },
-        'Error creating user identification map entry',
-      );
-      throw err;
-    }
 
     await addToQueue(
       createUserQueue,
@@ -170,7 +177,6 @@ export async function identifyUser(
       },
     );
   } else {
-    identifiedUserId = BigInt(existingUserWithIdentifer.userId);
     logInfo(
       { projectId: String(projectId), userId: String(userId), newUserId: String(identifiedUserId), identifier },
       'user was already identified, try to merge',
@@ -197,7 +203,7 @@ export async function identifyUser(
   fiveSecondRoundedDate.setMilliseconds(0);
   fiveSecondRoundedDate.setSeconds(fiveSecondRoundedDate.getSeconds() - (fiveSecondRoundedDate.getSeconds() % 5));
 
-  if (existingUserWithIdentifer) {
+  if (!created) {
     // Queue enrichment for the existing user to backfill attribution data if needed
     await addToQueue(
       enrichUserQueue,

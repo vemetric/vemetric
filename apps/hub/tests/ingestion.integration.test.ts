@@ -824,7 +824,7 @@ describe.sequential('hub ingestion integration', () => {
     }
   });
 
-  it('merges the anonymous activity of an identify that waited for another one', async () => {
+  it('merges the anonymous activity of concurrent identifies for the same identifier', async () => {
     const project = nextProjectContext();
     await createProject(project);
     const projectId = BigInt(project.projectId);
@@ -854,6 +854,51 @@ describe.sequential('hub ingestion integration', () => {
       await waitForStable('both devices merged', async () => {
         const users = await clickhouseEvent.queryUsers({ projectId, filterQueries: '', ...getQueryRange() });
         return users.length === 1 && users[0]!.id === user!.id;
+      });
+    } finally {
+      await cleanupProject(project);
+    }
+  });
+
+  it('handles a concurrent backend auto-identify and browser identify without dropping the merge', async () => {
+    const project = nextProjectContext();
+    await createProject(project);
+    const projectId = BigInt(project.projectId);
+    const browserAgent = `${TEST_USER_AGENT} signup-browser`;
+
+    try {
+      await ingestPageView(project, { url: `https://${project.domain}/pricing`, userAgent: browserAgent });
+      await waitForQueuesIdle();
+
+      const [backendResponse, browserResponse] = await Promise.all([
+        requestHub('/e', project, {
+          name: 'AccountCreated',
+          url: `https://${project.domain}/signup`,
+          userIdentifier: 'signup-race@example.com',
+          displayName: 'Signup Race',
+        }),
+        requestHub(
+          '/i',
+          project,
+          { identifier: 'signup-race@example.com', displayName: 'Signup Race' },
+          { 'user-agent': browserAgent },
+        ),
+      ]);
+      expect(backendResponse.status).toBe(200);
+      expect(browserResponse.status).toBe(200);
+      await waitForQueuesIdle(30000);
+
+      const user = await clickhouseUser.findByIdentifier(projectId, 'signup-race@example.com');
+      expect(user).not.toBeNull();
+      await waitForStable('backend event and browser visit belong to the same user', async () => {
+        const users = await clickhouseEvent.queryUsers({ projectId, filterQueries: '', ...getQueryRange() });
+        const events = await clickhouseEvent.findByUserId(projectId, user!.id);
+        return (
+          users.length === 1 &&
+          users[0]!.id === user!.id &&
+          events.some((event) => event.pathname === '/pricing') &&
+          events.some((event) => event.name === 'AccountCreated')
+        );
       });
     } finally {
       await cleanupProject(project);

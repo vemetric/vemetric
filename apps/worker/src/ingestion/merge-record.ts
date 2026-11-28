@@ -1,8 +1,24 @@
+import { sessionIdRedisKey } from '@vemetric/common/session';
 import { stateRedis } from './redis';
 import { bufferSessionUpdate } from './session-buffer';
 import { envPositiveInteger } from '../utils/env';
 
 const recordTtl = envPositiveInteger('USER_MERGE_RECORD_TTL_SECONDS', 24 * 60 * 60);
+
+// Points the user's current session at the session that kept the visit, unless it changed meanwhile.
+const REPOINT_HUB_SESSION = `
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+  redis.call('SET', KEYS[1], ARGV[2], 'KEEPTTL')
+  return 1
+end
+return 0`;
+
+// Clears the anonymous id's current session once a merge moved or merged it away, unless it changed meanwhile.
+const CLEAR_HUB_SESSION = `
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+  return redis.call('DEL', KEYS[1])
+end
+return 0`;
 
 export const mergeRecordKey = (projectId: bigint | string, userId: bigint | string) =>
   `vm:{user-merge}:${projectId}:${userId}`;
@@ -40,8 +56,33 @@ export async function saveMergeRecord(projectId: bigint, userId: bigint, record:
   await stateRedis().set(mergeRecordKey(projectId, userId), JSON.stringify(record), 'EX', recordTtl);
 }
 
+export type SessionDecisions = Map<string, string>;
+
+export function decisionsOf(records: Array<MergeRecord | null>, target?: string): SessionDecisions {
+  const decisions: SessionDecisions = new Map();
+  for (const record of records) {
+    for (const [session, decided] of Object.entries(record?.sessions ?? {})) {
+      if (target === undefined || decided.user === target) decisions.set(session, decided.session);
+    }
+  }
+  return decisions;
+}
+
+// The merge a time belongs to; merges of a single session claim only that session.
+export function mergeEntryIndexFor(merges: MergeEntry[], at: string) {
+  const index = merges.findIndex((entry) => !entry.session && at <= entry.cutoff);
+  return index === -1 ? undefined : index;
+}
+
+export function mergeEntryIndexForSession(merges: MergeEntry[], sessionId: string) {
+  const index = merges.findIndex((entry) => entry.session === sessionId);
+  return index === -1 ? undefined : index;
+}
+
 export function mergeEntryFor(record: MergeRecord | null, createdAt: string) {
-  return record?.merges?.find((entry) => !entry.session && createdAt <= entry.cutoff);
+  if (!record?.merges) return undefined;
+  const index = mergeEntryIndexFor(record.merges, createdAt);
+  return index === undefined ? undefined : record.merges[index];
 }
 
 /**
@@ -55,9 +96,23 @@ export function needsFollowUp(
 ) {
   if (!record) return false;
   if (mergeEntryFor(record, activity.createdAt)) return true;
-  if (activity.sessionId && record.merges?.some((entry) => entry.session === activity.sessionId)) return true;
+  if (
+    activity.sessionId &&
+    record.merges &&
+    mergeEntryIndexForSession(record.merges, activity.sessionId) !== undefined
+  ) {
+    return true;
+  }
   const decided = activity.sessionId ? record.sessions?.[activity.sessionId] : undefined;
   return decided !== undefined && (decided.user !== String(userId) || decided.session !== activity.sessionId);
+}
+
+export async function clearHubSession(projectId: bigint, userId: bigint, sessionId: string) {
+  await stateRedis().eval(CLEAR_HUB_SESSION, 1, sessionIdRedisKey(projectId, userId), sessionId);
+}
+
+export async function repointHubSession(projectId: bigint, userId: bigint, fromSessionId: string, toSessionId: string) {
+  await stateRedis().eval(REPOINT_HUB_SESSION, 1, sessionIdRedisKey(projectId, userId), fromSessionId, toSessionId);
 }
 
 /**

@@ -1,5 +1,4 @@
 import { formatClickhouseDate } from '@vemetric/common/date';
-import { sessionIdRedisKey } from '@vemetric/common/session';
 import type { ClickhouseEvent, ClickhouseSession } from 'clickhouse';
 import { clickhouseDevice, clickhouseEvent, clickhouseSession, getDeviceId } from 'clickhouse';
 import { insertDeviceIfNotExists } from './device';
@@ -13,37 +12,20 @@ import {
   getBufferedSessions,
   isUserDeleted,
   reassignBufferedSession,
-  stateRedis,
   upsertUser,
 } from '../ingestion';
-import { loadMergeRecord, saveMergeRecord, type MergeEntry, type MergeRecord } from '../ingestion/merge-record';
-
-// Points the user's current session at the session that kept the visit, unless it changed meanwhile.
-const REPOINT_HUB_SESSION = `
-if redis.call('GET', KEYS[1]) == ARGV[1] then
-  redis.call('SET', KEYS[1], ARGV[2], 'KEEPTTL')
-  return 1
-end
-return 0`;
-
-// Clears the anonymous id's current session once a merge moved or merged it away, unless it changed meanwhile.
-const CLEAR_HUB_SESSION = `
-if redis.call('GET', KEYS[1]) == ARGV[1] then
-  return redis.call('DEL', KEYS[1])
-end
-return 0`;
-
-type Decisions = Map<string, string>;
-
-function decisionsOf(records: Array<MergeRecord | null>, target?: string): Decisions {
-  const decisions: Decisions = new Map();
-  for (const record of records) {
-    for (const [session, decided] of Object.entries(record?.sessions ?? {})) {
-      if (target === undefined || decided.user === target) decisions.set(session, decided.session);
-    }
-  }
-  return decisions;
-}
+import {
+  clearHubSession,
+  decisionsOf,
+  loadMergeRecord,
+  mergeEntryIndexFor,
+  mergeEntryIndexForSession,
+  repointHubSession,
+  saveMergeRecord,
+  type MergeEntry,
+  type MergeRecord,
+  type SessionDecisions,
+} from '../ingestion/merge-record';
 
 const planSession = (session: ClickhouseSession, source: boolean) => ({
   id: session.id,
@@ -79,17 +61,6 @@ async function loadTargetSessions(projectId: bigint, target: bigint, from: numbe
     end = nextEnd;
   }
   return sessions;
-}
-
-// The merge a time belongs to; merges of a single session claim only that session.
-function entryIndexFor(merges: MergeEntry[], at: string) {
-  const index = merges.findIndex((entry) => !entry.session && at <= entry.cutoff);
-  return index === -1 ? undefined : index;
-}
-
-function entryIndexForSession(merges: MergeEntry[], sessionId: string) {
-  const index = merges.findIndex((entry) => entry.session === sessionId);
-  return index === -1 ? undefined : index;
 }
 
 export interface MergeOutcome {
@@ -155,8 +126,8 @@ async function mergeIntoTargets(
     const decision = decided[session.id];
     const index = decision
       ? merges.findIndex((entry) => entry.target === decision.user)
-      : (entryIndexForSession(merges, session.id) ??
-        entryIndexFor(merges, formatClickhouseDate(new Date(toMs(session.startedAt)))));
+      : (mergeEntryIndexForSession(merges, session.id) ??
+        mergeEntryIndexFor(merges, formatClickhouseDate(new Date(toMs(session.startedAt)))));
     if (index !== undefined && index !== -1) sessionEntry.set(session.id, index);
   }
   const eventEntry = (event: ClickhouseEvent) => {
@@ -164,8 +135,8 @@ async function mergeIntoTargets(
     if (decision) return merges.findIndex((entry) => entry.target === decision.user);
     if (liveSourceSessions.has(event.sessionId)) return sessionEntry.get(event.sessionId);
     return (
-      entryIndexForSession(merges, event.sessionId) ??
-      entryIndexFor(merges, formatClickhouseDate(new Date(toMs(event.createdAt))))
+      mergeEntryIndexForSession(merges, event.sessionId) ??
+      mergeEntryIndexFor(merges, formatClickhouseDate(new Date(toMs(event.createdAt))))
     );
   };
   const movingEvents = sourceEvents
@@ -307,14 +278,14 @@ async function applySessionDecisions(
   entrySessions: ClickhouseSession[],
   targetSessions: ClickhouseSession[],
   entryEvents: ClickhouseEvent[],
-  decisions: Decisions,
+  decisions: SessionDecisions,
 ) {
   const known = new Map([...targetSessions, ...entrySessions].map((session) => [session.id, session]));
   // Sessions of the merged id that keep their visit move to the identified user.
   for (const session of entrySessions) {
     if (resolveSession(decisions, session.id) === session.id) {
       await reassignBufferedSession(projectId, session.id, target, entry.identifier, entry.displayName);
-      await stateRedis().eval(CLEAR_HUB_SESSION, 1, sessionIdRedisKey(projectId, source), session.id);
+      await clearHubSession(projectId, source, session.id);
     }
   }
 
@@ -346,8 +317,8 @@ async function applySessionDecisions(
     }
     for (const member of members) {
       await deleteBufferedSession(projectId, member);
-      await stateRedis().eval(CLEAR_HUB_SESSION, 1, sessionIdRedisKey(projectId, source), member);
-      await stateRedis().eval(REPOINT_HUB_SESSION, 1, sessionIdRedisKey(projectId, target), member, survivor);
+      await clearHubSession(projectId, source, member);
+      await repointHubSession(projectId, target, member, survivor);
     }
   }
 }

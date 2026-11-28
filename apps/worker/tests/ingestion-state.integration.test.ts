@@ -258,8 +258,10 @@ describe.skipIf(process.env.INGESTION_STATE_TESTS !== '1')('concurrent ingestion
     expect(keys.sort()).toEqual([sessionKey(projectId, 'current'), sessionKey(projectId, 'pending')]);
     expect(await flushSessionBuffer(keys.length, keys)).toBe(2);
 
-    expect(await bufferExistingSessionActivity(projectId, 'current', at(30))).toBe('buffered');
-    expect(await bufferExistingSessionActivity(projectId, 'pending', at(30))).toBe('buffered');
+    // Activity of a deleted session is dropped; the deletion also removed the user's merge record, so
+    // the session worker does not continue another session with it either.
+    expect(await bufferExistingSessionActivity(projectId, 'current', at(30))).toBe('deleted');
+    expect(await bufferExistingSessionActivity(projectId, 'pending', at(30))).toBe('deleted');
     await flushSessionBuffer();
     expect(await clickhouseSession.findById(projectId, userId, 'current')).toBeNull();
     expect(await clickhouseSession.findById(projectId, userId, 'pending')).toBeNull();

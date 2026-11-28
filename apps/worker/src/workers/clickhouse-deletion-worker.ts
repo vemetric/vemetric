@@ -12,9 +12,11 @@ import { defaultQueueConnection } from '@vemetric/queues/queue-utils';
 import { type Job, Queue, Worker } from 'bullmq';
 import { clickhouseDeletion, clickhouseDevice } from 'clickhouse';
 import { type ClickhouseDeletion, dbClickhouseDeletion, dbUserIdentificationMap } from 'database';
+import { mergeRecordKey } from '../ingestion/merge-record';
 import { stateRedis } from '../ingestion/redis';
 import { deleteBufferedUserSessions } from '../ingestion/session-buffer';
 import { flushSessionBuffer } from '../ingestion/session-flush';
+import { deleteUserState } from '../ingestion/user-buffer';
 import { deviceWrittenKey } from '../utils/device';
 import { workerName } from '../utils/env';
 import { logger } from '../utils/logger';
@@ -182,8 +184,11 @@ async function repeatUserDeletions(deletions: ClickhouseDeletion[]) {
   return failed;
 }
 
-// Otherwise an active visitor's cached session is written back after the delete.
+// Otherwise an active visitor's cached session or buffered user row is written back after the delete,
+// and merges would move late activity to the user.
 async function deleteUserSessionState(projectId: bigint, userId: bigint) {
+  await deleteUserState(projectId, userId);
+  await stateRedis().del(mergeRecordKey(projectId, userId));
   const currentSessionId = await stateRedis().getdel(sessionIdRedisKey(projectId, userId));
   const keys = await deleteBufferedUserSessions(projectId, userId, currentSessionId ? [currentSessionId] : []);
   if (keys.length > 0) {

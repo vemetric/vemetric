@@ -17,8 +17,8 @@ import { eventSchema, trackEvent, validateSpecialEvents } from './utils/event';
 import { logger } from './utils/logger';
 import { handlePageLeave } from './utils/page-leave';
 import { getProjectByToken } from './utils/project';
-import { getUserIdentificationLock, releaseUserIdentificationLock } from './utils/redis';
-import { getUserIdFromRequest, isPrefetchRequest } from './utils/request';
+import { getHashedUserId, getUserIdFromRequest, isPrefetchRequest } from './utils/request';
+import { getSessionId, hasActiveSession } from './utils/session';
 import { identifySchema, identifyUser } from './utils/user';
 
 export const app = new Hono<{ Variables: HonoContextVars }>();
@@ -168,25 +168,35 @@ app.post(
   async (context) => {
     const { req } = context;
     const body = req.valid('json');
-    const { identifier } = body;
-
     const { projectId } = context.var;
 
-    const { lockAcquired } = await getUserIdentificationLock(projectId, identifier);
-    if (!lockAcquired) {
-      logger.info({ projectId: String(projectId), identifier }, 'Identification already running');
-      return context.text('Identification is running', 202);
-    }
-
     try {
-      const userId = await getUserIdFromRequest(context, false);
-      const response = await identifyUser(context, body, projectId, userId);
+      // The id the visitor's earlier requests used: the cookie, or without one the hashed id
+      // (cookies may be allowed for this request only).
+      const hashedUserId = await getHashedUserId(context);
+      const requestUserId = await getUserIdFromRequest(context, false);
+      const userId = requestUserId ?? hashedUserId;
+      // With a cookie, requests of this visit that did not allow cookies ran on the hashed id. That
+      // is only this visitor's when the cookie's user has no visit of its own running, and then only
+      // the hashed id's current session is: others with the same IP address and browser share the
+      // hashed id for the rest of the day.
+      const hashedSessionId =
+        requestUserId !== null &&
+        hashedUserId !== null &&
+        hashedUserId !== requestUserId &&
+        !(await hasActiveSession(projectId, requestUserId))
+          ? await getSessionId(projectId, hashedUserId)
+          : null;
+      await identifyUser(
+        context,
+        body,
+        projectId,
+        userId,
+        hashedUserId !== null && hashedSessionId !== null ? { userId: hashedUserId, sessionId: hashedSessionId } : null,
+      );
 
-      await releaseUserIdentificationLock(projectId, identifier);
-
-      return response;
+      return context.text('', 200);
     } catch (err) {
-      await releaseUserIdentificationLock(projectId, identifier);
       logger.error({ err }, 'Error identifying user');
       throw err;
     }

@@ -4,30 +4,8 @@ import type { HonoRequest } from 'hono';
 import { getUserIdFromCookie } from './cookie';
 import type { HonoContext } from '../types';
 import { logger } from './logger';
-import { getUserIdentificationLock, releaseUserIdentificationLock } from './redis';
 import { hasActiveSession } from './session';
 import { identifyUser } from './user';
-
-const IDENTIFICATION_POLL_INTERVAL_MS = 100;
-const IDENTIFICATION_MAX_WAIT_MS = 5000;
-
-/**
- * Waits for a user identification to be created by another concurrent request.
- * Polls the database until the user is found or timeout is reached.
- */
-async function waitForUserIdentification(projectId: string, identifier: string): Promise<UserIdentificationMap | null> {
-  const startTime = Date.now();
-
-  while (Date.now() - startTime < IDENTIFICATION_MAX_WAIT_MS) {
-    const user = await dbUserIdentificationMap.findByIdentifier(projectId, identifier);
-    if (user) {
-      return user;
-    }
-    await new Promise((resolve) => setTimeout(resolve, IDENTIFICATION_POLL_INTERVAL_MS));
-  }
-
-  return null;
-}
 
 export function isPrefetchRequest(req: HonoRequest) {
   const xPurpose = req.header('X-Purpose');
@@ -45,7 +23,7 @@ export function isPrefetchRequest(req: HonoRequest) {
 
 export async function getUserIdFromRequest(context: HonoContext, useBodyIdentifier = true) {
   const { req } = context;
-  const { projectId, allowCookies, ipAddress } = context.var;
+  const { projectId, allowCookies } = context.var;
 
   try {
     const bodyData = await req.json();
@@ -66,40 +44,18 @@ export async function getUserIdFromRequest(context: HonoContext, useBodyIdentifi
         'Auto-identifying user from backend.',
       );
 
-      const { lockAcquired } = await getUserIdentificationLock(projectId, userIdentifier);
-      if (!lockAcquired) {
-        // Another request is already creating this user - wait for it to complete
-        const existingUser = await waitForUserIdentification(String(projectId), userIdentifier);
-        if (existingUser) {
-          return BigInt(existingUser.userId);
-        }
-        // Fallback: if we couldn't find the user after waiting, generate a new one
-        // This shouldn't happen normally, but handles edge cases
-        logger.warn(
-          { projectId: String(projectId), userIdentifier },
-          'Could not find user after waiting for identification lock',
-        );
-      }
-
-      try {
-        const userId = generateUserId();
-        await identifyUser(
-          context,
-          {
-            identifier: userIdentifier,
-            displayName: typeof bodyData.displayName === 'string' ? bodyData.displayName : undefined,
-            data: bodyData.userData,
-          },
-          projectId,
-          userId,
-        );
-
-        await releaseUserIdentificationLock(projectId, userIdentifier);
-        return userId;
-      } catch (err) {
-        await releaseUserIdentificationLock(projectId, userIdentifier);
-        throw err;
-      }
+      // A backend request has no anonymous activity to merge. If another request identifies the
+      // same user concurrently, findOrCreate returns its id instead of creating a duplicate.
+      return await identifyUser(
+        context,
+        {
+          identifier: userIdentifier,
+          displayName: typeof bodyData.displayName === 'string' ? bodyData.displayName : undefined,
+          data: bodyData.userData,
+        },
+        projectId,
+        null,
+      );
     } else {
       if (useBodyIdentifier && typeof bodyData.identifier === 'string' && bodyData.identifier) {
         // this is the case when the user was already identified in the browser and it sends the identifier from the sessionStorage to the server
@@ -118,33 +74,42 @@ export async function getUserIdFromRequest(context: HonoContext, useBodyIdentifi
         return getUserIdFromCookie(context);
       }
 
-      const userAgent = req.header('user-agent');
-      if (userAgent) {
-        const { currentSalt, previousSalt } = await dbSalt.getLatestSalts();
-
-        const previousUserId = generateUserId({
-          projectId,
-          ipAddress,
-          userAgent,
-          salt: previousSalt?.id ?? '',
-        });
-        if (await hasActiveSession(projectId, previousUserId)) {
-          // if there is a session with the previous user id, we ensure continuity by using the same user id
-          return previousUserId;
-        }
-
-        return generateUserId({
-          projectId,
-          ipAddress,
-          userAgent,
-          salt: currentSalt?.id ?? '',
-        });
-      } else {
-        return generateUserId();
-      }
+      return (await getHashedUserId(context)) ?? generateUserId();
     }
   } catch (err) {
     logger.error({ err, 'req.path': req.path }, 'Failed to get user from request.');
     throw err;
   }
+}
+
+/**
+ * The cookieless id of a request: a hash of project, IP address and browser with the salt of the
+ * day. A visitor whose session started with the previous salt keeps that id. Null without a
+ * user agent.
+ */
+export async function getHashedUserId(context: HonoContext): Promise<bigint | null> {
+  const { projectId, ipAddress } = context.var;
+  const userAgent = context.req.header('user-agent');
+  if (!userAgent) {
+    return null;
+  }
+  const { currentSalt, previousSalt } = await dbSalt.getLatestSalts();
+
+  const previousUserId = generateUserId({
+    projectId,
+    ipAddress,
+    userAgent,
+    salt: previousSalt?.id ?? '',
+  });
+  if (await hasActiveSession(projectId, previousUserId)) {
+    // if there is a session with the previous user id, we ensure continuity by using the same user id
+    return previousUserId;
+  }
+
+  return generateUserId({
+    projectId,
+    ipAddress,
+    userAgent,
+    salt: currentSalt?.id ?? '',
+  });
 }

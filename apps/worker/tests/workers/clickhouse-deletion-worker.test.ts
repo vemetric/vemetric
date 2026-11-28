@@ -6,6 +6,7 @@ import { dbClickhouseDeletion, dbUserIdentificationMap } from 'database';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { deleteBufferedUserSessions } from '../../src/ingestion/session-buffer';
 import { flushSessionBuffer } from '../../src/ingestion/session-flush';
+import { deleteUserState } from '../../src/ingestion/user-buffer';
 import { invalidateIngestionUser } from '../../src/utils/user-cache';
 import {
   deletePendingData,
@@ -52,6 +53,7 @@ vi.mock('../../src/utils/user-cache', () => ({ invalidateIngestionUser: vi.fn() 
 vi.mock('../../src/ingestion/redis', () => ({ stateRedis: () => redis }));
 vi.mock('../../src/ingestion/session-buffer', () => ({ deleteBufferedUserSessions: vi.fn().mockResolvedValue([]) }));
 vi.mock('../../src/ingestion/session-flush', () => ({ flushSessionBuffer: vi.fn() }));
+vi.mock('../../src/ingestion/user-buffer', () => ({ deleteUserState: vi.fn() }));
 vi.mock('../../src/utils/device', () => ({
   deviceWrittenKey: (projectId: string, userId: string, deviceId: string) =>
     `vm:device-written:${projectId}:${userId}:${deviceId}`,
@@ -201,6 +203,7 @@ describe('deleteQueuedUsers', () => {
   it('clears session state before the ClickHouse delete and the rest only after it succeeded', async () => {
     const order: string[] = [];
     vi.mocked(dbClickhouseDeletion.findPendingUsers).mockResolvedValue([deletion('d', '3', ['10'])]);
+    vi.mocked(deleteUserState).mockImplementationOnce(async () => void order.push('user'));
     vi.mocked(deleteBufferedUserSessions).mockImplementationOnce(async () => {
       order.push('sessions');
       return [];
@@ -212,7 +215,9 @@ describe('deleteQueuedUsers', () => {
     }) as never);
 
     await deleteQueuedUsers();
-    expect(order).toEqual(['sessions', 'clickhouse', 'identification']);
+    expect(order).toEqual(['user', 'sessions', 'clickhouse', 'identification']);
+    expect(deleteUserState).toHaveBeenCalledWith(BigInt(3), BigInt(10));
+    expect(redis.del).toHaveBeenCalledWith('vm:{user-merge}:3:10');
   });
 
   it("ends the hub's current session and writes tombstones for the buffered sessions", async () => {

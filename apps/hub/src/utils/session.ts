@@ -32,6 +32,36 @@ if redis.call('GET', KEYS[1]) == ARGV[1] then
 end
 return 0`;
 
+// Hands over KEYS[1]'s active session to KEYS[2] (unless KEYS[2] already has one) and clears KEYS[1],
+// so another visitor or a later account on KEYS[1] never inherits a session moved to KEYS[2].
+// When ARGV[2] is non-empty, only hands over if KEYS[1] still holds that exact session id.
+export const CONTINUE_SESSION = `
+local id = redis.call('GET', KEYS[1])
+if not id then return 0 end
+if ARGV[2] and ARGV[2] ~= '' and id ~= ARGV[2] then return 0 end
+redis.call('DEL', KEYS[1])
+if redis.call('SET', KEYS[2], id, 'EX', ARGV[1], 'NX') then return 1 end
+return 0`;
+
+/**
+ * When a visitor logs in, the identified user continues the visitor's session, so the visit stays
+ * one session with its real start, landing page and referrer. The merge then moves the session to
+ * the user. A user who is already active (e.g. on another device) keeps their own session; the
+ * merge joins both into one visit.
+ */
+export async function continueSession(
+  projectId: bigint,
+  fromUserId: bigint,
+  toUserId: bigint,
+  expectedSessionId?: string,
+) {
+  const redis = await getRedisClient();
+  await redis.eval(CONTINUE_SESSION, {
+    keys: [sessionIdRedisKey(projectId, fromUserId), sessionIdRedisKey(projectId, toUserId)],
+    arguments: [String(REDIS_SESSION_DURATION), expectedSessionId ?? ''],
+  });
+}
+
 export async function getOrCreateSessionId(projectId: bigint, userId: bigint) {
   const redis = await getRedisClient();
   const [sessionId, created] = (await redis.eval(GET_OR_CREATE_SESSION, {

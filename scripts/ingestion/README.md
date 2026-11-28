@@ -29,7 +29,7 @@ bun run --cwd scripts/ingestion compare -- --base main --head .
 
 `.` is the current checkout including uncommitted changes. `--replicas 3` starts three instances of every worker in the scenario to include concurrent processing. The command exits with 1 and lists the differing paths if the snapshots differ; both snapshots are kept in `~/.cache/vemetric-ingestion-tools` for inspection.
 
-The scenario (`compare/scenario.ts`) is copied into the hub tests as a vitest file of each version and removed afterwards. It runs the in-process hub and workers on a controlled clock, so timestamps and durations are comparable. It covers anonymous visitors on several devices, referrers and UTM tags, custom and server-side events, page leaves, identification, a user merge, new sessions after inactivity and a burst of concurrent visitors. It may only use APIs that exist in every version you compare. Before the snapshot it merges the session, device and event tables (`OPTIMIZE ... FINAL`), so it compares the settled state: reads without `FINAL` can briefly differ depending on when ClickHouse merges parts in the background, which varies between runs.
+The scenario (`compare/scenario.ts`) is copied into the hub tests as a vitest file of each version and removed afterwards. It runs the in-process hub and workers on a controlled clock, so timestamps and durations are comparable. It covers anonymous visitors on several devices, referrers and UTM tags, custom and server-side events, page leaves, identification, user merges (a first login, a login while the user is active on another device, a login without an active session, and a pre-login event that is processed only after the merge), new sessions after inactivity and a burst of concurrent visitors. It may only use APIs that exist in every version you compare. Before the snapshot it merges the session, device and event tables (`OPTIMIZE ... FINAL`), so it compares the settled state: reads without `FINAL` can briefly differ depending on when ClickHouse merges parts in the background, which varies between runs.
 
 ## Load test
 
@@ -37,18 +37,19 @@ The scenario (`compare/scenario.ts`) is copied into the hub tests as a vitest fi
 bun run --cwd scripts/ingestion loadtest -- --rate 1000 --duration 60 --workers 3 --unique 0.5
 ```
 
-| Option            | Default | Meaning                                                                      |
-| ----------------- | ------- | ---------------------------------------------------------------------------- |
-| `--ref`           | `.`     | Code version to run                                                          |
-| `--rate`          | `500`   | Pageviews per second sent to the hub                                         |
-| `--duration`      | `60`    | Seconds of traffic                                                           |
-| `--workers`       | `1`     | Worker processes (each runs all workers, like a production replica)          |
-| `--unique`        | `0.5`   | Share of events from one-off identities (bot-like traffic without any reuse) |
-| `--drain-timeout` | `600`   | Seconds to wait for the backlog to drain after the traffic stops             |
+| Option            | Default | Meaning                                                                                                                                |
+| ----------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `--ref`           | `.`     | Code version to run                                                                                                                    |
+| `--rate`          | `500`   | Pageviews per second sent to the hub                                                                                                   |
+| `--duration`      | `60`    | Seconds of traffic                                                                                                                     |
+| `--workers`       | `1`     | Worker processes (each runs all workers, like a production replica)                                                                    |
+| `--unique`        | `0.5`   | Share of events from one-off identities (bot-like traffic without any reuse)                                                           |
+| `--identify`      | `0`     | Share of returning visitors that log in after their second pageview; half of them into a user that already logged in on another device |
+| `--drain-timeout` | `600`   | Seconds to wait for the backlog to drain after the traffic stops                                                                       |
 
 The remaining traffic comes from returning visitors with five pageviews each, at most one per second, plus a page leave. Every five seconds the tool prints the accepted rate, the backlog per queue, pending session snapshots and Redis memory. At the end it prints a report and writes it with all samples and the process logs to a directory under `~/.cache/vemetric-ingestion-tools`.
 
-The report checks that the stored data matches what was sent: every accepted pageview is an event, and every identity is one user with one device and one session. The command exits with 1 if the backlog did not drain, requests failed or the data does not match.
+The report checks that the stored data matches what was sent: every accepted pageview is an event, every anonymous identity is one user with one device and one session, and with `--identify` every event of a visitor who logged in belongs to an identified user, one per identifier. Events of one user in the same millisecond collapse into one row of the event table, and logins from a second device put two devices' events on one user, so `--identify` runs can come out a few events short. The command exits with 1 if the backlog did not drain, requests failed or the data does not match.
 
 Everything runs on one machine, so the hub, the workers, Redis and ClickHouse compete for the same CPU. Use the numbers to compare versions and worker counts with each other, not as production capacity.
 

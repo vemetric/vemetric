@@ -20,11 +20,6 @@ vi.mock('../../src/utils/user', () => ({
   identifyUser: vi.fn(),
 }));
 
-vi.mock('../../src/utils/redis', () => ({
-  getUserIdentificationLock: vi.fn().mockResolvedValue({ lockAcquired: true }),
-  releaseUserIdentificationLock: vi.fn().mockResolvedValue(undefined),
-}));
-
 vi.mock('@vemetric/common/request-ip', () => ({
   getClientIp: vi.fn(),
 }));
@@ -133,7 +128,8 @@ describe('getUserIdFromRequest', () => {
     vi.mocked(getUserIdFromCookie).mockReturnValue(null);
     mockJson.mockResolvedValue({ userIdentifier: 'non-existent', displayName: 'Test User' });
     vi.mocked(dbUserIdentificationMap.findByIdentifier).mockResolvedValue(null);
-    vi.mocked(generateUserId).mockReturnValue(BigInt(999));
+    // identifyUser returns the identified user's id, also when another request identified it meanwhile.
+    vi.mocked(identifyUser).mockResolvedValue(BigInt(999));
 
     const result = await getUserIdFromRequest(mockContext);
     expect(result).toBe(BigInt(999));
@@ -145,7 +141,7 @@ describe('getUserIdFromRequest', () => {
         identifier: 'non-existent',
       },
       BigInt(123),
-      BigInt(999),
+      null,
     );
   });
 

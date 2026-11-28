@@ -4,10 +4,12 @@ import type { SessionQueueProps } from '@vemetric/queues/session-queue';
 import { sessionQueue } from '@vemetric/queues/session-queue';
 import { DelayedError, Worker } from 'bullmq';
 import { bufferSessionUpdate, bufferExistingSessionActivity } from '../ingestion';
+import { continueMergedSession } from '../ingestion/merge-record';
 import { getDeviceDataFromHeaders } from '../utils/device';
 import { envPositiveInteger, workerName } from '../utils/env';
 import { logJobStep } from '../utils/job-logger';
 import { logger } from '../utils/logger';
+import { followUpIfMerged } from '../utils/merge-follow-up';
 import { getReferrerFromRequest } from '../utils/referrer';
 import { getSessionData } from '../utils/session';
 import { queueTelemetry } from '../utils/telemetry';
@@ -28,7 +30,9 @@ export async function initSessionWorker() {
       const userId = BigInt(_userId);
 
       if (type === 'extend') {
-        await bufferSessionUpdate(projectId, sessionId, createdAt);
+        if ((await bufferSessionUpdate(projectId, sessionId, createdAt)) === 'deleted') {
+          await continueMergedSession(projectId, userId, sessionId, createdAt);
+        }
         return;
       }
 
@@ -37,6 +41,10 @@ export async function initSessionWorker() {
       });
 
       if (activity === 'buffered') return;
+      if (activity === 'deleted') {
+        await continueMergedSession(projectId, userId, sessionId, createdAt);
+        return;
+      }
 
       // A later event of a new session overtook the event that created it. Wait for that event, so it
       // sets the session start and entry data as sequential processing did. After the wait (e.g. the
@@ -77,7 +85,7 @@ export async function initSessionWorker() {
       await logJobStep(job, 'after getSessionData');
 
       await logJobStep(job, 'before bufferSessionUpdate');
-      await bufferSessionUpdate(projectId, sessionId, createdAt, {
+      const result = await bufferSessionUpdate(projectId, sessionId, createdAt, {
         projectId,
         userId,
         userIdentifier,
@@ -91,6 +99,12 @@ export async function initSessionWorker() {
         userAgent,
         ...referrer,
       });
+      if (result === 'deleted') {
+        await continueMergedSession(projectId, userId, sessionId, createdAt);
+      } else {
+        // The id may have been merged into an identified user before this session was buffered.
+        await followUpIfMerged(projectId, userId, { createdAt, sessionId });
+      }
       await logJobStep(job, 'session update buffered');
     },
     {

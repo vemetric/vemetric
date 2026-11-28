@@ -75,7 +75,7 @@ function Page() {
   const isEventsLoading = !eventsData || (isPreviousData && events.length === 0);
 
   const countryCode = user?.countryCode || latestEvent?.countryCode;
-  const isOnline = Boolean(latestEvent?.isOnline);
+  const isOnline = Boolean(userData?.isOnline ?? latestEvent?.isOnline);
 
   let lastDate: string | null = null;
 
@@ -178,7 +178,7 @@ function Page() {
                     <SessionEventGroup
                       key={sessionId}
                       index={index}
-                      showOnlineTag={isOnline && latestEvent?.sessionId === sessionId}
+                      showOnlineTag={Boolean(session?.isOnline)}
                       session={session}
                       isLastSession={isLastSession}
                       renderDate={renderDate}

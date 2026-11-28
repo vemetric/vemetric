@@ -10,6 +10,11 @@ const mocks = vi.hoisted(() => ({
   queueUsers: vi.fn(),
   queueUserDeletionJob: vi.fn(),
   trackEvent: vi.fn(),
+  getLatestEventsByUserId: vi.fn(),
+  findUserById: vi.fn(),
+  findLatestSessionByUserId: vi.fn(),
+  findSessionsByIds: vi.fn(),
+  isSessionOnline: vi.fn(),
 }));
 
 vi.mock('database', () => ({
@@ -22,7 +27,15 @@ vi.mock('database', () => ({
   OrganizationRole: { ADMIN: 'ADMIN', MEMBER: 'MEMBER' },
 }));
 vi.mock('@vemetric/queues/clickhouse-deletion-queue', () => ({ queueUserDeletionJob: mocks.queueUserDeletionJob }));
-vi.mock('clickhouse', () => ({}));
+vi.mock('clickhouse', () => ({
+  clickhouseEvent: { getLatestEventsByUserId: mocks.getLatestEventsByUserId },
+  clickhouseUser: { findById: mocks.findUserById },
+  clickhouseSession: {
+    findLatestByUserId: mocks.findLatestSessionByUserId,
+    findByIds: mocks.findSessionsByIds,
+  },
+  isSessionOnline: mocks.isSessionOnline,
+}));
 vi.mock('../utils/vemetric-client', () => ({ vemetric: { trackEvent: mocks.trackEvent } }));
 vi.mock('../utils/billing', () => ({ getSubscriptionStatus: vi.fn().mockResolvedValue({ isActive: true }) }));
 vi.mock('../utils/backend-logger', () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } }));
@@ -73,5 +86,47 @@ describe('users.delete', () => {
 
     expect(await caller.delete({ projectId: '42', userId: '123' })).toEqual({ success: true });
     expect(mocks.queueUsers).toHaveBeenCalled();
+  });
+});
+
+describe('users online status', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.findProject.mockResolvedValue({ id: '42', domain: 'example.com', organizationId: 'org_1' });
+    mocks.hasOrganizationAccess.mockResolvedValue(true);
+    mocks.hasProjectAccess.mockResolvedValue(true);
+    mocks.findOrganization.mockResolvedValue({ id: 'org_1' });
+  });
+
+  it('returns top-level isOnline from the latest session even when latestEvent is missing', async () => {
+    mocks.getLatestEventsByUserId.mockResolvedValue([]);
+    mocks.findUserById.mockResolvedValue({ id: BigInt(123), displayName: 'Ada' });
+    mocks.findLatestSessionByUserId.mockResolvedValue({ id: 'session-active', endedAt: '2026-07-21 11:59:00.000' });
+    mocks.isSessionOnline.mockReturnValue(true);
+
+    const result = await caller.single({ projectId: '42', userId: '123' });
+
+    expect(result.isOnline).toBe(true);
+    expect(result.latestEvent).toBeNull();
+    expect(result.user).toMatchObject({ id: '123', displayName: 'Ada' });
+  });
+
+  it('marks each session in users.events with its own online state', async () => {
+    mocks.getLatestEventsByUserId.mockResolvedValue([
+      { id: 'evt-new', sessionId: 'session-stale', createdAt: '2026-07-21 11:52:00.000' },
+      { id: 'evt-old', sessionId: 'session-heartbeat', createdAt: '2026-07-21 11:45:00.000' },
+    ]);
+    mocks.findSessionsByIds.mockResolvedValue([
+      { id: 'session-stale', endedAt: '2026-07-21 11:52:00.000' },
+      { id: 'session-heartbeat', endedAt: '2026-07-21 11:59:30.000' },
+    ]);
+    mocks.isSessionOnline.mockImplementation((session: { id: string }) => session.id === 'session-heartbeat');
+
+    const result = await caller.events({ projectId: '42', userId: '123' });
+
+    expect(result.sessions).toEqual([
+      { id: 'session-stale', endedAt: '2026-07-21 11:52:00.000', isOnline: false },
+      { id: 'session-heartbeat', endedAt: '2026-07-21 11:59:30.000', isOnline: true },
+    ]);
   });
 });

@@ -54,11 +54,15 @@ export const EventCard = ({ event, lastPageViewDate, isCurrentPageView = false }
     displayName = (event.customData?.href as string) ?? 'Outbound Link';
   }
 
+  const hasMeasuredDuration = Boolean(isPageView && lastPageViewDate && event.createdAt !== lastPageViewDate);
   const pageViewDuration =
     isPageView && lastPageViewDate
       ? dateTimeFormatter.formatDistance(lastPageViewDate, event.createdAt, true)
       : undefined;
-  const isPageViewDurationPending = isCurrentPageView && pageViewDuration === '0s';
+  const isPageViewDurationPending = Boolean(
+    isPageView && lastPageViewDate && isCurrentPageView && (!hasMeasuredDuration || pageViewDuration === '0s'),
+  );
+  const showPageViewDuration = Boolean(isPageViewDurationPending || (hasMeasuredDuration && pageViewDuration));
 
   return (
     <Card.Root key={event.id} overflow="hidden" data-event-card>
@@ -85,7 +89,7 @@ export const EventCard = ({ event, lastPageViewDate, isCurrentPageView = false }
                 {displayName}
               </Text>
             </Flex>
-            {pageViewDuration && (
+            {showPageViewDuration && (
               <Tooltip
                 content={
                   isPageViewDurationPending

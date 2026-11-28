@@ -3,8 +3,6 @@ import type { IUserSortConfig } from '@vemetric/common/sort';
 import { escape } from 'sqlstring';
 import { buildEventFilterQueries } from '../filters/event-filter';
 
-type UsersOrderByField = 'lastSeenAt' | 'displayName' | 'identifier' | 'countryCode';
-
 export const buildUserSortQueries = (
   sortConfig: IUserSortConfig,
   projectId: bigint,
@@ -36,17 +34,14 @@ export const buildUserSortQueries = (
     };
   }
 
-  const orderFieldMap: Partial<Record<UsersOrderByField, string>> = {
-    lastSeenAt: 'maxCreatedAt',
-  };
   const field = sortConfig?.by.type === 'field' ? sortConfig.by.fieldName : 'lastSeenAt';
   const direction = sortConfig?.direction === 'asc' ? 'ASC' : 'DESC';
-  const orderColumn = orderFieldMap[field] ?? field;
+  const orderColumn = field === 'lastSeenAt' ? 'maxCreatedAt' : `u.${field}`;
 
   return {
     joinClause: '',
     sortSelect: '',
-    orderByClause: `ORDER BY u.${orderColumn} ${direction}, u.userId ASC`,
+    orderByClause: `ORDER BY ${orderColumn} ${direction}, u.userId ASC`,
     isSortByEvent: false,
   };
 };

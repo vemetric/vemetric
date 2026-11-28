@@ -131,8 +131,9 @@ export const usersRouter = router({
       clickhouseSession.findLatestByUserId(projectId, userId),
     ]);
 
+    const isOnline = isSessionOnline(latestSession);
     const latestEvent: (ClickhouseEvent & { isOnline: boolean }) | null = latestEvents[0]
-      ? { ...latestEvents[0], isOnline: isSessionOnline(latestSession) }
+      ? { ...latestEvents[0], isOnline }
       : null;
 
     const deviceData = {
@@ -154,6 +155,7 @@ export const usersRouter = router({
     };
 
     return {
+      isOnline,
       latestEvent,
       user: user
         ? { ...user, id: String(user.id), displayName: user.displayName || latestEvent?.userDisplayName }
@@ -161,42 +163,40 @@ export const usersRouter = router({
       deviceData,
     };
   }),
-  delete: projectAdminProcedure
-    .input(z.object({ userId: z.string().regex(/^\d+$/) }))
-    .mutation(async (opts) => {
-      const {
-        input: { userId },
-        ctx: { projectId, project, user },
-      } = opts;
+  delete: projectAdminProcedure.input(z.object({ userId: z.string().regex(/^\d+$/) })).mutation(async (opts) => {
+    const {
+      input: { userId },
+      ctx: { projectId, project, user },
+    } = opts;
 
-      const deletion = await prismaClient.$transaction(async (tx) => {
-        await dbUserIdentificationMap.deleteByUserIds(String(projectId), [userId], tx);
-        return dbClickhouseDeletion.queueUsers(String(projectId), [userId], 'user-deleted', tx);
+    const deletion = await prismaClient.$transaction(async (tx) => {
+      await dbUserIdentificationMap.deleteByUserIds(String(projectId), [userId], tx);
+      return dbClickhouseDeletion.queueUsers(String(projectId), [userId], 'user-deleted', tx);
+    });
+    logger.info(
+      { projectId: String(projectId), userId, deletion: deletion.id, by: user.id },
+      'Tracked user queued for deletion',
+    );
+
+    try {
+      await queueUserDeletionJob();
+    } catch (err) {
+      // Still queued in Postgres: the nightly run deletes it.
+      logger.error({ err, deletion: deletion.id }, 'Failed to queue the user deletion job');
+    }
+
+    try {
+      await vemetric.trackEvent('UserDeleted', {
+        userIdentifier: user.id,
+        userDisplayName: user.name,
+        eventData: { projectId: project.id, projectDomain: project.domain, userId },
       });
-      logger.info(
-        { projectId: String(projectId), userId, deletion: deletion.id, by: user.id },
-        'Tracked user queued for deletion',
-      );
+    } catch (err) {
+      logger.error({ err }, 'Track event error');
+    }
 
-      try {
-        await queueUserDeletionJob();
-      } catch (err) {
-        // Still queued in Postgres: the nightly run deletes it.
-        logger.error({ err, deletion: deletion.id }, 'Failed to queue the user deletion job');
-      }
-
-      try {
-        await vemetric.trackEvent('UserDeleted', {
-          userIdentifier: user.id,
-          userDisplayName: user.name,
-          eventData: { projectId: project.id, projectDomain: project.domain, userId },
-        });
-      } catch (err) {
-        logger.error({ err }, 'Track event error');
-      }
-
-      return { success: true };
-    }),
+    return { success: true };
+  }),
   events: projectProcedure
     .input(
       z.object({
@@ -238,7 +238,10 @@ export const usersRouter = router({
       return {
         startDate,
         events: latestEvents,
-        sessions,
+        sessions: sessions.map((session) => ({
+          ...session,
+          isOnline: isSessionOnline(session),
+        })),
         nextCursor: hasMore ? latestEvents[latestEvents.length - 1].createdAt : undefined,
         isNextEventSameSession: hasMore
           ? events[events.length - 1].sessionId === events[events.length - 2].sessionId

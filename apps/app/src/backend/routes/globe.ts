@@ -98,8 +98,9 @@ export const globeRouter = router({
       clickhouseEvent.getLatestPageViewByUserId(projectId, userId),
     ]);
 
+    const isOnline = isSessionOnline(latestSession);
     const latestEvent: (ClickhouseEvent & { isOnline: boolean }) | null = latestEvents[0]
-      ? { ...latestEvents[0], isOnline: isSessionOnline(latestSession) }
+      ? { ...latestEvents[0], isOnline }
       : null;
 
     const deviceData = {
@@ -121,6 +122,7 @@ export const globeRouter = router({
     };
 
     return {
+      isOnline,
       latestEvent,
       latestPageView,
       latestSession: latestSession

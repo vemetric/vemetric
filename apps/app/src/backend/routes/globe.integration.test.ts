@@ -76,7 +76,8 @@ async function resetFixtures() {
 }
 
 describe('globe data queries (integration)', () => {
-  const recentUnlocatedAt = new Date(Date.now() - 10_000);
+  const recentSessionHeartbeatAt = new Date(Date.now() - 5_000);
+  const recentUnlocatedAt = new Date(recentSessionHeartbeatAt.getTime() - 5_000);
   const olderLocatedAt = new Date(recentUnlocatedAt.getTime() - 60_000);
   const sharedFirstSeenAt = new Date(recentUnlocatedAt.getTime() + 1_000);
   const sharedTimestampUserIds = Array.from({ length: 251 }, (_, index) => BigInt(1_000 + index));
@@ -123,8 +124,8 @@ describe('globe data queries (integration)', () => {
         userId: '1',
         id: 'active-session-1',
         startedAt: toClickhouseDate(olderLocatedAt),
-        endedAt: toClickhouseDate(recentUnlocatedAt),
-        duration: 60,
+        endedAt: toClickhouseDate(recentSessionHeartbeatAt),
+        duration: 65,
         countryCode: 'AT',
         city: 'Vienna',
         latitude: 48.2082,
@@ -137,7 +138,7 @@ describe('globe data queries (integration)', () => {
 
   afterAll(resetFixtures);
 
-  it('keeps the latest located coordinates and reports presence from active session activity', async () => {
+  it('keeps the latest located coordinates and reports presence and lastSeenAt from active session activity', async () => {
     const buckets = await clickhouseGlobe.queryGlobeBuckets({
       projectId: PROJECT_ID,
       startDate: new Date(olderLocatedAt.getTime() - 1_000),
@@ -147,7 +148,7 @@ describe('globe data queries (integration)', () => {
     expect(user).toMatchObject({ isOnline: true });
     expect(user?.latitude).toBeCloseTo(48.2082, 3);
     expect(user?.longitude).toBeCloseTo(16.3738, 3);
-    expect(clickhouseDateToISO(user?.lastSeenAt ?? '')).toBe(recentUnlocatedAt.toISOString());
+    expect(clickhouseDateToISO(user?.lastSeenAt ?? '')).toBe(recentSessionHeartbeatAt.toISOString());
   });
 
   it('does not announce a user who was already present when the globe was opened', async () => {

@@ -204,10 +204,11 @@ function sessionOverlapFilter(range?: { start: Date; end: Date }) {
 }
 
 export function getOnlineSessionsByUserQuery(projectId: bigint) {
+  // Relies on the ended_at_idx minmax skip index to skip historical granules before the active window.
   const candidateIds = `SELECT DISTINCT id FROM ${TABLE_NAME} WHERE projectId = ${escape(projectId)} AND endedAt >= ${ONLINE_USERS_INTERVAL_QUERY}`;
 
   return `
-    SELECT userId, max(endedAt) as lastSessionEndedAt
+    SELECT userId, max(endedAt) as lastSessionEndedAt, toUInt8(1) as isOnline
     FROM (
       SELECT userId, endedAt, deleted
       FROM ${TABLE_NAME}
@@ -220,6 +221,12 @@ export function getOnlineSessionsByUserQuery(projectId: bigint) {
       AND endedAt >= ${ONLINE_USERS_INTERVAL_QUERY}
     GROUP BY userId
   `;
+}
+
+export function getEffectiveLastSeenExpression(eventTimestampColumn: string, endDate?: Date) {
+  const sessionEndedAt = `coalesce(s.lastSessionEndedAt, ${eventTimestampColumn})`;
+  const endDateCondition = endDate ? ` AND ${sessionEndedAt} < '${formatClickhouseDate(endDate)}'` : '';
+  return `if(coalesce(s.isOnline, 0) = 1${endDateCondition}, greatest(${eventTimestampColumn}, ${sessionEndedAt}), ${eventTimestampColumn})`;
 }
 
 export function isSessionOnline(session: Pick<ClickhouseSession, 'endedAt'> | null | undefined) {

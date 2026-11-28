@@ -14,6 +14,8 @@ model User {
   receiveEmailTips Boolean  @default(true)
   name             String?
   image            String?
+  // Klibon affiliate code of the affiliate who referred the user, saved at signup
+  affiliateCode    String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @default(now())
 
@@ -266,6 +268,8 @@ model Organization {
   createdAt        DateTime @default(now())
   pricingOnboarded Boolean  @default(false)
   customPlanEvents Int? // Custom event limit override (null = use regular billing)
+  // Copied from the creator's affiliateCode at org creation so teammate upgrades still credit the partner
+  affiliateCode    String?
 
   users                   UserOrganization[]
   project                 Project[]

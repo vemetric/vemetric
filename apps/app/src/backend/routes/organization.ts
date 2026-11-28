@@ -42,7 +42,11 @@ export const organizationRouter = router({
           });
         }
 
-        const org = await dbOrganization.create({ name: organizationName, client });
+        const org = await dbOrganization.create({
+          name: organizationName,
+          affiliateCode: user.affiliateCode ?? null,
+          client,
+        });
         await dbOrganization.addUser({
           organizationId: org.id,
           userId: user.id,

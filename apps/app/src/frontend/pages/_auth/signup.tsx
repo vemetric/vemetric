@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { TbMail, TbLock, TbBrandGithub, TbBrandGoogleFilled } from 'react-icons/tb';
 import { InputGroup } from '@/components/ui/input-group';
 import { toaster } from '@/components/ui/toaster';
+import { getAffiliateHeaders, getVisitAffiliateSearch } from '@/utils/affiliate';
 import { authClient, loginWithProvider } from '@/utils/auth';
 import { getAppUrl } from '@/utils/url';
 
@@ -40,6 +41,7 @@ function Page() {
         callbackURL: getAppUrl() + '/redirect',
       },
       {
+        headers: getAffiliateHeaders(),
         onRequest: () => {
           setIsLoading(true);
         },
@@ -72,7 +74,9 @@ function Page() {
         <Text textStyle="sm" color="fg.muted">
           Already have an account?{' '}
           <Link asChild variant="underline">
-            <RouterLink to="/login">Sign in</RouterLink>
+            <RouterLink to="/login" search={getVisitAffiliateSearch()}>
+              Sign in
+            </RouterLink>
           </Link>
         </Text>
 

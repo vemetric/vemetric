@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { customSessionClient, emailOTPClient, lastLoginMethodClient } from 'better-auth/client/plugins';
 import { createAuthClient } from 'better-auth/react';
 import { toaster } from '@/components/ui/toaster';
+import { getAffiliateOAuthData } from './affiliate';
 import { getAppUrl, getBackendUrl } from './url';
 import type { Auth } from '../../../types';
 
@@ -27,6 +28,7 @@ export const loginWithProvider = async (provider: 'google' | 'github', setIsLoad
     {
       provider,
       callbackURL: getAppUrl() + '/redirect',
+      additionalData: getAffiliateOAuthData(),
     },
     {
       onRequest: () => {

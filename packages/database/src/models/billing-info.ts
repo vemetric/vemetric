@@ -20,4 +20,14 @@ export const dbBillingInfo = {
       where: { organizationId },
     });
   },
+  findBySubscriptionId: async (subscriptionId: string) => {
+    return prismaClient.billingInfo.findFirst({
+      where: { subscriptionId },
+    });
+  },
+  findByTransactionId: async (transactionId: string) => {
+    return prismaClient.billingInfo.findFirst({
+      where: { transactionId },
+    });
+  },
 };

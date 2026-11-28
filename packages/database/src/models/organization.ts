@@ -6,8 +6,15 @@ export { OrganizationRole } from '@prisma/client';
 export type { Organization };
 
 export const dbOrganization = {
-  create: ({ name, client = prismaClient }: { name: string; client?: DbClient }) =>
-    client.organization.create({ data: { id: generateOrganizationId(), name } }),
+  create: ({
+    name,
+    affiliateCode,
+    client = prismaClient,
+  }: {
+    name: string;
+    affiliateCode?: string | null;
+    client?: DbClient;
+  }) => client.organization.create({ data: { id: generateOrganizationId(), name, affiliateCode } }),
 
   addUser: ({
     organizationId,
